@@ -385,8 +385,8 @@ Every module is independently testable. Every module is replaceable. Zero shared
 
 - Node.js 18+
 - TypeScript 5.7+
-- `@modelcontextprotocol/sdk ^1.12.1`
-- `zod ^3.25.1`
+- `@modelcontextprotocol/sdk ^1.12.1` (peer dependency)
+- `zod ^3.25.1 || ^4.0.0` (peer dependency)
 - `@toon-format/toon` (for TOON features)
 
 ## License
