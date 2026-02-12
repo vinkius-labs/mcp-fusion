@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "TypeScript framework that consolidates MCP operations into grouped tools with discriminator-based routing, reducing LLM context pressure and routing errors",
     "type": "module",
     "main": "dist/index.js",
@@ -32,12 +32,12 @@
     "author": "Vinkius Labs",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/vinkius-core/mcp-fusion.git"
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git"
     },
     "bugs": {
-        "url": "https://github.com/vinkius-core/mcp-fusion/issues"
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
     },
-    "homepage": "https://github.com/vinkius-core/mcp-fusion#readme",
+    "homepage": "https://github.com/vinkius-labs/mcp-fusion#readme",
     "files": [
         "dist",
         "README.md",
