@@ -6,7 +6,7 @@ Complete reference for every public class, function, type, and interface exporte
 
 ## Response Helpers
 
-Imported from root: `import { success, error, required, toonSuccess } from '@vinkius-labs/mcp-fusion'`
+Imported from root: `import { success, error, required, toonSuccess } from '@vinkius-core/mcp-fusion'`
 
 ### `success(data: string | object): ToolResponse`
 
@@ -58,7 +58,7 @@ interface ToolResponse {
 
 ## GroupedToolBuilder
 
-Imported from root: `import { GroupedToolBuilder } from '@vinkius-labs/mcp-fusion'`
+Imported from root: `import { GroupedToolBuilder } from '@vinkius-core/mcp-fusion'`
 
 ### `constructor(name: string)`
 
@@ -238,7 +238,7 @@ interface ActionMetadata {
 
 ## ToolRegistry
 
-Imported from root: `import { ToolRegistry } from '@vinkius-labs/mcp-fusion'`
+Imported from root: `import { ToolRegistry } from '@vinkius-core/mcp-fusion'`
 
 ### `constructor()`
 

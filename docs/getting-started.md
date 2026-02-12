@@ -7,7 +7,7 @@ This guide takes you from zero to a production-ready MCP server with grouped too
 ## Installation
 
 ```bash
-npm install @vinkius-labs/mcp-fusion @modelcontextprotocol/sdk zod
+npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 ```
 
 Optional, for TOON token optimization:
@@ -23,7 +23,7 @@ npm install @toon-format/toon
 A grouped tool consolidates multiple operations — list, create, update, delete — behind a single tool name with a discriminator field (`action`).
 
 ```typescript
-import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-labs/mcp-fusion';
+import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -298,7 +298,7 @@ Full platform management API. Modules: users (list,invite,remove) | projects (li
 The framework provides four response builders:
 
 ```typescript
-import { success, error, required, toonSuccess } from '@vinkius-labs/mcp-fusion';
+import { success, error, required, toonSuccess } from '@vinkius-core/mcp-fusion';
 
 // success() — auto-detects string vs object
 return success('Task created');                // Text response

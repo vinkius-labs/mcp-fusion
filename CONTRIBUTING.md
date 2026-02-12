@@ -12,7 +12,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 Before submitting a bug report:
 
-1. Check the [existing issues](https://github.com/vinkius-labs/mcp-fusion/issues) to avoid duplicates
+1. Check the [existing issues](https://github.com/vinkius-core/mcp-fusion/issues) to avoid duplicates
 2. Collect information about the bug:
    - Stack trace
    - Node.js version (`node --version`)
@@ -20,7 +20,7 @@ Before submitting a bug report:
    - Package version
    - Steps to reproduce
 
-Then [open a new issue](https://github.com/vinkius-labs/mcp-fusion/issues/new?template=bug_report.md) with the bug report template.
+Then [open a new issue](https://github.com/vinkius-core/mcp-fusion/issues/new?template=bug_report.md) with the bug report template.
 
 ### Suggesting Features
 
@@ -29,7 +29,7 @@ Feature requests are welcome! Please:
 1. Check existing issues and discussions first
 2. Describe the use case clearly
 3. Explain why existing features don't solve your problem
-4. [Open a feature request](https://github.com/vinkius-labs/mcp-fusion/issues/new?template=feature_request.md)
+4. [Open a feature request](https://github.com/vinkius-core/mcp-fusion/issues/new?template=feature_request.md)
 
 ### Pull Requests
 
@@ -109,7 +109,7 @@ docs/
 
 ## Questions?
 
-Feel free to [open a discussion](https://github.com/vinkius-labs/mcp-fusion/discussions) for questions or ideas.
+Feel free to [open a discussion](https://github.com/vinkius-core/mcp-fusion/discussions) for questions or ideas.
 
 ## License
 

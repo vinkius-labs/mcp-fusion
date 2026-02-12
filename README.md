@@ -5,7 +5,7 @@
 A TypeScript framework that consolidates related MCP operations into a single tool behind a discriminator field — with a domain model layer for hierarchical entity management and a build-time strategy engine designed for 5,000+ endpoints. Fewer tools means less context pressure on the LLM, fewer routing errors, and cleaner server code.
 
 ```
-npm install @vinkius-labs/mcp-fusion
+npm install @vinkius-core/mcp-fusion
 ```
 
 ---
@@ -24,7 +24,7 @@ The workaround is writing fewer, bloated tools — or rotating tool sets per con
 Group related operations under a single tool. The LLM sees one `projects` tool and selects the operation through an `action` enum — a discriminator field. The framework handles description generation, schema composition, annotation aggregation, middleware compilation, validation, and error formatting — all at build time.
 
 ```typescript
-import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-labs/mcp-fusion';
+import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 const projects = new GroupedToolBuilder<AppContext>('projects')
@@ -232,6 +232,8 @@ registry.attachToServer(server, {
 
 **The result:** 5,000 endpoints registered, but the LLM context only contains the 2-3 tools relevant to the current conversation. Tag filtering acts as a context gate — you control exactly what the LLM sees, per session.
 
+→ [Scaling Guide](docs/scaling.md) — Technical deep-dive into how each mechanism prevents LLM hallucination at scale
+
 ### Zod Parameter Stripping — Built-In Security Layer
 
 When the LLM sends arguments, `execute()` merges `commonSchema` + `action.schema` using Zod's `.merge().strip()`, then runs `safeParse()`. The framework uses `result.data` — not the raw args — which means:
@@ -372,6 +374,7 @@ Every module is independently testable. Every module is replaceable. Zero shared
 |---|---|
 | [Getting Started](docs/getting-started.md) | First tool, context, common schema, groups, TOON — complete working examples |
 | [Architecture](docs/architecture.md) | Domain model, strategy pattern, build-time engine, execution flow |
+| [Scaling](docs/scaling.md) | How grouping, tag filtering, TOON, and schema unification prevent LLM hallucination at 5,000+ endpoints |
 | [Middleware](docs/middleware.md) | Global, group-scoped, pre-compilation, real patterns (auth, rate-limit, audit) |
 | [API Reference](docs/api-reference.md) | Every public class, method, type, and interface |
 | [Introspection](docs/introspection.md) | Runtime metadata, compliance, dashboards, middleware validation |
