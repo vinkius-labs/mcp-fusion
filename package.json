@@ -1,0 +1,64 @@
+{
+    "name": "@vinkius-labs/mcp-fusion",
+    "version": "0.1.0",
+    "description": "TypeScript framework that consolidates MCP operations into grouped tools with discriminator-based routing, reducing LLM context pressure and routing errors",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "model-context-protocol",
+        "ai",
+        "llm",
+        "tools",
+        "typescript",
+        "anthropic",
+        "claude",
+        "middleware",
+        "zod"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://github.com/vinkius-labs/mcp-fusion#readme",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.12.1",
+        "@toon-format/toon": "^2.1.0",
+        "zod": "^3.25.1",
+        "zod-to-json-schema": "^3.25.1"
+    },
+    "devDependencies": {
+        "@vitest/coverage-v8": "^3.2.4",
+        "typescript": "^5.7.3",
+        "vitest": "^3.0.5"
+    },
+    "license": "Apache-2.0"
+}

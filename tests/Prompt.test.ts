@@ -1,0 +1,72 @@
+import { describe, it, expect } from 'vitest';
+import { Prompt } from '../src/Prompt.js';
+import { PromptArgument } from '../src/PromptArgument.js';
+import { Group } from '../src/Group.js';
+
+describe('Prompt', () => {
+    it('should create with name', () => {
+        const prompt = new Prompt('code_review');
+        expect(prompt.getName()).toBe('code_review');
+    });
+
+    it('should start with empty arguments', () => {
+        const prompt = new Prompt('code_review');
+        expect(prompt.getPromptArguments()).toHaveLength(0);
+    });
+
+    it('should add prompt argument', () => {
+        const prompt = new Prompt('code_review');
+        const arg = new PromptArgument('language');
+        arg.setRequired(true);
+        prompt.addPromptArgument(arg);
+        expect(prompt.getPromptArguments()).toHaveLength(1);
+        expect(prompt.getPromptArguments()[0].getName()).toBe('language');
+        expect(prompt.getPromptArguments()[0].isRequired()).toBe(true);
+    });
+
+    it('should not add duplicate arguments', () => {
+        const prompt = new Prompt('code_review');
+        const arg = new PromptArgument('language');
+        prompt.addPromptArgument(arg);
+        prompt.addPromptArgument(arg);
+        expect(prompt.getPromptArguments()).toHaveLength(1);
+    });
+
+    it('should throw when adding null argument', () => {
+        const prompt = new Prompt('code_review');
+        expect(() => prompt.addPromptArgument(null as any)).toThrow('promptArgument must not be null');
+    });
+
+    it('should remove prompt argument', () => {
+        const prompt = new Prompt('code_review');
+        const arg = new PromptArgument('language');
+        prompt.addPromptArgument(arg);
+        expect(prompt.removePromptArgument(arg)).toBe(true);
+        expect(prompt.getPromptArguments()).toHaveLength(0);
+    });
+
+    it('should return false when removing non-existing argument', () => {
+        const prompt = new Prompt('code_review');
+        const arg = new PromptArgument('language');
+        expect(prompt.removePromptArgument(arg)).toBe(false);
+    });
+
+    it('should manage parent groups', () => {
+        const prompt = new Prompt('code_review');
+        const group = new Group('templates');
+        prompt.addParentGroup(group);
+        expect(prompt.getParentGroups()).toHaveLength(1);
+    });
+
+    it('should return name as fully qualified name', () => {
+        const prompt = new Prompt('code_review');
+        expect(prompt.getFullyQualifiedName()).toBe('code_review');
+    });
+
+    it('should produce correct toString', () => {
+        const prompt = new Prompt('summarize');
+        const str = prompt.toString();
+        expect(str).toContain('Prompt');
+        expect(str).toContain('name=summarize');
+    });
+});
