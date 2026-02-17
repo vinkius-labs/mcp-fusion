@@ -1,27 +1,92 @@
-# MCP Extensions for Primitive Grouping
+<div align="center">
+  <h1>⚡️ mcp-fusion</h1>
+  <p><b>The Enterprise Multiplexer for MCP. Route 5,000+ endpoints through a single LLM tool.</b></p>
+  
+  [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+  [![MCP SDK](https://img.shields.io/badge/MCP-Standard-purple.svg?style=flat-square)](https://modelcontextprotocol.io/)
+  [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](LICENSE)
+</div>
 
-**Stop registering hundreds of individual MCP tools. Ship one.**
+<br/>
 
-A TypeScript framework that consolidates related MCP operations into a single tool behind a discriminator field — with a domain model layer for hierarchical entity management and a build-time strategy engine designed for 5,000+ endpoints. Fewer tools means less context pressure on the LLM, fewer routing errors, and cleaner server code.
+**Stop registering hundreds of individual Model Context Protocol (MCP) tools. Ship ONE.**
 
-```
-npm install @vinkius-core/mcp-fusion
+`mcp-fusion` is an advanced TypeScript framework that consolidates related MCP operations into a single tool behind a discriminator field. Built with a strict **domain model layer** for hierarchical entity management and a **build-time strategy engine** designed to scale to 5,000+ endpoints.
+
+Fewer tools mean less context pressure on the LLM, zero routing hallucinations, and radically cleaner server code.
+
+```bash
+npm install @vinkius-core/mcp-fusion zod
 ```
 
 ---
 
-## The Problem
+## 🚨 The Architectural Bottleneck: Context Collapse
 
-MCP servers that expose individual tools for every operation — `create_project`, `update_project`, `delete_project`, `list_projects`, `archive_project` — create two cascading failures:
+Standard MCP servers that expose individual tools for every CRUD operation (`create_project`, `update_project`, `delete_project`, `list_projects`) create two cascading system failures:
 
-1. **Context exhaustion.** Every tool definition burns tokens in the LLM context window. At 30+ tools, the model starts losing track.
-2. **Routing confusion.** Semantically similar tools compete for selection. The LLM picks `update_project` when it should pick `create_project`.
+1. **Context Exhaustion:** Every tool definition burns expensive tokens in the LLM's context window. At 30+ tools, API costs explode and the model's memory degrades.
+2. **Routing Confusion:** Semantically similar tools compete for selection. The LLM hallucinates parameters or picks `update_project` when it should pick `create_project`.
 
 The workaround is writing fewer, bloated tools — or rotating tool sets per conversation. Both are brittle.
 
-## The Solution
+## ✅ The Solution: Build-Time Multiplexing & Context Gating
 
-Group related operations under a single tool. The LLM sees one `projects` tool and selects the operation through an `action` enum — a discriminator field. The framework handles description generation, schema composition, annotation aggregation, middleware compilation, validation, and error formatting — all at build time.
+Group related operations under a single tool. The LLM sees ONE `platform` tool and selects the exact operation through an `action` enum. 
+
+The framework handles description generation, schema composition, annotation aggregation, middleware compilation, strict validation, and error formatting — **all at build time**.
+
+```mermaid
+graph LR
+    classDef llm fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef chaos fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b;
+    classDef gateway fill:#0ea5e9,stroke:#0369a1,stroke-width:3px,color:#fff,font-weight:bold;
+    classDef gate fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef engine fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff;
+    classDef secure fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef danger fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff;
+
+    subgraph "❌ Standard MCP (Context Collapse)"
+        direction TB
+        L1[🤖 LLM] -.->|Token Burn $$$| C1[50+ Raw Tools]:::chaos
+        L1 -.->|Routing Errors| C2[Hallucinated Params]:::chaos
+    end
+
+    subgraph "✅ mcp-fusion (Enterprise Gateway)"
+        direction LR
+        L2[🤖 LLM] == "Sees ONE Tool" ==> GATEWAY[⚡️ Gateway]:::gateway
+        
+        GATEWAY ==>|"1. Context Gating"| TAGS{Tag Filter}:::gate
+        TAGS ==>|"2. Build-Time Engine"| AST[🔍 Zod AST Hints<br/>+ TOON Compress]:::engine
+        AST ==>|"3. Routing & Security"| ZOD[/Zod .merge().strip()/]:::secure
+        
+        ZOD -->|"action: 'users.create'"| H1(Type-Safe Handler):::secure
+        ZOD -->|"action: 'billing.refund'"| H2(⚠️ Destructive):::danger
+        ZOD -.->|"O(1) Map.get"| H3[[... 5,000+ Endpoints]]:::engine
+    end
+```
+
+---
+
+## 🤯 The "Aha!" Moment: What the LLM Actually Sees
+
+Instead of flooding the LLM with 50 fragile JSON schemas, `mcp-fusion` uses **Zod AST introspection** to cross-reference every field across all actions. Five individual tools become one registered tool. 
+
+The LLM simply sees this mathematically perfect, auto-generated prompt:
+
+```text
+Action: list | create | delete
+- 'list': Requires: workspace_id. For: list
+- 'create': Requires: workspace_id, name. For: create
+- 'delete': Requires: workspace_id, project_id ⚠️ DESTRUCTIVE
+```
+
+*No guessing. No hallucinated parameters. Absolute routing precision.*
+
+---
+
+## 🚀 Quick Start (Frictionless Setup)
 
 ```typescript
 import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
@@ -29,6 +94,7 @@ import { z } from 'zod';
 
 const projects = new GroupedToolBuilder<AppContext>('projects')
     .description('Manage projects')
+    // Shared parameters injected into every action safely
     .commonSchema(z.object({
         workspace_id: z.string().describe('Workspace identifier'),
     }))
@@ -52,7 +118,7 @@ const projects = new GroupedToolBuilder<AppContext>('projects')
     })
     .action({
         name: 'delete',
-        destructive: true,
+        destructive: true, // Auto-appends ⚠️ DESTRUCTIVE to LLM description
         schema: z.object({ project_id: z.string() }),
         handler: async (ctx, args) => {
             await ctx.db.projects.delete({ where: { id: args.project_id } });
@@ -60,6 +126,7 @@ const projects = new GroupedToolBuilder<AppContext>('projects')
         },
     });
 
+// Attach to ANY standard MCP Server (Duck-typed)
 const registry = new ToolRegistry<AppContext>();
 registry.register(projects);
 registry.attachToServer(server, {
@@ -67,281 +134,149 @@ registry.attachToServer(server, {
 });
 ```
 
-Five individual tools become one registered tool. The LLM sees:
-
-```
-Action: list | create | delete
-- 'list': Requires: workspace_id. For: list
-- 'create': Requires: workspace_id, name. For: create
-- 'delete': Requires: workspace_id, project_id ⚠️ DESTRUCTIVE
-```
-
-→ [Getting Started Guide](docs/getting-started.md)
+→ [Read the full Getting Started Guide](docs/getting-started.md)
 
 ---
 
-## What Makes This Framework Extraordinary
+## 🏗️ Enterprise Engineering Core
+
+This is not a simple utility wrapper. `mcp-fusion` is a high-performance routing engine built for massive scale, strict security boundaries, and zero-allocation runtime execution.
+
+### Token Management at Scale — Tag-Based Selective Exposure
+> **"5,000 endpoints — won't that blow up the token context?"** No. 
+
+The framework uses a 3-layer Context Gating strategy to keep token usage strictly under control:
+1. **Layer 1 — Grouping reduces tool count:** Instead of 5,000 individual tools, a `platform` tool with 50 actions is ONE tool definition in `tools/list`. The LLM sees 1 tool, not 50.
+2. **Layer 2 — Tag filtering controls what the LLM sees:** You do NOT expose all tools at once. Each builder has `.tags()`, and `attachToServer()` accepts a `filter` with `tags` (include) and `exclude` options.
+3. **Layer 3 — TOON compresses descriptions:** For tools that ARE exposed, metadata is compressed.
+
+```typescript
+// Register 5,000 endpoints across domain-specific grouped tools
+const usersTool = new GroupedToolBuilder<AppContext>('users').tags('core').group(...);
+const adminTool = new GroupedToolBuilder<AppContext>('admin').tags('admin', 'internal').group(...);
+
+registry.registerAll(usersTool, adminTool);
+
+// Conversation about user management? Expose only core tools:
+registry.attachToServer(server, { filter: { tags: ['core'] } }); // LLM sees: 1 tool
+
+// Full access, but never internal tools:
+registry.attachToServer(server, { filter: { exclude: ['internal'] } });
+```
+*Tag filtering acts as a context gate — you control exactly what the LLM sees, per session.*
 
 ### Two-Layer Architecture
-
-This is not a simple utility wrapper. The framework has two distinct layers:
-
-**Layer 1 — Domain Model.** A hierarchical entity model for MCP primitives (`Group`, `Tool`, `Prompt`, `Resource`, `PromptArgument`) with tree traversal, multi-parent leaves, fully-qualified names (dot-separated, configurable separator), metadata maps, icons, and bidirectional type converters (`AbstractToolConverter`, `AbstractGroupConverter`, etc.). This is the structural backbone — think of it as the AST for your MCP server.
-
-**Layer 2 — Build-Time Strategy Engine.** `GroupedToolBuilder` orchestrates six pure-function strategy modules to generate a single MCP tool definition. All computation happens at build time. At runtime, `execute()` does a single `Map.get()` lookup and calls a pre-compiled function.
+1. **Layer 1 — Domain Model:** A hierarchical entity model for MCP primitives (`Group`, `Tool`, `Prompt`, `Resource`, `PromptArgument`) with tree traversal, multi-parent leaves, fully-qualified names (dot-separated, configurable separator), metadata maps, icons, and bidirectional type converters. This is the structural backbone — think of it as the AST for your MCP server.
+2. **Layer 2 — Build-Time Strategy Engine:** `GroupedToolBuilder` orchestrates six pure-function strategy modules to generate a single MCP tool definition. All heavy computation happens at build time. At runtime, `execute()` does a single `Map.get()` lookup and calls a pre-compiled function.
 
 ### Per-Field Annotation Intelligence (4-Tier System)
-
-The `SchemaGenerator` analyzes every field across every action and produces one of four annotation tiers — automatically, from your Zod schemas:
+The `SchemaGenerator` analyzes every field across every action directly from Zod `isOptional()` introspection, cross-referencing them to produce 4 annotation tiers automatically:
 
 | Tier | Condition | Generated Annotation | LLM Reads As |
 |---|---|---|---|
 | **Always Required** | Field is in `commonSchema` and required | `(always required)` | "I must always send this field" |
-| **Required-For** | Required in every action that uses it | `Required for: create, update` | "I need this for these specific actions" |
+| **Required-For** | Required in every action that uses it | `Required for: create, update` | "I need this for specific actions" |
 | **Required + Optional** | Required in some, optional in others | `Required for: create. For: update` | "Required for create, optional for update" |
 | **For** | Optional in all actions that use it | `For: list, search` | "Only relevant for these actions" |
 
-The LLM knows *exactly* which fields to populate for each action. No guessing. No hallucinated parameters. No manual annotation writing. This is extracted directly from Zod `isOptional()` introspection and cross-referenced across all registered actions.
-
-### Pre-Compiled Middleware Chains
-
-Middleware follows the `next()` pattern:
-
-```typescript
-const authMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    if (!ctx.session) return error('Unauthorized');
-    return next();
-};
-```
-
-But unlike Express, chains are compiled at build time. The `MiddlewareCompiler` wraps handlers right-to-left into nested closures and stores the result in a `Map<string, ChainFn>`. At runtime, `execute()` does `this._compiledChain.get(action.key)` — one Map lookup, zero chain assembly, zero closure allocation per request.
-
-Middleware is hierarchical:
-- **Global** — `.use(mw)` on the builder. Runs for every action (outermost).
-- **Group-scoped** — `.use(mw)` inside a group's `ActionGroupBuilder`. Runs only for actions in that group (inner).
-
-### TOON Token Optimization
-
-Descriptions and responses can be encoded in TOON (Token-Oriented Object Notation) via `@toon-format/toon` — a compact pipe-delimited format that eliminates repeated key names:
-
-```typescript
-// Enable TOON for tool descriptions (saves tokens on tools/list)
-builder.toonDescription();
-
-// Enable TOON for handler responses (saves tokens on tools/call)
-return toonSuccess(users);  // Instead of success(users)
-```
-
-The `toonSuccess()` helper accepts any JSON-serializable value and encodes it with configurable delimiter (`|` by default). For arrays of uniform objects — the typical API response — TOON achieves significant token reduction because column names are written once as a header, not repeated per row.
-
-### Conservative Annotation Aggregation
-
-MCP tool annotations operate at the tool level, but your actions have individual behavioral properties. The `AnnotationAggregator` resolves this with conservative rules:
-
-- `destructiveHint: true` if **any** action is destructive (worst case assumption)
-- `readOnlyHint: true` only if **all** actions are read-only (one mutation breaks it)
-- `idempotentHint: true` only if **all** actions are idempotent (one non-idempotent breaks it)
-
-Explicit annotations via `.annotations()` override aggregated values. The `ToolAnnotations` class also supports `openWorldHint` and `returnDirect`.
+### Zod Parameter Stripping (Built-In Security Layer)
+When the LLM sends arguments, `execute()` merges `commonSchema` + `action.schema` using Zod's `.merge().strip()`, then runs `safeParse()`. 
+1. Unknown/injected fields are silently stripped.
+2. Type coercion happens safely through Zod.
+3. The handler receives exactly the shape it declared. 
+**The LLM cannot inject parameters that your schema does not declare. This is a security boundary, not just validation.**
 
 ### Hierarchical Grouping for Large API Surfaces
-
-For large API surfaces, actions support `module.action` compound keys:
+For massive API surfaces, actions support `module.action` compound keys. **Flat mode** (`.action()`) and **hierarchical mode** (`.group()`) are mutually exclusive on the same builder.
 
 ```typescript
 new GroupedToolBuilder<AppContext>('platform')
-    .description('Platform management API')
-    .tags('core')  // ← Tag for selective exposure
+    .tags('core') 
     .group('users', 'User management', g => {
         g.use(requireAdmin)  // Group-scoped middleware
          .action({ name: 'list', readOnly: true, handler: listUsers })
-         .action({ name: 'create', schema: createUserSchema, handler: createUser })
          .action({ name: 'ban', destructive: true, schema: banSchema, handler: banUser });
     })
     .group('billing', 'Billing operations', g => {
-        g.action({ name: 'invoices', readOnly: true, handler: listInvoices })
-         .action({ name: 'refund', destructive: true, schema: refundSchema, handler: issueRefund });
-    })
-    .group('analytics', g => {
-        g.action({ name: 'report', readOnly: true, handler: generateReport })
-         .action({ name: 'export', readOnly: true, schema: exportSchema, handler: exportData });
+        g.action({ name: 'refund', destructive: true, schema: refundSchema, handler: issueRefund });
     });
 ```
+*The discriminator enum automatically becomes: `users.list | users.ban | billing.refund`.*
 
-The discriminator enum becomes: `users.list | users.create | users.ban | billing.invoices | billing.refund | analytics.report | analytics.export`. The description auto-generates group headers: `Modules: users (list,create,ban) | billing (invoices,refund) | analytics (report,export)`.
+### Pre-Compiled Middleware Chains
+Middleware follows the `next()` pattern. But unlike Express.js, chains are compiled at **build time**. The `MiddlewareCompiler` wraps handlers right-to-left into nested closures and stores the result. At runtime, `execute()` calls `this._compiledChain.get(action.key)`. 
+**Zero chain assembly, zero closure allocation per request.** Supports both **Global** and **Group-scoped** execution.
 
-**Flat mode** (`.action()`) and **hierarchical mode** (`.group()`) are mutually exclusive on the same builder — enforced at registration time with clear error messages.
-
-### Token Management at Scale — Tag-Based Selective Exposure
-
-> **"5,000 endpoints — won't that blow up the token context?"**
-
-No. The framework uses a 3-layer strategy to keep token usage under control, even with thousands of endpoints:
-
-**Layer 1 — Grouping reduces tool count.** Instead of 5,000 individual tools, you register them as grouped tools. A `platform` tool with 50 actions is ONE tool definition in `tools/list`. The LLM sees 1 tool, not 50.
-
-**Layer 2 — Tag filtering controls what the LLM sees.** You do NOT expose all tools at once. Each builder has `.tags()`, and `attachToServer()` accepts a `filter` with `tags` (include) and `exclude` options. Only matching tools appear in `tools/list`.
-
-**Layer 3 — TOON compresses descriptions.** For tools that ARE exposed, `.toonDescription()` encodes metadata as compact pipe-delimited tables instead of verbose markdown, reducing token cost per tool.
-
-Here's how this works in practice:
-
+### TOON Token Optimization (Slash API Costs)
+Descriptions and responses can be encoded in TOON (Token-Oriented Object Notation) via `@toon-format/toon` — a compact pipe-delimited format that eliminates repeated JSON keys:
 ```typescript
-// Register 5,000 endpoints across domain-specific grouped tools
-const usersTool = new GroupedToolBuilder<AppContext>('users')
-    .tags('core', 'user-management')
-    .group('profiles', g => { /* 20 actions */ })
-    .group('permissions', g => { /* 15 actions */ })
-    .group('notifications', g => { /* 10 actions */ });
-
-const billingTool = new GroupedToolBuilder<AppContext>('billing')
-    .tags('core', 'billing')
-    .toonDescription()  // Token-optimized descriptions
-    .group('invoices', g => { /* 12 actions */ })
-    .group('subscriptions', g => { /* 8 actions */ });
-
-const analyticsTool = new GroupedToolBuilder<AppContext>('analytics')
-    .tags('reporting')
-    .toonDescription()
-    .group('dashboards', g => { /* 25 actions */ })
-    .group('exports', g => { /* 10 actions */ });
-
-const adminTool = new GroupedToolBuilder<AppContext>('admin')
-    .tags('admin', 'internal')
-    .group('system', g => { /* 30 actions */ })
-    .group('audit', g => { /* 15 actions */ });
-
-const registry = new ToolRegistry<AppContext>();
-registry.registerAll(usersTool, billingTool, analyticsTool, adminTool);
-
-// Conversation about user management? Expose only core tools:
-registry.attachToServer(server, {
-    filter: { tags: ['core'] },  // LLM sees: users + billing (2 tools)
-});
-
-// Admin session? Expose admin tools, exclude reporting:
-registry.attachToServer(server, {
-    filter: { tags: ['admin'] },  // LLM sees: admin only (1 tool)
-});
-
-// Full access, but never internal tools:
-registry.attachToServer(server, {
-    filter: { exclude: ['internal'] },  // Everything except admin
-});
+builder.toonDescription(); // Token-optimized prompts (saves tokens on tools/list)
+return toonSuccess(users); // Slashes token cost on array responses back to LLM
 ```
-
-**The result:** 5,000 endpoints registered, but the LLM context only contains the 2-3 tools relevant to the current conversation. Tag filtering acts as a context gate — you control exactly what the LLM sees, per session.
-
-→ [Scaling Guide](docs/scaling.md) — Technical deep-dive into how each mechanism prevents LLM hallucination at scale
-
-### Zod Parameter Stripping — Built-In Security Layer
-
-When the LLM sends arguments, `execute()` merges `commonSchema` + `action.schema` using Zod's `.merge().strip()`, then runs `safeParse()`. The framework uses `result.data` — not the raw args — which means:
-
-1. Unknown/injected fields are silently stripped.
-2. Type coercion happens through Zod.
-3. The handler receives exactly the shape it declared.
-
-The LLM cannot inject parameters that your schema does not declare. This is a security boundary, not just validation.
-
-### LLM-Friendly Error Messages
-
-When things fail, the framework produces errors that LLMs can parse and self-correct:
-
-```
-// Missing discriminator:
-Error: action is required. Available: list, create, delete
-
-// Unknown action:
-Error: Unknown action "remove". Available: list, create, delete
-
-// Validation failure (from Zod):
-Validation failed: name: Required; email: Invalid email format
-
-// Runtime error (from handler):
-[projects/delete] Database connection failed
-```
-
-Every error includes the `[toolName/action]` prefix for instant debugging. The LLM reads the structured error, fixes the arguments, and retries.
-
-### ⚠️ DESTRUCTIVE Warnings in LLM Descriptions
-
-When an action is marked `destructive: true`, the `DescriptionGenerator` appends a literal `⚠️ DESTRUCTIVE` warning to the description. LLMs trained on safety data recognize this signal and will often request user confirmation before executing.
 
 ### Type-Safe Common Schema Propagation
-
 `commonSchema()` propagates types through generics. The return type narrows from `GroupedToolBuilder<TContext, Record<string, never>>` to `GroupedToolBuilder<TContext, TSchema["_output"]>`. Every subsequent handler receives `TSchema["_output"] & TCommon` — checked at compile time, not runtime. No `as any`, no type assertions needed.
 
 ### Duck-Typed Server Resolution
-
 `attachToServer()` accepts `unknown` and performs runtime duck-type detection:
+1. Has `.server.setRequestHandler`? → `McpServer` (high-level SDK).
+2. Has `.setRequestHandler` directly? → `Server` (low-level SDK).
+**Zero peer dependency coupling to MCP server internals.** If the SDK restructures its exports, this framework does not break. Returns a `DetachFn` for clean teardown testing.
 
-1. Has `.server.setRequestHandler`? → `McpServer` (high-level). Unwrap the inner `Server`.
-2. Has `.setRequestHandler` directly? → `Server` (low-level). Use directly.
-3. Neither? → Clear error message.
+### Conservative Annotation Aggregation
+MCP tool annotations operate at the tool level, but actions have individual behavioral properties. The framework resolves this safely:
+- `destructiveHint: true` if **any** action is destructive (worst case assumption).
+- `readOnlyHint: true` only if **all** actions are read-only.
+- `idempotentHint: true` only if **all** actions are idempotent.
+*(Also supports `openWorldHint` and `returnDirect` via manual overrides).*
 
-No imports from the MCP SDK server modules. No peer dependency coupling. If the SDK restructures its exports, this framework does not break. The method returns a `DetachFn` that resets handlers to no-ops — clean teardown for testing.
+### ⚠️ DESTRUCTIVE Warnings & Error Handling
+* **Safety Signal:** When an action is marked `destructive: true`, the `DescriptionGenerator` appends a literal `⚠️ DESTRUCTIVE` warning. LLMs trained on safety data recognize this and request user confirmation.
+* **Error Isolation:** Every error includes the `[toolName/action]` prefix for instant LLM self-correction (e.g., `Error: action is required. Available: list, create, delete`).
 
 ### Freeze-After-Build Immutability
-
-Once `buildToolDefinition()` is called, the builder is permanently frozen. The `_actions` array is sealed with `Object.freeze()`. All mutation methods throw:
-
-```
-Builder "projects" is frozen after buildToolDefinition(). Cannot modify a built tool.
-```
-
-This eliminates an entire class of bugs where tools are accidentally mutated after registration — the same pattern Protocol Buffers uses.
+Once `buildToolDefinition()` is called, the builder is permanently frozen. The `_actions` array is sealed with `Object.freeze()`. All mutation methods throw. This eliminates an entire class of bugs where tools are accidentally mutated after registration — adopting the same pattern Protocol Buffers uses.
 
 ### Introspection API
-
-`getActionNames()` and `getActionMetadata()` provide runtime access to every action's properties:
-
+Need programmatic documentation, compliance audits, or dashboard generation?
 ```typescript
 const meta = builder.getActionMetadata();
-// Returns: [{ key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware }]
+// Returns: [{ key, actionName, groupName, description, destructive, readOnly, requiredFields, hasMiddleware }]
 ```
-
-Use this for: compliance audits, admin dashboards, middleware coverage validation, programmatic documentation generation, test coverage reports.
 
 ---
 
-## Domain Model Layer
+## 🔬 Architecture & Internals
 
+### Domain Model Layer
 Beyond the framework, the package provides a full domain model for MCP primitives:
 
 | Class | Purpose |
 |---|---|
-| `Group` | Tree node with parent/child relationships, configurable name separator, recursive FQN resolution |
+| `Group` | Tree node with parent/child relationships, configurable name separator, recursive FQN |
 | `Tool` | Leaf node with input/output schemas and `ToolAnnotations` |
 | `Prompt` | Leaf node with `PromptArgument` list |
-| `Resource` | Leaf node with URI, size, mimeType, and `Annotations` (audience, priority, lastModified) |
+| `Resource` | Leaf node with URI, size, mimeType, and `Annotations` (audience, priority) |
 | `AbstractBase` | Name, title, description, meta, icons, hashCode/equals |
 | `AbstractLeaf` | Multi-parent group support, root traversal |
 
-**Bidirectional converters** (`AbstractToolConverter`, `AbstractGroupConverter`, `AbstractPromptConverter`, `AbstractResourceConverter`, `AbstractToolAnnotationsConverter`) provide a clean pattern for converting between domain model types and external representations — both directions, single or batch, with null filtering.
+*Features Bidirectional converters (`AbstractToolConverter`, `AbstractGroupConverter`, etc.) with null filtering for clean conversion to external representations.*
 
-→ [Architecture Guide](docs/architecture.md)
+### Strategy Pattern Internals
+Six pure-function modules orchestrated by `GroupedToolBuilder`. Every module is independently testable and replaceable. **Zero shared state.**
 
----
-
-## Strategy Pattern Internals
-
-| Module | Responsibility | Design |
-|---|---|---|
-| `SchemaGenerator` | 4-tier per-field annotations from Zod schemas | Pure function, no state |
-| `DescriptionGenerator` | 3-layer descriptions with ⚠️ DESTRUCTIVE warnings | Pure function, no state |
-| `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` | Pure function, no state |
-| `AnnotationAggregator` | Conservative behavioral hint aggregation | Pure function, no state |
-| `MiddlewareCompiler` | Right-to-left closure composition at build time | Pure function, no state |
-| `SchemaUtils` | Zod field extraction shared by descriptions + introspection | Pure function, no state |
-
-Every module is independently testable. Every module is replaceable. Zero shared state between any of them.
-
-→ [API Reference](docs/api-reference.md)
+| Module | Responsibility |
+|---|---|
+| `SchemaGenerator` | 4-tier per-field annotations from Zod schemas |
+| `DescriptionGenerator` | 3-layer descriptions with ⚠️ DESTRUCTIVE warnings |
+| `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` |
+| `AnnotationAggregator` | Conservative behavioral hint aggregation |
+| `MiddlewareCompiler` | Right-to-left closure composition at build time |
+| `SchemaUtils` | Zod field extraction shared by descriptions + introspection |
 
 ---
 
-## Key Capabilities
+## 🛠️ Key Capabilities Matrix
 
 | Capability | What It Solves |
 |---|---|
@@ -362,22 +297,22 @@ Every module is independently testable. Every module is replaceable. Zero shared
 | **Duck-Typed Server** | Works with `Server` and `McpServer` — zero import coupling |
 | **Detach Function** | Clean teardown for testing via `DetachFn` |
 | **Domain Model** | Hierarchical tree with multi-parent, FQN, converters |
-| **Flat ↔ Hierarchical** | Mutual exclusion enforced with clear error messages |
 | **Auto-Build on Execute** | `execute()` triggers `buildToolDefinition()` if not called |
-| **Response Helpers** | `success()`, `error()`, `required()`, `toonSuccess()` |
 
 ---
 
-## Documentation
+## 📚 Official Guides
+
+Ready to build production agents? Dive into the documentation:
 
 | Guide | What You Will Learn |
 |---|---|
-| [Getting Started](docs/getting-started.md) | First tool, context, common schema, groups, TOON — complete working examples |
-| [Architecture](docs/architecture.md) | Domain model, strategy pattern, build-time engine, execution flow |
-| [Scaling](docs/scaling.md) | How grouping, tag filtering, TOON, and schema unification prevent LLM hallucination at 5,000+ endpoints |
-| [Middleware](docs/middleware.md) | Global, group-scoped, pre-compilation, real patterns (auth, rate-limit, audit) |
-| [API Reference](docs/api-reference.md) | Every public class, method, type, and interface |
-| [Introspection](docs/introspection.md) | Runtime metadata, compliance, dashboards, middleware validation |
+| 🏁 **[Getting Started](docs/getting-started.md)** | First tool, context, common schema, groups, TOON — complete examples. |
+| 🏗️ **[Architecture](docs/architecture.md)** | Domain model mapping, Strategy pattern, build-time engine, execution flow. |
+| 📈 **[Scaling Guide](docs/scaling.md)** | How tag filtering, TOON, and unification prevent hallucination at 5,000+ endpoints. |
+| 🛡️ **[Middleware](docs/middleware.md)** | Global, group-scoped, pre-compilation, real patterns (auth, rate-limit, audit). |
+| 🔍 **[Introspection](docs/introspection.md)** | Runtime metadata extraction for Enterprise compliance. |
+| 📖 **[API Reference](docs/api-reference.md)** | Comprehensive typings, methods, and class structures. |
 
 ---
 
@@ -388,7 +323,3 @@ Every module is independently testable. Every module is replaceable. Zero shared
 - `@modelcontextprotocol/sdk ^1.12.1` (peer dependency)
 - `zod ^3.25.1 || ^4.0.0` (peer dependency)
 - `@toon-format/toon` (for TOON features)
-
-## License
-
-Apache-2.0

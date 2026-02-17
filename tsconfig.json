@@ -6,6 +6,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        "rootDir": "./src",
         "outDir": "./dist",
         "strict": true,
         "esModuleInterop": true,
@@ -14,6 +15,6 @@
         "isolatedModules": true,
         "skipLibCheck": true
     },
-    "include": ["src/**/*", "tests/**/*"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]
 }
