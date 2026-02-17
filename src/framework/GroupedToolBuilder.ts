@@ -134,6 +134,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     // Cached build result
     private _cachedTool?: McpTool;
     private _compiledChain?: CompiledChain<TContext>;
+    private _actionMap?: Map<string, InternalAction<TContext>>;
 
     constructor(name: string) {
         this._name = name;
@@ -314,6 +315,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         // Pre-compile middleware chains via strategy
         this._compiledChain = compileMiddlewareChains(this._actions, this._middlewares);
 
+        // Build O(1) action lookup map
+        this._actionMap = new Map(this._actions.map(a => [a.key, a]));
+
         // Cache, freeze builder, and seal actions array
         this._cachedTool = tool;
         this._frozen = true;
@@ -327,7 +331,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     /** Route a call: validate → middleware → handler */
     async execute(ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> {
         // Ensure built
-        if (!this._compiledChain) {
+        if (!this._actionMap) {
             this.buildToolDefinition();
         }
 
@@ -340,8 +344,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             );
         }
 
-        // 2. Find action
-        const action = this._actions.find(a => a.key === discriminatorValue);
+        // 2. Find action — O(1) Map.get() lookup
+        const action = this._actionMap!.get(discriminatorValue);
         if (!action) {
             return error(
                 `Error: Unknown ${this._discriminator} "${discriminatorValue}". ` +

@@ -12,6 +12,7 @@ import type { ZodObject, ZodRawShape } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import type { InternalAction } from './Types.js';
+import { assertFieldCompatibility } from './SchemaUtils.js';
 
 // ── Public API ───────────────────────────────────────────
 
@@ -70,9 +71,12 @@ export function generateInputSchema<TContext>(
         const requiredSet = new Set(schemaRequired);
 
         for (const [key, value] of Object.entries(schemaProps)) {
-            // First declaration wins
             if (!properties[key]) {
+                // First declaration defines the canonical type
                 properties[key] = value as object;
+            } else {
+                // Build-time collision guard: same field name, incompatible JSON Schema types
+                assertFieldCompatibility(properties[key], value as object, key, action.key);
             }
 
             let tracking = fieldActions.get(key);

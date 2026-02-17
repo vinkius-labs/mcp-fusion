@@ -7,5 +7,5 @@ export { generateToonDescription } from './ToonDescriptionGenerator.js';
 export { generateInputSchema } from './SchemaGenerator.js';
 export { aggregateAnnotations } from './AnnotationAggregator.js';
 export { compileMiddlewareChains, type CompiledChain } from './MiddlewareCompiler.js';
-export { getActionRequiredFields } from './SchemaUtils.js';
+export { getActionRequiredFields, assertFieldCompatibility } from './SchemaUtils.js';
 export type { InternalAction, MiddlewareFn } from './Types.js';

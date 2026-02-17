@@ -568,7 +568,7 @@ describe('Security: Schema Poisoning', () => {
         expect(nameField.description).toContain('Full name');
     });
 
-    it('common schema fields should be separate from action schema fields in validation', async () => {
+    it('should reject conflicting field types across actions at build time', () => {
         const builder = new GroupedToolBuilder('validate_isolation')
             .commonSchema(z.object({
                 org: z.string().min(1),
@@ -587,15 +587,40 @@ describe('Security: Schema Poisoning', () => {
                 }),
                 handler: async () => success('loose ok'),
             });
+
+        // Two actions declare "value" with incompatible types (number vs string).
+        // The framework must detect this at build time to prevent subtle runtime bugs.
+        expect(() => builder.buildToolDefinition()).toThrow(/Schema conflict for field "value"/);
+    });
+
+    it('common schema fields should be validated per-action independently', async () => {
+        const builder = new GroupedToolBuilder('common_validation')
+            .commonSchema(z.object({
+                org: z.string().min(1),
+            }))
+            .action({
+                name: 'strict',
+                schema: z.object({
+                    count: z.number().int().positive(),
+                }),
+                handler: async () => success('strict ok'),
+            })
+            .action({
+                name: 'loose',
+                schema: z.object({
+                    label: z.string().optional(),
+                }),
+                handler: async () => success('loose ok'),
+            });
         builder.buildToolDefinition();
 
-        // 'strict' requires positive integer for value
+        // 'strict' requires positive integer for count
         const r1 = await builder.execute(undefined as any, {
-            action: 'strict', org: 'acme', value: -5,
+            action: 'strict', org: 'acme', count: -5,
         });
         expect(r1.isError).toBe(true);
 
-        // 'loose' allows optional string for value — different validation context
+        // 'loose' allows optional string for label
         const r2 = await builder.execute(undefined as any, {
             action: 'loose', org: 'acme',
         });

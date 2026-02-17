@@ -39,31 +39,26 @@ The framework handles description generation, schema composition, annotation agg
 
 ```mermaid
 graph LR
-    classDef llm fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff;
-    classDef chaos fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b;
-    classDef gateway fill:#0ea5e9,stroke:#0369a1,stroke-width:3px,color:#fff,font-weight:bold;
-    classDef gate fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
-    classDef engine fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff;
-    classDef secure fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
-    classDef danger fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff;
+    classDef chaos fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
+    classDef gateway fill:#0ea5e9,stroke:#0369a1,stroke-width:3px,color:#fff
+    classDef gate fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
+    classDef engine fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
+    classDef secure fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    classDef danger fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff
 
-    subgraph "❌ Standard MCP (Context Collapse)"
-        direction TB
-        L1[🤖 LLM] -.->|Token Burn $$$| C1[50+ Raw Tools]:::chaos
+    subgraph S1["Standard MCP - Context Collapse"]
+        L1[LLM] -.->|Token Burn| C1["50plus Raw Tools"]:::chaos
         L1 -.->|Routing Errors| C2[Hallucinated Params]:::chaos
     end
 
-    subgraph "✅ mcp-fusion (Enterprise Gateway)"
-        direction LR
-        L2[🤖 LLM] == "Sees ONE Tool" ==> GATEWAY[⚡️ Gateway]:::gateway
-        
-        GATEWAY ==>|"1. Context Gating"| TAGS{Tag Filter}:::gate
-        TAGS ==>|"2. Build-Time Engine"| AST[🔍 Zod AST Hints<br/>+ TOON Compress]:::engine
-        AST ==>|"3. Routing & Security"| ZOD[/Zod .merge().strip()/]:::secure
-        
-        ZOD -->|"action: 'users.create'"| H1(Type-Safe Handler):::secure
-        ZOD -->|"action: 'billing.refund'"| H2(⚠️ Destructive):::danger
-        ZOD -.->|"O(1) Map.get"| H3[[... 5,000+ Endpoints]]:::engine
+    subgraph S2["mcp-fusion - Enterprise Gateway"]
+        L2[LLM] == "Sees ONE Tool" ==> GATEWAY[Gateway]:::gateway
+        GATEWAY ==>|Context Gating| TAGS{Tag Filter}:::gate
+        TAGS ==>|Build-Time Engine| AST["Zod AST Hints and TOON Compress"]:::engine
+        AST ==>|Routing and Security| ZOD["Zod merge strip"]:::secure
+        ZOD -->|users.create| H1[Type-Safe Handler]:::secure
+        ZOD -->|billing.refund| H2[Destructive]:::danger
+        ZOD -.->|Map.get O1| H3["5000plus Endpoints"]:::engine
     end
 ```
 
@@ -272,7 +267,7 @@ Six pure-function modules orchestrated by `GroupedToolBuilder`. Every module is 
 | `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` |
 | `AnnotationAggregator` | Conservative behavioral hint aggregation |
 | `MiddlewareCompiler` | Right-to-left closure composition at build time |
-| `SchemaUtils` | Zod field extraction shared by descriptions + introspection |
+| `SchemaUtils` | Zod field extraction + build-time schema collision detection |
 
 ---
 
@@ -298,6 +293,7 @@ Six pure-function modules orchestrated by `GroupedToolBuilder`. Every module is 
 | **Detach Function** | Clean teardown for testing via `DetachFn` |
 | **Domain Model** | Hierarchical tree with multi-parent, FQN, converters |
 | **Auto-Build on Execute** | `execute()` triggers `buildToolDefinition()` if not called |
+| **Schema Collision Detection** | Build-time error when field types conflict across actions |
 
 ---
 
