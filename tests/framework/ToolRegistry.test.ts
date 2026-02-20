@@ -129,6 +129,38 @@ describe('ToolRegistry', () => {
             const tools = registry.getTools({});
             expect(tools).toHaveLength(3);
         });
+
+        it('should filter tools by anyTag (OR logic)', () => {
+            const tools = registry.getTools({ anyTag: ['public', 'admin'] });
+            const names = tools.map(t => t.name);
+            expect(names).toContain('auth');   // has 'public'
+            expect(names).toContain('admin');   // has 'admin'
+            expect(names).not.toContain('task'); // has neither
+        });
+
+        it('should return all matches for single anyTag', () => {
+            const tools = registry.getTools({ anyTag: ['authenticated'] });
+            const names = tools.map(t => t.name);
+            expect(names).toContain('task');
+            expect(names).toContain('admin');
+            expect(names).not.toContain('auth');
+        });
+
+        it('should combine anyTag + exclude', () => {
+            const tools = registry.getTools({
+                anyTag: ['public', 'authenticated'],
+                exclude: ['admin'],
+            });
+            const names = tools.map(t => t.name);
+            expect(names).toContain('auth');
+            expect(names).toContain('task');
+            expect(names).not.toContain('admin');
+        });
+
+        it('should return empty when anyTag matches nothing', () => {
+            const tools = registry.getTools({ anyTag: ['nonexistent'] });
+            expect(tools).toHaveLength(0);
+        });
     });
 
     // ── Integration ─────────────────────────────────────
