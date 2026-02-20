@@ -18,8 +18,10 @@ import type { ToolBuilder } from './ToolBuilder.js';
 
 /** Filter options for getTools() */
 export interface ToolFilter {
-    /** Only include tools that have ALL these tags */
+    /** Only include tools that have ALL these tags (AND logic) */
     tags?: string[];
+    /** Only include tools that have at least ONE of these tags (OR logic) */
+    anyTag?: string[];
     /** Exclude tools that have ANY of these tags */
     exclude?: string[];
 }
@@ -89,14 +91,21 @@ export class ToolRegistry<TContext = void> {
             .filter(builder => {
                 const builderTags = builder.getTags();
 
-                // If tags filter specified, builder must have ALL of them
+                // AND logic: builder must have ALL of these tags
                 if (filter.tags && filter.tags.length > 0) {
                     if (!filter.tags.every(t => builderTags.includes(t))) {
                         return false;
                     }
                 }
 
-                // If exclude filter specified, builder must not have ANY of them
+                // OR logic: builder must have at least ONE of these tags
+                if (filter.anyTag && filter.anyTag.length > 0) {
+                    if (!filter.anyTag.some(t => builderTags.includes(t))) {
+                        return false;
+                    }
+                }
+
+                // Exclude: builder must not have ANY of these tags
                 if (filter.exclude && filter.exclude.length > 0) {
                     if (filter.exclude.some(t => builderTags.includes(t))) {
                         return false;
