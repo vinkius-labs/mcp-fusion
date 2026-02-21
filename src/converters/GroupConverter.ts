@@ -1,4 +1,4 @@
-import { type Group } from '../Group.js';
+import { type Group } from '../domain/Group.js';
 import { ConverterBase } from './ConverterBase.js';
 
 /** Type-safe Group converter contract. */

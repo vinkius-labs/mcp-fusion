@@ -1,4 +1,4 @@
-import { type ToolAnnotations } from '../ToolAnnotations.js';
+import { type ToolAnnotations } from '../domain/ToolAnnotations.js';
 import { ConverterBase } from './ConverterBase.js';
 
 /** Type-safe ToolAnnotations converter contract. */

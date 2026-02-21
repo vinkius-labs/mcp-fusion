@@ -24,9 +24,9 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { GroupedToolBuilder } from '../../src/framework/GroupedToolBuilder.js';
-import { ToolRegistry } from '../../src/framework/ToolRegistry.js';
-import { success, error } from '../../src/framework/ResponseHelper.js';
+import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
+import { ToolRegistry } from '../../src/framework/registry/ToolRegistry.js';
+import { success, error } from '../../src/framework/response.js';
 
 // ============================================================================
 // 1. ReDoS — Catastrophic Regex Backtracking

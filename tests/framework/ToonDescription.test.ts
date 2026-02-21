@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { decode } from '@toon-format/toon';
-import { GroupedToolBuilder } from '../../src/framework/GroupedToolBuilder.js';
-import { generateToonDescription } from '../../src/framework/strategies/ToonDescriptionGenerator.js';
-import { generateDescription } from '../../src/framework/strategies/DescriptionGenerator.js';
-import type { InternalAction } from '../../src/framework/strategies/Types.js';
-import type { ToolResponse } from '../../src/framework/ResponseHelper.js';
+import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
+import { generateToonDescription } from '../../src/framework/schema/ToonDescriptionGenerator.js';
+import { generateDescription } from '../../src/framework/schema/DescriptionGenerator.js';
+import type { InternalAction } from '../../src/framework/types.js';
+import type { ToolResponse } from '../../src/framework/response.js';
 
 // ── Helpers ──────────────────────────────────────────────
 

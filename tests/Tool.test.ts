@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { Tool } from '../src/Tool.js';
-import { createToolAnnotations } from '../src/ToolAnnotations.js';
-import { Group } from '../src/Group.js';
+import { Tool } from '../src/domain/Tool.js';
+import { createToolAnnotations } from '../src/domain/ToolAnnotations.js';
+import { Group } from '../src/domain/Group.js';
 
 describe('Tool', () => {
     it('should create with name', () => {

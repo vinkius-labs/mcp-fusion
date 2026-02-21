@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Role } from '../src/Role.js';
+import { Role } from '../src/domain/Role.js';
 
 describe('Role', () => {
     it('should have USER value', () => {

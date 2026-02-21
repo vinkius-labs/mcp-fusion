@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { BaseModel } from '../src/BaseModel.js';
-import { createIcon } from '../src/Icon.js';
+import { BaseModel } from '../src/domain/BaseModel.js';
+import { createIcon } from '../src/domain/Icon.js';
 
 // Concrete subclass for testing abstract class
 class ConcreteBase extends BaseModel {

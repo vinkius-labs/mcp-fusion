@@ -29,6 +29,18 @@ export default tseslint.config(
             '@typescript-eslint/require-await': 'error',
             '@typescript-eslint/no-unnecessary-condition': 'warn',
 
+            // ── Module Boundary Safety ──
+            '@typescript-eslint/explicit-module-boundary-types': 'error',
+
+            // ── Boolean Precision ──
+            '@typescript-eslint/strict-boolean-expressions': ['error', {
+                allowNullableBoolean: true,
+                allowNullableString: true,
+                allowNullableNumber: false,
+                allowNullableObject: true,
+                allowAny: false,
+            }],
+
             // ── Import Consistency ──
             '@typescript-eslint/consistent-type-imports': ['error', {
                 prefer: 'type-imports',

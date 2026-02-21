@@ -1,4 +1,4 @@
-import { type Prompt } from '../Prompt.js';
+import { type Prompt } from '../domain/Prompt.js';
 import { ConverterBase } from './ConverterBase.js';
 
 /** Type-safe Prompt converter contract. */

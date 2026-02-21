@@ -6,8 +6,8 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import { type ToolResponse } from '../ResponseHelper.js';
-import { type InternalAction, type MiddlewareFn } from './Types.js';
+import { type ToolResponse } from '../response.js';
+import { type InternalAction, type MiddlewareFn } from '../types.js';
 
 // ── Public API ───────────────────────────────────────────
 

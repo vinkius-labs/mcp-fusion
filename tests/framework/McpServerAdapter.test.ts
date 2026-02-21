@@ -17,9 +17,9 @@ import {
     ListToolsRequestSchema,
     CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { GroupedToolBuilder } from '../../src/framework/GroupedToolBuilder.js';
-import { ToolRegistry } from '../../src/framework/ToolRegistry.js';
-import { success } from '../../src/framework/ResponseHelper.js';
+import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
+import { ToolRegistry } from '../../src/framework/registry/ToolRegistry.js';
+import { success } from '../../src/framework/response.js';
 
 // ============================================================================
 // Test Helpers — Mock MCP Server

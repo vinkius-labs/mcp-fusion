@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { Resource } from '../src/Resource.js';
-import { createAnnotations } from '../src/Annotations.js';
-import { Role } from '../src/Role.js';
-import { Group } from '../src/Group.js';
+import { Resource } from '../src/domain/Resource.js';
+import { createAnnotations } from '../src/domain/Annotations.js';
+import { Role } from '../src/domain/Role.js';
+import { Group } from '../src/domain/Group.js';
 
 describe('Resource', () => {
     it('should create with name', () => {

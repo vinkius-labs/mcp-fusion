@@ -17,9 +17,9 @@ import {
     error,
 } from '../../src/framework/index.js';
 import type { ToolResponse } from '../../src/framework/index.js';
-import { success as successHelper } from '../../src/framework/ResponseHelper.js';
+import { success as successHelper } from '../../src/framework/response.js';
 import { ToolConverterBase } from '../../src/converters/ToolConverter.js';
-import { Tool } from '../../src/Tool.js';
+import { Tool } from '../../src/domain/Tool.js';
 
 // ── Helpers ──────────────────────────────────────────────
 

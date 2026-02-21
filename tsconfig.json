@@ -8,14 +8,21 @@
         "sourceMap": true,
         "rootDir": "./src",
         "outDir": "./dist",
+
+        // ── Strict Mode (all flags) ──
         "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noFallthroughCasesInSwitch": true,
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true,
+        "noPropertyAccessFromIndexSignature": true,
+
+        // ── Module Safety ──
+        "verbatimModuleSyntax": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
-        "isolatedModules": true,
-        "skipLibCheck": true,
-        "noUncheckedIndexedAccess": true,
-        "noFallthroughCasesInSwitch": true
+        "skipLibCheck": true
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]

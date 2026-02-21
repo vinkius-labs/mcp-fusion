@@ -11,7 +11,7 @@
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import { type InternalAction } from './Types.js';
+import { type InternalAction } from '../types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
 
 /** Shape of an object-level JSON Schema emitted by zod-to-json-schema */
@@ -122,15 +122,21 @@ export function generateInputSchema<TContext>(
 
 // ── Internal helpers ─────────────────────────────────────
 
+/** Minimal shape of a JSON Schema field that we annotate */
+interface JsonSchemaField {
+    description?: string;
+    [key: string]: unknown;
+}
+
 function annotateField(
     properties: Record<string, object>,
     key: string,
     annotation: string,
 ): void {
-    const field = properties[key] as Record<string, unknown> | undefined;
+    const field = properties[key] as JsonSchemaField | undefined;
     if (!field) return;
 
-    const existingDesc = (field.description as string) || '';
+    const existingDesc = field.description ?? '';
     field.description = existingDesc
         ? `${existingDesc}. ${annotation}`
         : annotation;

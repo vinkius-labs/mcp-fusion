@@ -1,4 +1,4 @@
-import { type Tool } from '../Tool.js';
+import { type Tool } from '../domain/Tool.js';
 import { ConverterBase } from './ConverterBase.js';
 
 /** Type-safe Tool converter contract. */

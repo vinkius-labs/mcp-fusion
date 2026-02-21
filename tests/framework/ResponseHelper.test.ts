@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { success, error, required, toonSuccess } from '../../src/framework/ResponseHelper.js';
+import { success, error, required, toonSuccess } from '../../src/framework/response.js';
 import { decode } from '@toon-format/toon';
 
 describe('ResponseHelper', () => {

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { Group } from '../src/Group.js';
-import { Tool } from '../src/Tool.js';
-import { Prompt } from '../src/Prompt.js';
-import { Resource } from '../src/Resource.js';
+import { Group } from '../src/domain/Group.js';
+import { Tool } from '../src/domain/Tool.js';
+import { Prompt } from '../src/domain/Prompt.js';
+import { Resource } from '../src/domain/Resource.js';
 
 describe('Group', () => {
     describe('basic properties', () => {

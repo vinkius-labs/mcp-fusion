@@ -1,18 +1,31 @@
 /**
  * Framework — Barrel Export
+ *
+ * Public API for the MCP Tool Consolidation Framework.
+ * All exports are re-exported from bounded context modules.
  */
-export { success, error, required, toonSuccess } from './ResponseHelper.js';
-export type { ToolResponse } from './ResponseHelper.js';
-export {
-    GroupedToolBuilder,
-    ActionGroupBuilder,
-} from './GroupedToolBuilder.js';
+
+// ── Cross-cutting ────────────────────────────────────────
+export { success, error, required, toonSuccess } from './response.js';
+export type { ToolResponse } from './response.js';
+export { succeed, fail } from './result.js';
+export type { Result, Success, Failure } from './result.js';
+
+// ── Types & Contracts ────────────────────────────────────
 export type {
+    ToolBuilder, ActionMetadata,
+    InternalAction, MiddlewareFn,
     ActionConfig,
-    MiddlewareFn,
-    GroupConfigurator,
-} from './GroupedToolBuilder.js';
-export type { ToolBuilder, ActionMetadata } from './ToolBuilder.js';
-export { ToolRegistry } from './ToolRegistry.js';
-export type { ToolFilter, AttachOptions, DetachFn } from './ToolRegistry.js';
-export { generateToonDescription } from './strategies/index.js';
+} from './types.js';
+
+// ── Builder ──────────────────────────────────────────────
+export { GroupedToolBuilder, ActionGroupBuilder } from './builder/index.js';
+export type { GroupConfigurator } from './builder/index.js';
+
+// ── Registry ─────────────────────────────────────────────
+export { ToolRegistry } from './registry/index.js';
+export type { ToolFilter } from './registry/index.js';
+export type { AttachOptions, DetachFn } from './server/index.js';
+
+// ── Schema (public strategies) ───────────────────────────
+export { generateToonDescription } from './schema/index.js';

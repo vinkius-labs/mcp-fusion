@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { type Icon, createIcon } from '../src/Icon.js';
+import { type Icon, createIcon } from '../src/domain/Icon.js';
 
 describe('Icon', () => {
     it('should create with default undefined values', () => {

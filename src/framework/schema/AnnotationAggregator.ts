@@ -6,7 +6,15 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import { type InternalAction } from './Types.js';
+import { type InternalAction } from '../types.js';
+
+/** Shape of the aggregated MCP tool annotations */
+interface AggregatedAnnotations {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    [key: string]: unknown;
+}
 
 // ── Public API ───────────────────────────────────────────
 
@@ -14,7 +22,7 @@ export function aggregateAnnotations<TContext>(
     actions: readonly InternalAction<TContext>[],
     explicitAnnotations: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
+    const result: AggregatedAnnotations = {};
 
     // Copy explicit annotations
     if (explicitAnnotations) {
@@ -22,18 +30,18 @@ export function aggregateAnnotations<TContext>(
     }
 
     // Per-action aggregation (only override if not explicitly set)
-    if (explicitAnnotations?.readOnlyHint === undefined) {
+    if (result.readOnlyHint === undefined) {
         const allReadOnly = actions.length > 0 &&
             actions.every(a => a.readOnly === true);
         result.readOnlyHint = allReadOnly;
     }
 
-    if (explicitAnnotations?.destructiveHint === undefined) {
+    if (result.destructiveHint === undefined) {
         const anyDestructive = actions.some(a => a.destructive === true);
         result.destructiveHint = anyDestructive;
     }
 
-    if (explicitAnnotations?.idempotentHint === undefined) {
+    if (result.idempotentHint === undefined) {
         const allIdempotent = actions.length > 0 &&
             actions.every(a => a.idempotent === true);
         result.idempotentHint = allIdempotent;

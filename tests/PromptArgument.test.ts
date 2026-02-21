@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PromptArgument } from '../src/PromptArgument.js';
+import { PromptArgument } from '../src/domain/PromptArgument.js';
 
 describe('PromptArgument', () => {
     it('should create with name', () => {

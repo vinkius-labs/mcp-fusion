@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { type ToolAnnotations, createToolAnnotations } from '../src/ToolAnnotations.js';
+import { type ToolAnnotations, createToolAnnotations } from '../src/domain/ToolAnnotations.js';
 
 describe('ToolAnnotations', () => {
     it('should create with default undefined values', () => {

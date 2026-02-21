@@ -19,9 +19,9 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { z } from 'zod';
-import { GroupedToolBuilder } from '../../src/framework/GroupedToolBuilder.js';
-import { ToolRegistry } from '../../src/framework/ToolRegistry.js';
-import { success } from '../../src/framework/ResponseHelper.js';
+import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
+import { ToolRegistry } from '../../src/framework/registry/ToolRegistry.js';
+import { success } from '../../src/framework/response.js';
 
 // ============================================================================
 // Helpers — Factory functions to generate realistic domain builders

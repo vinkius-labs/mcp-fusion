@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { Group } from '../src/Group.js';
-import { Tool } from '../src/Tool.js';
-import { Prompt } from '../src/Prompt.js';
-import { Resource } from '../src/Resource.js';
-import { createToolAnnotations } from '../src/ToolAnnotations.js';
+import { Group } from '../src/domain/Group.js';
+import { Tool } from '../src/domain/Tool.js';
+import { Prompt } from '../src/domain/Prompt.js';
+import { Resource } from '../src/domain/Resource.js';
+import { createToolAnnotations } from '../src/domain/ToolAnnotations.js';
 import {
     GroupConverterBase,
     ToolConverterBase,
@@ -11,7 +11,7 @@ import {
     ResourceConverterBase,
     ToolAnnotationsConverterBase
 } from '../src/converters/index.js';
-import type { ToolAnnotations } from '../src/ToolAnnotations.js';
+import type { ToolAnnotations } from '../src/domain/ToolAnnotations.js';
 
 // --- Concrete converter implementations for testing ---
 

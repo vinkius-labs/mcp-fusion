@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { type Annotations, createAnnotations } from '../src/Annotations.js';
-import { Role } from '../src/Role.js';
+import { type Annotations, createAnnotations } from '../src/domain/Annotations.js';
+import { Role } from '../src/domain/Role.js';
 
 describe('Annotations', () => {
     it('should create with all parameters', () => {

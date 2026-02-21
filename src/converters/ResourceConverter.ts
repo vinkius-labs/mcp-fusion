@@ -1,4 +1,4 @@
-import { type Resource } from '../Resource.js';
+import { type Resource } from '../domain/Resource.js';
 import { ConverterBase } from './ConverterBase.js';
 
 /** Type-safe Resource converter contract. */

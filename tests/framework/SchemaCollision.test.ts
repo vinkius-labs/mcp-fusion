@@ -16,8 +16,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { GroupedToolBuilder } from '../../src/framework/GroupedToolBuilder.js';
-import { success } from '../../src/framework/ResponseHelper.js';
+import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
+import { success } from '../../src/framework/response.js';
 
 const dummyHandler = async () => success('ok');
 

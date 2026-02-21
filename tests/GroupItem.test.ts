@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Tool } from '../src/Tool.js';
-import { Group } from '../src/Group.js';
+import { Tool } from '../src/domain/Tool.js';
+import { Group } from '../src/domain/Group.js';
 
 describe('GroupItem (via Tool)', () => {
     it('should start with no parent groups', () => {

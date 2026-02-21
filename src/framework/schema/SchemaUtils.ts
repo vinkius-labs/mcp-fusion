@@ -9,7 +9,7 @@
  * Pure-function module: no state, no side effects.
  */
 import { type ZodTypeAny } from 'zod';
-import { type InternalAction } from './Types.js';
+import { type InternalAction } from '../types.js';
 
 // ── Schema Inspection ────────────────────────────────────
 
@@ -56,19 +56,26 @@ function conflictError(field: string, actionKey: string, detail: string): Error 
  *
  * @throws Error with actionable message when types conflict.
  */
+/** Minimal shape of a JSON Schema node for field compatibility checking */
+interface JsonSchemaNode {
+    readonly type?: string;
+    readonly enum?: readonly unknown[];
+    [key: string]: unknown;
+}
+
 export function assertFieldCompatibility(
     existing: object,
     incoming: object,
     field: string,
     actionKey: string,
 ): void {
-    const ex = existing as Record<string, unknown>;
-    const inc = incoming as Record<string, unknown>;
+    const ex: JsonSchemaNode = existing as JsonSchemaNode;
+    const inc: JsonSchemaNode = incoming as JsonSchemaNode;
 
-    const exType = ex.type as string | undefined;
-    const incType = inc.type as string | undefined;
-    const exEnum = ex.enum as unknown[] | undefined;
-    const incEnum = inc.enum as unknown[] | undefined;
+    const exType = ex.type;
+    const incType = inc.type;
+    const exEnum = ex.enum;
+    const incEnum = inc.enum;
 
     // 1. Base type mismatch (with integer ≈ number normalization)
     if (
