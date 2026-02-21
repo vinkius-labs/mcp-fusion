@@ -1,0 +1,196 @@
+# mcp-fusion
+
+> Enterprise MCP Tool Multiplexer — consolidate thousands of endpoints behind a single LLM tool.
+
+## What is mcp-fusion?
+
+mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that consolidates related operations into a single tool behind a discriminator field. Instead of registering hundreds of individual MCP tools, you register ONE grouped tool. The LLM selects the exact operation through an `action` enum.
+
+## Core Concepts
+
+- **GroupedToolBuilder**: Fluent builder that groups related actions into a single MCP tool
+- **createTool()**: Factory function to create a GroupedToolBuilder (recommended entry point)
+- **Action**: A single operation within a grouped tool (e.g., "list", "create", "delete")
+- **Group**: Hierarchical namespace for actions (e.g., "users.create", "billing.refund")
+- **Discriminator**: The field name the LLM uses to select the action (default: "action")
+- **CommonSchema**: Shared Zod schema injected into every action
+- **ToolRegistry**: Centralized registry for all tool builders
+- **Middleware**: Pre-compiled middleware chains following the next() pattern
+- **Tags**: Capability labels for selective tool exposure per session
+- **TOON**: Token-Oriented Object Notation for compact descriptions/responses
+
+## Quick Start Pattern
+
+```typescript
+import { createTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+// 1. Create a tool
+const projects = createTool<AppContext>('projects')
+    .description('Manage workspace projects')
+    .commonSchema(z.object({
+        workspace_id: z.string().describe('Workspace identifier'),
+    }))
+    .action({
+        name: 'list',
+        readOnly: true,
+        schema: z.object({ status: z.enum(['active', 'archived']).optional() }),
+        handler: async (ctx, args) => success(await ctx.db.projects.findMany({ where: args })),
+    })
+    .action({
+        name: 'create',
+        schema: z.object({ name: z.string() }),
+        handler: async (ctx, args) => success(await ctx.db.projects.create({ data: args })),
+    })
+    .action({
+        name: 'delete',
+        destructive: true,
+        schema: z.object({ project_id: z.string() }),
+        handler: async (ctx, args) => {
+            await ctx.db.projects.delete({ where: { id: args.project_id } });
+            return success('Deleted');
+        },
+    });
+
+// 2. Register and attach
+const registry = new ToolRegistry<AppContext>();
+registry.register(projects);
+const detach = registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+});
+```
+
+## Hierarchical Groups
+
+```typescript
+const platform = createTool<AppContext>('platform')
+    .tags('core')
+    .group('users', 'User management', g => {
+        g.use(requireAdmin)
+         .action({ name: 'list', readOnly: true, handler: listUsers })
+         .action({ name: 'ban', destructive: true, schema: banSchema, handler: banUser });
+    })
+    .group('billing', 'Billing operations', g => {
+        g.action({ name: 'refund', destructive: true, schema: refundSchema, handler: issueRefund });
+    });
+// Discriminator values: "users.list" | "users.ban" | "billing.refund"
+```
+
+## Middleware
+
+```typescript
+const requireAuth: MiddlewareFn<AppContext> = async (ctx, args, next) => {
+    if (!ctx.user) return error('Unauthorized');
+    return next();
+};
+
+createTool<AppContext>('projects')
+    .use(requireAuth)          // Global: runs on every action
+    .group('admin', g => {
+        g.use(requireSuperAdmin) // Group-scoped: only admin.* actions
+         .action({ name: 'reset', handler: resetHandler });
+    });
+```
+
+## Tag Filtering
+
+```typescript
+const usersTool = createTool<AppContext>('users').tags('core');
+const adminTool = createTool<AppContext>('admin').tags('admin', 'internal');
+
+registry.registerAll(usersTool, adminTool);
+
+// Expose only core tools:
+registry.attachToServer(server, { filter: { tags: ['core'] } });
+
+// Everything except internal:
+registry.attachToServer(server, { filter: { exclude: ['internal'] } });
+```
+
+## Response Helpers
+
+```typescript
+import { success, error, required, toonSuccess } from '@vinkius-core/mcp-fusion';
+
+return success('Task completed');              // String response
+return success({ id: '123', name: 'Acme' });  // Object (JSON.stringify)
+return error('Project not found');             // Error response
+return required('workspace_id');               // Missing field error
+return toonSuccess(users);                     // TOON-encoded (~40% fewer tokens)
+```
+
+## Result Monad
+
+```typescript
+import { succeed, fail, error, type Result } from '@vinkius-core/mcp-fusion';
+
+function parseId(input: string): Result<number> {
+    const id = parseInt(input, 10);
+    return isNaN(id) ? fail(error('Invalid ID')) : succeed(id);
+}
+
+const result = parseId(args.id);
+if (!result.ok) return result.response;  // Early return
+const userId = result.value;             // Narrowed to number
+```
+
+## Important Rules
+
+1. `.action()` and `.group()` are MUTUALLY EXCLUSIVE on the same builder
+2. Action names must NOT contain dots (dots are reserved for group.action keys)
+3. After `buildToolDefinition()`, the builder is FROZEN — no more modifications
+4. `execute()` auto-calls `buildToolDefinition()` if not already called
+5. `commonSchema` fields are marked `(always required)` in auto-generated descriptions
+6. Zod `.merge().strip()` is used at runtime — unknown fields are silently stripped
+7. Middleware chains are pre-compiled at build time — zero runtime allocation
+8. Tool names must be unique across a ToolRegistry
+
+## Public API (all from '@vinkius-core/mcp-fusion')
+
+### Builder
+- `createTool<TContext>(name)` → GroupedToolBuilder
+- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
+- `ActionGroupBuilder<TContext>` — .use(), .action()
+
+### Registry
+- `ToolRegistry<TContext>` — .register(), .registerAll(), .getAllTools(), .getTools(filter), .routeCall(), .attachToServer(), .has(), .clear(), .size
+
+### Response Helpers
+- `success(data)` → ToolResponse
+- `error(message)` → ToolResponse (isError: true)
+- `required(field)` → ToolResponse (isError: true)
+- `toonSuccess(data, options?)` → ToolResponse (TOON-encoded)
+
+### Result Monad
+- `succeed<T>(value)` → Success<T>
+- `fail(response)` → Failure
+- `Result<T>` = Success<T> | Failure
+
+### Types
+- `ToolResponse` — { content: [{ type: "text", text: string }], isError?: boolean }
+- `MiddlewareFn<TContext>` — (ctx, args, next) => Promise<ToolResponse>
+- `ActionConfig<TContext>` — { name, description?, schema?, destructive?, idempotent?, readOnly?, handler }
+- `ToolBuilder<TContext>` — Interface for custom builders
+- `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware }
+- `ToolFilter` — { tags?: string[], exclude?: string[] }
+- `AttachOptions<TContext>` — { contextFactory?, filter? }
+- `DetachFn` — () => void
+- `GroupConfigurator<TContext, TCommon>` — (group: ActionGroupBuilder) => void
+
+### Domain Models
+- `BaseModel` — abstract base (name, title, description, meta, icons, getFullyQualifiedName())
+- `GroupItem` — leaf with multi-parent groups (addParentGroup, removeParentGroup)
+- `Group` — tree node (addChildGroup, addChildTool, addChildPrompt, addChildResource, getRoot, isRoot, getFullyQualifiedName)
+- `Tool` — inputSchema, outputSchema, toolAnnotations
+- `Resource` — uri, size, mimeType, annotations
+- `Prompt` — promptArguments (addPromptArgument, removePromptArgument)
+- `PromptArgument` — required: boolean
+- `Role` — enum: USER, ASSISTANT
+- `Icon` — { src?, mimeType?, sizes?, theme? }
+- `Annotations` — { audience?: Role[], priority?, lastModified? }
+- `ToolAnnotations` — { title?, readOnlyHint?, destructiveHint?, idempotentHint?, openWorldHint?, returnDirect? }
+- `createIcon(props?)`, `createAnnotations(props?)`, `createToolAnnotations(props?)`
+
+### Converters
+- `ConverterBase<TSource, TTarget>` — abstract (convertFrom, convertTo, convertFromBatch, convertToBatch)
+- `ToolConverterBase<T>`, `GroupConverterBase<T>`, `PromptConverterBase<T>`, `ResourceConverterBase<T>`, `ToolAnnotationsConverterBase<T>`
