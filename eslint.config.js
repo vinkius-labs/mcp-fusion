@@ -13,17 +13,30 @@ export default tseslint.config(
             },
         },
         rules: {
-            // Enforce no unused variables (error-level)
+            // ── Strict Type Safety ──
             '@typescript-eslint/no-unused-vars': ['error', {
                 argsIgnorePattern: '^_',
                 varsIgnorePattern: '^_',
             }],
-            // Disallow explicit `any`
-            '@typescript-eslint/no-explicit-any': 'warn',
-            // Prefer `as const` over literal type assertions
+            '@typescript-eslint/no-explicit-any': 'error',
             '@typescript-eslint/prefer-as-const': 'error',
-            // No empty functions
             '@typescript-eslint/no-empty-function': 'warn',
+
+            // ── Type-Aware Rules (require projectService) ──
+            '@typescript-eslint/no-floating-promises': 'error',
+            '@typescript-eslint/no-misused-promises': 'error',
+            '@typescript-eslint/await-thenable': 'error',
+            '@typescript-eslint/require-await': 'error',
+            '@typescript-eslint/no-unnecessary-condition': 'warn',
+
+            // ── Import Consistency ──
+            '@typescript-eslint/consistent-type-imports': ['error', {
+                prefer: 'type-imports',
+                fixStyle: 'inline-type-imports',
+            }],
+            '@typescript-eslint/consistent-type-exports': ['error', {
+                fixMixedExportsWithInlineTypeSpecifier: true,
+            }],
         },
     },
     {

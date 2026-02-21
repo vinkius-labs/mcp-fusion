@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Tool } from '../src/Tool.js';
-import { ToolAnnotations } from '../src/ToolAnnotations.js';
+import { createToolAnnotations } from '../src/ToolAnnotations.js';
 import { Group } from '../src/Group.js';
 
 describe('Tool', () => {
@@ -23,12 +23,13 @@ describe('Tool', () => {
 
     it('should set and get toolAnnotations', () => {
         const tool = new Tool('deploy');
-        const annotations = new ToolAnnotations();
-        annotations.destructiveHint = true;
-        annotations.readOnlyHint = false;
+        const annotations = createToolAnnotations({
+            destructiveHint: true,
+            readOnlyHint: false,
+        });
         tool.toolAnnotations = annotations;
-        expect(tool.toolAnnotations!.destructiveHint).toBe(true);
-        expect(tool.toolAnnotations!.readOnlyHint).toBe(false);
+        expect(tool.toolAnnotations?.destructiveHint).toBe(true);
+        expect(tool.toolAnnotations?.readOnlyHint).toBe(false);
     });
 
     it('should set title and description', () => {
@@ -49,7 +50,7 @@ describe('Tool', () => {
         const group = new Group('ci');
         tool.addParentGroup(group);
         expect(tool.parentGroups).toHaveLength(1);
-        expect(tool.parentGroups[0].name).toBe('ci');
+        expect(tool.parentGroups[0]?.name).toBe('ci');
     });
 
     it('should not add duplicate parent groups', () => {

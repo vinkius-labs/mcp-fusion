@@ -8,8 +8,8 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import { z } from 'zod';
-import type { InternalAction } from './Types.js';
+import { type ZodTypeAny } from 'zod';
+import { type InternalAction } from './Types.js';
 
 // ── Schema Inspection ────────────────────────────────────
 
@@ -22,7 +22,7 @@ export function getActionRequiredFields<TContext>(action: InternalAction<TContex
     const shape = action.schema.shape;
     const required: string[] = [];
     for (const [key, fieldSchema] of Object.entries(shape)) {
-        if (!((fieldSchema as z.ZodTypeAny).isOptional())) {
+        if (!(fieldSchema as ZodTypeAny).isOptional()) {
             required.push(key);
         }
     }

@@ -4,13 +4,13 @@
  * Supports selective exposure via tags for reducing LLM context.
  * Provides `attachToServer()` for 1-line MCP SDK integration.
  */
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import {
     ListToolsRequestSchema,
     CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from './ResponseHelper.js';
-import type { ToolBuilder } from './ToolBuilder.js';
+import { type ToolBuilder } from './ToolBuilder.js';
 
 // ============================================================================
 // Types
@@ -31,10 +31,8 @@ export interface ToolFilter {
  * Works with both `Server` (low-level) and `McpServer` (high-level).
  */
 interface McpServerLike {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: any[]) => any): void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: any[]) => any): void;
+    setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: never[]) => unknown): void;
 }
 
 /**
@@ -61,7 +59,7 @@ export type DetachFn = () => void;
 // ============================================================================
 
 export class ToolRegistry<TContext = void> {
-    private _builders = new Map<string, ToolBuilder<TContext>>();
+    private readonly _builders = new Map<string, ToolBuilder<TContext>>();
 
     /** Register a tool builder. Throws on duplicate name. */
     register(builder: ToolBuilder<TContext>): void {
@@ -192,7 +190,7 @@ export class ToolRegistry<TContext = void> {
         return () => {
             // Reset handlers to no-op
             resolved.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [] }));
-            resolved.setRequestHandler(CallToolRequestSchema, async () =>
+            resolved.setRequestHandler(CallToolRequestSchema, () =>
                 error('Tool handlers have been detached'),
             );
         };
@@ -229,7 +227,7 @@ export class ToolRegistry<TContext = void> {
             );
         }
 
-        // McpServer wraps a Server at `.server`
+        // Direct Server with setRequestHandler
         if (this._isMcpServerLike(server)) {
             return server;
         }

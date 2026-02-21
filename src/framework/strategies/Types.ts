@@ -4,31 +4,31 @@
  * Extracted from GroupedToolBuilder so that strategy functions
  * can operate on action data without depending on the builder class.
  */
-import type { ZodObject, ZodRawShape } from 'zod';
-import type { ToolResponse } from '../ResponseHelper.js';
+import { type ZodObject, type ZodRawShape } from 'zod';
+import { type ToolResponse } from '../ResponseHelper.js';
 
 /** Internal representation of a registered action */
 export interface InternalAction<TContext> {
     /** Full key: "name" (flat) or "group.name" (grouped) */
-    key: string;
+    readonly key: string;
     /** Group name (undefined for flat actions) */
-    groupName?: string;
+    readonly groupName?: string;
     /** Group description */
-    groupDescription?: string;
+    readonly groupDescription?: string;
     /** Action name within the group */
-    actionName: string;
+    readonly actionName: string;
     /** Description */
-    description?: string;
+    readonly description?: string;
     /** Zod schema */
-    schema?: ZodObject<ZodRawShape>;
+    readonly schema?: ZodObject<ZodRawShape>;
     /** Annotations */
-    destructive?: boolean;
-    idempotent?: boolean;
-    readOnly?: boolean;
+    readonly destructive?: boolean;
+    readonly idempotent?: boolean;
+    readonly readOnly?: boolean;
     /** Per-action/group middleware (applied after global middleware) */
-    middlewares?: MiddlewareFn<TContext>[];
+    readonly middlewares?: readonly MiddlewareFn<TContext>[];
     /** Handler */
-    handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
+    readonly handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
 }
 
 /** Middleware function signature (Express/Koa pattern) */

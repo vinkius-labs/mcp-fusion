@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Resource } from '../src/Resource.js';
-import { Annotations } from '../src/Annotations.js';
+import { createAnnotations } from '../src/Annotations.js';
 import { Role } from '../src/Role.js';
 import { Group } from '../src/Group.js';
 
@@ -38,10 +38,14 @@ describe('Resource', () => {
 
     it('should set and get annotations', () => {
         const resource = new Resource('config');
-        const annotations = new Annotations([Role.USER], 1, '2025-01-01');
+        const annotations = createAnnotations({
+            audience: [Role.USER],
+            priority: 1,
+            lastModified: '2025-01-01',
+        });
         resource.annotations = annotations;
-        expect(resource.annotations!.priority).toBe(1);
-        expect(resource.annotations!.audience).toEqual([Role.USER]);
+        expect(resource.annotations?.priority).toBe(1);
+        expect(resource.annotations?.audience).toEqual([Role.USER]);
     });
 
     it('should manage parent groups', () => {
@@ -49,7 +53,7 @@ describe('Resource', () => {
         const group = new Group('settings');
         resource.addParentGroup(group);
         expect(resource.parentGroups).toHaveLength(1);
-        expect(resource.parentGroups[0].name).toBe('settings');
+        expect(resource.parentGroups[0]?.name).toBe('settings');
     });
 
     it('should return name as fully qualified name', () => {

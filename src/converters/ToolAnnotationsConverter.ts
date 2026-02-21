@@ -1,35 +1,11 @@
-import { ToolAnnotations } from '../ToolAnnotations.js';
+import { type ToolAnnotations } from '../ToolAnnotations.js';
 import { ConverterBase } from './ConverterBase.js';
 
-export interface ToolAnnotationsConverter<ToolAnnotationsType> {
-    convertFromToolAnnotations(toolAnnotations: ToolAnnotations[]): ToolAnnotationsType[];
-    convertFromToolAnnotation(toolAnnotation: ToolAnnotations): ToolAnnotationsType;
-    convertToToolAnnotations(toolAnnotations: ToolAnnotationsType[]): ToolAnnotations[];
-    convertToToolAnnotation(toolAnnotation: ToolAnnotationsType): ToolAnnotations;
-}
+/** Type-safe ToolAnnotations converter contract. */
+export type ToolAnnotationsConverter<T> = ConverterBase<ToolAnnotations, T>;
 
-export abstract class ToolAnnotationsConverterBase<ToolAnnotationsType>
-    extends ConverterBase<ToolAnnotations, ToolAnnotationsType>
-    implements ToolAnnotationsConverter<ToolAnnotationsType>
-{
-    public convertFromToolAnnotations(toolAnnotations: ToolAnnotations[]): ToolAnnotationsType[] {
-        return this.convertFromBatch(toolAnnotations);
-    }
-
-    public abstract convertFromToolAnnotation(toolAnnotation: ToolAnnotations): ToolAnnotationsType;
-
-    public convertToToolAnnotations(toolAnnotations: ToolAnnotationsType[]): ToolAnnotations[] {
-        return this.convertToBatch(toolAnnotations);
-    }
-
-    public abstract convertToToolAnnotation(toolAnnotation: ToolAnnotationsType): ToolAnnotations;
-
-    // ── Bridge to ConverterBase ──
-    protected convertFromSingle(source: ToolAnnotations): ToolAnnotationsType {
-        return this.convertFromToolAnnotation(source);
-    }
-
-    protected convertToSingle(target: ToolAnnotationsType): ToolAnnotations {
-        return this.convertToToolAnnotation(target);
-    }
-}
+/**
+ * Base class for ToolAnnotations converters.
+ * Extend and implement `convertFrom(toolAnnotation)` and `convertTo(dto)`.
+ */
+export abstract class ToolAnnotationsConverterBase<T> extends ConverterBase<ToolAnnotations, T> {}

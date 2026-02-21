@@ -2,8 +2,8 @@
  * ConverterBase — Generic Base for Bidirectional Converters
  *
  * Provides batch conversion with null filtering in both directions.
- * Domain-specific converters (Group, Tool, Prompt, Resource, ToolAnnotations)
- * extend this class and only implement the single-item abstract methods.
+ * Domain-specific converters extend this class and only implement
+ * the single-item abstract methods: `convertFrom` and `convertTo`.
  *
  * @template TSource - The domain model type (e.g. Group, Tool)
  * @template TTarget - The external/DTO type
@@ -15,12 +15,12 @@ export abstract class ConverterBase<TSource, TTarget> {
      */
     convertFromBatch(sources: TSource[]): TTarget[] {
         return sources
-            .map(s => this.convertFromSingle(s))
-            .filter(item => item !== null && item !== undefined);
+            .map(s => this.convertFrom(s))
+            .filter((item): item is NonNullable<TTarget> => item != null);
     }
 
     /** Convert a single source item to a target item. */
-    protected abstract convertFromSingle(source: TSource): TTarget;
+    abstract convertFrom(source: TSource): TTarget;
 
     /**
      * Convert a batch of target items back to source items.
@@ -28,10 +28,10 @@ export abstract class ConverterBase<TSource, TTarget> {
      */
     convertToBatch(targets: TTarget[]): TSource[] {
         return targets
-            .map(t => this.convertToSingle(t))
-            .filter(item => item !== null && item !== undefined);
+            .map(t => this.convertTo(t))
+            .filter((item): item is NonNullable<TSource> => item != null);
     }
 
     /** Convert a single target item back to a source item. */
-    protected abstract convertToSingle(target: TTarget): TSource;
+    abstract convertTo(target: TTarget): TSource;
 }

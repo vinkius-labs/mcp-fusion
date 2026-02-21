@@ -1,5 +1,5 @@
 import { GroupItem } from './GroupItem.js';
-import { PromptArgument } from './PromptArgument.js';
+import { type PromptArgument } from './PromptArgument.js';
 import { removeFromArray } from './utils.js';
 
 export class Prompt extends GroupItem {

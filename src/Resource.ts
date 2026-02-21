@@ -1,5 +1,5 @@
+import { type Annotations } from './Annotations.js';
 import { GroupItem } from './GroupItem.js';
-import { Annotations } from './Annotations.js';
 
 export class Resource extends GroupItem {
     public uri: string | undefined;

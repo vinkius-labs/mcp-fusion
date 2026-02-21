@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BaseModel } from '../src/BaseModel.js';
-import { Icon } from '../src/Icon.js';
+import { createIcon } from '../src/Icon.js';
 
 // Concrete subclass for testing abstract class
 class ConcreteBase extends BaseModel {
@@ -64,11 +64,10 @@ describe('BaseModel', () => {
 
         it('should set and get icons', () => {
             const base = new ConcreteBase('test');
-            const icon = new Icon();
-            icon.src = 'icon.png';
+            const icon = createIcon({ src: 'icon.png' });
             base.icons = [icon];
             expect(base.icons).toHaveLength(1);
-            expect(base.icons![0].src).toBe('icon.png');
+            expect(base.icons?.[0]?.src).toBe('icon.png');
         });
     });
 
@@ -80,10 +79,10 @@ describe('BaseModel', () => {
 
         it('should set and get meta', () => {
             const base = new ConcreteBase('test');
-            const meta = new Map<string, any>();
+            const meta = new Map<string, unknown>();
             meta.set('key', 'value');
             base.meta = meta;
-            expect(base.meta!.get('key')).toBe('value');
+            expect(base.meta?.get('key')).toBe('value');
         });
     });
 });

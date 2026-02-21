@@ -7,7 +7,7 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import type { InternalAction } from './Types.js';
+import { type InternalAction } from './Types.js';
 import { getActionRequiredFields } from './SchemaUtils.js';
 
 // ── Public API ───────────────────────────────────────────
@@ -92,8 +92,8 @@ function getGroupSummaries<TContext>(
         }
         group.push(action.actionName);
     }
-    return Array.from(groups.entries()).map(([name, actions]) => ({
+    return Array.from(groups.entries()).map(([name, groupActions]) => ({
         name,
-        actions,
+        actions: groupActions,
     }));
 }

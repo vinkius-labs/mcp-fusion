@@ -1,13 +1,15 @@
-import { Role } from './Role.js';
+import { type Role } from './Role.js';
 
-export class Annotations {
-    public audience: Role[] | undefined;
-    public priority: number | undefined;
-    public lastModified: string | undefined;
+/**
+ * Resource Annotations — audience, priority, and freshness metadata.
+ */
+export interface Annotations {
+    readonly audience?: readonly Role[];
+    readonly priority?: number;
+    readonly lastModified?: string;
+}
 
-    public constructor(audience?: Role[], priority?: number, lastModified?: string) {
-        this.audience = audience;
-        this.priority = priority;
-        this.lastModified = lastModified;
-    }
+/** Create Annotations from partial properties. */
+export function createAnnotations(props: Annotations = {}): Annotations {
+    return { ...props };
 }

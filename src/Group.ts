@@ -1,8 +1,8 @@
 import { BaseModel } from './BaseModel.js';
-import { GroupItem } from './GroupItem.js';
-import { Tool } from './Tool.js';
-import { Prompt } from './Prompt.js';
-import { Resource } from './Resource.js';
+import { type GroupItem } from './GroupItem.js';
+import { type Tool } from './Tool.js';
+import { type Prompt } from './Prompt.js';
+import { type Resource } from './Resource.js';
 import { removeFromArray } from './utils.js';
 
 export class Group extends BaseModel {

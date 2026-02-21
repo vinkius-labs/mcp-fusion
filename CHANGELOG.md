@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-21
+
+### Added
+- **Strict TypeScript flags:** `noUncheckedIndexedAccess` and `noFallthroughCasesInSwitch` enabled in `tsconfig.json`.
+- **ESLint type-aware rules:** Added `no-floating-promises`, `no-misused-promises`, `await-thenable`, `require-await`, `no-unnecessary-condition`, `consistent-type-imports`, and `consistent-type-exports`. Upgraded `no-explicit-any` from `warn` to `error`.
+- **`createIcon()` factory function:** Creates immutable `Icon` instances.
+- **`createToolAnnotations()` factory function:** Creates immutable `ToolAnnotations` instances.
+- **`createAnnotations()` factory function:** Creates immutable `Annotations` instances.
+- **Edge-case test suite (`EdgeCases.test.ts`):** 37 new tests covering `getActionMetadata()`, group-level middleware chains, frozen guard on all config methods, error paths (non-Error throws, middleware errors), `ResponseHelper` empty-string fallback, `ConverterBase` null filtering, custom discriminator routing, and description generator edge cases.
+- **Test coverage improved:** 99.58% statement coverage (up from 96.85%), 100% function coverage. Total: 516 tests across 23 files.
+
+### Changed
+- **BREAKING:** `Icon`, `ToolAnnotations`, and `Annotations` converted from mutable classes to `readonly` interfaces with factory functions (`createIcon()`, `createToolAnnotations()`, `createAnnotations()`). Use factory functions instead of `new Icon()`, `new ToolAnnotations()`, `new Annotations()`.
+- **Converter API simplified:** `ConverterBase` abstract methods renamed from `convertFromSingle`/`convertToSingle` to `convertFrom`/`convertTo`. Domain-specific converter bases (`GroupConverterBase`, `ToolConverterBase`, etc.) no longer have redundant bridge methods — they directly extend `ConverterBase<DomainType, DtoType>`.
+- **`ConverterBase.filter()`** now uses `NonNullable<T>` type predicate for better type narrowing in batch operations.
+- **`BaseModel`** properties (`name`, `nameSeparator`) made `readonly`.
+- **`InternalAction`** and **`ActionMetadata`** properties made `readonly` for immutability.
+- **`ToolRegistry._builders`** map made `readonly`.
+- All `import type` declarations enforced across the codebase via ESLint auto-fix.
+- Removed unnecessary `async` from `ToolRegistry` detach handler (fixes `require-await`).
+- Removed unnecessary truthy check in `GroupedToolBuilder._buildValidationSchema` (fixes `no-unnecessary-condition`).
+
+### Fixed
+- **Non-null assertions eliminated:** All `!` operators in `GroupedToolBuilder.ts` replaced with explicit guards and checks.
+- **`McpServerLike` typing:** Replaced `any` with `never[]` for duck-typing safety in `ToolRegistry`.
+
 ## [0.5.0] - 2026-02-21
 
 ### Added

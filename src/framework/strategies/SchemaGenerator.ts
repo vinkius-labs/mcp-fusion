@@ -8,10 +8,10 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import type { ZodObject, ZodRawShape } from 'zod';
+import { type ZodObject, type ZodRawShape } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import type { InternalAction } from './Types.js';
+import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import { type InternalAction } from './Types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
 
 /** Shape of an object-level JSON Schema emitted by zod-to-json-schema */
@@ -75,11 +75,12 @@ export function generateInputSchema<TContext>(
         const requiredSet = new Set(schemaRequired);
 
         for (const [key, value] of Object.entries(schemaProps)) {
-            if (!properties[key]) {
+            const existing = properties[key];
+            if (!existing) {
                 // First declaration defines the canonical type
                 properties[key] = value;
             } else {
-                assertFieldCompatibility(properties[key], value, key, action.key);
+                assertFieldCompatibility(existing, value, key, action.key);
             }
 
             let tracking = fieldActions.get(key);

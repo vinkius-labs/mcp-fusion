@@ -1,10 +1,10 @@
 export { Role } from './Role.js';
-export { Icon } from './Icon.js';
+export { type Icon, createIcon } from './Icon.js';
 export { BaseModel } from './BaseModel.js';
 export { Group } from './Group.js';
 export { GroupItem } from './GroupItem.js';
-export { Annotations } from './Annotations.js';
-export { ToolAnnotations } from './ToolAnnotations.js';
+export { type Annotations, createAnnotations } from './Annotations.js';
+export { type ToolAnnotations, createToolAnnotations } from './ToolAnnotations.js';
 export { Tool } from './Tool.js';
 export { PromptArgument } from './PromptArgument.js';
 export { Prompt } from './Prompt.js';

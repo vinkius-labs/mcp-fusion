@@ -6,7 +6,7 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import type { InternalAction } from './Types.js';
+import { type InternalAction } from './Types.js';
 
 // ── Public API ───────────────────────────────────────────
 

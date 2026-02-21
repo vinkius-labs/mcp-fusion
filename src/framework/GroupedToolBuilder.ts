@@ -15,15 +15,15 @@
  * - MiddlewareCompiler — Chain pre-compilation
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from './ResponseHelper.js';
-import type { ToolBuilder, ActionMetadata } from './ToolBuilder.js';
+import { type ToolBuilder, type ActionMetadata } from './ToolBuilder.js';
 import { generateDescription } from './strategies/DescriptionGenerator.js';
 import { generateToonDescription } from './strategies/ToonDescriptionGenerator.js';
 import { generateInputSchema } from './strategies/SchemaGenerator.js';
 import { aggregateAnnotations } from './strategies/AnnotationAggregator.js';
 import { compileMiddlewareChains, type CompiledChain } from './strategies/MiddlewareCompiler.js';
-import type { InternalAction, MiddlewareFn } from './strategies/Types.js';
+import { type InternalAction, type MiddlewareFn } from './strategies/Types.js';
 import { getActionRequiredFields } from './strategies/SchemaUtils.js';
 
 // ============================================================================
@@ -118,7 +118,7 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
 // ============================================================================
 
 export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, unknown> = Record<string, never>> implements ToolBuilder<TContext> {
-    private _name: string;
+    private readonly _name: string;
     private _description?: string;
     private _discriminator: string = 'action';
     private _annotations?: Record<string, unknown>;
@@ -264,7 +264,13 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
         const configure = typeof descriptionOrConfigure === 'function'
             ? descriptionOrConfigure
-            : maybeConfigure!;
+            : maybeConfigure;
+
+        if (!configure) {
+            throw new Error(
+                `Group "${name}" requires a configure callback.`
+            );
+        }
 
         if (this._hasFlat) {
             throw new Error(
@@ -308,7 +314,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             inputSchema,
         };
 
-        if (annotations && Object.keys(annotations).length > 0) {
+        if (Object.keys(annotations).length > 0) {
             (tool as Record<string, unknown>).annotations = annotations;
         }
 
@@ -331,8 +337,15 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     /** Route a call: validate → middleware → handler */
     async execute(ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> {
         // Ensure built
-        if (!this._actionMap) {
+        if (!this._actionMap || !this._compiledChain) {
             this.buildToolDefinition();
+        }
+        const actionMap = this._actionMap;
+        const compiledChain = this._compiledChain;
+
+        // Defensive: should never happen after buildToolDefinition()
+        if (!actionMap || !compiledChain) {
+            return error(`Builder "${this._name}" failed to initialize.`);
         }
 
         // 1. Parse discriminator
@@ -345,7 +358,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         }
 
         // 2. Find action — O(1) Map.get() lookup
-        const action = this._actionMap!.get(discriminatorValue);
+        const action = actionMap.get(discriminatorValue);
         if (!action) {
             return error(
                 `Error: Unknown ${this._discriminator} "${discriminatorValue}". ` +
@@ -370,7 +383,11 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         }
 
         // 4. Run pre-compiled middleware chain → handler
-        const chain = this._compiledChain!.get(action.key)!;
+        const chain = compiledChain.get(action.key);
+        if (!chain) {
+            return error(`No compiled chain for action "${action.key}".`);
+        }
+
         try {
             return await chain(ctx, args);
         } catch (err) {
@@ -417,7 +434,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         const base = this._commonSchema;
         const specific = action.schema;
         if (!base && !specific) return null;
-        const merged = base && specific ? base.merge(specific) : (base ?? specific)!;
+        const merged = base && specific ? base.merge(specific) : (base ?? specific);
+        if (!merged) return null;
         return merged.strip();
     }
 

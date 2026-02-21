@@ -1,9 +1,14 @@
 /**
- * Icon definition
+ * Icon definition for group and tool metadata.
  */
-export class Icon {
-    public src: string | undefined;
-    public mimeType: string | undefined;
-    public sizes: string[] | undefined;
-    public theme: string | undefined;
+export interface Icon {
+    readonly src?: string;
+    readonly mimeType?: string;
+    readonly sizes?: readonly string[];
+    readonly theme?: string;
+}
+
+/** Create an Icon from partial properties. */
+export function createIcon(props: Icon = {}): Icon {
+    return { ...props };
 }

@@ -6,17 +6,17 @@ import { describe, it, expect } from 'vitest';
 // ============================================================================
 
 describe('Barrel Export (src/index.ts)', () => {
-    it('should export all domain model classes', async () => {
+    it('should export all domain model classes and factories', async () => {
         const mod = await import('../src/index.js');
 
         // Domain model
         expect(mod.Role).toBeDefined();
-        expect(mod.Icon).toBeDefined();
+        expect(mod.createIcon).toBeTypeOf('function');
         expect(mod.BaseModel).toBeDefined();
         expect(mod.Group).toBeDefined();
         expect(mod.GroupItem).toBeDefined();
-        expect(mod.Annotations).toBeDefined();
-        expect(mod.ToolAnnotations).toBeDefined();
+        expect(mod.createAnnotations).toBeTypeOf('function');
+        expect(mod.createToolAnnotations).toBeTypeOf('function');
         expect(mod.Tool).toBeDefined();
         expect(mod.PromptArgument).toBeDefined();
         expect(mod.Prompt).toBeDefined();

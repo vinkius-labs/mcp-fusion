@@ -13,7 +13,9 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "noUncheckedIndexedAccess": true,
+        "noFallthroughCasesInSwitch": true
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]

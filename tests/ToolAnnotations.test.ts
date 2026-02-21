@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { ToolAnnotations } from '../src/ToolAnnotations.js';
+import { type ToolAnnotations, createToolAnnotations } from '../src/ToolAnnotations.js';
 
 describe('ToolAnnotations', () => {
-    it('should initialize with undefined values', () => {
-        const ta = new ToolAnnotations();
+    it('should create with default undefined values', () => {
+        const ta = createToolAnnotations();
         expect(ta.title).toBeUndefined();
         expect(ta.readOnlyHint).toBeUndefined();
         expect(ta.destructiveHint).toBeUndefined();
@@ -12,39 +12,50 @@ describe('ToolAnnotations', () => {
         expect(ta.returnDirect).toBeUndefined();
     });
 
-    it('should set and get title', () => {
-        const ta = new ToolAnnotations();
-        ta.title = 'My Tool';
+    it('should create with title', () => {
+        const ta = createToolAnnotations({ title: 'My Tool' });
         expect(ta.title).toBe('My Tool');
     });
 
-    it('should set and get readOnlyHint', () => {
-        const ta = new ToolAnnotations();
-        ta.readOnlyHint = true;
+    it('should create with readOnlyHint', () => {
+        const ta = createToolAnnotations({ readOnlyHint: true });
         expect(ta.readOnlyHint).toBe(true);
     });
 
-    it('should set and get destructiveHint', () => {
-        const ta = new ToolAnnotations();
-        ta.destructiveHint = false;
+    it('should create with destructiveHint', () => {
+        const ta = createToolAnnotations({ destructiveHint: false });
         expect(ta.destructiveHint).toBe(false);
     });
 
-    it('should set and get idempotentHint', () => {
-        const ta = new ToolAnnotations();
-        ta.idempotentHint = true;
+    it('should create with idempotentHint', () => {
+        const ta = createToolAnnotations({ idempotentHint: true });
         expect(ta.idempotentHint).toBe(true);
     });
 
-    it('should set and get openWorldHint', () => {
-        const ta = new ToolAnnotations();
-        ta.openWorldHint = false;
+    it('should create with openWorldHint', () => {
+        const ta = createToolAnnotations({ openWorldHint: false });
         expect(ta.openWorldHint).toBe(false);
     });
 
-    it('should set and get returnDirect', () => {
-        const ta = new ToolAnnotations();
-        ta.returnDirect = true;
+    it('should create with returnDirect', () => {
+        const ta = createToolAnnotations({ returnDirect: true });
         expect(ta.returnDirect).toBe(true);
+    });
+
+    it('should create with all properties', () => {
+        const ta: ToolAnnotations = createToolAnnotations({
+            title: 'Deploy',
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: false,
+            openWorldHint: true,
+            returnDirect: false,
+        });
+        expect(ta.title).toBe('Deploy');
+        expect(ta.readOnlyHint).toBe(false);
+        expect(ta.destructiveHint).toBe(true);
+        expect(ta.idempotentHint).toBe(false);
+        expect(ta.openWorldHint).toBe(true);
+        expect(ta.returnDirect).toBe(false);
     });
 });

@@ -6,29 +6,29 @@
  *
  * @template TContext - The context type passed to handlers on each call.
  */
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolResponse } from './ResponseHelper.js';
+import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import { type ToolResponse } from './ResponseHelper.js';
 
 /** Metadata for a single action (used for enterprise observability / introspection) */
 export interface ActionMetadata {
     /** Full action key (e.g. "admin.create" for grouped, "list" for flat) */
-    key: string;
+    readonly key: string;
     /** Action name within its group */
-    actionName: string;
+    readonly actionName: string;
     /** Group name (undefined for flat actions) */
-    groupName?: string;
+    readonly groupName?: string;
     /** Human-readable description */
-    description?: string;
+    readonly description?: string;
     /** Whether this action is destructive */
-    destructive: boolean;
+    readonly destructive: boolean;
     /** Whether this action is idempotent */
-    idempotent: boolean;
+    readonly idempotent: boolean;
     /** Whether this action is read-only */
-    readOnly: boolean;
+    readonly readOnly: boolean;
     /** Required field names from the Zod schema */
-    requiredFields: string[];
+    readonly requiredFields: readonly string[];
     /** Whether this action has group/action-level middleware */
-    hasMiddleware: boolean;
+    readonly hasMiddleware: boolean;
 }
 
 export interface ToolBuilder<TContext = void> {

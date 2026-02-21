@@ -6,8 +6,8 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import type { ToolResponse } from '../ResponseHelper.js';
-import type { InternalAction, MiddlewareFn } from './Types.js';
+import { type ToolResponse } from '../ResponseHelper.js';
+import { type InternalAction, type MiddlewareFn } from './Types.js';
 
 // ── Public API ───────────────────────────────────────────
 
@@ -30,6 +30,7 @@ export function compileMiddlewareChains<TContext>(
         const actionMws = action.middlewares ?? [];
         for (let i = actionMws.length - 1; i >= 0; i--) {
             const mw = actionMws[i];
+            if (!mw) continue;
             const nextFn = chain;
             chain = (ctx: TContext, args: Record<string, unknown>) =>
                 mw(ctx, args, () => nextFn(ctx, args));
@@ -38,6 +39,7 @@ export function compileMiddlewareChains<TContext>(
         // Global middleware (outermost)
         for (let i = middlewares.length - 1; i >= 0; i--) {
             const mw = middlewares[i];
+            if (!mw) continue;
             const nextFn = chain;
             chain = (ctx: TContext, args: Record<string, unknown>) =>
                 mw(ctx, args, () => nextFn(ctx, args));

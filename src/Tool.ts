@@ -1,5 +1,5 @@
+import { type ToolAnnotations } from './ToolAnnotations.js';
 import { GroupItem } from './GroupItem.js';
-import { ToolAnnotations } from './ToolAnnotations.js';
 
 export class Tool extends GroupItem {
     public inputSchema: string | undefined;
