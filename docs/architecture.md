@@ -13,9 +13,9 @@ The framework has two distinct layers, each solving a different problem.
 A hierarchical object model for MCP primitives. This layer provides the structural vocabulary for representing tools, prompts, resources, and their organizational hierarchy.
 
 ```
-AbstractBase                  ← name, title, description, meta, icons, hashCode/equals, FQN
+BaseModel                     ← name, title, description, meta, icons, FQN
 ├── Group                     ← tree node: parent, childGroups[], childTools[], childPrompts[], childResources[]
-├── AbstractLeaf              ← multi-parent: parentGroups[], root traversal
+├── GroupItem                 ← multi-parent: parentGroups[], root traversal
 │   ├── Tool                  ← inputSchema, outputSchema, ToolAnnotations
 │   ├── Prompt                ← PromptArgument[]
 │   └── Resource              ← uri, size, mimeType, Annotations (audience, priority, lastModified)
@@ -28,7 +28,7 @@ AbstractBase                  ← name, title, description, meta, icons, hashCod
 
 - **Recursive fully-qualified names.** `Group.getFullyQualifiedName()` walks up the tree recursively, joining names with a configurable separator (default: `.`). This produces paths like `platform.users.management` for deeply nested group hierarchies.
 
-- **Bidirectional converters.** Each MCP primitive has an abstract converter (`AbstractToolConverter`, `AbstractGroupConverter`, `AbstractPromptConverter`, `AbstractResourceConverter`, `AbstractToolAnnotationsConverter`) that converts between the domain model and any external type — in both directions, single or batch, with null filtering. This is the adapter pattern applied consistently across all primitives.
+- **Bidirectional converters.** A generic `ConverterBase<TSource, TTarget>` base class implements batch conversion with null filtering in both directions. Each MCP primitive has a domain-specific converter (`ToolConverterBase`, `GroupConverterBase`, `PromptConverterBase`, `ResourceConverterBase`, `ToolAnnotationsConverterBase`) that extends the base and adds typed method aliases — eliminating all batch-logic duplication. This is the adapter pattern applied consistently across all primitives.
 
 - **`ToolAnnotations` class.** Holds all MCP tool annotation hints: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, `returnDirect`, and `title`. This is a structured representation of the MCP spec's annotation object that maps directly to the framework's `AnnotationAggregator`.
 

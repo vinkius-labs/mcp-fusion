@@ -273,15 +273,4 @@ describe('Group', () => {
             expect(group.removeChildResource(resource)).toBe(false);
         });
     });
-
-    describe('toString', () => {
-        it('should produce correct toString', () => {
-            const group = new Group('devops');
-            group.title = 'DevOps';
-            const str = group.toString();
-            expect(str).toContain('Group');
-            expect(str).toContain('name=devops');
-            expect(str).toContain('isRoot=true');
-        });
-    });
 });

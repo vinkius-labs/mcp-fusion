@@ -14,7 +14,7 @@
  * - AnnotationAggregator — Hint aggregation
  * - MiddlewareCompiler — Chain pre-compilation
  */
-import { z, type ZodObject, type ZodRawShape } from 'zod';
+import { type ZodObject, type ZodRawShape } from 'zod';
 import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from './ResponseHelper.js';
 import type { ToolBuilder, ActionMetadata } from './ToolBuilder.js';

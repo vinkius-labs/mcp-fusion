@@ -1,4 +1,5 @@
 import { Resource } from '../Resource.js';
+import { ConverterBase } from './ConverterBase.js';
 
 export interface ResourceConverter<ResourceType> {
     convertFromResources(resources: Resource[]): ResourceType[];
@@ -7,20 +8,28 @@ export interface ResourceConverter<ResourceType> {
     convertToResource(resource: ResourceType): Resource;
 }
 
-export abstract class AbstractResourceConverter<ResourceType> implements ResourceConverter<ResourceType> {
+export abstract class ResourceConverterBase<ResourceType>
+    extends ConverterBase<Resource, ResourceType>
+    implements ResourceConverter<ResourceType>
+{
     public convertFromResources(resources: Resource[]): ResourceType[] {
-        return resources
-            .map(rn => this.convertFromResource(rn))
-            .filter(item => item !== null && item !== undefined);
+        return this.convertFromBatch(resources);
     }
 
     public abstract convertFromResource(resource: Resource): ResourceType;
 
     public convertToResources(resources: ResourceType[]): Resource[] {
-        return resources
-            .map(rn => this.convertToResource(rn))
-            .filter(item => item !== null && item !== undefined);
+        return this.convertToBatch(resources);
     }
 
     public abstract convertToResource(resource: ResourceType): Resource;
+
+    // ── Bridge to ConverterBase ──
+    protected convertFromSingle(source: Resource): ResourceType {
+        return this.convertFromResource(source);
+    }
+
+    protected convertToSingle(target: ResourceType): Resource {
+        return this.convertToResource(target);
+    }
 }

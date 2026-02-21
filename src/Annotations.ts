@@ -10,8 +10,4 @@ export class Annotations {
         this.priority = priority;
         this.lastModified = lastModified;
     }
-
-    public toString(): string {
-        return `Annotations [audience=${this.audience}, priority=${this.priority}, lastModified=${this.lastModified}]`;
-    }
 }

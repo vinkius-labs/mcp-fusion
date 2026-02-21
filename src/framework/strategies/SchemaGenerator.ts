@@ -14,6 +14,12 @@ import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import type { InternalAction } from './Types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
 
+/** Shape of an object-level JSON Schema emitted by zod-to-json-schema */
+interface JsonSchemaObject {
+    properties?: Record<string, object>;
+    required?: string[];
+}
+
 // ── Public API ───────────────────────────────────────────
 
 export function generateInputSchema<TContext>(
@@ -41,10 +47,9 @@ export function generateInputSchema<TContext>(
     // Common schema fields
     const commonRequiredFields = new Set<string>();
     if (commonSchema) {
-        const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' });
-        const schemaObj = jsonSchema as Record<string, unknown>;
-        const schemaProps = (schemaObj.properties || {}) as Record<string, unknown>;
-        const schemaRequired = (schemaObj.required || []) as string[];
+        const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' }) as JsonSchemaObject;
+        const schemaProps = jsonSchema.properties ?? {};
+        const schemaRequired = jsonSchema.required ?? [];
 
         for (const field of schemaRequired) {
             commonRequiredFields.add(field);
@@ -52,7 +57,7 @@ export function generateInputSchema<TContext>(
         }
 
         for (const [key, value] of Object.entries(schemaProps)) {
-            properties[key] = value as object;
+            properties[key] = value;
             fieldActions.set(key, {
                 keys: [...actionKeys],
                 requiredIn: commonRequiredFields.has(key) ? [...actionKeys] : [],
@@ -64,19 +69,17 @@ export function generateInputSchema<TContext>(
     for (const action of actions) {
         if (!action.schema) continue;
 
-        const jsonSchema = zodToJsonSchema(action.schema, { target: 'jsonSchema7' });
-        const schemaObj = jsonSchema as Record<string, unknown>;
-        const schemaProps = (schemaObj.properties || {}) as Record<string, unknown>;
-        const schemaRequired = (schemaObj.required || []) as string[];
+        const jsonSchema = zodToJsonSchema(action.schema, { target: 'jsonSchema7' }) as JsonSchemaObject;
+        const schemaProps = jsonSchema.properties ?? {};
+        const schemaRequired = jsonSchema.required ?? [];
         const requiredSet = new Set(schemaRequired);
 
         for (const [key, value] of Object.entries(schemaProps)) {
             if (!properties[key]) {
                 // First declaration defines the canonical type
-                properties[key] = value as object;
+                properties[key] = value;
             } else {
-                // Build-time collision guard: same field name, incompatible JSON Schema types
-                assertFieldCompatibility(properties[key], value as object, key, action.key);
+                assertFieldCompatibility(properties[key], value, key, action.key);
             }
 
             let tracking = fieldActions.get(key);

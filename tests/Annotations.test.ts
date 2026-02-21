@@ -27,12 +27,4 @@ describe('Annotations', () => {
         annotations.lastModified = '2025-06-15T12:00:00Z';
         expect(annotations.lastModified).toBe('2025-06-15T12:00:00Z');
     });
-
-    it('should produce correct toString', () => {
-        const annotations = new Annotations([Role.USER], 3, '2025-01-01');
-        const str = annotations.toString();
-        expect(str).toContain('Annotations');
-        expect(str).toContain('priority=3');
-        expect(str).toContain('lastModified=2025-01-01');
-    });
 });

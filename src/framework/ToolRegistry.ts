@@ -31,7 +31,9 @@ export interface ToolFilter {
  * Works with both `Server` (low-level) and `McpServer` (high-level).
  */
 interface McpServerLike {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: any[]) => any): void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: any[]) => any): void;
 }
 
@@ -174,7 +176,7 @@ export class ToolRegistry<TContext = void> {
         };
 
         // ── tools/call handler ────────────────────────────────────────
-        const callHandler = async (request: any, extra: unknown) => {
+        const callHandler = async (request: { params: { name: string; arguments?: Record<string, unknown> } }, extra: unknown) => {
             const { name, arguments: args = {} } = request.params;
             const ctx = contextFactory
                 ? contextFactory(extra)

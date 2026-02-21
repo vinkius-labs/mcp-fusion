@@ -12,9 +12,9 @@ describe('Barrel Export (src/index.ts)', () => {
         // Domain model
         expect(mod.Role).toBeDefined();
         expect(mod.Icon).toBeDefined();
-        expect(mod.AbstractBase).toBeDefined();
+        expect(mod.BaseModel).toBeDefined();
         expect(mod.Group).toBeDefined();
-        expect(mod.AbstractLeaf).toBeDefined();
+        expect(mod.GroupItem).toBeDefined();
         expect(mod.Annotations).toBeDefined();
         expect(mod.ToolAnnotations).toBeDefined();
         expect(mod.Tool).toBeDefined();
@@ -23,14 +23,15 @@ describe('Barrel Export (src/index.ts)', () => {
         expect(mod.Resource).toBeDefined();
     });
 
-    it('should export all converter abstract classes', async () => {
+    it('should export all converter base classes', async () => {
         const mod = await import('../src/index.js');
 
-        expect(mod.AbstractGroupConverter).toBeDefined();
-        expect(mod.AbstractToolConverter).toBeDefined();
-        expect(mod.AbstractPromptConverter).toBeDefined();
-        expect(mod.AbstractResourceConverter).toBeDefined();
-        expect(mod.AbstractToolAnnotationsConverter).toBeDefined();
+        expect(mod.ConverterBase).toBeDefined();
+        expect(mod.GroupConverterBase).toBeDefined();
+        expect(mod.ToolConverterBase).toBeDefined();
+        expect(mod.PromptConverterBase).toBeDefined();
+        expect(mod.ResourceConverterBase).toBeDefined();
+        expect(mod.ToolAnnotationsConverterBase).toBeDefined();
     });
 
     it('should export all framework components', async () => {

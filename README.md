@@ -252,10 +252,10 @@ Beyond the framework, the package provides a full domain model for MCP primitive
 | `Tool` | Leaf node with input/output schemas and `ToolAnnotations` |
 | `Prompt` | Leaf node with `PromptArgument` list |
 | `Resource` | Leaf node with URI, size, mimeType, and `Annotations` (audience, priority) |
-| `AbstractBase` | Name, title, description, meta, icons, hashCode/equals |
-| `AbstractLeaf` | Multi-parent group support, root traversal |
+| `BaseModel` | Name, title, description, meta, icons |
+| `GroupItem` | Multi-parent group support, root traversal |
 
-*Features Bidirectional converters (`AbstractToolConverter`, `AbstractGroupConverter`, etc.) with null filtering for clean conversion to external representations.*
+*Features Bidirectional converters (`ToolConverterBase`, `GroupConverterBase`, etc.) with null filtering for clean conversion to external representations.*
 
 ### Strategy Pattern Internals
 Six pure-function modules orchestrated by `GroupedToolBuilder`. Every module is independently testable and replaceable. **Zero shared state.**

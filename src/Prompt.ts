@@ -1,7 +1,8 @@
-import { AbstractLeaf } from './AbstractLeaf.js';
+import { GroupItem } from './GroupItem.js';
 import { PromptArgument } from './PromptArgument.js';
+import { removeFromArray } from './utils.js';
 
-export class Prompt extends AbstractLeaf {
+export class Prompt extends GroupItem {
     public readonly promptArguments: PromptArgument[] = [];
 
     public constructor(name: string) {
@@ -15,15 +16,6 @@ export class Prompt extends AbstractLeaf {
     }
 
     public removePromptArgument(promptArgument: PromptArgument): boolean {
-        const index = this.promptArguments.indexOf(promptArgument);
-        if (index !== -1) {
-            this.promptArguments.splice(index, 1);
-            return true;
-        }
-        return false;
-    }
-
-    public toString(): string {
-        return `Prompt [promptArguments=${this.promptArguments}, name=${this.name}, fqName=${this.getFullyQualifiedName()}, title=${this.title}, description=${this.description}, meta=${this.meta}]`;
+        return removeFromArray(this.promptArguments, promptArgument);
     }
 }

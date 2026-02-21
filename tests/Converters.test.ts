@@ -5,11 +5,11 @@ import { Prompt } from '../src/Prompt.js';
 import { Resource } from '../src/Resource.js';
 import { ToolAnnotations } from '../src/ToolAnnotations.js';
 import {
-    AbstractGroupConverter,
-    AbstractToolConverter,
-    AbstractPromptConverter,
-    AbstractResourceConverter,
-    AbstractToolAnnotationsConverter
+    GroupConverterBase,
+    ToolConverterBase,
+    PromptConverterBase,
+    ResourceConverterBase,
+    ToolAnnotationsConverterBase
 } from '../src/converters/index.js';
 
 // --- Concrete converter implementations for testing ---
@@ -19,7 +19,7 @@ interface SimpleGroupDTO {
     title?: string;
 }
 
-class TestGroupConverter extends AbstractGroupConverter<SimpleGroupDTO> {
+class TestGroupConverter extends GroupConverterBase<SimpleGroupDTO> {
     public convertFromGroup(group: Group): SimpleGroupDTO {
         return { name: group.name, title: group.title };
     }
@@ -36,7 +36,7 @@ interface SimpleToolDTO {
     schema?: string;
 }
 
-class TestToolConverter extends AbstractToolConverter<SimpleToolDTO> {
+class TestToolConverter extends ToolConverterBase<SimpleToolDTO> {
     public convertFromTool(tool: Tool): SimpleToolDTO {
         return { name: tool.name, schema: tool.inputSchema };
     }
@@ -52,7 +52,7 @@ interface SimplePromptDTO {
     name: string;
 }
 
-class TestPromptConverter extends AbstractPromptConverter<SimplePromptDTO> {
+class TestPromptConverter extends PromptConverterBase<SimplePromptDTO> {
     public convertFromPrompt(prompt: Prompt): SimplePromptDTO {
         return { name: prompt.name };
     }
@@ -67,7 +67,7 @@ interface SimpleResourceDTO {
     uri?: string;
 }
 
-class TestResourceConverter extends AbstractResourceConverter<SimpleResourceDTO> {
+class TestResourceConverter extends ResourceConverterBase<SimpleResourceDTO> {
     public convertFromResource(resource: Resource): SimpleResourceDTO {
         return { name: resource.name, uri: resource.uri };
     }
@@ -84,12 +84,12 @@ interface SimpleToolAnnotationsDTO {
     readOnly?: boolean;
 }
 
-class TestToolAnnotationsConverter extends AbstractToolAnnotationsConverter<SimpleToolAnnotationsDTO> {
-    protected convertFromToolAnnotationsSingle(ta: ToolAnnotations): SimpleToolAnnotationsDTO {
+class TestToolAnnotationsConverter extends ToolAnnotationsConverterBase<SimpleToolAnnotationsDTO> {
+    protected convertFromToolAnnotation(ta: ToolAnnotations): SimpleToolAnnotationsDTO {
         return { title: ta.title, readOnly: ta.readOnlyHint };
     }
 
-    protected convertToToolAnnotationsSingle(dto: SimpleToolAnnotationsDTO): ToolAnnotations {
+    protected convertToToolAnnotation(dto: SimpleToolAnnotationsDTO): ToolAnnotations {
         const ta = new ToolAnnotations();
         if (dto.title) ta.title = dto.title;
         if (dto.readOnly !== undefined) ta.readOnlyHint = dto.readOnly;
@@ -227,13 +227,13 @@ describe('ToolAnnotationsConverter', () => {
         const ta = new ToolAnnotations();
         ta.title = 'Deploy';
         ta.readOnlyHint = false;
-        const dto = converter.convertFromToolAnnotations(ta);
+        const dto = converter.convertFromToolAnnotation(ta);
         expect(dto.title).toBe('Deploy');
         expect(dto.readOnly).toBe(false);
     });
 
     it('should convert single DTO to tool annotations', () => {
-        const ta = converter.convertToToolAnnotations({ title: 'Build', readOnly: true });
+        const ta = converter.convertToToolAnnotation({ title: 'Build', readOnly: true });
         expect(ta.title).toBe('Build');
         expect(ta.readOnlyHint).toBe(true);
     });

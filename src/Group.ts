@@ -1,10 +1,11 @@
-import { AbstractBase } from './AbstractBase.js';
-import { AbstractLeaf } from './AbstractLeaf.js';
+import { BaseModel } from './BaseModel.js';
+import { GroupItem } from './GroupItem.js';
 import { Tool } from './Tool.js';
 import { Prompt } from './Prompt.js';
 import { Resource } from './Resource.js';
+import { removeFromArray } from './utils.js';
 
-export class Group extends AbstractBase {
+export class Group extends BaseModel {
     public parent: Group | null = null;
     public readonly childGroups: Group[];
     public readonly childTools: Tool[];
@@ -12,7 +13,7 @@ export class Group extends AbstractBase {
     public readonly childResources: Resource[];
 
     public constructor(name: string, nameSeparator?: string) {
-        super(name, nameSeparator !== undefined ? nameSeparator : AbstractBase.DEFAULT_SEPARATOR);
+        super(name, nameSeparator !== undefined ? nameSeparator : BaseModel.DEFAULT_SEPARATOR);
         this.childGroups = [];
         this.childTools = [];
         this.childPrompts = [];
@@ -21,17 +22,15 @@ export class Group extends AbstractBase {
 
     // ── Private helpers to eliminate add/remove repetition ──
 
-    private addLeaf<T extends AbstractLeaf>(list: T[], child: T): boolean {
+    private addChild<T extends GroupItem>(list: T[], child: T): boolean {
         if (list.includes(child)) return false;
         list.push(child);
         child.addParentGroup(this);
         return true;
     }
 
-    private removeLeaf<T extends AbstractLeaf>(list: T[], child: T): boolean {
-        const index = list.indexOf(child);
-        if (index === -1) return false;
-        list.splice(index, 1);
+    private removeChild<T extends GroupItem>(list: T[], child: T): boolean {
+        if (!removeFromArray(list, child)) return false;
         child.removeParentGroup(this);
         return true;
     }
@@ -56,37 +55,35 @@ export class Group extends AbstractBase {
     }
 
     public removeChildGroup(childGroup: Group): boolean {
-        const index = this.childGroups.indexOf(childGroup);
-        if (index === -1) return false;
-        this.childGroups.splice(index, 1);
+        if (!removeFromArray(this.childGroups, childGroup)) return false;
         childGroup.parent = null;
         return true;
     }
 
-    // ── Child leaves (delegated to helpers) ──
+    // ── Child items (delegated to helpers) ──
 
     public addChildTool(childTool: Tool): boolean {
-        return this.addLeaf(this.childTools, childTool);
+        return this.addChild(this.childTools, childTool);
     }
 
     public removeChildTool(childTool: Tool): boolean {
-        return this.removeLeaf(this.childTools, childTool);
+        return this.removeChild(this.childTools, childTool);
     }
 
     public addChildPrompt(childPrompt: Prompt): boolean {
-        return this.addLeaf(this.childPrompts, childPrompt);
+        return this.addChild(this.childPrompts, childPrompt);
     }
 
     public removeChildPrompt(childPrompt: Prompt): boolean {
-        return this.removeLeaf(this.childPrompts, childPrompt);
+        return this.removeChild(this.childPrompts, childPrompt);
     }
 
     public addChildResource(childResource: Resource): boolean {
-        return this.addLeaf(this.childResources, childResource);
+        return this.addChild(this.childResources, childResource);
     }
 
     public removeChildResource(childResource: Resource): boolean {
-        return this.removeLeaf(this.childResources, childResource);
+        return this.removeChild(this.childResources, childResource);
     }
 
     // ── FQN ──
@@ -102,9 +99,5 @@ export class Group extends AbstractBase {
 
     public getFullyQualifiedName(): string {
         return this.getFullyQualifiedNameRecursive(this);
-    }
-
-    public toString(): string {
-        return `Group [name=${this.name}, fqName=${this.getFullyQualifiedName()}, isRoot=${this.isRoot()}, title=${this.title}, description=${this.description}, meta=${this.meta}, childGroups=${this.childGroups}, childTools=${this.childTools}, childPrompts=${this.childPrompts}]`;
     }
 }

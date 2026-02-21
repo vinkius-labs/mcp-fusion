@@ -81,20 +81,19 @@ function generateWorkflowLines<TContext>(
 
 function getGroupSummaries<TContext>(
     actions: readonly InternalAction<TContext>[],
-): Array<{ name: string; description: string; actions: string[] }> {
-    const groups = new Map<string, { description: string; actions: string[] }>();
+): Array<{ name: string; actions: string[] }> {
+    const groups = new Map<string, string[]>();
     for (const action of actions) {
         if (!action.groupName) continue;
         let group = groups.get(action.groupName);
         if (!group) {
-            group = { description: action.groupDescription || '', actions: [] };
+            group = [];
             groups.set(action.groupName, group);
         }
-        group.actions.push(action.actionName);
+        group.push(action.actionName);
     }
-    return Array.from(groups.entries()).map(([name, data]) => ({
+    return Array.from(groups.entries()).map(([name, actions]) => ({
         name,
-        description: data.description,
-        actions: data.actions,
+        actions,
     }));
 }

@@ -59,12 +59,4 @@ describe('Tool', () => {
         tool.addParentGroup(group);
         expect(tool.parentGroups).toHaveLength(1);
     });
-
-    it('should produce correct toString', () => {
-        const tool = new Tool('deploy');
-        tool.title = 'Deploy';
-        const str = tool.toString();
-        expect(str).toContain('Tool');
-        expect(str).toContain('name=deploy');
-    });
 });

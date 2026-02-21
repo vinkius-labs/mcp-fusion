@@ -59,11 +59,4 @@ describe('Prompt', () => {
         const prompt = new Prompt('code_review');
         expect(prompt.getFullyQualifiedName()).toBe('code_review');
     });
-
-    it('should produce correct toString', () => {
-        const prompt = new Prompt('summarize');
-        const str = prompt.toString();
-        expect(str).toContain('Prompt');
-        expect(str).toContain('name=summarize');
-    });
 });

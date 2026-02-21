@@ -22,7 +22,9 @@ export interface ToolResponse {
 
 /** Create a success response from text or a JSON-serializable object */
 export function success(data: string | object): ToolResponse {
-    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const text = typeof data === 'string'
+        ? (data || 'OK')
+        : JSON.stringify(data, null, 2);
     return { content: [{ type: "text", text }] };
 }
 

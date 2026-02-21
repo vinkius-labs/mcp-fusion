@@ -1,14 +1,10 @@
-import { AbstractBase } from './AbstractBase.js';
+import { BaseModel } from './BaseModel.js';
 
-export class PromptArgument extends AbstractBase {
+export class PromptArgument extends BaseModel {
     public required: boolean = false;
 
     public constructor(name: string) {
         super(name);
-    }
-
-    public toString(): string {
-        return `PromptArgument [required=${this.required}, name=${this.name}, title=${this.title}, description=${this.description}, meta=${this.meta}]`;
     }
 
     public getFullyQualifiedName(): string {

@@ -5,19 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-02-21
+
+### Added
+- **`ConverterBase<TSource, TTarget>`:** Generic base class for all bidirectional converters. Consolidates the batch conversion logic (`map` + null filtering) that was previously duplicated across `GroupConverterBase`, `ToolConverterBase`, `PromptConverterBase`, `ResourceConverterBase`, and `ToolAnnotationsConverterBase`. Domain-specific converters now extend this base via bridge methods, eliminating the DRY violation while maintaining full backward compatibility.
+- **`removeFromArray<T>()` utility:** Extracted duplicated `indexOf` + `splice` pattern into a reusable generic helper in `src/utils.ts`. Used by `GroupItem`, `Prompt`, and `Group`.
+- **ESLint integration:** Added `eslint.config.js` (flat config) with `typescript-eslint` for type-aware linting. `npm run lint` / `npm run lint:fix` scripts available.
+- **`JsonSchemaObject` interface:** Typed the `zodToJsonSchema` output in `SchemaGenerator.ts`, eliminating raw `as Record<string, unknown>` casts.
+
+### Changed
+- **BREAKING:** Java-style naming convention removed — all classes renamed to idiomatic TypeScript:
+  - `AbstractBase` → `BaseModel` (file: `BaseModel.ts`)
+  - `AbstractLeaf` → `GroupItem` (file: `GroupItem.ts`)
+  - `AbstractConverter` → `ConverterBase` (file: `ConverterBase.ts`)
+  - `AbstractGroupConverter` → `GroupConverterBase`
+  - `AbstractToolConverter` → `ToolConverterBase`
+  - `AbstractPromptConverter` → `PromptConverterBase`
+  - `AbstractResourceConverter` → `ResourceConverterBase`
+  - `AbstractToolAnnotationsConverter` → `ToolAnnotationsConverterBase`
+  - `addLeaf()` / `removeLeaf()` → `addChild()` / `removeChild()` (private methods in `Group`)
+- **BREAKING:** `ToolAnnotationsConverter` API normalized — method overloading removed. Use `convertFromToolAnnotation()` / `convertToToolAnnotation()` for single items, and `convertFromToolAnnotations()` / `convertToToolAnnotations()` for batch. Previous overloaded signatures no longer exist.
+- **BREAKING:** `ToolAnnotationsConverterBase` abstract methods renamed from `convertFromToolAnnotationsSingle` / `convertToToolAnnotationsSingle` to `convertFromToolAnnotation` / `convertToToolAnnotation`.
+- `success('')` now returns `'OK'` instead of an empty string — prevents confusing empty MCP responses.
+
+### Fixed
+- **`getGroupSummaries` dead field:** Removed unused `description` field from the return type — only `name` and `actions` were consumed.
+- **Unused import:** Removed dead `z` import from `GroupedToolBuilder.ts`.
+- **`ToolRegistry` typing:** Typed `callHandler` request parameter instead of `any`.
+
+### Removed
+- **BREAKING:** `hashCode()` and `equals()` methods removed from `BaseModel`. These were Java `Object` patterns with no runtime utility in TypeScript/JavaScript — use `===` for identity comparison.
+- **BREAKING:** `toString()` methods removed from all domain model classes (`Group`, `Tool`, `Prompt`, `PromptArgument`, `Resource`, `Icon`, `ToolAnnotations`, `Annotations`). These used the Java `ClassName [field=value]` format — use `JSON.stringify()` or structured logging instead.
+- Redundant null/undefined constructor guard removed from `BaseModel` — TypeScript strict mode handles this at compile time.
 
 ## [0.4.0] - 2026-02-20
 
 ### Changed
 - **BREAKING:** Domain model migrated from Java-style getter/setter methods to idiomatic TypeScript public fields. All `getX()`/`setX()` methods removed — use direct property access instead (e.g. `tool.name` instead of `tool.getName()`, `tool.title = 'Deploy'` instead of `tool.setTitle('Deploy')`).
-- **BREAKING:** `getParentGroups()` and `getParentGroupRoots()` removed from `AbstractLeaf`. Use `instance.parentGroups` directly; for roots use `instance.parentGroups.map(g => g.getRoot())`.
+- **BREAKING:** `getParentGroups()` and `getParentGroupRoots()` removed from `GroupItem`. Use `instance.parentGroups` directly; for roots use `instance.parentGroups.map(g => g.getRoot())`.
 - **BREAKING:** `getChildrenGroups()`, `getChildrenTools()`, `getChildrenPrompts()`, `getChildrenResources()`, `getParent()`, `setParent()` removed from `Group`. Use `instance.childGroups`, `instance.childTools`, `instance.childPrompts`, `instance.childResources`, `instance.parent` directly.
 - **BREAKING:** `Annotations` constructor parameters are now optional: `new Annotations()` is valid. Previously all three were required.
 - `ToolAnnotations` empty constructor removed — class is now a plain data class with public fields.
 
 ### Fixed
-- **Comma operator anti-pattern:** Replaced obscure `indexOf === -1 && (push, true)` pattern with readable `includes()` + explicit return in `AbstractLeaf.addParentGroup()` and `Prompt.addPromptArgument()`.
+- **Comma operator anti-pattern:** Replaced obscure `indexOf === -1 && (push, true)` pattern with readable `includes()` + explicit return in `GroupItem.addParentGroup()` and `Prompt.addPromptArgument()`.
 - **Unused parameter removed:** `sb: string` parameter in `Group.getFullyQualifiedNameRecursive()` was a Java `StringBuilder` remnant — removed.
 - **Dead import removed:** Unused `import { z } from 'zod'` in `ToonDescriptionGenerator.ts`.
 

@@ -1055,7 +1055,7 @@ describe('QA: Extreme Edge Cases', () => {
 
         const r = await b.execute(undefined as any, { action: 'empty' });
         expect(r.isError).toBeUndefined();
-        expect(r.content[0].text).toBe('');
+        expect(r.content[0].text).toBe('OK');
     });
 
     it('should handle action names that are JavaScript keywords', async () => {

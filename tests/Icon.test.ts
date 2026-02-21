@@ -33,17 +33,4 @@ describe('Icon', () => {
         icon.theme = 'dark';
         expect(icon.theme).toBe('dark');
     });
-
-    it('should produce correct toString', () => {
-        const icon = new Icon();
-        icon.src = 'icon.png';
-        icon.mimeType = 'image/png';
-        icon.sizes = ['32x32'];
-        icon.theme = 'light';
-        const str = icon.toString();
-        expect(str).toContain('icon.png');
-        expect(str).toContain('image/png');
-        expect(str).toContain('32x32');
-        expect(str).toContain('light');
-    });
 });

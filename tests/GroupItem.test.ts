@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Tool } from '../src/Tool.js';
 import { Group } from '../src/Group.js';
 
-describe('AbstractLeaf (via Tool)', () => {
+describe('GroupItem (via Tool)', () => {
     it('should start with no parent groups', () => {
         const tool = new Tool('test');
         expect(tool.parentGroups).toHaveLength(0);

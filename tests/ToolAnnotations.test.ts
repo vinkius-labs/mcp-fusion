@@ -47,16 +47,4 @@ describe('ToolAnnotations', () => {
         ta.returnDirect = true;
         expect(ta.returnDirect).toBe(true);
     });
-
-    it('should produce correct toString', () => {
-        const ta = new ToolAnnotations();
-        ta.title = 'Deploy';
-        ta.destructiveHint = true;
-        ta.readOnlyHint = false;
-        const str = ta.toString();
-        expect(str).toContain('ToolAnnotation');
-        expect(str).toContain('title=Deploy');
-        expect(str).toContain('destructiveHint=true');
-        expect(str).toContain('readOnlyHint=false');
-    });
 });

@@ -1,8 +1,8 @@
 export { Role } from './Role.js';
 export { Icon } from './Icon.js';
-export { AbstractBase } from './AbstractBase.js';
+export { BaseModel } from './BaseModel.js';
 export { Group } from './Group.js';
-export { AbstractLeaf } from './AbstractLeaf.js';
+export { GroupItem } from './GroupItem.js';
 export { Annotations } from './Annotations.js';
 export { ToolAnnotations } from './ToolAnnotations.js';
 export { Tool } from './Tool.js';
@@ -10,11 +10,12 @@ export { PromptArgument } from './PromptArgument.js';
 export { Prompt } from './Prompt.js';
 export { Resource } from './Resource.js';
 export {
-    type GroupConverter, AbstractGroupConverter,
-    type ToolConverter, AbstractToolConverter,
-    type PromptConverter, AbstractPromptConverter,
-    type ResourceConverter, AbstractResourceConverter,
-    type ToolAnnotationsConverter, AbstractToolAnnotationsConverter
+    ConverterBase,
+    type GroupConverter, GroupConverterBase,
+    type ToolConverter, ToolConverterBase,
+    type PromptConverter, PromptConverterBase,
+    type ResourceConverter, ResourceConverterBase,
+    type ToolAnnotationsConverter, ToolAnnotationsConverterBase
 } from './converters/index.js';
 
 // Framework

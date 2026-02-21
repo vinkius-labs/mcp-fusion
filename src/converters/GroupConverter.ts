@@ -1,4 +1,5 @@
 import { Group } from '../Group.js';
+import { ConverterBase } from './ConverterBase.js';
 
 export interface GroupConverter<GroupType> {
     convertFromGroups(groups: Group[]): GroupType[];
@@ -7,20 +8,28 @@ export interface GroupConverter<GroupType> {
     convertToGroup(group: GroupType): Group;
 }
 
-export abstract class AbstractGroupConverter<GroupType> implements GroupConverter<GroupType> {
+export abstract class GroupConverterBase<GroupType>
+    extends ConverterBase<Group, GroupType>
+    implements GroupConverter<GroupType>
+{
     public convertFromGroups(groups: Group[]): GroupType[] {
-        return groups
-            .map(gn => this.convertFromGroup(gn))
-            .filter(item => item !== null && item !== undefined);
+        return this.convertFromBatch(groups);
     }
 
     public abstract convertFromGroup(group: Group): GroupType;
 
     public convertToGroups(groups: GroupType[]): Group[] {
-        return groups
-            .map(g => this.convertToGroup(g))
-            .filter(item => item !== null && item !== undefined);
+        return this.convertToBatch(groups);
     }
 
     public abstract convertToGroup(group: GroupType): Group;
+
+    // ── Bridge to ConverterBase ──
+    protected convertFromSingle(source: Group): GroupType {
+        return this.convertFromGroup(source);
+    }
+
+    protected convertToSingle(target: GroupType): Group {
+        return this.convertToGroup(target);
+    }
 }

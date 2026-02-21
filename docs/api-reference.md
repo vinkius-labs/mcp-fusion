@@ -335,7 +335,7 @@ type MiddlewareFn<TContext> = (
 
 All domain model classes use **public fields** for direct property access — idiomatic TypeScript, no getter/setter boilerplate.
 
-### `AbstractBase`
+### `BaseModel`
 
 Base class for all MCP entities.
 
@@ -347,8 +347,6 @@ Base class for all MCP entities.
 | `description` | `string?` | Entity description |
 | `meta` | `Map<string, unknown>?` | Arbitrary metadata |
 | `icons` | `Icon[]?` | Icon definitions |
-| `hashCode()` | `number` | Name-based hash |
-| `equals(obj)` | `boolean` | Name + class equality |
 | `getFullyQualifiedName()` | `string` | Abstract — implemented by subclasses |
 
 ```typescript
@@ -387,7 +385,7 @@ console.log(ci.parent?.name);             // 'devops'
 console.log(ci.getFullyQualifiedName());  // 'devops.ci'
 ```
 
-### `Tool` (extends AbstractLeaf)
+### `Tool` (extends GroupItem)
 
 | Property | Type | Description |
 |---|---|---|
@@ -412,20 +410,20 @@ ta.destructiveHint = true;
 ta.readOnlyHint = false;
 ```
 
-### `Prompt` (extends AbstractLeaf)
+### `Prompt` (extends GroupItem)
 
 | Property/Method | Type | Description |
 |---|---|---|
 | `promptArguments` | `readonly PromptArgument[]` | Argument list |
 | `addPromptArgument(arg)` / `removePromptArgument(arg)` | `boolean` | Manage arguments |
 
-### `PromptArgument` (extends AbstractBase)
+### `PromptArgument` (extends BaseModel)
 
 | Property | Type | Description |
 |---|---|---|
 | `required` | `boolean` | Required flag (default: `false`) |
 
-### `Resource` (extends AbstractLeaf)
+### `Resource` (extends GroupItem)
 
 | Property | Type | Description |
 |---|---|---|
@@ -444,7 +442,7 @@ Constructor parameters are all optional: `new Annotations(audience?, priority?, 
 | `priority` | `number?` | Priority value |
 | `lastModified` | `string?` | Last modified timestamp |
 
-### `AbstractLeaf`
+### `GroupItem`
 
 | Property/Method | Type | Description |
 |---|---|---|
@@ -473,20 +471,35 @@ enum Role {
 
 ## Bidirectional Converters
 
-All converters follow the same pattern: an interface with `convertFrom*` / `convertTo*` methods, and an abstract class that implements batch operations with null filtering.
+All converters share a common base class `ConverterBase<TSource, TTarget>` that implements batch conversion with null filtering. Domain-specific converters extend this base and add typed method aliases.
 
-| Converter | Converts Between |
-|---|---|
-| `AbstractGroupConverter<T>` | `Group` ↔ `T` |
-| `AbstractToolConverter<T>` | `Tool` ↔ `T` |
-| `AbstractPromptConverter<T>` | `Prompt` ↔ `T` |
-| `AbstractResourceConverter<T>` | `Resource` ↔ `T` |
-| `AbstractToolAnnotationsConverter<T>` | `ToolAnnotations` ↔ `T` |
+### `ConverterBase<TSource, TTarget>`
 
-Usage: extend the abstract class and implement the single-item conversion methods.
+Generic base class providing batch conversion logic in both directions.
+
+| Method | Type | Description |
+|---|---|---|
+| `convertFromBatch(sources)` | `TTarget[]` | Batch convert source → target (null-filtered) |
+| `convertFromSingle(source)` | `TTarget` | *protected abstract* — single-item conversion |
+| `convertToBatch(targets)` | `TSource[]` | Batch convert target → source (null-filtered) |
+| `convertToSingle(target)` | `TSource` | *protected abstract* — single-item conversion |
+
+### Domain-Specific Converters
+
+Each extends `ConverterBase` and delegates batch operations to the base class:
+
+| Converter | Extends | Converts Between |
+|---|---|---|
+| `GroupConverterBase<T>` | `ConverterBase<Group, T>` | `Group` ↔ `T` |
+| `ToolConverterBase<T>` | `ConverterBase<Tool, T>` | `Tool` ↔ `T` |
+| `PromptConverterBase<T>` | `ConverterBase<Prompt, T>` | `Prompt` ↔ `T` |
+| `ResourceConverterBase<T>` | `ConverterBase<Resource, T>` | `Resource` ↔ `T` |
+| `ToolAnnotationsConverterBase<T>` | `ConverterBase<ToolAnnotations, T>` | `ToolAnnotations` ↔ `T` |
+
+Usage: extend the domain-specific abstract class and implement the single-item conversion methods.
 
 ```typescript
-class MyToolConverter extends AbstractToolConverter<ExternalTool> {
+class MyToolConverter extends ToolConverterBase<ExternalTool> {
     convertFromTool(tool: Tool): ExternalTool {
         return { name: tool.name, schema: tool.inputSchema };
     }
@@ -499,4 +512,17 @@ class MyToolConverter extends AbstractToolConverter<ExternalTool> {
 
 const converter = new MyToolConverter();
 const externalTools = converter.convertFromTools(tools);  // Batch, null-filtered
+```
+
+For custom domain types not covered by the built-in converters, extend `ConverterBase` directly:
+
+```typescript
+class MyCustomConverter extends ConverterBase<MySource, MyTarget> {
+    protected convertFromSingle(source: MySource): MyTarget {
+        return { /* ... */ };
+    }
+    protected convertToSingle(target: MyTarget): MySource {
+        return { /* ... */ };
+    }
+}
 ```

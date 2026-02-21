@@ -1,7 +1,8 @@
-import { AbstractBase } from './AbstractBase.js';
+import { BaseModel } from './BaseModel.js';
 import type { Group } from './Group.js';
+import { removeFromArray } from './utils.js';
 
-export class AbstractLeaf extends AbstractBase {
+export class GroupItem extends BaseModel {
     public readonly parentGroups: Group[];
 
     protected constructor(name: string, nameSeparator?: string) {
@@ -16,12 +17,7 @@ export class AbstractLeaf extends AbstractBase {
     }
 
     public removeParentGroup(parentGroup: Group): boolean {
-        const index = this.parentGroups.indexOf(parentGroup);
-        if (index !== -1) {
-            this.parentGroups.splice(index, 1);
-            return true;
-        }
-        return false;
+        return removeFromArray(this.parentGroups, parentGroup);
     }
 
     public getFullyQualifiedName(): string {

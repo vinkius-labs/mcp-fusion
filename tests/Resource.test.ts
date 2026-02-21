@@ -56,14 +56,4 @@ describe('Resource', () => {
         const resource = new Resource('config');
         expect(resource.getFullyQualifiedName()).toBe('config');
     });
-
-    it('should produce correct toString', () => {
-        const resource = new Resource('readme');
-        resource.uri = 'file:///README.md';
-        resource.mimeType = 'text/markdown';
-        const str = resource.toString();
-        expect(str).toContain('Resource');
-        expect(str).toContain('name=readme');
-        expect(str).toContain('text/markdown');
-    });
 });

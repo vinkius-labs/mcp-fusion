@@ -30,13 +30,4 @@ describe('PromptArgument', () => {
         expect(arg.title).toBe('Username');
         expect(arg.description).toBe('The username to use');
     });
-
-    it('should produce correct toString', () => {
-        const arg = new PromptArgument('email');
-        arg.required = true;
-        const str = arg.toString();
-        expect(str).toContain('PromptArgument');
-        expect(str).toContain('required=true');
-        expect(str).toContain('name=email');
-    });
 });
