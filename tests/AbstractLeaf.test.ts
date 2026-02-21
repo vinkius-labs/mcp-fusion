@@ -5,14 +5,14 @@ import { Group } from '../src/Group.js';
 describe('AbstractLeaf (via Tool)', () => {
     it('should start with no parent groups', () => {
         const tool = new Tool('test');
-        expect(tool.getParentGroups()).toHaveLength(0);
+        expect(tool.parentGroups).toHaveLength(0);
     });
 
     it('should add parent group', () => {
         const tool = new Tool('test');
         const group = new Group('parent');
         expect(tool.addParentGroup(group)).toBe(true);
-        expect(tool.getParentGroups()).toHaveLength(1);
+        expect(tool.parentGroups).toHaveLength(1);
     });
 
     it('should not add duplicate parent group', () => {
@@ -20,7 +20,7 @@ describe('AbstractLeaf (via Tool)', () => {
         const group = new Group('parent');
         tool.addParentGroup(group);
         expect(tool.addParentGroup(group)).toBe(false);
-        expect(tool.getParentGroups()).toHaveLength(1);
+        expect(tool.parentGroups).toHaveLength(1);
     });
 
     it('should throw when adding null parent group', () => {
@@ -33,7 +33,7 @@ describe('AbstractLeaf (via Tool)', () => {
         const group = new Group('parent');
         tool.addParentGroup(group);
         expect(tool.removeParentGroup(group)).toBe(true);
-        expect(tool.getParentGroups()).toHaveLength(0);
+        expect(tool.parentGroups).toHaveLength(0);
     });
 
     it('should return false when removing non-existing parent group', () => {
@@ -50,9 +50,9 @@ describe('AbstractLeaf (via Tool)', () => {
         const tool = new Tool('test');
         tool.addParentGroup(child);
 
-        const roots = tool.getParentGroupRoots();
+        const roots = tool.parentGroups.map(g => g.getRoot());
         expect(roots).toHaveLength(1);
-        expect(roots[0].getName()).toBe('root');
+        expect(roots[0].name).toBe('root');
     });
 
     it('should get root when parent is already root', () => {
@@ -60,9 +60,9 @@ describe('AbstractLeaf (via Tool)', () => {
         const tool = new Tool('test');
         tool.addParentGroup(root);
 
-        const roots = tool.getParentGroupRoots();
+        const roots = tool.parentGroups.map(g => g.getRoot());
         expect(roots).toHaveLength(1);
-        expect(roots[0].getName()).toBe('root');
+        expect(roots[0].name).toBe('root');
     });
 
     it('should handle multiple parent groups', () => {
@@ -71,6 +71,6 @@ describe('AbstractLeaf (via Tool)', () => {
         const group2 = new Group('group2');
         tool.addParentGroup(group1);
         tool.addParentGroup(group2);
-        expect(tool.getParentGroups()).toHaveLength(2);
+        expect(tool.parentGroups).toHaveLength(2);
     });
 });

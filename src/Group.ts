@@ -4,11 +4,11 @@ import { Prompt } from './Prompt.js';
 import { Resource } from './Resource.js';
 
 export class Group extends AbstractBase {
-    protected parent: Group | null = null;
-    protected readonly childGroups: Group[];
-    protected readonly childTools: Tool[];
-    protected readonly childPrompts: Prompt[];
-    protected readonly childResources: Resource[];
+    public parent: Group | null = null;
+    public readonly childGroups: Group[];
+    public readonly childTools: Tool[];
+    public readonly childPrompts: Prompt[];
+    public readonly childResources: Resource[];
 
     public constructor(name: string, nameSeparator?: string) {
         super(name, nameSeparator !== undefined ? nameSeparator : AbstractBase.DEFAULT_SEPARATOR);
@@ -16,14 +16,6 @@ export class Group extends AbstractBase {
         this.childTools = [];
         this.childPrompts = [];
         this.childResources = [];
-    }
-
-    public getParent(): Group | null {
-        return this.parent;
-    }
-
-    public setParent(parent: Group): void {
-        this.parent = parent;
     }
 
     public getRoot(): Group {
@@ -40,13 +32,10 @@ export class Group extends AbstractBase {
     }
 
     public addChildGroup(childGroup: Group): boolean {
-        const added = this.childGroups.indexOf(childGroup) === -1;
-        if (added) {
-            this.childGroups.push(childGroup);
-            childGroup.parent = this;
-            return true;
-        }
-        return false;
+        if (this.childGroups.includes(childGroup)) return false;
+        this.childGroups.push(childGroup);
+        childGroup.parent = this;
+        return true;
     }
 
     public removeChildGroup(childGroup: Group): boolean {
@@ -59,24 +48,16 @@ export class Group extends AbstractBase {
         return false;
     }
 
-    public getChildrenGroups(): Group[] {
-        return this.childGroups;
-    }
-
     public addChildTool(childTool: Tool): boolean {
-        const added = this.childTools.indexOf(childTool) === -1;
-        if (added) {
-            this.childTools.push(childTool);
-            childTool.addParentGroup(this);
-            return true;
-        }
-        return false;
+        if (this.childTools.includes(childTool)) return false;
+        this.childTools.push(childTool);
+        childTool.addParentGroup(this);
+        return true;
     }
 
     public removeChildTool(childTool: Tool): boolean {
         const index = this.childTools.indexOf(childTool);
-        const removed = index !== -1;
-        if (removed) {
+        if (index !== -1) {
             this.childTools.splice(index, 1);
             childTool.removeParentGroup(this);
             return true;
@@ -84,24 +65,16 @@ export class Group extends AbstractBase {
         return false;
     }
 
-    public getChildrenTools(): Tool[] {
-        return this.childTools;
-    }
-
     public addChildPrompt(childPrompt: Prompt): boolean {
-        const added = this.childPrompts.indexOf(childPrompt) === -1;
-        if (added) {
-            this.childPrompts.push(childPrompt);
-            childPrompt.addParentGroup(this);
-            return true;
-        }
-        return false;
+        if (this.childPrompts.includes(childPrompt)) return false;
+        this.childPrompts.push(childPrompt);
+        childPrompt.addParentGroup(this);
+        return true;
     }
 
     public removeChildPrompt(childPrompt: Prompt): boolean {
         const index = this.childPrompts.indexOf(childPrompt);
-        const removed = index !== -1;
-        if (removed) {
+        if (index !== -1) {
             this.childPrompts.splice(index, 1);
             childPrompt.removeParentGroup(this);
             return true;
@@ -109,24 +82,16 @@ export class Group extends AbstractBase {
         return false;
     }
 
-    public getChildrenResources(): Resource[] {
-        return this.childResources;
-    }
-
     public addChildResource(childResource: Resource): boolean {
-        const added = this.childResources.indexOf(childResource) === -1;
-        if (added) {
-            this.childResources.push(childResource);
-            childResource.addParentGroup(this);
-            return true;
-        }
-        return false;
+        if (this.childResources.includes(childResource)) return false;
+        this.childResources.push(childResource);
+        childResource.addParentGroup(this);
+        return true;
     }
 
     public removeChildResource(childResource: Resource): boolean {
         const index = this.childResources.indexOf(childResource);
-        const removed = index !== -1;
-        if (removed) {
+        if (index !== -1) {
             this.childResources.splice(index, 1);
             childResource.removeParentGroup(this);
             return true;
@@ -134,21 +99,17 @@ export class Group extends AbstractBase {
         return false;
     }
 
-    public getChildrenPrompts(): Prompt[] {
-        return this.childPrompts;
-    }
-
-    protected getFullyQualifiedNameRecursive(sb: string, tg: Group): string {
-        const parent = tg.getParent();
+    protected getFullyQualifiedNameRecursive(tg: Group): string {
+        const parent = tg.parent;
         if (parent !== null) {
-            const parentName = this.getFullyQualifiedNameRecursive(sb, parent);
-            return parentName + this.nameSeparator + tg.getName();
+            const parentName = this.getFullyQualifiedNameRecursive(parent);
+            return parentName + this.nameSeparator + tg.name;
         }
-        return tg.getName();
+        return tg.name;
     }
 
     public getFullyQualifiedName(): string {
-        return this.getFullyQualifiedNameRecursive("", this);
+        return this.getFullyQualifiedNameRecursive(this);
     }
 
     public toString(): string {

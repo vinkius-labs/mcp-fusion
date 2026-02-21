@@ -1,18 +1,10 @@
 import { AbstractBase } from './AbstractBase.js';
 
 export class PromptArgument extends AbstractBase {
-    protected required: boolean = false;
+    public required: boolean = false;
 
     public constructor(name: string) {
         super(name);
-    }
-
-    public setRequired(required: boolean): void {
-        this.required = required;
-    }
-
-    public isRequired(): boolean {
-        return this.required;
     }
 
     public toString(): string {

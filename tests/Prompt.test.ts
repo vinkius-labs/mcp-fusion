@@ -6,22 +6,22 @@ import { Group } from '../src/Group.js';
 describe('Prompt', () => {
     it('should create with name', () => {
         const prompt = new Prompt('code_review');
-        expect(prompt.getName()).toBe('code_review');
+        expect(prompt.name).toBe('code_review');
     });
 
     it('should start with empty arguments', () => {
         const prompt = new Prompt('code_review');
-        expect(prompt.getPromptArguments()).toHaveLength(0);
+        expect(prompt.promptArguments).toHaveLength(0);
     });
 
     it('should add prompt argument', () => {
         const prompt = new Prompt('code_review');
         const arg = new PromptArgument('language');
-        arg.setRequired(true);
+        arg.required = true;
         prompt.addPromptArgument(arg);
-        expect(prompt.getPromptArguments()).toHaveLength(1);
-        expect(prompt.getPromptArguments()[0].getName()).toBe('language');
-        expect(prompt.getPromptArguments()[0].isRequired()).toBe(true);
+        expect(prompt.promptArguments).toHaveLength(1);
+        expect(prompt.promptArguments[0].name).toBe('language');
+        expect(prompt.promptArguments[0].required).toBe(true);
     });
 
     it('should not add duplicate arguments', () => {
@@ -29,7 +29,7 @@ describe('Prompt', () => {
         const arg = new PromptArgument('language');
         prompt.addPromptArgument(arg);
         prompt.addPromptArgument(arg);
-        expect(prompt.getPromptArguments()).toHaveLength(1);
+        expect(prompt.promptArguments).toHaveLength(1);
     });
 
     it('should throw when adding null argument', () => {
@@ -42,7 +42,7 @@ describe('Prompt', () => {
         const arg = new PromptArgument('language');
         prompt.addPromptArgument(arg);
         expect(prompt.removePromptArgument(arg)).toBe(true);
-        expect(prompt.getPromptArguments()).toHaveLength(0);
+        expect(prompt.promptArguments).toHaveLength(0);
     });
 
     it('should return false when removing non-existing argument', () => {
@@ -55,7 +55,7 @@ describe('Prompt', () => {
         const prompt = new Prompt('code_review');
         const group = new Group('templates');
         prompt.addParentGroup(group);
-        expect(prompt.getParentGroups()).toHaveLength(1);
+        expect(prompt.parentGroups).toHaveLength(1);
     });
 
     it('should return name as fully qualified name', () => {

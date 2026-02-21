@@ -6,37 +6,37 @@ import { Group } from '../src/Group.js';
 describe('Tool', () => {
     it('should create with name', () => {
         const tool = new Tool('run_pipeline');
-        expect(tool.getName()).toBe('run_pipeline');
+        expect(tool.name).toBe('run_pipeline');
     });
 
     it('should set and get inputSchema', () => {
         const tool = new Tool('deploy');
-        tool.setInputSchema('{"type":"object","properties":{"env":{"type":"string"}}}');
-        expect(tool.getInputSchema()).toContain('env');
+        tool.inputSchema = '{"type":"object","properties":{"env":{"type":"string"}}}';
+        expect(tool.inputSchema).toContain('env');
     });
 
     it('should set and get outputSchema', () => {
         const tool = new Tool('deploy');
-        tool.setOutputSchema('{"type":"object","properties":{"status":{"type":"string"}}}');
-        expect(tool.getOutputSchema()).toContain('status');
+        tool.outputSchema = '{"type":"object","properties":{"status":{"type":"string"}}}';
+        expect(tool.outputSchema).toContain('status');
     });
 
     it('should set and get toolAnnotations', () => {
         const tool = new Tool('deploy');
         const annotations = new ToolAnnotations();
-        annotations.setDestructiveHint(true);
-        annotations.setReadOnlyHint(false);
-        tool.setToolAnnotations(annotations);
-        expect(tool.getToolAnnotations()!.getDestructiveHint()).toBe(true);
-        expect(tool.getToolAnnotations()!.getReadOnlyHint()).toBe(false);
+        annotations.destructiveHint = true;
+        annotations.readOnlyHint = false;
+        tool.toolAnnotations = annotations;
+        expect(tool.toolAnnotations!.destructiveHint).toBe(true);
+        expect(tool.toolAnnotations!.readOnlyHint).toBe(false);
     });
 
     it('should set title and description', () => {
         const tool = new Tool('check_status');
-        tool.setTitle('Check Status');
-        tool.setDescription('Checks the pipeline status');
-        expect(tool.getTitle()).toBe('Check Status');
-        expect(tool.getDescription()).toBe('Checks the pipeline status');
+        tool.title = 'Check Status';
+        tool.description = 'Checks the pipeline status';
+        expect(tool.title).toBe('Check Status');
+        expect(tool.description).toBe('Checks the pipeline status');
     });
 
     it('should return name as fully qualified name', () => {
@@ -48,8 +48,8 @@ describe('Tool', () => {
         const tool = new Tool('build');
         const group = new Group('ci');
         tool.addParentGroup(group);
-        expect(tool.getParentGroups()).toHaveLength(1);
-        expect(tool.getParentGroups()[0].getName()).toBe('ci');
+        expect(tool.parentGroups).toHaveLength(1);
+        expect(tool.parentGroups[0].name).toBe('ci');
     });
 
     it('should not add duplicate parent groups', () => {
@@ -57,12 +57,12 @@ describe('Tool', () => {
         const group = new Group('ci');
         tool.addParentGroup(group);
         tool.addParentGroup(group);
-        expect(tool.getParentGroups()).toHaveLength(1);
+        expect(tool.parentGroups).toHaveLength(1);
     });
 
     it('should produce correct toString', () => {
         const tool = new Tool('deploy');
-        tool.setTitle('Deploy');
+        tool.title = 'Deploy';
         const str = tool.toString();
         expect(str).toContain('Tool');
         expect(str).toContain('name=deploy');

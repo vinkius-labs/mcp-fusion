@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-20
+
+### Changed
+- **BREAKING:** Domain model migrated from Java-style getter/setter methods to idiomatic TypeScript public fields. All `getX()`/`setX()` methods removed — use direct property access instead (e.g. `tool.name` instead of `tool.getName()`, `tool.title = 'Deploy'` instead of `tool.setTitle('Deploy')`).
+- **BREAKING:** `getParentGroups()` and `getParentGroupRoots()` removed from `AbstractLeaf`. Use `instance.parentGroups` directly; for roots use `instance.parentGroups.map(g => g.getRoot())`.
+- **BREAKING:** `getChildrenGroups()`, `getChildrenTools()`, `getChildrenPrompts()`, `getChildrenResources()`, `getParent()`, `setParent()` removed from `Group`. Use `instance.childGroups`, `instance.childTools`, `instance.childPrompts`, `instance.childResources`, `instance.parent` directly.
+- **BREAKING:** `Annotations` constructor parameters are now optional: `new Annotations()` is valid. Previously all three were required.
+- `ToolAnnotations` empty constructor removed — class is now a plain data class with public fields.
+
+### Fixed
+- **Comma operator anti-pattern:** Replaced obscure `indexOf === -1 && (push, true)` pattern with readable `includes()` + explicit return in `AbstractLeaf.addParentGroup()` and `Prompt.addPromptArgument()`.
+- **Unused parameter removed:** `sb: string` parameter in `Group.getFullyQualifiedNameRecursive()` was a Java `StringBuilder` remnant — removed.
+- **Dead import removed:** Unused `import { z } from 'zod'` in `ToonDescriptionGenerator.ts`.
+
+### Documentation
+- `docs/api-reference.md` rewritten for new public-field API with usage examples.
+
 ## [0.2.1] - 2026-02-17
 
 ### Fixed

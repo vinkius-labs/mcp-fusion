@@ -8,13 +8,13 @@ describe('Group', () => {
     describe('basic properties', () => {
         it('should create with name', () => {
             const group = new Group('devops');
-            expect(group.getName()).toBe('devops');
+            expect(group.name).toBe('devops');
         });
 
         it('should be root when no parent', () => {
             const group = new Group('devops');
             expect(group.isRoot()).toBe(true);
-            expect(group.getParent()).toBeNull();
+            expect(group.parent).toBeNull();
         });
 
         it('should return itself as root when no parent', () => {
@@ -24,10 +24,10 @@ describe('Group', () => {
 
         it('should set title and description', () => {
             const group = new Group('devops');
-            group.setTitle('DevOps');
-            group.setDescription('DevOps tools');
-            expect(group.getTitle()).toBe('DevOps');
-            expect(group.getDescription()).toBe('DevOps tools');
+            group.title = 'DevOps';
+            group.description = 'DevOps tools';
+            expect(group.title).toBe('DevOps');
+            expect(group.description).toBe('DevOps tools');
         });
     });
 
@@ -64,15 +64,15 @@ describe('Group', () => {
     describe('child groups', () => {
         it('should start with empty children', () => {
             const group = new Group('devops');
-            expect(group.getChildrenGroups()).toHaveLength(0);
+            expect(group.childGroups).toHaveLength(0);
         });
 
         it('should add child group', () => {
             const parent = new Group('devops');
             const child = new Group('ci');
             expect(parent.addChildGroup(child)).toBe(true);
-            expect(parent.getChildrenGroups()).toHaveLength(1);
-            expect(child.getParent()).toBe(parent);
+            expect(parent.childGroups).toHaveLength(1);
+            expect(child.parent).toBe(parent);
             expect(child.isRoot()).toBe(false);
         });
 
@@ -81,7 +81,7 @@ describe('Group', () => {
             const child = new Group('ci');
             parent.addChildGroup(child);
             expect(parent.addChildGroup(child)).toBe(false);
-            expect(parent.getChildrenGroups()).toHaveLength(1);
+            expect(parent.childGroups).toHaveLength(1);
         });
 
         it('should remove child group', () => {
@@ -89,8 +89,8 @@ describe('Group', () => {
             const child = new Group('ci');
             parent.addChildGroup(child);
             expect(parent.removeChildGroup(child)).toBe(true);
-            expect(parent.getChildrenGroups()).toHaveLength(0);
-            expect(child.getParent()).toBeNull();
+            expect(parent.childGroups).toHaveLength(0);
+            expect(child.parent).toBeNull();
         });
 
         it('should return false when removing non-existing child group', () => {
@@ -113,15 +113,15 @@ describe('Group', () => {
     describe('child tools', () => {
         it('should start with empty tools', () => {
             const group = new Group('devops');
-            expect(group.getChildrenTools()).toHaveLength(0);
+            expect(group.childTools).toHaveLength(0);
         });
 
         it('should add child tool and set bidirectional reference', () => {
             const group = new Group('ci');
             const tool = new Tool('run_pipeline');
             expect(group.addChildTool(tool)).toBe(true);
-            expect(group.getChildrenTools()).toHaveLength(1);
-            expect(tool.getParentGroups()).toContain(group);
+            expect(group.childTools).toHaveLength(1);
+            expect(tool.parentGroups).toContain(group);
         });
 
         it('should not add duplicate tool', () => {
@@ -129,7 +129,7 @@ describe('Group', () => {
             const tool = new Tool('run_pipeline');
             group.addChildTool(tool);
             expect(group.addChildTool(tool)).toBe(false);
-            expect(group.getChildrenTools()).toHaveLength(1);
+            expect(group.childTools).toHaveLength(1);
         });
 
         it('should remove child tool and clear bidirectional reference', () => {
@@ -137,8 +137,8 @@ describe('Group', () => {
             const tool = new Tool('run_pipeline');
             group.addChildTool(tool);
             expect(group.removeChildTool(tool)).toBe(true);
-            expect(group.getChildrenTools()).toHaveLength(0);
-            expect(tool.getParentGroups()).not.toContain(group);
+            expect(group.childTools).toHaveLength(0);
+            expect(tool.parentGroups).not.toContain(group);
         });
 
         it('should return false when removing non-existing tool', () => {
@@ -151,15 +151,15 @@ describe('Group', () => {
     describe('child prompts', () => {
         it('should start with empty prompts', () => {
             const group = new Group('templates');
-            expect(group.getChildrenPrompts()).toHaveLength(0);
+            expect(group.childPrompts).toHaveLength(0);
         });
 
         it('should add child prompt and set bidirectional reference', () => {
             const group = new Group('templates');
             const prompt = new Prompt('code_review');
             expect(group.addChildPrompt(prompt)).toBe(true);
-            expect(group.getChildrenPrompts()).toHaveLength(1);
-            expect(prompt.getParentGroups()).toContain(group);
+            expect(group.childPrompts).toHaveLength(1);
+            expect(prompt.parentGroups).toContain(group);
         });
 
         it('should not add duplicate prompt', () => {
@@ -174,23 +174,23 @@ describe('Group', () => {
             const prompt = new Prompt('code_review');
             group.addChildPrompt(prompt);
             expect(group.removeChildPrompt(prompt)).toBe(true);
-            expect(group.getChildrenPrompts()).toHaveLength(0);
-            expect(prompt.getParentGroups()).not.toContain(group);
+            expect(group.childPrompts).toHaveLength(0);
+            expect(prompt.parentGroups).not.toContain(group);
         });
     });
 
     describe('child resources', () => {
         it('should start with empty resources', () => {
             const group = new Group('config');
-            expect(group.getChildrenResources()).toHaveLength(0);
+            expect(group.childResources).toHaveLength(0);
         });
 
         it('should add child resource and set bidirectional reference', () => {
             const group = new Group('config');
             const resource = new Resource('settings.yaml');
             expect(group.addChildResource(resource)).toBe(true);
-            expect(group.getChildrenResources()).toHaveLength(1);
-            expect(resource.getParentGroups()).toContain(group);
+            expect(group.childResources).toHaveLength(1);
+            expect(resource.parentGroups).toContain(group);
         });
 
         it('should not add duplicate resource', () => {
@@ -205,23 +205,19 @@ describe('Group', () => {
             const resource = new Resource('settings.yaml');
             group.addChildResource(resource);
             expect(group.removeChildResource(resource)).toBe(true);
-            expect(group.getChildrenResources()).toHaveLength(0);
-            expect(resource.getParentGroups()).not.toContain(group);
+            expect(group.childResources).toHaveLength(0);
+            expect(resource.parentGroups).not.toContain(group);
         });
     });
 
     describe('complex tree', () => {
         it('should build a full hierarchy', () => {
-            // Root
             const root = new Group('devops');
-
-            // Sub-groups
             const ci = new Group('ci');
             const deploy = new Group('deploy');
             root.addChildGroup(ci);
             root.addChildGroup(deploy);
 
-            // Tools
             const runPipeline = new Tool('run_pipeline');
             const checkStatus = new Tool('check_status');
             ci.addChildTool(runPipeline);
@@ -232,39 +228,34 @@ describe('Group', () => {
             deploy.addChildTool(deployStaging);
             deploy.addChildTool(deployProd);
 
-            // Prompt
             const reviewPrompt = new Prompt('review_deploy');
             deploy.addChildPrompt(reviewPrompt);
 
-            // Resource
             const config = new Resource('config.yaml');
             root.addChildResource(config);
 
-            // Assertions
-            expect(root.getChildrenGroups()).toHaveLength(2);
-            expect(ci.getChildrenTools()).toHaveLength(2);
-            expect(deploy.getChildrenTools()).toHaveLength(2);
-            expect(deploy.getChildrenPrompts()).toHaveLength(1);
-            expect(root.getChildrenResources()).toHaveLength(1);
+            expect(root.childGroups).toHaveLength(2);
+            expect(ci.childTools).toHaveLength(2);
+            expect(deploy.childTools).toHaveLength(2);
+            expect(deploy.childPrompts).toHaveLength(1);
+            expect(root.childResources).toHaveLength(1);
 
             expect(ci.getFullyQualifiedName()).toBe('devops.ci');
             expect(deploy.getFullyQualifiedName()).toBe('devops.deploy');
-            expect(deployStaging.getParentGroups()[0].getFullyQualifiedName()).toBe('devops.deploy');
+            expect(deployStaging.parentGroups[0].getFullyQualifiedName()).toBe('devops.deploy');
         });
     });
 
-    describe('manual reparenting via setParent', () => {
+    describe('manual reparenting via direct assignment', () => {
         it('should reassign parent directly', () => {
-            // Scenario: moving a "staging" group from "deploy" to "testing"
             const deploy = new Group('deploy');
             const testing = new Group('testing');
             const staging = new Group('staging');
             deploy.addChildGroup(staging);
-            expect(staging.getParent()).toBe(deploy);
+            expect(staging.parent).toBe(deploy);
 
-            // Manual reparent (setParent only changes the reference, not the tree)
-            staging.setParent(testing);
-            expect(staging.getParent()).toBe(testing);
+            staging.parent = testing;
+            expect(staging.parent).toBe(testing);
             expect(staging.isRoot()).toBe(false);
         });
     });
@@ -286,7 +277,7 @@ describe('Group', () => {
     describe('toString', () => {
         it('should produce correct toString', () => {
             const group = new Group('devops');
-            group.setTitle('DevOps');
+            group.title = 'DevOps';
             const str = group.toString();
             expect(str).toContain('Group');
             expect(str).toContain('name=devops');

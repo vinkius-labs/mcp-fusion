@@ -21,12 +21,12 @@ interface SimpleGroupDTO {
 
 class TestGroupConverter extends AbstractGroupConverter<SimpleGroupDTO> {
     public convertFromGroup(group: Group): SimpleGroupDTO {
-        return { name: group.getName(), title: group.getTitle() };
+        return { name: group.name, title: group.title };
     }
 
     public convertToGroup(dto: SimpleGroupDTO): Group {
         const group = new Group(dto.name);
-        if (dto.title) group.setTitle(dto.title);
+        if (dto.title) group.title = dto.title;
         return group;
     }
 }
@@ -38,12 +38,12 @@ interface SimpleToolDTO {
 
 class TestToolConverter extends AbstractToolConverter<SimpleToolDTO> {
     public convertFromTool(tool: Tool): SimpleToolDTO {
-        return { name: tool.getName(), schema: tool.getInputSchema() };
+        return { name: tool.name, schema: tool.inputSchema };
     }
 
     public convertToTool(dto: SimpleToolDTO): Tool {
         const tool = new Tool(dto.name);
-        if (dto.schema) tool.setInputSchema(dto.schema);
+        if (dto.schema) tool.inputSchema = dto.schema;
         return tool;
     }
 }
@@ -54,7 +54,7 @@ interface SimplePromptDTO {
 
 class TestPromptConverter extends AbstractPromptConverter<SimplePromptDTO> {
     public convertFromPrompt(prompt: Prompt): SimplePromptDTO {
-        return { name: prompt.getName() };
+        return { name: prompt.name };
     }
 
     public convertToPrompt(dto: SimplePromptDTO): Prompt {
@@ -69,12 +69,12 @@ interface SimpleResourceDTO {
 
 class TestResourceConverter extends AbstractResourceConverter<SimpleResourceDTO> {
     public convertFromResource(resource: Resource): SimpleResourceDTO {
-        return { name: resource.getName(), uri: resource.getUri() };
+        return { name: resource.name, uri: resource.uri };
     }
 
     public convertToResource(dto: SimpleResourceDTO): Resource {
         const resource = new Resource(dto.name);
-        if (dto.uri) resource.setUri(dto.uri);
+        if (dto.uri) resource.uri = dto.uri;
         return resource;
     }
 }
@@ -86,13 +86,13 @@ interface SimpleToolAnnotationsDTO {
 
 class TestToolAnnotationsConverter extends AbstractToolAnnotationsConverter<SimpleToolAnnotationsDTO> {
     protected convertFromToolAnnotationsSingle(ta: ToolAnnotations): SimpleToolAnnotationsDTO {
-        return { title: ta.getTitle(), readOnly: ta.getReadOnlyHint() };
+        return { title: ta.title, readOnly: ta.readOnlyHint };
     }
 
     protected convertToToolAnnotationsSingle(dto: SimpleToolAnnotationsDTO): ToolAnnotations {
         const ta = new ToolAnnotations();
-        if (dto.title) ta.setTitle(dto.title);
-        if (dto.readOnly !== undefined) ta.setReadOnlyHint(dto.readOnly);
+        if (dto.title) ta.title = dto.title;
+        if (dto.readOnly !== undefined) ta.readOnlyHint = dto.readOnly;
         return ta;
     }
 }
@@ -104,7 +104,7 @@ describe('GroupConverter', () => {
 
     it('should convert group to DTO', () => {
         const group = new Group('ci');
-        group.setTitle('CI');
+        group.title = 'CI';
         const dto = converter.convertFromGroup(group);
         expect(dto.name).toBe('ci');
         expect(dto.title).toBe('CI');
@@ -112,8 +112,8 @@ describe('GroupConverter', () => {
 
     it('should convert DTO to group', () => {
         const group = converter.convertToGroup({ name: 'deploy', title: 'Deploy' });
-        expect(group.getName()).toBe('deploy');
-        expect(group.getTitle()).toBe('Deploy');
+        expect(group.name).toBe('deploy');
+        expect(group.title).toBe('Deploy');
     });
 
     it('should batch convert groups to DTOs', () => {
@@ -128,8 +128,8 @@ describe('GroupConverter', () => {
         const dtos = [{ name: 'ci' }, { name: 'deploy' }];
         const groups = converter.convertToGroups(dtos);
         expect(groups).toHaveLength(2);
-        expect(groups[0].getName()).toBe('ci');
-        expect(groups[1].getName()).toBe('deploy');
+        expect(groups[0].name).toBe('ci');
+        expect(groups[1].name).toBe('deploy');
     });
 });
 
@@ -138,7 +138,7 @@ describe('ToolConverter', () => {
 
     it('should convert tool to DTO', () => {
         const tool = new Tool('build');
-        tool.setInputSchema('{"type":"object"}');
+        tool.inputSchema = '{"type":"object"}';
         const dto = converter.convertFromTool(tool);
         expect(dto.name).toBe('build');
         expect(dto.schema).toBe('{"type":"object"}');
@@ -146,8 +146,8 @@ describe('ToolConverter', () => {
 
     it('should convert DTO to tool', () => {
         const tool = converter.convertToTool({ name: 'deploy', schema: '{}' });
-        expect(tool.getName()).toBe('deploy');
-        expect(tool.getInputSchema()).toBe('{}');
+        expect(tool.name).toBe('deploy');
+        expect(tool.inputSchema).toBe('{}');
     });
 
     it('should batch convert tools to DTOs', () => {
@@ -174,7 +174,7 @@ describe('PromptConverter', () => {
 
     it('should convert DTO to prompt', () => {
         const prompt = converter.convertToPrompt({ name: 'summarize' });
-        expect(prompt.getName()).toBe('summarize');
+        expect(prompt.name).toBe('summarize');
     });
 
     it('should batch convert prompts', () => {
@@ -195,7 +195,7 @@ describe('ResourceConverter', () => {
 
     it('should convert resource to DTO', () => {
         const resource = new Resource('config');
-        resource.setUri('file:///config.yaml');
+        resource.uri = 'file:///config.yaml';
         const dto = converter.convertFromResource(resource);
         expect(dto.name).toBe('config');
         expect(dto.uri).toBe('file:///config.yaml');
@@ -203,8 +203,8 @@ describe('ResourceConverter', () => {
 
     it('should convert DTO to resource', () => {
         const resource = converter.convertToResource({ name: 'readme', uri: 'file:///README.md' });
-        expect(resource.getName()).toBe('readme');
-        expect(resource.getUri()).toBe('file:///README.md');
+        expect(resource.name).toBe('readme');
+        expect(resource.uri).toBe('file:///README.md');
     });
 
     it('should batch convert resources', () => {
@@ -225,8 +225,8 @@ describe('ToolAnnotationsConverter', () => {
 
     it('should convert single tool annotations to DTO', () => {
         const ta = new ToolAnnotations();
-        ta.setTitle('Deploy');
-        ta.setReadOnlyHint(false);
+        ta.title = 'Deploy';
+        ta.readOnlyHint = false;
         const dto = converter.convertFromToolAnnotations(ta);
         expect(dto.title).toBe('Deploy');
         expect(dto.readOnly).toBe(false);
@@ -234,15 +234,15 @@ describe('ToolAnnotationsConverter', () => {
 
     it('should convert single DTO to tool annotations', () => {
         const ta = converter.convertToToolAnnotations({ title: 'Build', readOnly: true });
-        expect(ta.getTitle()).toBe('Build');
-        expect(ta.getReadOnlyHint()).toBe(true);
+        expect(ta.title).toBe('Build');
+        expect(ta.readOnlyHint).toBe(true);
     });
 
     it('should batch convert tool annotations to DTOs', () => {
         const ta1 = new ToolAnnotations();
-        ta1.setTitle('A');
+        ta1.title = 'A';
         const ta2 = new ToolAnnotations();
-        ta2.setTitle('B');
+        ta2.title = 'B';
         const dtos = converter.convertFromToolAnnotations([ta1, ta2]);
         expect(dtos).toHaveLength(2);
     });

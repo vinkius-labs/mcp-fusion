@@ -333,108 +333,132 @@ type MiddlewareFn<TContext> = (
 
 ## Domain Model Classes
 
+All domain model classes use **public fields** for direct property access — idiomatic TypeScript, no getter/setter boilerplate.
+
 ### `AbstractBase`
 
 Base class for all MCP entities.
 
-| Method | Returns | Description |
+| Property/Method | Type | Description |
 |---|---|---|
-| `getName()` | `string` | Entity name |
-| `getTitle()` / `setTitle(title)` | `string?` | Human-readable title |
-| `getDescription()` / `setDescription(desc)` | `string?` | Entity description |
-| `getMeta()` / `setMeta(meta)` | `Map<string, unknown>?` | Arbitrary metadata |
-| `getIcons()` / `setIcons(icons)` | `Icon[]?` | Icon definitions |
+| `name` | `readonly string` | Entity name (set via constructor) |
+| `nameSeparator` | `readonly string` | FQN separator (default: `"."`) |
+| `title` | `string?` | Human-readable title |
+| `description` | `string?` | Entity description |
+| `meta` | `Map<string, unknown>?` | Arbitrary metadata |
+| `icons` | `Icon[]?` | Icon definitions |
 | `hashCode()` | `number` | Name-based hash |
 | `equals(obj)` | `boolean` | Name + class equality |
 | `getFullyQualifiedName()` | `string` | Abstract — implemented by subclasses |
+
+```typescript
+const tool = new Tool('deploy');
+tool.title = 'Deploy Service';
+tool.description = 'Deploys the app to production';
+console.log(tool.name);  // 'deploy'
+```
 
 ### `Group`
 
 Tree node with parent-child relationships for all MCP primitive types.
 
-| Method | Returns | Description |
+| Property/Method | Type | Description |
 |---|---|---|
-| `getParent()` / `setParent(parent)` | `Group?` | Parent group |
+| `parent` | `Group \| null` | Parent group (null for root) |
+| `childGroups` | `readonly Group[]` | Child groups |
+| `childTools` | `readonly Tool[]` | Child tools |
+| `childPrompts` | `readonly Prompt[]` | Child prompts |
+| `childResources` | `readonly Resource[]` | Child resources |
 | `getRoot()` | `Group` | Recursive root traversal |
 | `isRoot()` | `boolean` | True if no parent |
-| `addChildGroup(group)` | `boolean` | Add child group (sets parent) |
-| `removeChildGroup(group)` | `boolean` | Remove child group (clears parent) |
-| `getChildrenGroups()` | `Group[]` | Child groups |
-| `addChildTool(tool)` / `removeChildTool(tool)` | `boolean` | Child tools |
-| `getChildrenTools()` | `Tool[]` | Child tools |
-| `addChildPrompt(prompt)` / `removeChildPrompt(prompt)` | `boolean` | Child prompts |
-| `getChildrenPrompts()` | `Prompt[]` | Child prompts |
-| `addChildResource(resource)` / `removeChildResource(resource)` | `boolean` | Child resources |
-| `getChildrenResources()` | `Resource[]` | Child resources |
+| `addChildGroup(group)` / `removeChildGroup(group)` | `boolean` | Manage child groups (sets/clears parent) |
+| `addChildTool(tool)` / `removeChildTool(tool)` | `boolean` | Manage child tools |
+| `addChildPrompt(prompt)` / `removeChildPrompt(prompt)` | `boolean` | Manage child prompts |
+| `addChildResource(resource)` / `removeChildResource(resource)` | `boolean` | Manage child resources |
 | `getFullyQualifiedName()` | `string` | Recursive dot-separated path: `root.parent.child` |
 
 Constructor accepts optional `nameSeparator` (default: `"."`).
 
+```typescript
+const root = new Group('devops');
+const ci = new Group('ci');
+root.addChildGroup(ci);
+console.log(ci.parent?.name);             // 'devops'
+console.log(ci.getFullyQualifiedName());  // 'devops.ci'
+```
+
 ### `Tool` (extends AbstractLeaf)
 
-| Method | Returns | Description |
+| Property | Type | Description |
 |---|---|---|
-| `getInputSchema()` / `setInputSchema(schema)` | `string?` | Input schema string |
-| `getOutputSchema()` / `setOutputSchema(schema)` | `string?` | Output schema string |
-| `getToolAnnotations()` / `setToolAnnotations(annotations)` | `ToolAnnotations?` | Tool annotation hints |
+| `inputSchema` | `string?` | Input schema string |
+| `outputSchema` | `string?` | Output schema string |
+| `toolAnnotations` | `ToolAnnotations?` | Tool annotation hints |
 
 ### `ToolAnnotations`
 
-| Method | Returns | Description |
+| Property | Type | Description |
 |---|---|---|
-| `getTitle()` / `setTitle(title)` | `string?` | Annotation title |
-| `getReadOnlyHint()` / `setReadOnlyHint(v)` | `boolean?` | Read-only hint |
-| `getDestructiveHint()` / `setDestructiveHint(v)` | `boolean?` | Destructive hint |
-| `getIdempotentHint()` / `setIdempotentHint(v)` | `boolean?` | Idempotent hint |
-| `getOpenWorldHint()` / `setOpenWorldHint(v)` | `boolean?` | Open world hint |
-| `getReturnDirect()` / `setReturnDirect(v)` | `boolean?` | Return direct flag |
+| `title` | `string?` | Annotation title |
+| `readOnlyHint` | `boolean?` | Read-only hint |
+| `destructiveHint` | `boolean?` | Destructive hint |
+| `idempotentHint` | `boolean?` | Idempotent hint |
+| `openWorldHint` | `boolean?` | Open world hint |
+| `returnDirect` | `boolean?` | Return direct flag |
+
+```typescript
+const ta = new ToolAnnotations();
+ta.destructiveHint = true;
+ta.readOnlyHint = false;
+```
 
 ### `Prompt` (extends AbstractLeaf)
 
-| Method | Returns | Description |
+| Property/Method | Type | Description |
 |---|---|---|
-| `getPromptArguments()` | `PromptArgument[]` | Argument list |
+| `promptArguments` | `readonly PromptArgument[]` | Argument list |
 | `addPromptArgument(arg)` / `removePromptArgument(arg)` | `boolean` | Manage arguments |
 
 ### `PromptArgument` (extends AbstractBase)
 
-| Method | Returns | Description |
+| Property | Type | Description |
 |---|---|---|
-| `isRequired()` / `setRequired(v)` | `boolean` | Required flag |
+| `required` | `boolean` | Required flag (default: `false`) |
 
 ### `Resource` (extends AbstractLeaf)
 
-| Method | Returns | Description |
+| Property | Type | Description |
 |---|---|---|
-| `getUri()` / `setUri(uri)` | `string?` | Resource URI |
-| `getSize()` / `setSize(size)` | `number?` | Resource size in bytes |
-| `getMimeType()` / `setMimeType(type)` | `string?` | MIME type |
-| `getAnnotations()` / `setAnnotations(a)` | `Annotations?` | Resource annotations |
+| `uri` | `string?` | Resource URI |
+| `size` | `number?` | Resource size in bytes |
+| `mimeType` | `string?` | MIME type |
+| `annotations` | `Annotations?` | Resource annotations |
 
 ### `Annotations`
 
-| Method | Returns | Description |
+Constructor parameters are all optional: `new Annotations(audience?, priority?, lastModified?)`.
+
+| Property | Type | Description |
 |---|---|---|
-| `getAudience()` / `setAudience(roles)` | `Role[]?` | Target audience (USER, ASSISTANT) |
-| `getPriority()` / `setPriority(n)` | `number?` | Priority value |
-| `getLastModified()` / `setLastModified(s)` | `string?` | Last modified timestamp |
+| `audience` | `Role[]?` | Target audience (USER, ASSISTANT) |
+| `priority` | `number?` | Priority value |
+| `lastModified` | `string?` | Last modified timestamp |
 
 ### `AbstractLeaf`
 
-| Method | Returns | Description |
+| Property/Method | Type | Description |
 |---|---|---|
+| `parentGroups` | `readonly Group[]` | All parent groups |
 | `addParentGroup(group)` / `removeParentGroup(group)` | `boolean` | Multi-parent support |
-| `getParentGroups()` | `Group[]` | All parent groups |
-| `getParentGroupRoots()` | `Group[]` | Root of each parent group |
 
 ### `Icon`
 
-| Method | Returns | Description |
+| Property | Type | Description |
 |---|---|---|
-| `getSrc()` / `setSrc(src)` | `string?` | Icon source URL |
-| `getMimeType()` / `setMimeType(type)` | `string?` | Icon MIME type |
-| `getSizes()` / `setSizes(sizes)` | `string[]?` | Available sizes |
-| `getTheme()` / `setTheme(theme)` | `string?` | Theme (light/dark) |
+| `src` | `string?` | Icon source URL |
+| `mimeType` | `string?` | Icon MIME type |
+| `sizes` | `string[]?` | Available sizes |
+| `theme` | `string?` | Theme (light/dark) |
 
 ### `Role` (enum)
 
@@ -464,11 +488,11 @@ Usage: extend the abstract class and implement the single-item conversion method
 ```typescript
 class MyToolConverter extends AbstractToolConverter<ExternalTool> {
     convertFromTool(tool: Tool): ExternalTool {
-        return { name: tool.getName(), schema: tool.getInputSchema() };
+        return { name: tool.name, schema: tool.inputSchema };
     }
     convertToTool(external: ExternalTool): Tool {
         const tool = new Tool(external.name);
-        if (external.schema) tool.setInputSchema(external.schema);
+        if (external.schema) tool.inputSchema = external.schema;
         return tool;
     }
 }

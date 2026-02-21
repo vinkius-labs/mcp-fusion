@@ -9,7 +9,6 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import { z } from 'zod';
 import { encode } from '@toon-format/toon';
 import type { InternalAction } from './Types.js';
 import { getActionRequiredFields } from './SchemaUtils.js';

@@ -4,42 +4,42 @@ import { Icon } from '../src/Icon.js';
 describe('Icon', () => {
     it('should initialize with undefined values', () => {
         const icon = new Icon();
-        expect(icon.getSrc()).toBeUndefined();
-        expect(icon.getMimeType()).toBeUndefined();
-        expect(icon.getSizes()).toBeUndefined();
-        expect(icon.getTheme()).toBeUndefined();
+        expect(icon.src).toBeUndefined();
+        expect(icon.mimeType).toBeUndefined();
+        expect(icon.sizes).toBeUndefined();
+        expect(icon.theme).toBeUndefined();
     });
 
     it('should set and get src', () => {
         const icon = new Icon();
-        icon.setSrc('https://example.com/icon.png');
-        expect(icon.getSrc()).toBe('https://example.com/icon.png');
+        icon.src = 'https://example.com/icon.png';
+        expect(icon.src).toBe('https://example.com/icon.png');
     });
 
     it('should set and get mimeType', () => {
         const icon = new Icon();
-        icon.setMimeType('image/png');
-        expect(icon.getMimeType()).toBe('image/png');
+        icon.mimeType = 'image/png';
+        expect(icon.mimeType).toBe('image/png');
     });
 
     it('should set and get sizes', () => {
         const icon = new Icon();
-        icon.setSizes(['16x16', '32x32', '64x64']);
-        expect(icon.getSizes()).toEqual(['16x16', '32x32', '64x64']);
+        icon.sizes = ['16x16', '32x32', '64x64'];
+        expect(icon.sizes).toEqual(['16x16', '32x32', '64x64']);
     });
 
     it('should set and get theme', () => {
         const icon = new Icon();
-        icon.setTheme('dark');
-        expect(icon.getTheme()).toBe('dark');
+        icon.theme = 'dark';
+        expect(icon.theme).toBe('dark');
     });
 
     it('should produce correct toString', () => {
         const icon = new Icon();
-        icon.setSrc('icon.png');
-        icon.setMimeType('image/png');
-        icon.setSizes(['32x32']);
-        icon.setTheme('light');
+        icon.src = 'icon.png';
+        icon.mimeType = 'image/png';
+        icon.sizes = ['32x32'];
+        icon.theme = 'light';
         const str = icon.toString();
         expect(str).toContain('icon.png');
         expect(str).toContain('image/png');

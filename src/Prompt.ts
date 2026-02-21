@@ -2,21 +2,19 @@ import { AbstractLeaf } from './AbstractLeaf.js';
 import { PromptArgument } from './PromptArgument.js';
 
 export class Prompt extends AbstractLeaf {
-    protected promptArguments: PromptArgument[] = [];
+    public readonly promptArguments: PromptArgument[] = [];
 
     public constructor(name: string) {
         super(name);
-    }
-
-    public getPromptArguments(): PromptArgument[] {
-        return this.promptArguments;
     }
 
     public addPromptArgument(promptArgument: PromptArgument): boolean {
         if (promptArgument === null || promptArgument === undefined) {
             throw new Error("promptArgument must not be null");
         }
-        return this.promptArguments.indexOf(promptArgument) === -1 && (this.promptArguments.push(promptArgument), true);
+        if (this.promptArguments.includes(promptArgument)) return false;
+        this.promptArguments.push(promptArgument);
+        return true;
     }
 
     public removePromptArgument(promptArgument: PromptArgument): boolean {

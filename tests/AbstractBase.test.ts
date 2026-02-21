@@ -17,7 +17,7 @@ describe('AbstractBase', () => {
     describe('constructor', () => {
         it('should create with name', () => {
             const base = new ConcreteBase('test');
-            expect(base.getName()).toBe('test');
+            expect(base.name).toBe('test');
         });
 
         it('should use default separator', () => {
@@ -36,57 +36,57 @@ describe('AbstractBase', () => {
     describe('title', () => {
         it('should be undefined by default', () => {
             const base = new ConcreteBase('test');
-            expect(base.getTitle()).toBeUndefined();
+            expect(base.title).toBeUndefined();
         });
 
         it('should set and get title', () => {
             const base = new ConcreteBase('test');
-            base.setTitle('Test Title');
-            expect(base.getTitle()).toBe('Test Title');
+            base.title = 'Test Title';
+            expect(base.title).toBe('Test Title');
         });
     });
 
     describe('description', () => {
         it('should be undefined by default', () => {
             const base = new ConcreteBase('test');
-            expect(base.getDescription()).toBeUndefined();
+            expect(base.description).toBeUndefined();
         });
 
         it('should set and get description', () => {
             const base = new ConcreteBase('test');
-            base.setDescription('A description');
-            expect(base.getDescription()).toBe('A description');
+            base.description = 'A description';
+            expect(base.description).toBe('A description');
         });
     });
 
     describe('icons', () => {
         it('should be undefined by default', () => {
             const base = new ConcreteBase('test');
-            expect(base.getIcons()).toBeUndefined();
+            expect(base.icons).toBeUndefined();
         });
 
         it('should set and get icons', () => {
             const base = new ConcreteBase('test');
             const icon = new Icon();
-            icon.setSrc('icon.png');
-            base.setIcons([icon]);
-            expect(base.getIcons()).toHaveLength(1);
-            expect(base.getIcons()![0].getSrc()).toBe('icon.png');
+            icon.src = 'icon.png';
+            base.icons = [icon];
+            expect(base.icons).toHaveLength(1);
+            expect(base.icons![0].src).toBe('icon.png');
         });
     });
 
     describe('meta', () => {
         it('should be undefined by default', () => {
             const base = new ConcreteBase('test');
-            expect(base.getMeta()).toBeUndefined();
+            expect(base.meta).toBeUndefined();
         });
 
         it('should set and get meta', () => {
             const base = new ConcreteBase('test');
             const meta = new Map<string, any>();
             meta.set('key', 'value');
-            base.setMeta(meta);
-            expect(base.getMeta()!.get('key')).toBe('value');
+            base.meta = meta;
+            expect(base.meta!.get('key')).toBe('value');
         });
     });
 
@@ -138,8 +138,6 @@ describe('AbstractBase', () => {
         });
 
         it('should not be equal to a different subclass with same name', () => {
-            // Scenario: two different MCP primitives share the same name "deploy"
-            // but they are distinct types (e.g., a group vs a leaf) — must not equal
             class AnotherBase extends AbstractBase {
                 constructor(name: string) { super(name); }
                 getFullyQualifiedName(): string { return this.name; }

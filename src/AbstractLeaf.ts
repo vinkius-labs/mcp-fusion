@@ -2,7 +2,7 @@ import { AbstractBase } from './AbstractBase.js';
 import type { Group } from './Group.js';
 
 export class AbstractLeaf extends AbstractBase {
-    protected parentGroups: Group[];
+    public readonly parentGroups: Group[];
 
     protected constructor(name: string, nameSeparator?: string) {
         super(name, nameSeparator);
@@ -13,7 +13,9 @@ export class AbstractLeaf extends AbstractBase {
         if (parentGroup === null || parentGroup === undefined) {
             throw new Error("parentGroup must not be null");
         }
-        return this.parentGroups.indexOf(parentGroup) === -1 && (this.parentGroups.push(parentGroup), true);
+        if (this.parentGroups.includes(parentGroup)) return false;
+        this.parentGroups.push(parentGroup);
+        return true;
     }
 
     public removeParentGroup(parentGroup: Group): boolean {
@@ -23,15 +25,6 @@ export class AbstractLeaf extends AbstractBase {
             return true;
         }
         return false;
-    }
-
-    public getParentGroups(): Group[] {
-        return this.parentGroups;
-    }
-
-    public getParentGroupRoots(): Group[] {
-        const parentGroups = this.parentGroups;
-        return parentGroups.map(group => group.getRoot());
     }
 
     public getFullyQualifiedName(): string {

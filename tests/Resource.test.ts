@@ -7,49 +7,49 @@ import { Group } from '../src/Group.js';
 describe('Resource', () => {
     it('should create with name', () => {
         const resource = new Resource('config');
-        expect(resource.getName()).toBe('config');
+        expect(resource.name).toBe('config');
     });
 
     it('should initialize with undefined values', () => {
         const resource = new Resource('config');
-        expect(resource.getUri()).toBeUndefined();
-        expect(resource.getSize()).toBeUndefined();
-        expect(resource.getMimeType()).toBeUndefined();
-        expect(resource.getAnnotations()).toBeUndefined();
+        expect(resource.uri).toBeUndefined();
+        expect(resource.size).toBeUndefined();
+        expect(resource.mimeType).toBeUndefined();
+        expect(resource.annotations).toBeUndefined();
     });
 
     it('should set and get uri', () => {
         const resource = new Resource('config');
-        resource.setUri('file:///etc/config.yaml');
-        expect(resource.getUri()).toBe('file:///etc/config.yaml');
+        resource.uri = 'file:///etc/config.yaml';
+        expect(resource.uri).toBe('file:///etc/config.yaml');
     });
 
     it('should set and get size', () => {
         const resource = new Resource('config');
-        resource.setSize(1024);
-        expect(resource.getSize()).toBe(1024);
+        resource.size = 1024;
+        expect(resource.size).toBe(1024);
     });
 
     it('should set and get mimeType', () => {
         const resource = new Resource('config');
-        resource.setMimeType('application/yaml');
-        expect(resource.getMimeType()).toBe('application/yaml');
+        resource.mimeType = 'application/yaml';
+        expect(resource.mimeType).toBe('application/yaml');
     });
 
     it('should set and get annotations', () => {
         const resource = new Resource('config');
         const annotations = new Annotations([Role.USER], 1, '2025-01-01');
-        resource.setAnnotations(annotations);
-        expect(resource.getAnnotations()!.getPriority()).toBe(1);
-        expect(resource.getAnnotations()!.getAudience()).toEqual([Role.USER]);
+        resource.annotations = annotations;
+        expect(resource.annotations!.priority).toBe(1);
+        expect(resource.annotations!.audience).toEqual([Role.USER]);
     });
 
     it('should manage parent groups', () => {
         const resource = new Resource('config');
         const group = new Group('settings');
         resource.addParentGroup(group);
-        expect(resource.getParentGroups()).toHaveLength(1);
-        expect(resource.getParentGroups()[0].getName()).toBe('settings');
+        expect(resource.parentGroups).toHaveLength(1);
+        expect(resource.parentGroups[0].name).toBe('settings');
     });
 
     it('should return name as fully qualified name', () => {
@@ -59,8 +59,8 @@ describe('Resource', () => {
 
     it('should produce correct toString', () => {
         const resource = new Resource('readme');
-        resource.setUri('file:///README.md');
-        resource.setMimeType('text/markdown');
+        resource.uri = 'file:///README.md';
+        resource.mimeType = 'text/markdown';
         const str = resource.toString();
         expect(str).toContain('Resource');
         expect(str).toContain('name=readme');
