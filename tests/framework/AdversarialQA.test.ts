@@ -670,7 +670,7 @@ describe('QA: Description Generation', () => {
         expect(def.description).toContain('priority');
     });
 
-    it('destructive actions should show ⚠️ DESTRUCTIVE in workflow', () => {
+    it('destructive actions should show [DESTRUCTIVE] in workflow', () => {
         const b = new GroupedToolBuilder('desc_destructive')
             .action({
                 name: 'nuke',
@@ -680,7 +680,7 @@ describe('QA: Description Generation', () => {
             });
 
         const def = b.buildToolDefinition();
-        expect(def.description).toContain('⚠️ DESTRUCTIVE');
+        expect(def.description).toContain('[DESTRUCTIVE]');
     });
 
     it('should use tool name as fallback when no description set', () => {

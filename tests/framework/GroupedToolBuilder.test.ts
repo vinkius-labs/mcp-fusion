@@ -357,14 +357,14 @@ describe('GroupedToolBuilder — Annotations', () => {
         expect((tool as any).annotations.readOnlyHint).toBe(false);
     });
 
-    it('should add ⚠️ DESTRUCTIVE in workflow description for destructive actions', () => {
+    it('should add [DESTRUCTIVE] in workflow description for destructive actions', () => {
         const builder = new GroupedToolBuilder('crud')
             .description('CRUD')
             .action({ name: 'delete', description: 'Delete permanently', destructive: true, handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
 
-        expect(tool.description).toContain('⚠️ DESTRUCTIVE');
+        expect(tool.description).toContain('[DESTRUCTIVE]');
     });
 
     it('should aggregate idempotentHint = true when ALL actions are idempotent', () => {
@@ -787,7 +787,7 @@ describe('Scenario — File System Tool (Grouped)', () => {
         expect(tool.description).toContain('dirs (list)');
 
         // Workflow includes destructive marker
-        expect(tool.description).toContain('⚠️ DESTRUCTIVE');
+        expect(tool.description).toContain('[DESTRUCTIVE]');
 
         // Annotations: not all readOnly (write + delete exist), but delete is destructive
         expect((tool as any).annotations.readOnlyHint).toBe(false);

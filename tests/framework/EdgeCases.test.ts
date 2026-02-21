@@ -552,6 +552,6 @@ describe('GroupedToolBuilder — Description Edge Cases', () => {
             });
 
         const tool = builder.buildToolDefinition();
-        expect(tool.description).toContain("'nuke': Destroy everything. Requires: target ⚠️ DESTRUCTIVE");
+        expect(tool.description).toContain("'nuke': Destroy everything. Requires: target [DESTRUCTIVE]");
     });
 });

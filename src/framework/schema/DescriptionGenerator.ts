@@ -72,7 +72,7 @@ function generateWorkflowLines<TContext>(
             line += requiredFields.join(', ');
         }
         if (isDestructive) {
-            line += ' ⚠️ DESTRUCTIVE';
+            line += ' [DESTRUCTIVE]';
         }
         lines.push(line);
     }

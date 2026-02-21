@@ -220,7 +220,7 @@ export interface ActionConfig<TContext> {
     schema?: ZodObject<ZodRawShape>;
     /**
      * Whether this action is destructive.
-     * When `true`, appends `⚠️ DESTRUCTIVE` to the LLM description.
+     * When `true`, appends `[DESTRUCTIVE]` to the LLM description.
      */
     destructive?: boolean;
     /**

@@ -1,6 +1,6 @@
 # Middleware
 
-Middleware intercepts every action call — before or after the handler. The framework supports three scopes, pre-compiles chains at build time, and composes them right-to-left.
+Middleware conceptually intercepts every action call before or after your route handler resolves. MCP Fusion supports three specific middleware scopes, pre-compiles chains entirely at build time, and perfectly composes them deeply right-to-left.
 
 ---
 
@@ -14,32 +14,32 @@ type MiddlewareFn<TContext> = (
 ) => Promise<ToolResponse>;
 ```
 
-- `ctx` — the per-request context (database, session, user, etc.)
-- `args` — the validated arguments (after Zod parsing and stripping)
-- `next()` — calls the next middleware or the handler. If you don't call `next()`, the handler is never executed.
+- **`ctx`** — the strongly-typed per-request context (database connections, auth sessions, etc.)
+- **`args`** — the perfectly validated arguments (post Zod parsing and `.strip()`)
+- **`next()`** — calls the downstream middleware or the final execution handler. If you don't call `next()`, the handler is never executed.
 
 ---
 
-## Three Middleware Scopes
+## The Three Middleware Scopes
 
-### Global Middleware — `.use()` on the builder
+### 1. Global Middleware
 
-Runs for EVERY action in the tool. This is the outermost layer.
+Attaching via `.use()` directly on the root builder runs the middleware for **every** connected action in the entire tool. This is the outermost execution layer.
 
 ```typescript
-const tool = new GroupedToolBuilder<AppContext>('platform')
+const tool = createTool<AppContext>('platform')
     .use(loggingMiddleware)     // Runs first (outermost)
     .use(authMiddleware)        // Runs second
-    .group('users', g => { ... })
-    .group('billing', g => { ... });
+    .group('users', g => { /* ... */ })
+    .group('billing', g => { /* ... */ });
 ```
 
-### Group-Scoped Middleware — `.use()` on the ActionGroupBuilder
+### 2. Group-Scoped Middleware
 
-Runs only for actions within that group. This is between global middleware and the handler.
+By calling `.use()` onto a specific `ActionGroupBuilder`, the middleware strictly isolates to actions within that designated structural group. This lives perfectly between global middleware and your handler.
 
 ```typescript
-const tool = new GroupedToolBuilder<AppContext>('platform')
+const tool = createTool<AppContext>('platform')
     .use(loggingMiddleware)   // Global: runs for ALL actions
     .group('users', g => {
         g.use(requireAdmin)   // Group-scoped: runs ONLY for users.* actions
@@ -52,104 +52,56 @@ const tool = new GroupedToolBuilder<AppContext>('platform')
     });
 ```
 
-### Per-Action Middleware (via Group Scope)
+### 3. Per-Action Middleware
 
-Since group-scoped middleware applies to all actions in the group, the most granular unit is the group. If you need per-action middleware, create a single-action group.
+Because group-scoped middleware applies natively to all actions inside the structural group, the most granular unit in MCP Fusion is the Group. If you strictly need per-action middleware, create a single-action focused group namespace.
 
 ---
 
-## Execution Order
+## Execution Constraints
 
-The pre-compiled chain executes in this order:
+The framework pre-compiles the chain deterministically.
 
-```
+```text
 Global MW 1 → Global MW 2 → Group MW 1 → Group MW 2 → Handler
 (outermost)                                              (innermost)
 ```
 
-Let's trace a real call with `loggingMiddleware` (global) and `requireAdmin` (group-scoped):
+::: info Why Pre-Compilation Matters
+Traditional Javascript middleware engines (like Express.js or Koa) compose execution arrays at request time—iterating arrays, constructing closures dynamically, and invoking sequentially on every single incoming ping.
+
+**MCP Fusion compiles completely at build time.**
 
 ```typescript
-const loggingMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    const start = Date.now();
-    console.log(`[${new Date().toISOString()}] Call: ${args.action}`);
-    const result = await next();
-    console.log(`[${new Date().toISOString()}] Done: ${args.action} (${Date.now() - start}ms)`);
-    return result;
-};
-
-const requireAdmin: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    if (ctx.role !== 'admin') {
-        return error('Forbidden: admin role required');
-    }
-    return next();
-};
-```
-
-When the LLM calls `users.ban`:
-
-```
-1. loggingMiddleware starts → logs "[...] Call: users.ban"
-2.   requireAdmin checks ctx.role
-3.     If admin → calls next() → banUser handler executes
-4.     If not admin → returns error('Forbidden') — handler never runs
-5. loggingMiddleware logs "[...] Done: users.ban (42ms)"
-```
-
-When the LLM calls `billing.invoices`:
-
-```
-1. loggingMiddleware starts → logs "[...] Call: billing.invoices"
-2.   requireBilling (not requireAdmin — different group)
-3.     listInvoices handler executes
-4. loggingMiddleware logs "[...] Done: billing.invoices (15ms)"
-```
-
----
-
-## Pre-Compilation — Why It Matters
-
-Traditional middleware systems (Express, Koa) compose chains at request time: iterate the middleware array, create closures, call them in sequence. For every request.
-
-This framework compiles chains at build time. The `MiddlewareCompiler` processes each action once:
-
-```typescript
-// What the compiler produces (conceptual):
+// What the compiler builds internally:
 const chain = (ctx, args) =>
     loggingMiddleware(ctx, args, () =>
         requireAdmin(ctx, args, () =>
             banUser(ctx, args)
         )
     );
-
-compiled.set('users.ban', chain);
 ```
-
-At runtime, `execute()` does:
-
-```typescript
-const chain = this._compiledChain.get(action.key);
-return await chain(ctx, args);
-```
-
-One `Map.get()`. No iteration. No runtime closure allocation. The pre-compiled chain is exactly as fast as hand-written nested function calls.
+At runtime, the `.execute()` command runs one single exact `Map.get()`. There is zero iteration overhead and zero runtime array allocation. Your middleware chain runs exactly as fast as bare-metal nested functions.
+:::
 
 ---
 
-## Real-World Middleware Patterns
+## Real-World Patterns
 
-### Authentication
+### Authentication Blocks
+A foundational check to verify active session capabilities on LLM connections.
 
 ```typescript
 const authMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
     if (!ctx.session?.userId) {
-        return error('Authentication required. Please provide valid credentials.');
+        return error('Authentication required. Missing token.');
     }
     return next();
 };
 ```
 
-### Role-Based Access Control
+### Role-Based Access Control (RBAC)
+Restrict entire namespaces natively without copying checks into 40 distinct route handlers.
 
 ```typescript
 function requireRole(...roles: string[]): MiddlewareFn<AppContext> {
@@ -168,36 +120,8 @@ builder.group('admin', g => {
 });
 ```
 
-### Rate Limiting
-
-```typescript
-const callCounts = new Map<string, { count: number; resetAt: number }>();
-
-function rateLimit(maxCalls: number, windowMs: number): MiddlewareFn<AppContext> {
-    return async (ctx, args, next) => {
-        const key = `${ctx.session.userId}:${args.action}`;
-        const now = Date.now();
-        let entry = callCounts.get(key);
-
-        if (!entry || now > entry.resetAt) {
-            entry = { count: 0, resetAt: now + windowMs };
-            callCounts.set(key, entry);
-        }
-
-        entry.count++;
-        if (entry.count > maxCalls) {
-            return error(`Rate limit exceeded. Max ${maxCalls} calls per ${windowMs / 1000}s.`);
-        }
-
-        return next();
-    };
-}
-
-// Usage: 10 calls per minute per user per action
-builder.use(rateLimit(10, 60_000));
-```
-
-### Audit Logging
+### Automatic Audit Logging
+Because middleware sits firmly around the `next()` lifecycle, you can inject audit logs completely invisibly.
 
 ```typescript
 const auditLog: MiddlewareFn<AppContext> = async (ctx, args, next) => {
@@ -208,7 +132,7 @@ const auditLog: MiddlewareFn<AppContext> = async (ctx, args, next) => {
             userId: ctx.session.userId,
             action: args.action as string,
             args: JSON.stringify(args),
-            success: !result.isError,
+            success: !result.isError, // Verify if LLM execution passed
             timestamp: new Date(),
         },
     });
@@ -217,74 +141,26 @@ const auditLog: MiddlewareFn<AppContext> = async (ctx, args, next) => {
 };
 ```
 
-### Input Sanitization
-
-```typescript
-const sanitizeStrings: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    const sanitized = { ...args };
-    for (const [key, value] of Object.entries(sanitized)) {
-        if (typeof value === 'string') {
-            sanitized[key] = value.trim();
-        }
-    }
-    return next();
-};
-```
-
-### Timing and Metrics
-
-```typescript
-const metrics: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    const start = performance.now();
-    const result = await next();
-    const duration = performance.now() - start;
-
-    ctx.metrics.recordToolCall({
-        tool: 'platform',
-        action: args.action as string,
-        durationMs: duration,
-        success: !result.isError,
-    });
-
-    return result;
-};
-```
-
 ---
 
-## Combining Middleware
+## Composing Dense APIs
 
-A realistic production setup:
+A realistic production MCP module leveraging Fusion routing might combine all these patterns into deeply constrained LLM tooling surfaces:
 
 ```typescript
-const platform = new GroupedToolBuilder<AppContext>('platform')
+const platform = createTool<AppContext>('platform')
     .description('Platform API')
-    .use(metrics)            // Timing (outermost — captures total time)
-    .use(authMiddleware)     // Authentication
-    .use(auditLog)           // Audit logging (after auth, before business logic)
+    .use(metrics)            
+    .use(authMiddleware)     
+    .use(auditLog)           
     .group('users', g => {
-        g.use(requireRole('admin'))  // Only admins can manage users
-         .action({ name: 'list', readOnly: true, handler: listUsers })
+        g.use(requireRole('admin'))  
          .action({ name: 'create', schema: createUserSchema, handler: createUser })
          .action({ name: 'ban', destructive: true, schema: banSchema, handler: banUser });
     })
     .group('projects', g => {
-        g.use(rateLimit(30, 60_000)) // Rate limit project operations
+        g.use(rateLimit(30, 60_000)) 
          .action({ name: 'list', readOnly: true, handler: listProjects })
          .action({ name: 'create', schema: createProjectSchema, handler: createProject });
     });
 ```
-
-Pre-compiled chain for `users.ban`:
-
-```
-metrics → authMiddleware → auditLog → requireRole('admin') → banUser
-```
-
-Pre-compiled chain for `projects.list`:
-
-```
-metrics → authMiddleware → auditLog → rateLimit(30, 60000) → listProjects
-```
-
-Different security policies per namespace, all pre-compiled, zero runtime overhead.

@@ -10,6 +10,7 @@ coverage/
 # IDE and editor files
 .idea/
 .vscode/
+.gemini/
 *.swp
 *.swo
 *~
@@ -41,3 +42,8 @@ ehthumbs.db
 
 # Vitest
 .vitest-cache/
+
+# Documentation (VitePress & TypeDoc)
+docs/api/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
