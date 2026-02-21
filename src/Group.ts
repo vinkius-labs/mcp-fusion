@@ -1,4 +1,5 @@
 import { AbstractBase } from './AbstractBase.js';
+import { AbstractLeaf } from './AbstractLeaf.js';
 import { Tool } from './Tool.js';
 import { Prompt } from './Prompt.js';
 import { Resource } from './Resource.js';
@@ -18,18 +19,34 @@ export class Group extends AbstractBase {
         this.childResources = [];
     }
 
+    // ── Private helpers to eliminate add/remove repetition ──
+
+    private addLeaf<T extends AbstractLeaf>(list: T[], child: T): boolean {
+        if (list.includes(child)) return false;
+        list.push(child);
+        child.addParentGroup(this);
+        return true;
+    }
+
+    private removeLeaf<T extends AbstractLeaf>(list: T[], child: T): boolean {
+        const index = list.indexOf(child);
+        if (index === -1) return false;
+        list.splice(index, 1);
+        child.removeParentGroup(this);
+        return true;
+    }
+
+    // ── Tree navigation ──
+
     public getRoot(): Group {
-        const parent = this.parent;
-        if (parent === null) {
-            return this;
-        } else {
-            return parent.getRoot();
-        }
+        return this.parent === null ? this : this.parent.getRoot();
     }
 
     public isRoot(): boolean {
         return this.parent === null;
     }
+
+    // ── Child groups (special: sets parent, not parentGroup) ──
 
     public addChildGroup(childGroup: Group): boolean {
         if (this.childGroups.includes(childGroup)) return false;
@@ -40,64 +57,39 @@ export class Group extends AbstractBase {
 
     public removeChildGroup(childGroup: Group): boolean {
         const index = this.childGroups.indexOf(childGroup);
-        if (index !== -1) {
-            this.childGroups.splice(index, 1);
-            childGroup.parent = null;
-            return true;
-        }
-        return false;
+        if (index === -1) return false;
+        this.childGroups.splice(index, 1);
+        childGroup.parent = null;
+        return true;
     }
 
+    // ── Child leaves (delegated to helpers) ──
+
     public addChildTool(childTool: Tool): boolean {
-        if (this.childTools.includes(childTool)) return false;
-        this.childTools.push(childTool);
-        childTool.addParentGroup(this);
-        return true;
+        return this.addLeaf(this.childTools, childTool);
     }
 
     public removeChildTool(childTool: Tool): boolean {
-        const index = this.childTools.indexOf(childTool);
-        if (index !== -1) {
-            this.childTools.splice(index, 1);
-            childTool.removeParentGroup(this);
-            return true;
-        }
-        return false;
+        return this.removeLeaf(this.childTools, childTool);
     }
 
     public addChildPrompt(childPrompt: Prompt): boolean {
-        if (this.childPrompts.includes(childPrompt)) return false;
-        this.childPrompts.push(childPrompt);
-        childPrompt.addParentGroup(this);
-        return true;
+        return this.addLeaf(this.childPrompts, childPrompt);
     }
 
     public removeChildPrompt(childPrompt: Prompt): boolean {
-        const index = this.childPrompts.indexOf(childPrompt);
-        if (index !== -1) {
-            this.childPrompts.splice(index, 1);
-            childPrompt.removeParentGroup(this);
-            return true;
-        }
-        return false;
+        return this.removeLeaf(this.childPrompts, childPrompt);
     }
 
     public addChildResource(childResource: Resource): boolean {
-        if (this.childResources.includes(childResource)) return false;
-        this.childResources.push(childResource);
-        childResource.addParentGroup(this);
-        return true;
+        return this.addLeaf(this.childResources, childResource);
     }
 
     public removeChildResource(childResource: Resource): boolean {
-        const index = this.childResources.indexOf(childResource);
-        if (index !== -1) {
-            this.childResources.splice(index, 1);
-            childResource.removeParentGroup(this);
-            return true;
-        }
-        return false;
+        return this.removeLeaf(this.childResources, childResource);
     }
+
+    // ── FQN ──
 
     protected getFullyQualifiedNameRecursive(tg: Group): string {
         const parent = tg.parent;
