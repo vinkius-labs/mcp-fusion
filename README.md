@@ -243,8 +243,28 @@ const meta = builder.getActionMetadata();
 
 ## 🔬 Architecture & Internals
 
-### Domain Model Layer
-Beyond the framework, the package provides a full domain model for MCP primitives:
+### Project Structure
+
+The codebase is organized into bounded contexts with shallow nesting (max 2 levels):
+
+```
+src/
+├── domain/          → Pure immutable domain models
+├── converters/      → Domain-to-DTO converters
+├── framework/
+│   ├── types.ts     → ALL contracts & shared types (single file)
+│   ├── result.ts    → Result<T> monad (cross-cutting)
+│   ├── response.ts  → Response helpers (cross-cutting)
+│   ├── builder/     → GroupedToolBuilder, ActionGroupBuilder, Compiler
+│   ├── execution/   → ExecutionPipeline, MiddlewareCompiler
+│   ├── schema/      → Schema, Description, Annotation strategies
+│   ├── registry/    → ToolRegistry, ToolFilterEngine
+│   └── server/      → ServerResolver, ServerAttachment
+└── index.ts         → Public API barrel
+```
+
+### Domain Model Layer (`src/domain/`)
+The package provides a full domain model for MCP primitives:
 
 | Class | Purpose |
 |---|---|
@@ -257,17 +277,17 @@ Beyond the framework, the package provides a full domain model for MCP primitive
 
 *Features Bidirectional converters (`ToolConverterBase`, `GroupConverterBase`, etc.) with null filtering for clean conversion to external representations.*
 
-### Strategy Pattern Internals
-Six pure-function modules orchestrated by `GroupedToolBuilder`. Every module is independently testable and replaceable. **Zero shared state.**
+### Strategy Modules
+Six pure-function modules organized by bounded context. Every module is independently testable and replaceable. **Zero shared state.**
 
-| Module | Responsibility |
-|---|---|
-| `SchemaGenerator` | 4-tier per-field annotations from Zod schemas |
-| `DescriptionGenerator` | 3-layer descriptions with ⚠️ DESTRUCTIVE warnings |
-| `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` |
-| `AnnotationAggregator` | Conservative behavioral hint aggregation |
-| `MiddlewareCompiler` | Right-to-left closure composition at build time |
-| `SchemaUtils` | Zod field extraction + build-time schema collision detection |
+| Context | Module | Responsibility |
+|---|---|---|
+| `schema/` | `SchemaGenerator` | 4-tier per-field annotations from Zod schemas |
+| `schema/` | `DescriptionGenerator` | 3-layer descriptions with ⚠️ DESTRUCTIVE warnings |
+| `schema/` | `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` |
+| `schema/` | `AnnotationAggregator` | Conservative behavioral hint aggregation |
+| `execution/` | `MiddlewareCompiler` | Right-to-left closure composition at build time |
+| `schema/` | `SchemaUtils` | Zod field extraction + build-time schema collision detection |
 
 ---
 

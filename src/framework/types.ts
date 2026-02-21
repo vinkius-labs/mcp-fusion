@@ -1,7 +1,7 @@
 /**
  * Framework Contracts & Shared Types
  *
- * Single-file type definitions following the Anthropic SDK pattern.
+ * Single-file type definitions following the consolidated contracts pattern.
  * All interfaces, type aliases, and shared contracts live here.
  *
  * This module has ZERO runtime code — only type declarations.

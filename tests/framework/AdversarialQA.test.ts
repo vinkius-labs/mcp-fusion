@@ -1,7 +1,7 @@
 /**
  * AdversarialQA.test.ts
  *
- * Anthropic-level Quality Assurance tests for the MCP Tool Consolidation
+ * Enterprise-grade Quality Assurance tests for the MCP Tool Consolidation
  * Framework. These tests are designed to probe invariants, contracts,
  * security boundaries, state machine integrity, and protocol compliance
  * at a level expected of production AI infrastructure.
