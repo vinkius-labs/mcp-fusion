@@ -37,14 +37,25 @@ describe('Barrel Export (src/index.ts)', () => {
     it('should export all framework components', async () => {
         const mod = await import('../src/index.js');
 
-        // Framework helpers
+        // Response helpers
         expect(mod.success).toBeTypeOf('function');
         expect(mod.error).toBeTypeOf('function');
         expect(mod.required).toBeTypeOf('function');
+        expect(mod.toonSuccess).toBeTypeOf('function');
+
+        // Factory function
+        expect(mod.createTool).toBeTypeOf('function');
 
         // Framework builders
         expect(mod.GroupedToolBuilder).toBeDefined();
         expect(mod.ActionGroupBuilder).toBeDefined();
         expect(mod.ToolRegistry).toBeDefined();
+
+        // Result monad
+        expect(mod.succeed).toBeTypeOf('function');
+        expect(mod.fail).toBeTypeOf('function');
+
+        // Schema
+        expect(mod.generateToonDescription).toBeTypeOf('function');
     });
 });
