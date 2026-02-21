@@ -19,7 +19,7 @@ export type {
 } from './types.js';
 
 // ── Builder ──────────────────────────────────────────────
-export { GroupedToolBuilder, ActionGroupBuilder } from './builder/index.js';
+export { GroupedToolBuilder, ActionGroupBuilder, createTool } from './builder/index.js';
 export type { GroupConfigurator } from './builder/index.js';
 
 // ── Registry ─────────────────────────────────────────────

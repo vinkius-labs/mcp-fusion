@@ -24,7 +24,7 @@ export {
 // ── Framework ────────────────────────────────────────────
 export {
     success, error, required, toonSuccess,
-    GroupedToolBuilder, ActionGroupBuilder,
+    GroupedToolBuilder, ActionGroupBuilder, createTool,
     ToolRegistry,
     generateToonDescription,
     succeed, fail,
