@@ -1,10 +1,23 @@
 import { type Icon } from './Icon.js';
 
 /**
- * Base class for all domain model entities.
+ * Base class for all MCP domain model entities.
  *
  * Provides common metadata properties shared by all MCP domain objects
- * (tools, resources, prompts, groups).
+ * (tools, resources, prompts, groups). Every entity has a `name`,
+ * optional `title`, `description`, `meta`, and `icons`.
+ *
+ * @example
+ * ```typescript
+ * // BaseModel is abstract — use concrete subclasses:
+ * const tool = new Tool('read_file');
+ * tool.title = 'Read File';
+ * tool.description = 'Read a file from the filesystem';
+ * tool.meta = new Map([['version', '1.0']]);
+ * ```
+ *
+ * @see {@link Group} for tree nodes
+ * @see {@link GroupItem} for leaf nodes (Tool, Prompt, Resource)
  */
 export abstract class BaseModel {
     /** Default separator used in fully qualified names */
@@ -28,6 +41,16 @@ export abstract class BaseModel {
         this.nameSeparator = nameSeparator ?? BaseModel.DEFAULT_SEPARATOR;
     }
 
-    /** Returns the fully qualified name including all ancestor paths */
+    /**
+     * Returns the fully qualified name including all ancestor paths.
+     *
+     * @example
+     * ```typescript
+     * const parent = new Group('api');
+     * const child = new Group('v2');
+     * parent.addChildGroup(child);
+     * child.getFullyQualifiedName(); // "api.v2"
+     * ```
+     */
     public abstract getFullyQualifiedName(): string;
 }

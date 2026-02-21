@@ -1,8 +1,39 @@
 /**
  * ActionGroupBuilder — Sub-builder for Hierarchical Action Groups
  *
- * Used within `.group()` callbacks to register actions under a named group.
- * Supports group-scoped middleware and generates compound keys (e.g., "group.action").
+ * Used within {@link GroupedToolBuilder.group} callbacks to register
+ * actions under a named group. Supports group-scoped middleware and
+ * generates compound keys (e.g., `"users.create"`).
+ *
+ * @typeParam TContext - Application context type
+ * @typeParam TCommon - Common schema shape (inferred from parent builder)
+ *
+ * @example
+ * ```typescript
+ * createTool<AppContext>('platform')
+ *     .group('users', 'User management', g => {
+ *         g.use(requireAdmin)  // Group-scoped middleware
+ *          .action({
+ *              name: 'list',
+ *              readOnly: true,
+ *              handler: async (ctx, _args) => success(await ctx.db.users.findMany()),
+ *          })
+ *          .action({
+ *              name: 'ban',
+ *              destructive: true,
+ *              schema: z.object({ user_id: z.string() }),
+ *              handler: async (ctx, args) => {
+ *                  await ctx.db.users.ban(args.user_id);
+ *                  return success('User banned');
+ *              },
+ *          });
+ *     });
+ * ```
+ *
+ * @see {@link GroupedToolBuilder.group} for creating groups
+ * @see {@link MiddlewareFn} for middleware signature
+ *
+ * @module
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
 import {
@@ -12,7 +43,23 @@ import {
     type ActionConfig,
 } from '../types.js';
 
-/** Callback for configuring actions within a group */
+/**
+ * Callback for configuring actions within a group.
+ *
+ * Receives an {@link ActionGroupBuilder} to register actions and middleware.
+ *
+ * @typeParam TContext - Application context type
+ * @typeParam TCommon - Common schema shape
+ *
+ * @example
+ * ```typescript
+ * const configure: GroupConfigurator<AppContext, { workspace_id: string }> = (g) => {
+ *     g.action({ name: 'list', handler: listHandler });
+ * };
+ *
+ * builder.group('users', 'User management', configure);
+ * ```
+ */
 export type GroupConfigurator<TContext, TCommon extends Record<string, unknown>> =
     (group: ActionGroupBuilder<TContext, TCommon>) => void;
 
@@ -30,13 +77,61 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
         this._groupDescription = description || '';
     }
 
-    /** Add middleware scoped to this group */
+    /**
+     * Add middleware scoped to this group only.
+     *
+     * Unlike {@link GroupedToolBuilder.use}, this middleware runs
+     * only for actions within this group — not globally.
+     *
+     * @param mw - Middleware function
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * builder.group('admin', 'Admin operations', g => {
+     *     g.use(requireAdmin)  // Only runs for admin.* actions
+     *      .action({ name: 'reset', handler: resetHandler });
+     * });
+     * ```
+     *
+     * @see {@link MiddlewareFn} for the middleware signature
+     */
     use(mw: MiddlewareFn<TContext>): this {
         this._groupMiddlewares.push(mw);
         return this;
     }
 
-    /** Register an action within this group (typed: schema + commonSchema inference) */
+    /**
+     * Register an action within this group.
+     *
+     * The action key is automatically prefixed with the group name
+     * (e.g., action `"create"` in group `"users"` becomes `"users.create"`).
+     *
+     * @param config - Action configuration
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * builder.group('billing', 'Billing operations', g => {
+     *     g.action({
+     *         name: 'refund',
+     *         description: 'Issue a refund',
+     *         destructive: true,
+     *         schema: z.object({
+     *             invoice_id: z.string(),
+     *             amount: z.number().positive(),
+     *         }),
+     *         handler: async (ctx, args) => {
+     *             await ctx.billing.refund(args.invoice_id, args.amount);
+     *             return success('Refund issued');
+     *         },
+     *     });
+     * });
+     * // Discriminator value: "billing.refund"
+     * ```
+     *
+     * @see {@link ActionConfig} for all configuration options
+     */
     action<TSchema extends ZodObject<ZodRawShape>>(config: {
         name: string;
         description?: string;
