@@ -1,0 +1,576 @@
+/* Vercel-like sleek aesthetics */
+:root {
+  --vp-c-brand-1: #000000;
+  --vp-c-brand-2: #333333;
+  --vp-c-brand-3: #666666;
+  --vp-c-brand-light: #ffffff;
+  
+  --vp-font-family-base: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  --vp-font-family-mono: "Geist Mono", "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Button Overrides */
+  --vp-button-brand-border: #000000;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-bg: #000000;
+  --vp-button-brand-hover-border: #333333;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-hover-bg: #333333;
+  --vp-button-brand-active-border: #000000;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-button-brand-active-bg: #000000;
+  
+  /* Link Overrides */
+  --vp-c-brand: var(--vp-c-brand-1);
+}
+
+/* Dark Mode Overrides (Vercel-like Dark) */
+html.dark {
+  --vp-c-bg: #000000;
+  --vp-c-bg-alt: #0a0a0a;
+  --vp-c-bg-elv: #111111;
+  --vp-c-bg-soft: #0a0a0a;
+
+  --vp-c-brand-1: #ffffff;
+  --vp-c-brand-2: #e0e0e0;
+  --vp-c-brand-3: #a0a0a0;
+
+  --vp-button-brand-border: #ffffff;
+  --vp-button-brand-text: #000000;
+  --vp-button-brand-bg: #ffffff;
+  --vp-button-brand-hover-border: #e0e0e0;
+  --vp-button-brand-hover-text: #000000;
+  --vp-button-brand-hover-bg: #e0e0e0;
+  --vp-button-brand-active-border: #ffffff;
+  --vp-button-brand-active-text: #000000;
+  --vp-button-brand-active-bg: #ffffff;
+
+  --vp-c-divider: #333;
+  --vp-c-border: #333;
+}
+
+/* Minimalist code block design */
+.vp-doc pre {
+  margin-top: 24px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background-color: var(--vp-c-bg-alt) !important;
+}
+
+html.dark .vp-doc pre {
+  background-color: #000000 !important;
+  border-color: #222;
+}
+
+/* Vercel-like Sidebar */
+.VPSidebar {
+  background-color: var(--vp-c-bg);
+}
+
+.VPSidebarItem.level-0 > .item > .text {
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.VPSidebarItem.is-active > .item > .text {
+  color: var(--vp-c-brand-1);
+}
+
+/* Custom Nav */
+.VPNavBar {
+  border-bottom: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-c-bg) !important;
+}
+
+.VPNavBarMenuLink.active {
+  color: var(--vp-c-brand-1);
+}
+
+/* Home Page Specifics */
+.VPHero {
+  padding-top: 180px !important;
+  padding-bottom: 120px !important;
+  position: relative !important;
+}
+
+/* Nebula Grid Background */
+.VPHero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    /* Nebula Core - Deep Blue */
+    radial-gradient(ellipse at 50% 50%, rgba(45, 90, 200, 0.4) 0%, transparent 60%),
+    /* Violet Cloud - bottom left */
+    radial-gradient(circle at 30% 70%, rgba(110, 50, 180, 0.25) 0%, transparent 55%),
+    /* Cyan Dust - top right */
+    radial-gradient(circle at 70% 30%, rgba(40, 150, 180, 0.2) 0%, transparent 55%),
+    /* Magenta accent - offset center */
+    radial-gradient(ellipse at 60% 60%, rgba(150, 40, 120, 0.2) 0%, transparent 45%),
+    /* The grid */
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 60px 60px, 60px 60px;
+  background-position: center;
+  /* Fade out smoothly at the edges */
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+}
+
+html:not(.dark) .VPHero::before {
+  background-image: 
+    radial-gradient(ellipse at 50% 50%, rgba(0, 50, 200, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 30% 70%, rgba(100, 0, 180, 0.1) 0%, transparent 55%),
+    radial-gradient(circle at 70% 30%, rgba(0, 130, 180, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 60%, rgba(150, 0, 100, 0.08) 0%, transparent 45%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+
+/* Force the VitePress container into a left-aligned layout */
+.VPHero .container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  position: relative;
+  z-index: 10;
+  padding: 0 40px !important;
+}
+
+.VPHero .main {
+  max-width: 800px !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  order: 1 !important;
+}
+
+/* Logo Alignment */
+.VPHero .image {
+  margin-bottom: 30px !important;
+  order: 0 !important;
+  width: 120px !important;
+  height: 120px !important;
+  transform: none !important;
+  position: static !important;
+}
+
+.VPImage.image-src {
+  margin: 0 !important;
+  float: left !important;
+}
+
+.VPHero .name {
+  background: linear-gradient(180deg, #fff 0%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-size: clamp(48px, 6vw, 72px) !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.04em !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  display: inline-block !important; /* Prevents awkward background wrap clipping */
+  text-align: left !important;
+}
+
+html:not(.dark) .VPHero .name {
+  background: linear-gradient(180deg, #000 0%, #666 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.VPHero .text {
+  display: none !important; /* We hide the text field entirely to rely just on name */
+}
+
+.VPHero .tagline {
+  font-size: 20px !important;
+  line-height: 1.6 !important;
+  color: var(--vp-c-text-2) !important;
+  font-weight: 400 !important;
+  margin: 24px 0 0 !important;
+  max-width: 680px !important; /* Keeps the text block readable */
+  text-align: left !important;
+}
+
+/* Align the buttons to left */
+.VPHero .actions {
+  justify-content: flex-start !important;
+  margin-top: 40px !important;
+  gap: 16px !important;
+}
+
+/* Subtle open source text under buttons */
+.VPHero .actions + p, 
+.textAfterActions {
+    margin-top: 32px !important;
+    font-size: 13px !important;
+    color: var(--vp-c-text-3) !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    text-align: left !important;
+}
+
+/* Feature grid */
+.VPFeatures {
+  padding-top: 0 !important;
+}
+
+.VPFeature {
+  background: transparent !important;
+  border: 1px solid var(--vp-c-divider) !important;
+  box-shadow: none !important;
+  transition: border-color 0.2s ease, background-color 0.2s ease !important;
+  border-radius: 8px !important;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-2) !important;
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+html.dark .VPFeature {
+  border-color: #333 !important;
+}
+
+html.dark .VPFeature:hover {
+  border-color: #fff !important;
+  background-color: transparent !important;
+}
+
+/* Hide default VitePress features if present */
+.VPFeatures {
+  display: none !important;
+}
+
+/* ------------------------------------- */
+/* VINKIUS BENTO GRID (Custom Diagramming) */
+/* ------------------------------------- */
+.vinkius-bento-grid {
+  display: flex;
+  width: 100%;
+  margin: 60px 0 100px;
+  border: 1px solid #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #000;
+  position: relative;
+  z-index: 10;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: -20px -20px;
+}
+
+.bento-hero {
+  flex: 1.25;
+  padding: 80px 60px;
+  border-right: 1px solid #1a1a1a;
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-title {
+  font-size: 36px !important;
+  line-height: 1.25 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  color: #fff !important;
+  margin: 0 0 24px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.bento-title .text-dim {
+  color: #777 !important;
+}
+
+.bento-desc {
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  color: #888 !important;
+  margin: 0 0 40px 0 !important;
+  padding: 0 !important;
+  max-width: 520px !important;
+}
+
+.bento-tags {
+  display: flex !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 60px !important;
+}
+
+.bento-tag {
+  padding: 6px 14px !important;
+  border: 1px solid #222 !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  font-family: var(--vp-font-family-mono) !important;
+  letter-spacing: 0.05em !important;
+  color: #666 !important;
+  text-transform: uppercase !important;
+}
+
+.bento-tag.active {
+  border-color: rgba(138, 43, 226, 0.6) !important; 
+  color: #c084fc !important; 
+  background: transparent !important;
+}
+
+.bento-code-section {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-code-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #111;
+  padding: 12px 16px;
+  border: 1px solid #222;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.bento-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.bento-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #333;
+}
+
+.bento-dots span:nth-child(1) { background: #ff5f56; }
+.bento-dots span:nth-child(2) { background: #ffbd2e; }
+.bento-dots span:nth-child(3) { background: #27c93f; }
+
+.bento-code-title {
+  font-size: 13px !important;
+  font-family: var(--vp-font-family-mono) !important;
+  color: #888 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.bento-code-box {
+  width: 100%;
+  background: #000;
+  border: 1px solid #222;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.bento-code-box div[class*="language-"] {
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.bento-cli-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #111;
+  border: 1px dotted #333;
+  border-radius: 6px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+
+.cli-prompt {
+  color: #555;
+  user-select: none;
+}
+
+.cli-text {
+  color: #fff;
+}
+
+.cli-text span {
+  color: #c084fc;
+}
+
+.bento-footer {
+  display: none !important;
+}
+
+.bento-features {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.bento-cell {
+  padding: 60px 40px !important;
+  border-bottom: 1px solid #1a1a1a !important;
+  border-right: 1px solid #1a1a1a !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transition: background-color 0.2s !important;
+  background-color: transparent !important;
+}
+
+.bento-cell:nth-child(even) {
+  border-right: none !important;
+}
+
+.bento-cell:nth-last-child(-n+2) {
+  border-bottom: none !important;
+}
+
+.cell-eyebrow {
+  font-size: 10px !important;
+  font-family: var(--vp-font-family-mono) !important;
+  color: #555 !important;
+  margin: 0 0 30px 0 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+}
+
+.cell-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  margin: 0 0 20px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  letter-spacing: -0.02em !important;
+}
+
+.cell-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid #222;
+  border-radius: 4px;
+  color: #777;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.cell-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #777;
+  margin-bottom: auto;
+}
+
+.cell-link {
+  margin-top: 40px;
+  font-size: 10px;
+  font-family: var(--vp-font-family-mono);
+  color: #777;
+  text-decoration: none !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.bento-cell:hover .cell-link {
+  color: #fff;
+}
+
+/* Mobile Responsiveness for Bento Grid */
+@media (max-width: 960px) {
+  .vinkius-bento-grid {
+    flex-direction: column;
+  }
+  .bento-hero {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 40px 24px;
+  }
+  .bento-features {
+    grid-template-columns: 1fr;
+  }
+  .bento-cell {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 30px 24px;
+  }
+  .bento-cell:last-child {
+    border-bottom: none;
+  }
+}
+/* Buttons */
+.VPButton {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  padding: 0 24px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Light Mode Primary Action */
+html:not(.dark) .VPButton.brand {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: none !important;
+}
+html:not(.dark) .VPButton.brand:hover {
+  background-color: #333 !important;
+}
+
+/* Dark Mode Primary Action */
+html.dark .VPButton.brand {
+  background-color: #fff !important;
+  color: #000 !important;
+  border: none !important;
+}
+html.dark .VPButton.brand:hover {
+  background-color: #ccc !important;
+}
+/* Secondary Button */
+.VPButton.alt {
+  background-color: transparent !important;
+  color: var(--vp-c-text-1) !important;
+  border: 1px solid var(--vp-c-divider) !important;
+  box-shadow: none !important;
+}
+
+.VPButton.alt:hover {
+  background-color: transparent !important;
+  border-color: var(--vp-c-text-2) !important;
+}
+
+/* Hide some default branding stuff */
+.vp-doc a {
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc a:hover {
+  color: var(--vp-c-brand-1);
+}
