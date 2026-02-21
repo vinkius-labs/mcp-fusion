@@ -10,6 +10,10 @@
 
 <br/>
 
+**[Read the Official Documentation & Guides on GitHub Pages](https://vinkius-labs.github.io/mcp-fusion/)**
+
+<br/>
+
 **Stop registering hundreds of individual Model Context Protocol (MCP) tools. Ship ONE.**
 
 `mcp-fusion` is an advanced TypeScript framework that consolidates related MCP operations into a single tool behind a discriminator field. Built with a strict **domain model layer** for hierarchical entity management and a **build-time strategy engine** designed to scale to 5,000+ endpoints.
