@@ -9,9 +9,6 @@ export class Prompt extends AbstractLeaf {
     }
 
     public addPromptArgument(promptArgument: PromptArgument): boolean {
-        if (promptArgument === null || promptArgument === undefined) {
-            throw new Error("promptArgument must not be null");
-        }
         if (this.promptArguments.includes(promptArgument)) return false;
         this.promptArguments.push(promptArgument);
         return true;

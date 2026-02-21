@@ -228,24 +228,23 @@ export class ToolRegistry<TContext = void> {
         }
 
         // McpServer wraps a Server at `.server`
-        const maybeHigh = server as Record<string, unknown>;
-        if (
-            'server' in maybeHigh &&
-            maybeHigh.server &&
-            typeof maybeHigh.server === 'object' &&
-            'setRequestHandler' in (maybeHigh.server as object)
-        ) {
-            return maybeHigh.server as McpServerLike;
+        if (this._isMcpServerLike(server)) {
+            return server;
         }
 
-        // Low-level Server has setRequestHandler directly
-        if ('setRequestHandler' in (server as object)) {
-            return server as McpServerLike;
+        // McpServer high-level wrapper
+        const wrapped = (server as Record<string, unknown>).server;
+        if (wrapped && typeof wrapped === 'object' && this._isMcpServerLike(wrapped)) {
+            return wrapped;
         }
 
         throw new Error(
             'attachToServer() requires a Server or McpServer instance. ' +
             'The provided object does not have setRequestHandler().',
         );
+    }
+
+    private _isMcpServerLike(obj: unknown): obj is McpServerLike {
+        return typeof obj === 'object' && obj !== null && 'setRequestHandler' in obj;
     }
 }

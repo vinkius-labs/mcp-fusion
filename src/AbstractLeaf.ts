@@ -10,9 +10,6 @@ export class AbstractLeaf extends AbstractBase {
     }
 
     public addParentGroup(parentGroup: Group): boolean {
-        if (parentGroup === null || parentGroup === undefined) {
-            throw new Error("parentGroup must not be null");
-        }
         if (this.parentGroups.includes(parentGroup)) return false;
         this.parentGroups.push(parentGroup);
         return true;

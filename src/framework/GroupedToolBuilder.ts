@@ -414,21 +414,11 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     // ── Private: Validation Schema Building ─────────────
 
     private _buildValidationSchema(action: InternalAction<TContext>): ZodObject<ZodRawShape> | null {
-        if (!this._commonSchema && !action.schema) return null;
-
-        if (this._commonSchema && action.schema) {
-            return this._commonSchema.merge(action.schema).strip();
-        }
-        if (this._commonSchema) {
-            return this._commonSchema.strip();
-        }
-        if (action.schema) {
-            return action.schema.strip();
-        }
-
-        // Unreachable: all combinations covered above
-        /* istanbul ignore next */
-        return null;
+        const base = this._commonSchema;
+        const specific = action.schema;
+        if (!base && !specific) return null;
+        const merged = base && specific ? base.merge(specific) : (base ?? specific)!;
+        return merged.strip();
     }
 
     // ── Private: Guards ─────────────────────────────────

@@ -23,10 +23,7 @@ describe('AbstractLeaf (via Tool)', () => {
         expect(tool.parentGroups).toHaveLength(1);
     });
 
-    it('should throw when adding null parent group', () => {
-        const tool = new Tool('test');
-        expect(() => tool.addParentGroup(null as any)).toThrow('parentGroup must not be null');
-    });
+
 
     it('should remove parent group', () => {
         const tool = new Tool('test');

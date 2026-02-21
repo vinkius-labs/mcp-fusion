@@ -32,10 +32,7 @@ describe('Prompt', () => {
         expect(prompt.promptArguments).toHaveLength(1);
     });
 
-    it('should throw when adding null argument', () => {
-        const prompt = new Prompt('code_review');
-        expect(() => prompt.addPromptArgument(null as any)).toThrow('promptArgument must not be null');
-    });
+
 
     it('should remove prompt argument', () => {
         const prompt = new Prompt('code_review');
