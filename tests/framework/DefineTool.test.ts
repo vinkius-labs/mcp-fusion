@@ -50,7 +50,7 @@ describe('defineTool()', () => {
             actions: {
                 say: {
                     params: { message: 'string' },
-                    handler: async (_ctx, args) => success((args as Record<string, unknown>)['message'] as string),
+                    handler: async (_ctx, args) => success(args.message),
                 },
             },
         });

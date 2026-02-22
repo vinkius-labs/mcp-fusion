@@ -244,3 +244,154 @@ describe('TypedToolRegistry integration', () => {
         expect(registry.registry.size).toBe(0);
     });
 });
+
+// ============================================================================
+// Task 2.2: Typed handler args via schema inference
+// ============================================================================
+
+describe('Typed handler args (Task 2.2)', () => {
+    describe('createTool() path — Zod schema inference', () => {
+        it('should type handler args from Zod schema', async () => {
+            const tool = createTool<TestContext>('projects')
+                .action({
+                    name: 'create',
+                    schema: z.object({
+                        name: z.string(),
+                        status: z.enum(['active', 'archived']).optional(),
+                    }),
+                    handler: async (_ctx, args) => {
+                        // Type assertion: args.name is string, args.status is optional enum
+                        // These accesses compile WITHOUT casts — that's the point
+                        const name: string = args.name;
+                        const status: 'active' | 'archived' | undefined = args.status;
+                        return success(`${name}:${status ?? 'default'}`);
+                    },
+                });
+
+            const result = await tool.execute(
+                { userId: 'u1' },
+                { action: 'create', name: 'Test', status: 'active' },
+            );
+            expect(result.content[0].text).toBe('Test:active');
+        });
+
+        it('should merge common schema fields with action schema in handler args', async () => {
+            const tool = createTool<TestContext>('projects')
+                .commonSchema(z.object({ workspace_id: z.string() }))
+                .action({
+                    name: 'list',
+                    schema: z.object({ limit: z.number().optional() }),
+                    handler: async (_ctx, args) => {
+                        // Both common and action-specific fields are typed
+                        const wsId: string = args.workspace_id;
+                        const limit: number | undefined = args.limit;
+                        return success(`${wsId}:${limit ?? 'all'}`);
+                    },
+                });
+
+            const result = await tool.execute(
+                { userId: 'u1' },
+                { action: 'list', workspace_id: 'ws_1', limit: 10 },
+            );
+            expect(result.content[0].text).toBe('ws_1:10');
+        });
+    });
+
+    describe('defineTool() path — ParamsMap inference', () => {
+        it('should type handler args from ParamsMap params', async () => {
+            const { defineTool } = await import('../../src/framework/builder/defineTool.js');
+
+            const tool = defineTool('echo', {
+                actions: {
+                    say: {
+                        params: { message: 'string' },
+                        handler: async (_ctx, args) => {
+                            // args.message should be typed as string — no cast needed
+                            const msg: string = args.message;
+                            return success(msg);
+                        },
+                    },
+                },
+            });
+
+            const result = await tool.execute(undefined, { action: 'say', message: 'hello' });
+            expect(result.content[0].text).toBe('hello');
+        });
+
+        it('should merge shared + action params in handler args', async () => {
+            const { defineTool } = await import('../../src/framework/builder/defineTool.js');
+
+            const tool = defineTool('projects', {
+                shared: { workspace_id: 'string' },
+                actions: {
+                    create: {
+                        params: { name: 'string' },
+                        handler: async (_ctx, args) => {
+                            // Both shared (workspace_id) and action (name) are typed
+                            const wsId: string = args.workspace_id;
+                            const name: string = args.name;
+                            return success(`${wsId}:${name}`);
+                        },
+                    },
+                },
+            });
+
+            const result = await tool.execute(
+                undefined,
+                { action: 'create', workspace_id: 'ws_1', name: 'Test' },
+            );
+            expect(result.content[0].text).toBe('ws_1:Test');
+        });
+
+        it('should type number and boolean params correctly', async () => {
+            const { defineTool } = await import('../../src/framework/builder/defineTool.js');
+
+            const tool = defineTool('data', {
+                actions: {
+                    query: {
+                        params: {
+                            limit: { type: 'number', min: 1, max: 100 },
+                            verbose: 'boolean',
+                        },
+                        handler: async (_ctx, args) => {
+                            const limit: number = args.limit;
+                            const verbose: boolean = args.verbose;
+                            return success(`${limit}:${verbose}`);
+                        },
+                    },
+                },
+            });
+
+            const result = await tool.execute(
+                undefined,
+                { action: 'query', limit: 50, verbose: true },
+            );
+            expect(result.content[0].text).toBe('50:true');
+        });
+
+        it('should handle actions without params (fallback to shared + unknown)', async () => {
+            const { defineTool } = await import('../../src/framework/builder/defineTool.js');
+
+            const tool = defineTool('projects', {
+                shared: { workspace_id: 'string' },
+                actions: {
+                    list: {
+                        readOnly: true,
+                        handler: async (_ctx, args) => {
+                            // No params → args should include shared + Record<string, unknown>
+                            const wsId: string = args.workspace_id;
+                            return success(wsId);
+                        },
+                    },
+                },
+            });
+
+            const result = await tool.execute(
+                undefined,
+                { action: 'list', workspace_id: 'ws_1' },
+            );
+            expect(result.content[0].text).toBe('ws_1');
+        });
+    });
+});
+

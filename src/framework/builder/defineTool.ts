@@ -40,14 +40,19 @@ import {
 /**
  * Action definition within a `defineTool()` config.
  *
+ * When `params` is provided as a `ParamsMap`, the handler's `args` are
+ * automatically typed as `InferParams<TParams> & TSharedArgs`.
+ * When `params` is a ZodObject, use `z.infer<typeof schema>` for manual typing.
+ *
  * @typeParam TContext - Application context type
- * @typeParam TArgs - Inferred args type (from params + shared)
+ * @typeParam TSharedArgs - Shared args inherited from ToolConfig.shared
+ * @typeParam TParams - Action-specific params (inferred from the params field)
  */
-export interface ActionDef<TContext, TArgs = Record<string, never>> {
+export interface ActionDef<TContext, TSharedArgs = Record<string, never>, TParams extends ParamsMap = ParamsMap> {
     /** Human-readable description for the LLM */
     description?: string;
     /** Parameter definitions (JSON descriptors or Zod schema) */
-    params?: ParamsMap | ZodObject<ZodRawShape>;
+    params?: TParams | ZodObject<ZodRawShape>;
     /** Mark as read-only (no side effects) */
     readOnly?: boolean;
     /** Mark as destructive (irreversible) */
@@ -58,8 +63,13 @@ export interface ActionDef<TContext, TArgs = Record<string, never>> {
     omitCommon?: string[];
     /** Action-level middleware */
     middleware?: MiddlewareFn<TContext>[];
-    /** The handler function */
-    handler: (ctx: TContext, args: TArgs) => Promise<ToolResponse>;
+    /** The handler function — args are fully typed when params is specified */
+    handler: (
+        ctx: TContext,
+        args: TParams extends ParamsMap
+            ? (keyof TParams extends never ? TSharedArgs & Record<string, unknown> : InferParams<TParams> & TSharedArgs)
+            : TSharedArgs & Record<string, unknown>,
+    ) => Promise<ToolResponse>;
 }
 
 /**
@@ -75,8 +85,8 @@ export interface GroupDef<TContext, TSharedArgs = Record<string, never>> {
     omitCommon?: string[];
     /** Group-scoped middleware */
     middleware?: MiddlewareFn<TContext>[];
-    /** Actions within this group */
-    actions: Record<string, ActionDef<TContext, TSharedArgs & Record<string, unknown>>>;
+    /** Actions within this group — each action's params are inferred independently */
+    actions: { [K in string]: ActionDef<TContext, TSharedArgs> };
 }
 
 /**
@@ -98,10 +108,10 @@ export interface ToolConfig<TContext, TShared extends ParamsMap = ParamsMap> {
     shared?: TShared | ZodObject<ZodRawShape>;
     /** Global middleware applied to all actions */
     middleware?: MiddlewareFn<TContext>[];
-    /** Flat actions (mutually exclusive with `groups`) */
-    actions?: Record<string, ActionDef<TContext, InferParams<TShared> & Record<string, unknown>>>;
+    /** Flat actions — each action's params are inferred independently */
+    actions?: { [K in string]: ActionDef<TContext, InferParams<TShared>> };
     /** Hierarchical groups (mutually exclusive with `actions`) */
-    groups?: Record<string, GroupDef<TContext, InferParams<TShared>>>;
+    groups?: { [K in string]: GroupDef<TContext, InferParams<TShared>> };
 }
 
 // ============================================================================
