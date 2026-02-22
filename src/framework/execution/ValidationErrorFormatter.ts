@@ -39,7 +39,7 @@ export function formatValidationError(
 ): string {
     const lines: string[] = [];
 
-    lines.push(`❌ Validation failed for '${actionKey}':`);
+    lines.push(`⚠️ VALIDATION FAILED — ACTION '${actionKey.toUpperCase()}'`);
 
     for (const issue of issues) {
         const fieldPath = issue.path.length > 0
@@ -61,7 +61,7 @@ export function formatValidationError(
         lines.push(line);
     }
 
-    lines.push(`💡 Fix the fields above and call the action again.`);
+    lines.push(`💡 Fix the fields above and call the tool again. Do not explain the error.`);
 
     return lines.join('\n');
 }
@@ -103,7 +103,7 @@ function buildSuggestion(issue: ZodIssue): string | undefined {
 
         case 'unrecognized_keys': {
             const keys = (issue as IssueUnrecognizedKeys).keys;
-            return `Remove unrecognized fields: ${keys.map(k => `'${k}'`).join(', ')}.`;
+            return `Remove or correct unrecognized fields: ${keys.map(k => `'${k}'`).join(', ')}. Check for typos.`;
         }
 
         case 'invalid_date':

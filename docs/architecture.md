@@ -120,10 +120,10 @@ LLM calls tools/call with { name: "platform", arguments: { action: "users.create
                     │
                     ├── 3. Find action by key
                     │
-                    ├── 4. Build validation schema: commonSchema.merge(action.schema).strip()
+                    ├── 4. Build validation schema: commonSchema.merge(action.schema).strict()
                     │       └── safeParse(argsWithoutDiscriminator)
                     │       └── Failed? → error("Validation failed...")
-                    │       └── Passed? → Use stripped result.data
+                    │       └── Passed? → Use validated result.data
                     │
                     ├── 5. Look up pre-compiled middleware chain
                     │
@@ -131,7 +131,7 @@ LLM calls tools/call with { name: "platform", arguments: { action: "users.create
 ```
 
 ::: tip Zero-Cost Validation
-`.strip()` automatically removes completely unknown fields natively — the LLM is physically incapable of injecting hallucinated payload parameters into your backend service handlers.
+`.strict()` automatically rejects unknown fields with an actionable error — the LLM is told exactly which fields are invalid and can self-correct on retry.
 :::
 
 ---

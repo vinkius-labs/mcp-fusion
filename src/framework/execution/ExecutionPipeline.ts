@@ -46,8 +46,9 @@ export function parseDiscriminator<TContext>(
     const value = args[execCtx.discriminator] as string | undefined;
     if (!value) {
         return fail(error(
-            `Error: ${execCtx.discriminator} is required. ` +
-            `Available: ${execCtx.actionKeysString}`
+            `❌ ROUTING ERROR: The required field '${execCtx.discriminator}' is missing.\n` +
+            `You must specify which action to perform. Available: [${execCtx.actionKeysString}].\n` +
+            `💡 Add the '${execCtx.discriminator}' field to your JSON and call the tool again.`
         ));
     }
     return succeed(value);
@@ -61,8 +62,9 @@ export function resolveAction<TContext>(
     const action = execCtx.actionMap.get(discriminatorValue);
     if (!action) {
         return fail(error(
-            `Error: Unknown ${execCtx.discriminator} "${discriminatorValue}". ` +
-            `Available: ${execCtx.actionKeysString}`
+            `❌ UNKNOWN ACTION: The ${execCtx.discriminator} '${discriminatorValue}' does not exist.\n` +
+            `Available actions: [${execCtx.actionKeysString}].\n` +
+            `💡 Choose a valid action from the list above and call the tool again.`
         ));
     }
     return succeed({ action, discriminatorValue });

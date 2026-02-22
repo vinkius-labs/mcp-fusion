@@ -104,7 +104,7 @@ function buildValidationSchema<TContext>(
     if (!base && !specific) return null;
     const merged = base && specific ? base.merge(specific) : (base ?? specific);
     if (!merged) return null;
-    return merged.strip();
+    return merged.strict();
 }
 
 /**

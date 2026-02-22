@@ -45,7 +45,7 @@ Without a View layer, the same entity (invoice, user, task) is presented differe
 ### 3. Hallucinated Parameters
 Raw MCP gives the AI access to your entire input schema. If the AI guesses a parameter name, your handler may receive poisoned data.
 
-**Zod `.strip()`** silently removes undeclared fields at the framework level. Your handlers are physically incapable of receiving hallucinated parameters.
+**Zod `.strict()`** rejects undeclared fields with an actionable error at the framework level. Your handlers are physically incapable of receiving hallucinated parameters, and the LLM learns which fields are valid.
 
 ### 4. Action Blindness
 After receiving data, agents guess what to do next. Without explicit guidance, they hallucinate tool names or skip valid actions entirely.
@@ -97,7 +97,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 |---|---|
 | **Grouped Tool Routing** | Action consolidation with discriminator enum |
 | **Presenter (MVA View)** | Domain rules, UI blocks, affordances, composition |
-| **Zod Validation & Stripping** | Security boundary against hallucinated params |
+| **Zod Validation & `.strict()`** | Security boundary against hallucinated params |
 | **Context Derivation** | tRPC-style `defineMiddleware()` with type inference |
 | **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` keys |
 | **Self-Healing Errors** | `toolError()` with recovery hints for autonomous agents |
@@ -116,7 +116,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 
 **For teams scaling beyond prototypes.** When your MCP server grows from 5 tools to 500 actions, mcp-fusion's routing, middleware, and Presenter system keep the codebase clean and the agent accurate.
 
-**For enterprises with security requirements.** Zod schema stripping, RBAC-aware Presenters, freeze-after-build immutability, and typed context derivation provide defense-in-depth that raw MCP cannot offer.
+**For enterprises with security requirements.** Zod `.strict()` validation, RBAC-aware Presenters, freeze-after-build immutability, and typed context derivation provide defense-in-depth that raw MCP cannot offer.
 
 ---
 

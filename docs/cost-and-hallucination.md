@@ -111,7 +111,7 @@ From ~12,000 tokens to ~1,670. No book of instructions in the system prompt — 
 Then the tool responds — not with raw JSON, but with a **structured perception package**:
 
 ```text
-Content Block 1 — DATA (Zod-validated, sensitive fields stripped):
+Content Block 1 — DATA (Zod-validated, only declared fields):
 {"id":"INV-001","amount_cents":45000,"status":"pending"}
 
 Content Block 2 — SERVER-RENDERED UI:
@@ -130,7 +130,7 @@ Content Block 4 — NEXT ACTIONS (computed from data state):
   → billing.send_reminder: Send payment reminder
 ```
 
-No guessing. Sensitive fields stripped. Domain rules scoped. Next actions data-driven. Charts server-rendered.
+No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-driven. Charts server-rendered.
 
 **The agent gets it right the first time.** Fewer tokens in the prompt. Fewer retries. Faster response. Lower cost.
 
@@ -199,7 +199,7 @@ We attack cost and hallucination through eight interconnected mechanisms. Each m
 │                                                                          │
 │  ① Action Consolidation        → Fewer tools in context   → ↓ tokens    │
 │  ② TOON Encoding               → Compact descriptions     → ↓ tokens    │
-│  ③ Zod .strip()                → No hallucinated params   → ↓ retries   │
+│  ③ Zod .strict()              → No hallucinated params   → ↓ retries   │
 │  ④ Self-Healing Errors         → Fix on first retry       → ↓ retries   │
 │  ⑤ Cognitive Guardrails        → Bounded response size    → ↓ tokens    │
 │  ⑥ Agentic Affordances         → Correct next action      → ↓ retries   │
@@ -288,13 +288,13 @@ Based on our testing, TOON achieves roughly **40-50% token reduction** over equi
 
 ---
 
-## ③ Zod `.strip()` — Preventing Parameter Hallucination
+## ③ Zod `.strict()` — Preventing Parameter Hallucination
 
 **The problem:** LLMs frequently invent parameter names. Without strict validation, these ghost fields can leak into handlers, causing silent bugs or unexpected behavior.
 
 **Our approach:**
 
-Every action's Zod schema is compiled with `.strip()` at build time. Undeclared fields are physically removed before the handler sees the request:
+Every action's Zod schema is compiled with `.strict()` at build time. Undeclared fields are **explicitly rejected** with an actionable error telling the LLM exactly which fields are invalid:
 
 ```typescript
 // From: src/framework/builder/ToolDefinitionCompiler.ts
@@ -303,7 +303,7 @@ function buildValidationSchema(action, commonSchema) {
     const specific = action.schema;
     const merged = base && specific ? base.merge(specific) : (base ?? specific);
     if (!merged) return null;
-    return merged.strip();  // ← silently removes all undeclared fields
+    return merged.strict();  // ← rejects all undeclared fields with actionable error
 }
 ```
 
@@ -312,7 +312,7 @@ This validation happens in `ExecutionPipeline.ts` before the handler runs — ma
 ```typescript
 // From: src/framework/execution/ExecutionPipeline.ts
 const result = validationSchema.safeParse(argsWithoutDiscriminator);
-// Valid: stripped args go to handler
+// Valid: validated args go to handler
 // Invalid: self-healing error (see mechanism ④)
 ```
 
@@ -569,7 +569,7 @@ When a tool responds, the `ResponseBuilder.build()` method composes a multi-bloc
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  Block 1 — DATA                                                         │
-│  Zod-validated, .strip()-ed JSON. Only declared fields.                 │
+│  Zod-validated, .strict()-ed JSON. Only declared fields.                │
 │  {"id":"INV-001","amount_cents":45000,"status":"pending"}               │
 │                                                                         │
 │  Block 2 — UI BLOCKS (one content entry per block)                      │
@@ -630,7 +630,7 @@ These mechanisms are designed to reinforce each other:
 │  ─────────────────────────────────────────────────────────────────       │
 │  = Fewer INPUT TOKENS per call                                          │
 │                                                                         │
-│  Zod .strip()            → fewer hallucinated-parameter retries         │
+│  Zod .strict()            → fewer hallucinated-parameter retries         │
 │  + Self-Healing Errors   → fewer correction attempts needed             │
 │  + Agentic Affordances   → fewer wrong-tool selections                  │
 │  + State Sync            → fewer stale-data re-reads                    │
@@ -658,7 +658,7 @@ Consider the AI agent from the Before & After section — 50 operations across u
 | Total prompt tax per turn | ~12,000 | ~1,670 |
 | Description format | Plain text | TOON (~40-50% fewer tokens) |
 | Response to `tasks.list` (10K rows) | ~5,000,000 tokens | ~25,000 tokens (`.agentLimit()`) |
-| Parameter hallucination handling | None — leaks to handler | `.strip()` removes silently |
+| Parameter hallucination handling | None — leaks to handler | `.strict()` rejects with actionable error |
 | Error guidance | Generic message | Directed correction prompt |
 | Stale-data awareness | None | `[Cache-Control]` directives |
 

@@ -11,7 +11,7 @@ Migrate from raw MCP SDK tool handlers to MCP Fusion's grouped, type-safe archit
 | Manual description writing | Auto-generated 3-layer descriptions |
 | No type-safe context | Generic `TContext` flows through everything |
 | No middleware | Pre-compiled middleware chains |
-| No validation | Automatic Zod validation + stripping |
+| No validation | Automatic Zod validation + `.strict()` rejection |
 | Manual annotation management | Automatic annotation aggregation |
 
 ## Step 1: Identify Tool Clusters

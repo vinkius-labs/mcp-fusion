@@ -256,7 +256,7 @@ describe('MCP Server Adapter: tools/call', () => {
         const result = await server.callTool('users', {});
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('action is required');
+        expect(result.content[0].text).toContain('is missing');
     });
 
     it('should handle undefined arguments (defaults to empty object)', async () => {
@@ -267,7 +267,7 @@ describe('MCP Server Adapter: tools/call', () => {
         const result = await server.callTool('users');
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('action is required');
+        expect(result.content[0].text).toContain('is missing');
     });
 
     it('should validate arguments through Zod', async () => {
@@ -281,7 +281,7 @@ describe('MCP Server Adapter: tools/call', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Validation failed');
+        expect(result.content[0].text).toContain('VALIDATION FAILED');
     });
 });
 

@@ -44,12 +44,12 @@ const UserPresenter = createPresenter('User')
         id: z.string(),
         name: z.string(),
         email: z.string().email(),
-        // internal_flags, password_hash → stripped automatically
+        // internal_flags, password_hash → rejected by .strict() automatically
     }));
 ```
 
 ::: warning Security Boundary
-Zod's `.strip()` removes undeclared fields by default. Sensitive fields that exist in your database but not in the schema will never reach the LLM.
+Zod's `.strict()` rejects undeclared fields with an actionable error. Sensitive fields that exist in your database but not in the schema will never reach the LLM, and the LLM is told exactly which fields are valid.
 :::
 
 ### `.systemRules(rules)`

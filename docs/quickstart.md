@@ -139,7 +139,7 @@ If you were interacting directly with the native MCP SDK, you would have had to 
 With **MCP Fusion**:
 1. You just passed simple Zod objects (`z.number()`).
 2. If the LLM tries to call your `add` tool and forgets to send `b`, Fusion instantly catches it and tells the LLM `"Error: b is required"` without your handler code ever running.
-3. **No Hallucinations:** If the LLM tries to send a `c` value, Fusion silently strips it away. Your handler is perfectly safe.
+3. **No Hallucinations:** If the LLM tries to send a `c` value, Fusion rejects it with an actionable error telling the LLM exactly which fields are valid. Your handler is perfectly safe.
 
 ### How the LLM sees it
 Because of Fusion's structured builder, the AI automatically sees a perfectly condensed tool definition like this:

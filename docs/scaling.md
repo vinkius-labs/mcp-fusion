@@ -112,16 +112,16 @@ Column names appear once as a header. Values are pipe-delimited. **There is no J
 
 ---
 
-## Mechanism 4: Strict `.strip()` Validation
+## Mechanism 4: Strict `.strict()` Validation
 
 When the LLM does hallucinate parameters—sending fields that don't exist in the action's schema—the framework silently removes them before execution.
 
 ```typescript
 // Inside ToolDefinitionCompiler:
-return this._commonSchema.merge(action.schema).strip();
+return this._commonSchema.merge(action.schema).strict();
 ```
 
-`.strip()` configures Zod to parse and definitively discard unknown fields. The downstream handler receives `result.data`. Fields the LLM invented are completely obliterated.
+`.strict()` configures Zod to reject unknown fields with an actionable error. The LLM sees exactly which fields are invalid and self-corrects on retry — rather than having its data silently discarded.
 
 ```jsonc
 // LLM sends this hallucinated payload:

@@ -165,7 +165,7 @@ const tasks = createTool<void>('tasks')
 
 ### Why Zod is Powerful Here:
 1. **Descriptions are auto-mapped:** Providing `.describe('...')` on your Zod string passes that exact description clearly to the AI model.
-2. **Infinite Runtime Safety:** If the Model guesses an incorrect input (e.g., trying to pass `priority: "ultra"`), Fusion's `.strip()` engine bounces the execution automatically and returns a helpful error directly back to the AI. Your handler code **never fires** with bad data.
+2. **Infinite Runtime Safety:** If the Model guesses an incorrect input (e.g., trying to pass `priority: "ultra"`), Fusion's `.strict()` engine rejects the input automatically and returns an actionable error directly back to the AI. Your handler code **never fires** with bad data.
 3. **TypeScript Inference:** You never have to manually cast outputs or write secondary TypeScript interfaces.
 
 ---

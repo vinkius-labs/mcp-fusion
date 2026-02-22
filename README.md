@@ -99,10 +99,10 @@ None of them were designed for an autonomous consumer that **hallucinates when g
 | **Domain context** | None. `45000` — dollars? cents? yen? | **System rules**: *"amount_cents is in CENTS. Divide by 100."* |
 | **Next actions** | AI hallucinates tool names | **Agentic HATEOAS** — `.suggestActions()` with explicit hints |
 | **Large datasets** | 10,000 rows dump into context | **Cognitive guardrails** — `.agentLimit(50)` + filter guidance |
-| **Security** | Internal fields leak to LLM | **Schema as boundary** — Zod `.strip()` strips undeclared fields |
+| **Security** | Internal fields leak to LLM | **Schema as boundary** — Zod `.strict()` rejects undeclared fields with actionable errors |
 | **Charts** | Not possible | **UI Blocks** — `.uiBlocks()` — ECharts, Mermaid, summaries |
 | **Routing** | `switch/case` × 50 branches | **Hierarchical groups** — `platform.users.list` — infinite nesting |
-| **Error recovery** | `throw Error` — AI gives up | **Self-healing** — `toolError()` with recovery + retry hints |
+| **Error recovery** | `throw Error` — AI gives up | **Self-healing** — `toolError()` + **Agentic Error Presenter** — auto-formatted validation/routing errors with coaching prompts |
 | **Token cost** | Full JSON payloads every time | **TOON encoding** — ~40% fewer tokens |
 | **Type safety** | Manual casting, no client types | **tRPC-style client** — `createFusionClient()` with full inference |
 | **Reusability** | Same entity rendered differently everywhere | **Presenter** — define once, reuse across all tools |
@@ -130,7 +130,7 @@ const billing = defineTool<AppContext>('billing', {
 ```
 
 The **Presenter** automatically:
-- ✅ **Validates** data through Zod (strips sensitive fields, rejects invalid shapes)
+- ✅ **Validates** data through Zod (rejects unknown fields with actionable errors, validates shapes)
 - ✅ **Injects domain rules** — "amount_cents is in CENTS. Divide by 100."
 - ✅ **Renders charts** — Server-side ECharts, Mermaid diagrams
 - ✅ **Suggests next actions** — "→ billing.pay: Process payment"
@@ -357,8 +357,8 @@ registry.attachToServer(server, {
 });
 ```
 
-### Zod Parameter Stripping
-When the LLM sends arguments, Fusion merges schemas using `.merge().strip()`, then `safeParse()`. Unknown fields are silently removed. **The LLM cannot inject parameters your schema does not declare.**
+### Zod Parameter Validation (.strict())
+When the LLM sends arguments, Fusion merges schemas using `.merge().strict()`, then `safeParse()`. Unknown fields trigger an **actionable validation error** naming each unrecognized field. **The LLM learns which fields are valid and self-corrects on retry.**
 
 ### Tag-Based Context Gating
 Control exactly what the LLM sees per session:
@@ -384,10 +384,10 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | **Action Consolidation** | Grouped tools with discriminator enum reduce token burn |
 | **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` keys |
 | **4-Tier Field Annotations** | LLM knows exactly which fields to send per action |
-| **Zod `.merge().strip()`** | Security boundary — unknown fields silently stripped |
+| **Zod `.merge().strict()`** | Security boundary — unknown fields rejected with actionable errors |
 | **Two APIs** | `defineTool()` (zero Zod) and `createTool()` (full Zod) |
 | **Context Derivation** | tRPC-style `defineMiddleware()` with type inference |
-| **Self-Healing Errors** | `toolError()` with recovery hints for autonomous agents |
+| **Self-Healing Errors** | `toolError()` + Agentic Error Presenter — auto-formatted validation/routing errors |
 | **Streaming Progress** | Generator handlers yield `progress()` events |
 | **Type-Safe Client** | `createFusionClient()` with autocomplete and typed args |
 | **State Sync** | RFC 7234 cache-control prevents temporal blindness |

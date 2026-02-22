@@ -26,8 +26,8 @@ describe('ValidationErrorFormatter — Unit Tests', () => {
             { age: 'twenty' },
         );
 
-        expect(msg).toContain('❌ Validation failed');
-        expect(msg).toContain('users/create');
+        expect(msg).toContain('⚠️ VALIDATION FAILED');
+        expect(msg).toContain('USERS/CREATE');
         expect(msg).toContain('age');
         expect(msg).toContain("You sent: 'twenty'");
         expect(msg).toContain('Expected type: number');
@@ -323,8 +323,8 @@ describe('ValidationErrorFormatter — Integration via GroupedToolBuilder', () =
         const errorText = result.content[0].text;
 
         // New format: actionable, not raw
-        expect(errorText).toContain('❌ Validation failed');
-        expect(errorText).toContain('test/create');
+        expect(errorText).toContain('⚠️ VALIDATION FAILED');
+        expect(errorText).toContain('TEST/CREATE');
         expect(errorText).toContain('title');
         expect(errorText).toContain('count');
         expect(errorText).toContain('💡 Fix the fields above');
@@ -405,7 +405,7 @@ describe('ValidationErrorFormatter — Integration via GroupedToolBuilder', () =
 
         expect(result.isError).toBe(true);
         const errorText = result.content[0].text;
-        expect(errorText).toContain('platform/users.create');
+        expect(errorText).toContain('PLATFORM/USERS.CREATE');
         expect(errorText).toContain('email');
         expect(errorText).toContain("You sent: 'bad-email'");
         expect(errorText).toContain('role');

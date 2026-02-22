@@ -134,7 +134,7 @@ const billing = defineTool<AppContext>('billing', {
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Security</div>
 <div class="ms-compare-before">Internal fields leak to LLM.</div>
-<div class="ms-compare-after"><strong>Schema as boundary</strong> — Zod .strip() removes undeclared fields. Automatic.</div>
+<div class="ms-compare-after"><strong>Schema as boundary</strong> — Zod .strict() rejects undeclared fields with actionable errors. Automatic.</div>
 </div>
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Charts</div>
@@ -181,7 +181,7 @@ const billing = defineTool<AppContext>('billing', {
 <div class="ms-columns">
 <div class="ms-column">
 <div class="ms-column-label">// MODEL</div>
-<p class="ms-column-text">Zod schema validates input. Unknown fields stripped. The LLM cannot inject parameters your schema does not declare.</p>
+<p class="ms-column-text">Zod schema validates input. Unknown fields rejected with actionable errors. The LLM cannot inject parameters your schema does not declare.</p>
 </div>
 <div class="ms-column">
 <div class="ms-column-label">// PRESENTER</div>
@@ -214,7 +214,7 @@ const billing = defineTool<AppContext>('billing', {
 <div class="ms-card">
 <div class="ms-card-number">03 // SECURITY</div>
 <h3 class="ms-card-title">Context Derivation</h3>
-<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strip() ensures handlers never receive hallucinated params.</p>
+<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strict() ensures handlers never receive hallucinated params.</p>
 <a href="/middleware" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">

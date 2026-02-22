@@ -15,7 +15,7 @@ type MiddlewareFn<TContext> = (
 ```
 
 - **`ctx`** — the strongly-typed per-request context (database connections, auth sessions, etc.)
-- **`args`** — the perfectly validated arguments (post Zod parsing and `.strip()`)
+- **`args`** — the perfectly validated arguments (post Zod parsing and `.strict()`)
 - **`next()`** — calls the downstream middleware or the final execution handler. If you don't call `next()`, the handler is never executed.
 
 ---

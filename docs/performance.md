@@ -66,7 +66,7 @@ for (const action of input.actions) {
 }
 ```
 
-Each action's merged schema (`commonSchema.merge(actionSchema).strip()`) is computed once. At execution time, the pipeline reads from this cache with O(1) `Map.get()`.
+Each action's merged schema (`commonSchema.merge(actionSchema).strict()`) is computed once. At execution time, the pipeline reads from this cache with O(1) `Map.get()`.
 
 ### Action Map (O(1) Routing)
 
@@ -408,19 +408,19 @@ Truncation happens **before Zod validation**, so the schema only processes the c
 
 ---
 
-## 11. Zod `.strip()` Security Boundary
+## 11. Zod `.strict()` Security Boundary
 
-Every action's validation schema is compiled with `.strip()`:
+Every action's validation schema is compiled with `.strict()`:
 
 ```typescript
 // From: src/framework/builder/ToolDefinitionCompiler.ts
 function buildValidationSchema(action, commonSchema) {
     const merged = base && specific ? base.merge(specific) : (base ?? specific);
-    return merged.strip();
+    return merged.strict();
 }
 ```
 
-`.strip()` silently removes **all undeclared fields** from the LLM's payload. This is both a security measure (no internal data leaks) and a performance optimization — downstream handlers process only the fields they declared, with no need for defensive filtering.
+`.strict()` **rejects all undeclared fields** from the LLM's payload with an actionable error message naming the invalid fields. This is both a security measure (no undeclared data reaches handlers) and an agent experience improvement — the LLM learns which fields are valid and self-corrects on retry.
 
 ---
 
@@ -506,7 +506,7 @@ Each retry is a full LLM round-trip (~$0.01-0.10 depending on context size). Sel
 | Set-based tag filtering | `ToolFilterEngine.ts` | O(1) membership test |
 | TOON compression | `ToonDescriptionGenerator.ts` | 30-50% fewer prompt tokens |
 | Cognitive guardrails | `Presenter.ts` | 100x cost reduction on large sets |
-| Zod `.strip()` | `ToolDefinitionCompiler.ts` | Silent field removal, leaner payloads |
+| Zod `.strict()` | `ToolDefinitionCompiler.ts` | Unknown field rejection, cleaner payloads |
 | Pure-function modules | 10+ files | V8 inlining, no GC pressure |
 | 2 runtime dependencies | `package.json` | Minimal install, tiny bundle |
 | Self-healing errors | `ValidationErrorFormatter.ts` | 60-80% fewer LLM retries |

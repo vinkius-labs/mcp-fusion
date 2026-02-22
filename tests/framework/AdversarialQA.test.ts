@@ -273,7 +273,7 @@ describe('QA: Zod Defense Chain', () => {
         expect(r.isError).toBeUndefined();
     });
 
-    it('should strip extra fields injected by LLM', async () => {
+    it('should reject extra fields injected by LLM (.strict())', async () => {
         const r = await builder.execute(undefined as any, {
             action: 'process',
             tenant: 'ok',
@@ -283,8 +283,8 @@ describe('QA: Zod Defense Chain', () => {
             constructor: 'hack',
             malicious_field: 'rm -rf /',
         });
-        // Should still succeed — extra fields stripped
-        expect(r.isError).toBeUndefined();
+        // .strict() rejects unknown fields
+        expect(r.isError).toBe(true);
     });
 
     it('should reject when required field is null', async () => {
@@ -344,7 +344,8 @@ describe('QA: Prototype Pollution & Injection', () => {
         );
 
         const result = await builder.execute(undefined as any, maliciousArgs);
-        expect(result.isError).toBeUndefined();
+        // .strict() rejects the __proto__ extra field
+        expect(result.isError).toBe(true);
 
         // Verify Object.prototype is not polluted
         expect((({}) as any).polluted).toBeUndefined();
@@ -380,7 +381,8 @@ describe('QA: Prototype Pollution & Injection', () => {
             toString: () => 'hacked',
             valueOf: () => 999,
         });
-        expect(result.isError).toBeUndefined();
+        // .strict() rejects extra toString/valueOf fields
+        expect(result.isError).toBe(true);
     });
 });
 
@@ -540,17 +542,17 @@ describe('QA: Middleware Ordering', () => {
             });
 
         b.buildToolDefinition();
-        await b.execute(undefined as any, {
+        // .strict() now rejects extra_garbage, so middleware is NOT reached
+        const r = await b.execute(undefined as any, {
             action: 'check',
             org: 'acme',
             id: 'x',
-            extra_garbage: 'should_be_stripped',
+            extra_garbage: 'should_be_rejected',
         });
 
-        // Middleware sees stripped args (no extra_garbage)
-        expect(capturedArgs).not.toHaveProperty('extra_garbage');
-        expect(capturedArgs).toHaveProperty('org', 'acme');
-        expect(capturedArgs).toHaveProperty('id', 'x');
+        // Validation fails before middleware runs
+        expect(r.isError).toBe(true);
+        expect(r.content[0].text).toContain('extra_garbage');
     });
 });
 

@@ -87,7 +87,7 @@ A Presenter encapsulates six responsibilities:
 
 ### 1. Schema Validation (Security Contract)
 
-The Zod schema acts as a security boundary — only declared fields reach the agent. Internal fields, tenant IDs, and sensitive data are silently stripped.
+The Zod schema acts as a security boundary — only declared fields are accepted. Internal fields, tenant IDs, and sensitive data trigger explicit rejection with actionable error messages.
 
 ```typescript
 import { createPresenter } from '@vinkius-core/mcp-fusion';
@@ -97,7 +97,7 @@ const invoiceSchema = z.object({
     id: z.string(),
     amount_cents: z.number(),
     status: z.enum(['paid', 'pending', 'overdue']),
-    // password_hash, tenant_id, internal_flags → stripped
+    // password_hash, tenant_id, internal_flags → rejected by .strict()
 });
 
 export const InvoicePresenter = createPresenter('Invoice')
@@ -282,7 +282,7 @@ const billing = defineTool<AppContext>('billing', {
 });
 ```
 
-Notice: the handler returns **raw data**. The Presenter intercepts it in the execution pipeline, validates through Zod, strips sensitive fields, attaches domain rules, generates UI blocks, applies truncation limits, and suggests next actions — all automatically.
+Notice: the handler returns **raw data**. The Presenter intercepts it in the execution pipeline, validates through Zod, rejects unknown fields, attaches domain rules, generates UI blocks, applies truncation limits, and suggests next actions — all automatically.
 
 ---
 
@@ -335,7 +335,7 @@ When these layers work together, the agent receives a **complete perception pack
 | Agent guesses `45000` is dollars | Agent reads rule: "divide by 100" |
 | Agent hallucinates tool names | Agent receives `suggestActions()` hints |
 | Same entity displayed differently by different tools | One Presenter, consistent perception |
-| Sensitive data leaks to LLM context | Zod schema strips undeclared fields |
+| Sensitive data leaks to LLM context | Zod `.strict()` rejects undeclared fields |
 | 10,000 rows overwhelm context | `agentLimit()` truncates and teaches |
 | Rules bloat global system prompt | Context Tree-Shaking: rules travel with data |
 | UI blocks are afterthoughts | Presenter SSR-renders deterministic charts |

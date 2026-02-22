@@ -799,13 +799,12 @@ describe('Full pipeline integration', () => {
         expect(r2.isError).toBe(true);
     });
 
-    it('should strip unknown fields at runtime (security boundary)', async () => {
+    it('should reject unknown fields at runtime (.strict() security boundary)', async () => {
         const tool = createTool<void>('secure')
             .action({
                 name: 'run',
                 schema: z.object({ name: z.string() }),
                 handler: async (_ctx, args) => {
-                    // args should NOT contain 'injected', but 'action' discriminator is present
                     const keys = Object.keys(args);
                     return success(keys.sort().join(','));
                 },
@@ -817,9 +816,9 @@ describe('Full pipeline integration', () => {
             injected: 'malicious',
         });
 
-        // Zod .strip() removes unknown fields — 'injected' is NOT present
-        // 'action' (discriminator) + 'name' (schema field) remain
-        expect(result.content[0].text).toBe('action,name');
+        // .strict() rejects unknown fields — 'injected' causes a validation error
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('injected');
     });
 });
 

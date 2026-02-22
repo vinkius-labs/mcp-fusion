@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2026-02-22
 
+### 🛡️ Agentic Error Presenter — LLM-Native Validation & Routing Errors
+
+Validation and routing errors are now **formatted for autonomous agents**, not humans. When the LLM sends invalid arguments, it receives structured, uppercase, actionable correction prompts — with the exact field names, what was sent, what was expected, and a direct instruction to retry. The framework switches from `.strip()` to `.strict()`, meaning unknown fields now trigger **explicit rejection with field names** instead of silent removal.
+
+### Changed
+
+- **`.strip()` → `.strict()` in `ToolDefinitionCompiler.buildValidationSchema()`:** Unknown fields injected by the LLM are no longer silently discarded. They now trigger a validation error naming the unrecognized field(s) with a suggestion to check for typos. This gives the LLM a chance to self-correct instead of silently losing data.
+- **`ValidationErrorFormatter` upgraded:**
+  - New header: `⚠️ VALIDATION FAILED — ACTION 'X'` (uppercased for LLM visual parsing).
+  - Anti-apology footer: `💡 Fix the fields above and call the tool again. Do not explain the error.`
+  - Actionable hints per field with `You sent:` values and expected types/formats.
+  - Unrecognized key errors include `💡 Check for typos` suggestion.
+- **`ExecutionPipeline` routing errors:**
+  - Missing discriminator: `❌ ROUTING ERROR: The required field 'action' is missing.` with available actions list and recovery hint.
+  - Unknown action: `❌ UNKNOWN ACTION: The action 'x' does not exist.` with available actions list and recovery hint.
+
+### Test Suite
+- **1,254 tests** across 57 files, all passing.
+- Updated assertions in 9 test files to match new error formats and `.strict()` behavior.
+
 ### 📡 Streaming Progress — End-to-End MCP Notification Wiring
 
 Generator handlers that `yield progress()` now **automatically** send `notifications/progress` to the MCP client — zero configuration required. The framework detects `progressToken` from the client's request `_meta` and wires the notifications transparently. When no token is present, progress events are silently consumed with **zero overhead**.

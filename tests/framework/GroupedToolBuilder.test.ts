@@ -200,11 +200,11 @@ describe('GroupedToolBuilder — Defense Chain', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Validation failed');
+        expect(result.content[0].text).toContain('VALIDATION FAILED');
         expect(result.content[0].text).toContain('title');
     });
 
-    it('should strip unknown fields', async () => {
+    it('should reject unknown fields (.strict() security)', async () => {
         const builder = new GroupedToolBuilder('test')
             .action({
                 name: 'create',
@@ -219,10 +219,9 @@ describe('GroupedToolBuilder — Defense Chain', () => {
             injected_field: 'malicious',
         });
 
-        expect(result.isError).toBeUndefined();
-        const args = JSON.parse(result.content[0].text);
-        expect(args.title).toBe('hello');
-        expect(args.injected_field).toBeUndefined();
+        // .strict() now rejects unknown fields instead of silently stripping them
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('injected_field');
     });
 
     it('should accumulate ALL validation errors at once', async () => {
@@ -262,7 +261,7 @@ describe('GroupedToolBuilder — Defense Chain', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown action');
+        expect(result.content[0].text).toContain('UNKNOWN ACTION');
         expect(result.content[0].text).toContain('delete');
         expect(result.content[0].text).toContain('list, create');
     });
@@ -275,7 +274,7 @@ describe('GroupedToolBuilder — Defense Chain', () => {
         const result = await builder.execute(undefined as any, {});
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('action is required');
+        expect(result.content[0].text).toContain('is missing');
     });
 
     it('should merge commonSchema and action schema', async () => {

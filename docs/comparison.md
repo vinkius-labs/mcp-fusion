@@ -11,7 +11,7 @@ Every MCP server today follows the same pattern: raw JSON output, manual routing
 | **Domain context** | None. `amount_cents: 45000` — is it dollars? cents? yen? | **System rules** travel with the data: *"CRITICAL: amount_cents is in CENTS. Divide by 100."* |
 | **Next actions** | The AI hallucinates tool names | **Agentic HATEOAS** — `.suggestActions()` provides explicit hints based on data state |
 | **Large datasets** | 10,000 rows dump into context — token DDoS | **Cognitive guardrails** — `.agentLimit(50)` truncates and teaches the agent to use filters |
-| **Security** | Internal fields (`password_hash`, `ssn`) leak to LLM | **Schema as boundary** — Zod `.strip()` silently removes undeclared fields. Automatic. |
+| **Security** | Internal fields (`password_hash`, `ssn`) leak to LLM | **Schema as boundary** — Zod `.strict()` rejects undeclared fields with actionable errors. Automatic. |
 | **Reusability** | Same entity rendered differently by different tools | **Presenter** defined once, reused everywhere. Same rules, same UI, same affordances |
 | **Charts & visuals** | Not possible — text only | **UI Blocks** — `.uiBlocks()` renders ECharts, Mermaid diagrams, summaries server-side |
 | **Routing** | `switch/case` with hundreds of branches | **Hierarchical groups** — `platform.users.list`, `platform.billing.refund` — infinite nesting |
@@ -72,7 +72,7 @@ const InvoicePresenter = createPresenter('Invoice')
         amount_cents: z.number(),
         status: z.enum(['paid', 'pending', 'overdue']),
         // internal_margin and customer_ssn are NOT in the schema
-        // → silently stripped. They never reach the AI.
+        // → rejected with actionable error naming each invalid field.
     }))
     .systemRules([
         'CRITICAL: amount_cents is in CENTS. Divide by 100 for display.',
@@ -106,7 +106,7 @@ const billing = defineTool<AppContext>('billing', {
 //
 // ── Data ──
 // { "id": "inv_123", "amount_cents": 45000, "status": "pending" }
-// (internal_margin and customer_ssn were stripped)
+// (internal_margin and customer_ssn were rejected by .strict())
 //
 // ── UI ──
 // [ECharts gauge: $450.00]
@@ -204,7 +204,7 @@ Without MVA:                          With MVA:
                                       ┌──────────────────────┐
                                       │     Presenter        │
                                       │ ┌──────────────────┐ │
-                                      │ │ Schema (strip)   │ │
+                                      │ │ Schema (strict)  │ │
                                       │ │ System Rules     │ │
                                       │ │ UI Blocks        │ │
                                       │ │ Agent Limit      │ │
@@ -224,7 +224,7 @@ Without MVA:                          With MVA:
 | | Without MVA | With MVA |
 |---|---|---|
 | **Lines of code per tool** | 20-50 (routing + validation + formatting) | 3-5 (handler only — framework handles the rest) |
-| **Security** | Hope you didn't forget to strip fields | Schema IS the boundary. Automatic. |
+| **Security** | Hope you didn't forget to strip fields | Schema IS the boundary. `.strict()` rejects. Automatic. |
 | **Agent accuracy** | ~60-70% on complex tasks | ~95%+ with deterministic rules and affordances |
 | **Token cost per call** | High (raw dumps, large payloads) | Low (guardrails, TOON encoding, truncation) |
 | **Maintenance** | Every tool re-implements rendering | Presenter defined once, reused across all tools |

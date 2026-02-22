@@ -262,7 +262,7 @@ import { z } from 'zod';
 
 // ── Schema (Security Boundary) ──────────────────────────
 // Only these fields reach the AI. Internal fields (tenant_id,
-// password_hash, etc.) are silently stripped.
+// password_hash, etc.) are rejected by .strict() automatically.
 
 const invoiceSchema = z.object({
     id: z.string(),
@@ -989,13 +989,14 @@ describe('projects tool', () => {
         expect(result.content[0].text).toContain('workspace_id');
     });
 
-    it('strips unknown fields (security)', async () => {
+    it('rejects unknown fields (.strict() security)', async () => {
         const result = await projects.execute(ctx, {
             action: 'list',
             workspace_id: 'ws_1',
-            hacker_field: 'DROP TABLE',  // ← silently stripped by .strip()
+            hacker_field: 'DROP TABLE',  // ← rejected by .strict() with actionable error
         });
-        expect(result.isError).toBeFalsy();
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('hacker_field');
     });
 });
 ```

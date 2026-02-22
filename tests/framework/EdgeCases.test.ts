@@ -484,7 +484,7 @@ describe('GroupedToolBuilder — Custom Discriminator', () => {
         const result = await builder.execute(undefined, { action: 'list' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0]?.text).toContain('operation is required');
+        expect(result.content[0]?.text).toContain('is missing');
     });
 });
 

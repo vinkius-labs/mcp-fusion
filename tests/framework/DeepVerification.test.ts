@@ -114,7 +114,7 @@ describe('defineTool — JSON params produce real Zod validation', () => {
             action: 'run', name: 'ab',
         });
         expect(r1.isError).toBe(true);
-        expect(r1.content[0].text).toContain('Validation failed');
+        expect(r1.content[0].text).toContain('VALIDATION FAILED');
 
         // Too long
         const r2 = await registry.routeCall(undefined, 'str_bounds', {
@@ -309,7 +309,7 @@ describe('defineTool — JSON params produce real Zod validation', () => {
         expect(r3.isError).toBe(true);
     });
 
-    it('should strip unknown fields (Zod merge+strip security)', async () => {
+    it('should reject unknown fields (.strict() security)', async () => {
         const tool = defineTool('strip_test', {
             actions: {
                 run: {
@@ -325,15 +325,13 @@ describe('defineTool — JSON params produce real Zod validation', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
 
-        // Inject extra fields — should be stripped
+        // Inject extra fields — .strict() now rejects them
         const result = await registry.routeCall(undefined, 'strip_test', {
             action: 'run', name: 'Alice',
             __injected: 'evil', admin: true, sudo: 'yes',
         });
-        expect(result.content[0].text).not.toContain('__injected');
-        expect(result.content[0].text).not.toContain('admin');
-        expect(result.content[0].text).not.toContain('sudo');
-        expect(result.content[0].text).toContain('name');
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('__injected');
     });
 
     it('should validate type mismatches (string passed as number)', async () => {
@@ -354,7 +352,7 @@ describe('defineTool — JSON params produce real Zod validation', () => {
             action: 'run', count: 'not-a-number',
         });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Validation failed');
+        expect(result.content[0].text).toContain('VALIDATION FAILED');
     });
 
     it('should validate boolean type', async () => {

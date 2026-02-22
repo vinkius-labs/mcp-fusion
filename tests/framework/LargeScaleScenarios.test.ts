@@ -690,7 +690,7 @@ describe('Enterprise Chaos — LLM Garbage Input', () => {
         expect(result.isError).toBe(true);
     });
 
-    it('should strip unknown fields (LLM adds extra hallucinated params)', async () => {
+    it('should reject unknown fields (.strict() catches LLM hallucinated params)', async () => {
         const result = await registry.routeCall(undefined as any, 'ticket_system', {
             action: 'list',
             workspace_id: 'ws-1',
@@ -698,8 +698,9 @@ describe('Enterprise Chaos — LLM Garbage Input', () => {
             sort_by_moon_phase: true,
             __internal_admin_override: true,
         });
-        // Should succeed — extra fields are stripped by .strip()
-        expect(result.isError).toBeUndefined();
+        // .strict() rejects extra fields
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('hallucinated_filter');
     });
 
     it('should reject too-short resolution on close', async () => {
