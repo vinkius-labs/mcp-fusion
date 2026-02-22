@@ -77,7 +77,7 @@ export default defineConfig({
     },
 
     nav: [
-      { text: 'The MVA Manifesto', link: '/mva-pattern' },
+      { text: 'MVA Architecture', link: '/mva/' },
       { text: 'Documentation', link: '/introduction' },
       { text: 'Examples', link: '/examples' },
       { text: 'API', link: '/api-reference' },
@@ -97,6 +97,20 @@ export default defineConfig({
           { text: 'Cookbook & Examples', link: '/examples' },
           { text: 'Architecture', link: '/architecture' },
           { text: 'Migration Guide', link: '/migration' },
+        ]
+      },
+      {
+        text: 'MVA Architecture',
+        collapsed: false,
+        items: [
+          { text: 'MVA At a Glance', link: '/mva/' },
+          { text: 'The Theory Behind MVA', link: '/mva/theory' },
+          { text: 'MVA vs MVC', link: '/mva/mva-vs-mvc' },
+          { text: 'Anatomy of the Presenter', link: '/mva/presenter-anatomy' },
+          { text: 'Perception Package', link: '/mva/perception-package' },
+          { text: 'Agentic Affordances', link: '/mva/affordances' },
+          { text: 'Context Tree-Shaking', link: '/mva/context-tree-shaking' },
+          { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
         ]
       },
       {

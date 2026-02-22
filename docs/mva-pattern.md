@@ -8,6 +8,10 @@
 
 </div>
 
+::: tip 📚 Deep Dive Available
+This page is the MVA Manifesto — a concise overview of the paradigm. For the complete architectural reference, visit the **[MVA Architecture Section →](/mva/)** with 7 in-depth guides covering theory, formal paradigm comparison, presenter anatomy, perception packages, agentic affordances, context tree-shaking, and cognitive guardrails.
+:::
+
 ## Why We Created MVA
 
 For four decades, **Model-View-Controller** has been the unquestioned standard for interactive software. It works — for humans. Humans can interpret ambiguous data, navigate inconsistent interfaces, and tolerate presentation errors. They bring domain knowledge that the View never had to provide.
