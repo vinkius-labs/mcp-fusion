@@ -11,6 +11,7 @@
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { type ToolResponse, error } from '../response.js';
+import { formatValidationError } from './ValidationErrorFormatter.js';
 import { type Result, succeed, fail } from '../result.js';
 import { type InternalAction } from '../types.js';
 import { type CompiledChain } from './MiddlewareCompiler.js';
@@ -84,10 +85,12 @@ export function validateArgs<TContext>(
     const result = validationSchema.safeParse(argsWithoutDiscriminator);
 
     if (!result.success) {
-        const issues = result.error.issues
-            .map(i => `${i.path.join('.')}: ${i.message}`)
-            .join('; ');
-        return fail(error(`Validation failed: ${issues}`));
+        const message = formatValidationError(
+            result.error.issues,
+            `${execCtx.toolName}/${resolved.discriminatorValue}`,
+            argsWithoutDiscriminator,
+        );
+        return fail(error(message));
     }
 
     // Mutate directly — zero-copy re-injection of discriminator

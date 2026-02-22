@@ -99,29 +99,34 @@ function buildValidationSchema<TContext>(
     action: InternalAction<TContext>,
     commonSchema: ZodObject<ZodRawShape> | undefined,
 ): ZodObject<ZodRawShape> | null {
-    let base = commonSchema;
-
-    // Apply surgical omission of common fields for this action
-    if (base && action.omitCommonFields?.length) {
-        const omitMask = Object.fromEntries(
-            action.omitCommonFields
-                .filter(f => f in base!.shape)
-                .map(f => [f, true]),
-        ) as { [k: string]: true };
-
-        if (Object.keys(omitMask).length > 0) {
-            base = base.omit(omitMask);
-        }
-
-        // If all common fields were omitted, base becomes effectively empty
-        if (Object.keys(base.shape).length === 0) {
-            base = undefined;
-        }
-    }
-
+    const base = applyCommonSchemaOmit(commonSchema, action.omitCommonFields);
     const specific = action.schema;
     if (!base && !specific) return null;
     const merged = base && specific ? base.merge(specific) : (base ?? specific);
     if (!merged) return null;
     return merged.strip();
+}
+
+/**
+ * Apply surgical field omission to the common schema.
+ *
+ * Returns `undefined` if all common fields were omitted or if
+ * the common schema is undefined.
+ */
+function applyCommonSchemaOmit(
+    schema: ZodObject<ZodRawShape> | undefined,
+    omitFields: readonly string[] | undefined,
+): ZodObject<ZodRawShape> | undefined {
+    if (!schema || !omitFields?.length) return schema;
+
+    const omitMask = Object.fromEntries(
+        omitFields
+            .filter(f => f in schema.shape)
+            .map(f => [f, true]),
+    ) as { [k: string]: true };
+
+    if (Object.keys(omitMask).length === 0) return schema;
+
+    const reduced = schema.omit(omitMask);
+    return Object.keys(reduced.shape).length > 0 ? reduced : undefined;
 }

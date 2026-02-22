@@ -63,6 +63,40 @@ import {
 export type GroupConfigurator<TContext, TCommon extends Record<string, unknown>> =
     (group: ActionGroupBuilder<TContext, TCommon>) => void;
 
+// ── Shared Config → InternalAction Mapper ────────────────
+
+/**
+ * Map `ActionConfig` properties to `InternalAction` base fields.
+ *
+ * Both `GroupedToolBuilder.action()` and `ActionGroupBuilder.action()`
+ * perform this same mapping. Extracted here to eliminate duplication
+ * and ensure a single source of truth.
+ *
+ * @param config - The action configuration from the public API
+ * @param omitCommonFields - Resolved omitCommon fields (already merged/deduped)
+ * @returns Base fields for building an `InternalAction`
+ *
+ * @internal
+ */
+export function mapConfigToActionFields<TContext>(
+    config: ActionConfig<TContext>,
+    omitCommonFields: string[] | undefined,
+): Pick<InternalAction<TContext>,
+    'actionName' | 'description' | 'schema' | 'destructive' |
+    'idempotent' | 'readOnly' | 'handler' | 'omitCommonFields'
+> {
+    return {
+        actionName: config.name,
+        description: config.description ?? undefined,
+        schema: config.schema ?? undefined,
+        destructive: config.destructive ?? undefined,
+        idempotent: config.idempotent ?? undefined,
+        readOnly: config.readOnly ?? undefined,
+        handler: config.handler,
+        omitCommonFields: omitCommonFields?.length ? omitCommonFields : undefined,
+    };
+}
+
 // ── ActionGroupBuilder ───────────────────────────────────
 
 export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown> = Record<string, never>> {
@@ -185,16 +219,9 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
             key: `${this._groupName}.${config.name}`,
             groupName: this._groupName,
             groupDescription: this._groupDescription,
-            actionName: config.name,
-            description: config.description ?? undefined,
-            schema: config.schema ?? undefined,
-            destructive: config.destructive ?? undefined,
-            idempotent: config.idempotent ?? undefined,
-            readOnly: config.readOnly ?? undefined,
-            handler: config.handler,
+            ...mapConfigToActionFields(config, mergedOmit),
             middlewares: this._groupMiddlewares.length > 0
                 ? [...this._groupMiddlewares] : undefined,
-            omitCommonFields: mergedOmit.length > 0 ? mergedOmit : undefined,
         });
         return this;
     }

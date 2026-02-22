@@ -3,7 +3,7 @@
  *
  * Generates MCP-compatible inputSchema from Zod definitions:
  * - Discriminator enum from action keys
- * - Common + per-action schema merging
+ * - Common + per-action schema merging (with omitCommon support)
  * - Per-field annotations (required-for / optional-for)
  *
  * Pure-function module: no state, no side effects.
@@ -20,6 +20,12 @@ interface JsonSchemaObject {
     required?: string[];
 }
 
+/** Tracks which actions use a field and where it's required */
+interface FieldTracking {
+    keys: string[];
+    requiredIn: string[];
+}
+
 // ── Public API ───────────────────────────────────────────
 
 export function generateInputSchema<TContext>(
@@ -31,8 +37,33 @@ export function generateInputSchema<TContext>(
     const actionKeys = actions.map(a => a.key);
     const properties: Record<string, object> = {};
     const topLevelRequired: string[] = [discriminator];
+    const fieldActions = new Map<string, FieldTracking>();
 
-    // Discriminator field with enum
+    addDiscriminatorProperty(properties, discriminator, actionKeys, hasGroup);
+
+    const omitSets = buildOmitSets(actions);
+    const commonRequiredFields = collectCommonFields(
+        commonSchema, actionKeys, omitSets, properties, topLevelRequired, fieldActions,
+    );
+    collectActionFields(actions, properties, fieldActions);
+    applyAnnotations(fieldActions, commonRequiredFields, actionKeys, properties);
+
+    return {
+        type: 'object' as const,
+        properties,
+        required: topLevelRequired,
+    };
+}
+
+// ── Internal Steps ───────────────────────────────────────
+
+/** Step 1: Add the discriminator enum property */
+function addDiscriminatorProperty(
+    properties: Record<string, object>,
+    discriminator: string,
+    actionKeys: string[],
+    hasGroup: boolean,
+): void {
     properties[discriminator] = {
         type: 'string',
         enum: actionKeys,
@@ -40,54 +71,79 @@ export function generateInputSchema<TContext>(
             ? `Module and operation (module.${discriminator} format)`
             : 'Which operation to perform',
     };
+}
 
-    // Track field → action keys mapping for annotations
-    const fieldActions = new Map<string, { keys: string[]; requiredIn: string[] }>();
-
-    // Build per-action omit sets for O(1) lookup
-    const actionOmitSets = new Map<string, Set<string>>();
+/** Build per-action omit sets for O(1) field exclusion checks */
+function buildOmitSets<TContext>(
+    actions: readonly InternalAction<TContext>[],
+): Map<string, Set<string>> {
+    const sets = new Map<string, Set<string>>();
     for (const action of actions) {
         if (action.omitCommonFields?.length) {
-            actionOmitSets.set(action.key, new Set(action.omitCommonFields));
+            sets.set(action.key, new Set(action.omitCommonFields));
         }
     }
+    return sets;
+}
 
-    // Common schema fields
+/**
+ * Step 2: Process commonSchema fields.
+ *
+ * Omitted fields are excluded from per-action tracking.
+ * Fields required by ALL actions go to topLevelRequired.
+ *
+ * @returns The set of common required field names (for annotation logic)
+ */
+function collectCommonFields(
+    commonSchema: ZodObject<ZodRawShape> | undefined,
+    actionKeys: string[],
+    omitSets: Map<string, Set<string>>,
+    properties: Record<string, object>,
+    topLevelRequired: string[],
+    fieldActions: Map<string, FieldTracking>,
+): Set<string> {
     const commonRequiredFields = new Set<string>();
-    if (commonSchema) {
-        const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' }) as JsonSchemaObject;
-        const schemaProps = jsonSchema.properties ?? {};
-        const schemaRequired = jsonSchema.required ?? [];
+    if (!commonSchema) return commonRequiredFields;
 
-        for (const field of schemaRequired) {
-            commonRequiredFields.add(field);
-        }
+    const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' }) as JsonSchemaObject;
+    const schemaProps = jsonSchema.properties ?? {};
+    const schemaRequired = jsonSchema.required ?? [];
 
-        for (const [key, value] of Object.entries(schemaProps)) {
-            // Determine which actions actually use this common field
-            const actionsUsingField = actionKeys.filter(ak => {
-                const omitSet = actionOmitSets.get(ak);
-                return !omitSet || !omitSet.has(key);
-            });
-
-            // If no action uses the field, skip it entirely
-            if (actionsUsingField.length === 0) continue;
-
-            properties[key] = value;
-
-            // Only add to topLevelRequired if ALL actions use this field
-            if (commonRequiredFields.has(key) && actionsUsingField.length === actionKeys.length) {
-                topLevelRequired.push(key);
-            }
-
-            fieldActions.set(key, {
-                keys: [...actionsUsingField],
-                requiredIn: commonRequiredFields.has(key) ? [...actionsUsingField] : [],
-            });
-        }
+    for (const field of schemaRequired) {
+        commonRequiredFields.add(field);
     }
 
-    // Per-action schema fields
+    for (const [key, value] of Object.entries(schemaProps)) {
+        const actionsUsingField = actionKeys.filter(ak => {
+            const omitSet = omitSets.get(ak);
+            return !omitSet || !omitSet.has(key);
+        });
+
+        // If no action uses the field, skip it entirely
+        if (actionsUsingField.length === 0) continue;
+
+        properties[key] = value;
+
+        // Only add to topLevelRequired if ALL actions use this field
+        if (commonRequiredFields.has(key) && actionsUsingField.length === actionKeys.length) {
+            topLevelRequired.push(key);
+        }
+
+        fieldActions.set(key, {
+            keys: [...actionsUsingField],
+            requiredIn: commonRequiredFields.has(key) ? [...actionsUsingField] : [],
+        });
+    }
+
+    return commonRequiredFields;
+}
+
+/** Step 3: Collect per-action schema fields with compatibility checks */
+function collectActionFields<TContext>(
+    actions: readonly InternalAction<TContext>[],
+    properties: Record<string, object>,
+    fieldActions: Map<string, FieldTracking>,
+): void {
     for (const action of actions) {
         if (!action.schema) continue;
 
@@ -99,7 +155,6 @@ export function generateInputSchema<TContext>(
         for (const [key, value] of Object.entries(schemaProps)) {
             const existing = properties[key];
             if (!existing) {
-                // First declaration defines the canonical type
                 properties[key] = value;
             } else {
                 assertFieldCompatibility(existing, value, key, action.key);
@@ -116,11 +171,17 @@ export function generateInputSchema<TContext>(
             }
         }
     }
+}
 
-    // Apply per-field annotations
+/** Step 4: Apply per-field annotations based on tracking data */
+function applyAnnotations(
+    fieldActions: Map<string, FieldTracking>,
+    commonRequiredFields: Set<string>,
+    actionKeys: string[],
+    properties: Record<string, object>,
+): void {
     for (const [key, tracking] of fieldActions.entries()) {
         if (commonRequiredFields.has(key) && tracking.keys.length === actionKeys.length) {
-            // All actions use the field → "(always required)"
             annotateField(properties, key, '(always required)');
         } else if (tracking.requiredIn.length > 0 && tracking.requiredIn.length === tracking.keys.length) {
             annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`);
@@ -135,15 +196,9 @@ export function generateInputSchema<TContext>(
             annotateField(properties, key, `For: ${tracking.keys.join(', ')}`);
         }
     }
-
-    return {
-        type: 'object' as const,
-        properties,
-        required: topLevelRequired,
-    };
 }
 
-// ── Internal helpers ─────────────────────────────────────
+// ── Low-level helpers ────────────────────────────────────
 
 /** Minimal shape of a JSON Schema field that we annotate */
 interface JsonSchemaField {

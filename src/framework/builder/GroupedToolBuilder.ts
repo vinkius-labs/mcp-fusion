@@ -63,6 +63,7 @@ import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
     ActionGroupBuilder,
     type GroupConfigurator,
+    mapConfigToActionFields,
 } from './ActionGroupBuilder.js';
 
 // ── Re-exports for Public API Compatibility ──────────────
@@ -424,15 +425,11 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             key: config.name,
             groupName: undefined,
             groupDescription: undefined,
-            actionName: config.name,
-            description: config.description ?? undefined,
-            schema: config.schema ?? undefined,
-            destructive: config.destructive ?? undefined,
-            idempotent: config.idempotent ?? undefined,
-            readOnly: config.readOnly ?? undefined,
-            handler: config.handler,
+            ...mapConfigToActionFields(
+                config,
+                config.omitCommon?.length ? [...config.omitCommon] : undefined,
+            ),
             middlewares: undefined,
-            omitCommonFields: config.omitCommon?.length ? [...config.omitCommon] : undefined,
         });
         return this;
     }
