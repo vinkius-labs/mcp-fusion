@@ -1,16 +1,29 @@
 # mcp-fusion
 
-> Enterprise MCP Tool Multiplexer — consolidate thousands of endpoints behind a single LLM tool.
+> The MVA (Model-View-Agent) framework for building MCP servers where AI agents are first-class consumers.
 
 ## What is mcp-fusion?
 
-mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that consolidates related operations into a single tool behind a discriminator field. Instead of registering hundreds of individual MCP tools, you register ONE grouped tool. The LLM selects the exact operation through an `action` enum.
+mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that introduces the **MVA (Model-View-Agent)** architectural pattern — created by Renato Marinho at Vinkius Labs. Instead of dumping raw JSON and hoping the AI figures it out, MVA adds a **Presenter** (the View layer) that gives every response structure: validated data, domain rules, rendered charts, action affordances, and cognitive guardrails.
+
+## Core Architecture: MVA (Model-View-Agent)
+
+```
+Model (Zod Schema) → View (Presenter) → Agent (LLM)
+   validates            perceives          acts
+```
+
+The Presenter replaces the human-centric View with an agent-centric perception layer. Every tool response becomes a **structured perception package** — not raw JSON.
 
 ## Core Concepts
 
+- **MVA Pattern**: Model-View-Agent — the architectural foundation where Presenters replace Views
+- **Presenter**: Domain-level View layer — schema validation, system rules, UI blocks, affordances, guardrails
 - **GroupedToolBuilder**: Fluent builder that groups related actions into a single MCP tool
 - **createTool()**: Factory function to create a GroupedToolBuilder with full Zod power
 - **defineTool()**: JSON-first factory — define tools without Zod imports using plain strings/objects
+- **createPresenter()**: Fluent builder for domain-level Presenters
+- **ResponseBuilder**: Fine-grained manual response composition
 - **Action**: A single operation within a grouped tool (e.g., "list", "create", "delete")
 - **Group**: Hierarchical namespace for actions (e.g., "users.create", "billing.refund")
 - **Discriminator**: The field name the LLM uses to select the action (default: "action")
@@ -19,6 +32,48 @@ mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that c
 - **Middleware**: Pre-compiled middleware chains following the next() pattern
 - **Tags**: Capability labels for selective tool exposure per session
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
+- **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
+
+## Quick Start — MVA with Presenter
+
+```typescript
+import { createPresenter, ui, defineTool, success } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+// 1. Define the Presenter — the MVA View Layer
+export const InvoicePresenter = createPresenter('Invoice')
+    .schema(z.object({
+        id: z.string(),
+        amount_cents: z.number(),
+        status: z.enum(['paid', 'pending', 'overdue']),
+    }))
+    .systemRules(['CRITICAL: amount_cents is in CENTS. Divide by 100.'])
+    .uiBlocks((inv) => [
+        ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
+    ])
+    .suggestActions((inv) =>
+        inv.status === 'pending'
+            ? [{ tool: 'billing.pay', reason: 'Process payment' }]
+            : []
+    );
+
+// 2. Attach to any tool — handler returns raw data, Presenter does the rest
+const billing = defineTool<AppContext>('billing', {
+    actions: {
+        get_invoice: {
+            returns: InvoicePresenter,
+            params: { id: 'string' },
+            handler: async (ctx, args) => await ctx.db.invoices.findUnique(args.id),
+        },
+    },
+});
+
+const registry = new ToolRegistry<AppContext>();
+registry.register(billing);
+registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+});
+```
 
 ## Quick Start — defineTool() (No Zod Required)
 
@@ -27,7 +82,7 @@ import { defineTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusi
 
 const projects = defineTool<AppContext>('projects', {
     description: 'Manage workspace projects',
-    shared: { workspace_id: 'string' },  // Injected into ALL actions
+    shared: { workspace_id: 'string' },
     actions: {
         list: {
             readOnly: true,
@@ -51,12 +106,6 @@ const projects = defineTool<AppContext>('projects', {
         },
     },
 });
-
-const registry = new ToolRegistry<AppContext>();
-registry.register(projects);
-registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
-});
 ```
 
 ## Quick Start — createTool() (Full Zod Power)
@@ -65,7 +114,6 @@ registry.attachToServer(server, {
 import { createTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// 1. Create a tool
 const projects = createTool<AppContext>('projects')
     .description('Manage workspace projects')
     .commonSchema(z.object({
@@ -91,13 +139,58 @@ const projects = createTool<AppContext>('projects')
             return success('Deleted');
         },
     });
+```
 
-// 2. Register and attach
-const registry = new ToolRegistry<AppContext>();
-registry.register(projects);
-const detach = registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
-});
+## Presenter API
+
+```typescript
+import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
+
+const UserPresenter = createPresenter('User')
+    .schema(z.object({ id: z.string(), name: z.string(), role: z.string() }))
+    .systemRules(['Display name in bold'])
+    .systemRules((user, ctx) => ctx.isAdmin ? ['Show internal fields'] : ['Hide internal fields'])
+    .uiBlocks((user) => [ui.summary({ total: 1, showing: 1 })])
+    .agentLimit(50, { warningMessage: 'Showing {shown} of {total}. Use filters.' })
+    .suggestActions((user) => [
+        { tool: 'users.update', reason: 'Edit this user', args: { id: user.id } },
+    ])
+    .embed('team', TeamPresenter);
+```
+
+## Presenter Composition
+
+```typescript
+const OrderPresenter = createPresenter('Order')
+    .schema(OrderSchema)
+    .embed('customer', CustomerPresenter)
+    .embed('items', LineItemPresenter);
+// Child Presenters' rules, UI blocks, and suggestions are automatically merged.
+```
+
+## ResponseBuilder (Manual Composition)
+
+```typescript
+import { ResponseBuilder } from '@vinkius-core/mcp-fusion';
+
+const response = ResponseBuilder.create(data)
+    .systemRules(['Format currency in USD'])
+    .uiBlock(ui.echarts({ /* chart config */ }))
+    .llmHint('This invoice is overdue')
+    .suggestActions([{ tool: 'billing.pay', reason: 'Pay now' }])
+    .build();
+```
+
+## DX Shortcuts
+
+```typescript
+import { response, ui } from '@vinkius-core/mcp-fusion';
+
+return response.ok(data);                          // Simple success
+return response.withRules(data, ['Rule 1']);        // Data + rules
+ui.echarts({ series: [...] });                     // ECharts chart
+ui.mermaid('graph TD; A-->B');                      // Mermaid diagram
+ui.summary({ total: 100, showing: 10 });           // Collection summary
 ```
 
 ## Hierarchical Groups
@@ -124,54 +217,71 @@ const requireAuth: MiddlewareFn<AppContext> = async (ctx, args, next) => {
     return next();
 };
 
+// tRPC-style context derivation
+const withDb = defineMiddleware(async (ctx) => ({
+    ...ctx,
+    db: await createDbConnection(ctx.tenantId),
+}));
+
 createTool<AppContext>('projects')
-    .use(requireAuth)          // Global: runs on every action
-    .group('admin', g => {
-        g.use(requireSuperAdmin) // Group-scoped: only admin.* actions
-         .action({ name: 'reset', handler: resetHandler });
-    });
+    .use(requireAuth)
+    .use(withDb)
+    .action({ name: 'list', handler: async (ctx, args) => success(await ctx.db.query()) });
+```
+
+## Self-Healing Errors
+
+```typescript
+import { toolError } from '@vinkius-core/mcp-fusion';
+
+return toolError('INVALID_DATE_RANGE', {
+    message: 'Start date must be before end date',
+    recovery: { action: 'retry', suggestion: 'Swap the date values' },
+    suggestedArgs: { start: args.end, end: args.start },
+});
+```
+
+## State Sync
+
+```typescript
+import { cacheSignal, invalidates } from '@vinkius-core/mcp-fusion';
+
+// Read action — tell the agent how long data is fresh
+handler: async (ctx, args) => cacheSignal(data, { maxAge: 30, scope: 'invoices' });
+
+// Write action — tell the agent what data is now stale
+handler: async (ctx, args) => invalidates(result, ['invoices', 'billing']);
 ```
 
 ## Tag Filtering
 
 ```typescript
-const usersTool = createTool<AppContext>('users').tags('core');
-const adminTool = createTool<AppContext>('admin').tags('admin', 'internal');
-
-registry.registerAll(usersTool, adminTool);
-
-// Expose only core tools:
-registry.attachToServer(server, { filter: { tags: ['core'] } });
-
-// Everything except internal:
-registry.attachToServer(server, { filter: { exclude: ['internal'] } });
+registry.attachToServer(server, { filter: { tags: ['core'] } });      // Only core tools
+registry.attachToServer(server, { filter: { exclude: ['internal'] } }); // No internal tools
 ```
 
 ## Response Helpers
 
 ```typescript
-import { success, error, required, toonSuccess } from '@vinkius-core/mcp-fusion';
+import { success, error, required, toonSuccess, toolError } from '@vinkius-core/mcp-fusion';
 
-return success('Task completed');              // String response
-return success({ id: '123', name: 'Acme' });  // Object (JSON.stringify)
-return error('Project not found');             // Error response
-return required('workspace_id');               // Missing field error
-return toonSuccess(users);                     // TOON-encoded (~40% fewer tokens)
+return success('Task completed');
+return success({ id: '123', name: 'Acme' });
+return error('Project not found');
+return required('workspace_id');
+return toonSuccess(users);                  // ~40% fewer tokens
+return toolError('NOT_FOUND', { message: 'Invoice not found', recovery: { action: 'list' } });
 ```
 
-## Result Monad
+## Streaming Progress
 
 ```typescript
-import { succeed, fail, error, type Result } from '@vinkius-core/mcp-fusion';
-
-function parseId(input: string): Result<number> {
-    const id = parseInt(input, 10);
-    return isNaN(id) ? fail(error('Invalid ID')) : succeed(id);
+handler: async function* (ctx, args) {
+    yield progress(0.25, 'Loading data...');
+    const data = await ctx.db.query();
+    yield progress(0.75, 'Processing...');
+    return success(data);
 }
-
-const result = parseId(args.id);
-if (!result.ok) return result.response;  // Early return
-const userId = result.value;             // Narrowed to number
 ```
 
 ## Important Rules
@@ -184,14 +294,25 @@ const userId = result.value;             // Narrowed to number
 6. Zod `.merge().strip()` is used at runtime — unknown fields are silently stripped
 7. Middleware chains are pre-compiled at build time — zero runtime allocation
 8. Tool names must be unique across a ToolRegistry
+9. Presenters are immutable after creation — define once, reuse across tools
+10. `.agentLimit()` automatically truncates and injects guidance blocks
 
 ## Public API (all from '@vinkius-core/mcp-fusion')
 
 ### Builder
-- `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod for schemas)
+- `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod)
 - `defineTool<TContext>(name, config)` → GroupedToolBuilder (JSON-first, no Zod required)
 - `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
 - `ActionGroupBuilder<TContext>` — .use(), .action()
+
+### Presenter (MVA View Layer)
+- `createPresenter(name)` → PresenterBuilder — .schema(), .systemRules(), .uiBlocks(), .agentLimit(), .suggestActions(), .embed()
+- `ResponseBuilder.create(data)` → ResponseBuilder — .systemRules(), .uiBlock(), .llmHint(), .suggestActions(), .build()
+- `ui.echarts(config)` → UIBlock (ECharts chart)
+- `ui.mermaid(code)` → UIBlock (Mermaid diagram)
+- `ui.summary(stats)` → UIBlock (Collection summary)
+- `response.ok(data)` → ToolResponse (success shortcut)
+- `response.withRules(data, rules)` → ToolResponse (data + system rules)
 
 ### Registry
 - `ToolRegistry<TContext>` — .register(), .registerAll(), .getAllTools(), .getTools(filter), .routeCall(), .attachToServer(), .has(), .clear(), .size
@@ -199,8 +320,6 @@ const userId = result.value;             // Narrowed to number
 ### FusionClient (tRPC-style)
 - `createFusionClient<TRouter>(transport)` → FusionClient — type-safe client with autocomplete
 - `FusionClient<TRouter>` — .execute(action, args) with full type inference
-- `FusionTransport` — { callTool(name, args) }
-- `RouterMap` — base type constraint for router definitions
 
 ### Response Helpers
 - `success(data)` → ToolResponse
@@ -208,6 +327,10 @@ const userId = result.value;             // Narrowed to number
 - `required(field)` → ToolResponse (isError: true)
 - `toolError(code, options)` → ToolResponse (structured recovery hints for LLM agents)
 - `toonSuccess(data, options?)` → ToolResponse (TOON-encoded)
+
+### State Sync
+- `cacheSignal(data, options)` → ToolResponse with cache-control metadata
+- `invalidates(data, scopes)` → ToolResponse with invalidation signals
 
 ### Streaming Progress
 - `progress(percent, message)` → ProgressEvent (yield from generator handlers)
@@ -220,33 +343,27 @@ const userId = result.value;             // Narrowed to number
 
 ### Middleware
 - `defineMiddleware(deriveFn)` → MiddlewareDefinition (tRPC-style context derivation)
-- `resolveMiddleware(input)` → MiddlewareFn (converts MiddlewareDefinition or MiddlewareFn)
+- `resolveMiddleware(input)` → MiddlewareFn
+
+### Observability
+- `createDebugObserver(options?)` → Observer for runtime debugging
+- Event types: tool:start, tool:end, tool:error, middleware:start, middleware:end
 
 ### Types
 - `ToolResponse` — { content: [{ type: "text", text: string }], isError?: boolean }
 - `MiddlewareFn<TContext>` — (ctx, args, next) => Promise<ToolResponse>
-- `ActionConfig<TContext>` — { name, description?, schema?, destructive?, idempotent?, readOnly?, handler }
+- `ActionConfig<TContext>` — { name, description?, schema?, destructive?, readOnly?, handler, returns? }
+- `PresenterConfig` — { schema, systemRules?, uiBlocks?, agentLimit?, suggestActions?, embeds? }
 - `ToolBuilder<TContext>` — Interface for custom builders
 - `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware }
 - `ToolFilter` — { tags?: string[], exclude?: string[] }
 - `AttachOptions<TContext>` — { contextFactory?, filter? }
-- `DetachFn` — () => void
-- `GroupConfigurator<TContext, TCommon>` — (group: ActionGroupBuilder) => void
 
 ### Domain Models
-- `BaseModel` — abstract base (name, title, description, meta, icons, getFullyQualifiedName())
-- `GroupItem` — leaf with multi-parent groups (addParentGroup, removeParentGroup)
-- `Group` — tree node (addChildGroup, addChildTool, addChildPrompt, addChildResource, getRoot, isRoot, getFullyQualifiedName)
+- `BaseModel` — abstract base (name, title, description, meta, icons)
+- `GroupItem` — leaf with multi-parent groups
+- `Group` — tree node (addChildGroup, addChildTool, addChildPrompt, addChildResource)
 - `Tool` — inputSchema, outputSchema, toolAnnotations
 - `Resource` — uri, size, mimeType, annotations
-- `Prompt` — promptArguments (addPromptArgument, removePromptArgument)
+- `Prompt` — promptArguments
 - `PromptArgument` — required: boolean
-- `Role` — enum: USER, ASSISTANT
-- `Icon` — { src?, mimeType?, sizes?, theme? }
-- `Annotations` — { audience?: Role[], priority?, lastModified? }
-- `ToolAnnotations` — { title?, readOnlyHint?, destructiveHint?, idempotentHint?, openWorldHint?, returnDirect? }
-- `createIcon(props?)`, `createAnnotations(props?)`, `createToolAnnotations(props?)`
-
-### Converters
-- `ConverterBase<TSource, TTarget>` — abstract (convertFrom, convertTo, convertFromBatch, convertToBatch)
-- `ToolConverterBase<T>`, `GroupConverterBase<T>`, `PromptConverterBase<T>`, `ResourceConverterBase<T>`, `ToolAnnotationsConverterBase<T>`
