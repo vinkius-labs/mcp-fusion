@@ -26,11 +26,12 @@ FusionClient solves all of these:
 
 ### 1. Define Your Router Type (Server Side)
 
-Export a type that maps action paths to their argument shapes:
+Use `createTypedRegistry()` and `InferRouter` to **automatically** extract a fully typed router from your builders — no manual type definitions needed:
 
 ```typescript
 // mcp-server.ts
-import { defineTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
+import { defineTool, createTypedRegistry, success } from '@vinkius-core/mcp-fusion';
+import type { InferRouter } from '@vinkius-core/mcp-fusion';
 
 const projects = defineTool<AppContext>('projects', {
     shared: { workspace_id: 'string' },
@@ -57,13 +58,20 @@ const billing = defineTool<AppContext>('billing', {
     },
 });
 
-// Export the router type:
-export type AppRouter = {
-    'projects.list': { workspace_id: string; status?: 'active' | 'archived' };
-    'projects.create': { workspace_id: string; name: string };
-    'billing.refund': { invoice_id: string; amount: number };
-};
+// Automatic router type extraction:
+const registry = createTypedRegistry<AppContext>()(projects, billing);
+export type AppRouter = InferRouter<typeof registry>;
+// Result: {
+//   'projects.list': { workspace_id: string; status?: 'active' | 'archived' };
+//   'projects.create': { workspace_id: string; name: string };
+//   'billing.refund': { invoice_id: string; amount: number };
+// }
 ```
+
+::: info Manual Type Definition
+If you prefer manual control, you can still define `AppRouter` by hand as a `Record<string, Record<string, unknown>>`.
+:::
+
 
 ### 2. Create the Client (Client Side)
 
@@ -186,6 +194,10 @@ Every call in this function is fully typed. If you rename an action on the serve
 | Export | Type | Description |
 |---|---|---|
 | `createFusionClient(transport)` | `function` | Creates a typed `FusionClient<TRouter>` |
+| `createTypedRegistry<TContext>()` | `function` | Creates a `TypedToolRegistry` preserving builder types for `InferRouter` |
+| `InferRouter<T>` | `type` | Extracts a typed `RouterMap` from a `TypedToolRegistry` (zero runtime cost) |
+| `TypedToolRegistry<TContext, TBuilders>` | `interface` | Type-preserving registry wrapper for compile-time inference |
 | `FusionClient<TRouter>` | `interface` | Type-safe client with `.execute()` method |
 | `FusionTransport` | `interface` | Transport abstraction (`callTool`) |
 | `RouterMap` | `type` | Base constraint for router types |
+

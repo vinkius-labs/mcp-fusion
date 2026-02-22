@@ -282,9 +282,18 @@ handler: async function* (ctx, args) {
 }
 ```
 
-### Type-Safe Client — `createFusionClient()` (tRPC-style)
-End-to-end type safety from server to client, with full autocomplete:
+### Type-Safe Client — `createFusionClient()` + `InferRouter` (tRPC-style)
+End-to-end type safety from server to client, with full autocomplete — **no manual type definitions**:
 ```typescript
+// ── Server: automatic router extraction ──
+import { createTool, createTypedRegistry } from '@vinkius-core/mcp-fusion';
+import type { InferRouter } from '@vinkius-core/mcp-fusion';
+
+const registry = createTypedRegistry<AppContext>()(projects, billing);
+export type AppRouter = InferRouter<typeof registry>;
+// Produces: { 'projects.list': { workspace_id: string }, 'billing.refund': { invoice_id: string, amount: number } }
+
+// ── Client: full autocomplete ──
 import { createFusionClient } from '@vinkius-core/mcp-fusion/client';
 import type { AppRouter } from './mcp-server';
 
@@ -396,6 +405,8 @@ Six pure-function modules organized by bounded context. Every module is independ
 | **`defineTool()` — JSON-First API** | Build tools without Zod imports — strings, enums, arrays, regex |
 | **`createTool()` — Zod Power Mode** | Full `.refine()`, `.transform()`, `.regex()` for advanced validation |
 | **`createFusionClient()` — Typed Client** | tRPC-style end-to-end type safety from server to client |
+| **`InferRouter<T>` — Automatic Router Types** | Zero-manual-typing: extracts RouterMap from `createTypedRegistry()` at compile time |
+| **Typed Handler Args** | Handler `args` automatically typed from schema/params — no casts needed |
 | **`defineMiddleware()` — Context Derivation** | tRPC-style derive data into context with type inference |
 | **`toolError()` — Self-Healing Errors** | Structured error recovery for autonomous LLM agents |
 | **`progress()` — Streaming Progress** | Generator handlers yield progress during long operations |

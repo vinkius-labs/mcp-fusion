@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-02-22
+
+### Added
+- **`InferRouter<typeof registry>` — Compile-Time Router Type Extraction (Task 2.1):**
+  - New `createTypedRegistry<TContext>()` curried factory that creates a `ToolRegistry` while preserving builder types for compile-time inference.
+  - New `InferRouter<T>` type utility that extracts a fully typed `RouterMap` from a `TypedToolRegistry`, producing `{ 'toolName.actionName': ArgsType }` entries with zero runtime cost.
+  - New `TypedToolRegistry<TContext, TBuilders>` interface for type-safe registry wrapping.
+  - `GroupedToolBuilder` now carries `TName` (literal tool name) and `TRouterMap` (accumulated action entries) as phantom generics — each `.action()` call widens the type with the new action's key and args.
+  - `createTool()` now captures the tool name as a string literal type for inference.
+  - 19 new tests covering runtime behavior + type-level inference verification.
+
+- **Typed Handler Args via Schema Inference (Task 2.2):**
+  - **`defineTool()` path:** `ActionDef` is now generic over `TParams`, so when `params: { name: 'string' }` is specified, the handler receives `args: { name: string }` — no casts needed. Works with shared params too: `args: InferParams<TParams> & InferParams<TShared>`.
+  - **`createTool()` path:** Already supported via typed overload — verified with new compile-time tests.
+  - Removed legacy double-cast pattern `(args as Record<string, unknown>)['message'] as string` from existing tests — `args.message` now works directly.
+  - 6 new type-level tests verifying both `defineTool()` and `createTool()` paths.
+
+### Changed
+- **`GroupedToolBuilder` generics:** Expanded from `<TContext, TCommon>` to `<TContext, TCommon, TName, TRouterMap>`. Fully backward-compatible — all new generics have default values.
+- **`ActionDef` generics:** Expanded from `<TContext, TArgs>` to `<TContext, TSharedArgs, TParams>`. Handler args are now conditionally typed based on params presence.
+- **`ToolConfig.actions` / `GroupDef.actions`:** Changed from `Record<string, ActionDef>` to mapped types `{ [K in string]: ActionDef }` for per-action param inference.
+- **Test count:** 842 tests across 36 files, all passing.
+
+
 ## [0.9.1] - 2026-02-22
 
 ### Fixed
