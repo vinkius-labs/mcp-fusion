@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sub-path export:** Added `"./client"` entry point in `package.json` exports so that the documented import (`@vinkius-core/mcp-fusion/client`) works natively.
 - **Action Group Guard:** Added runtime guard in `defineTool()` throwing an error if both `actions` and `groups` are used simultaneously, aligning with `GroupedToolBuilder` mutual exclusivity.
 - **Dead-code JSDoc stub:** Removed a malformed `export function defineTool(...)` stub that was incorrectly embedded inside the `defineTool` JSDoc text.
+- **Type Safety & Strictness:** Resolved all remaining TypeScript lint errors across the core builders and schema generators (`no-explicit-any`, `strict-boolean-expressions`, and index signature properties). Removed `eslint-disable` escape hatches in favor of strict type inference using `infer` and pure TypeScript solutions.
 
 ### Added
 - **API Parity (`omitCommon`):** `ActionDef` and `GroupDef` now accept `omitCommon?: string[]`, propagating it through `defineTool()` to the internal builders to match the builder API capability.
