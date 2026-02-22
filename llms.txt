@@ -388,6 +388,17 @@ handler: async function* (ctx, args) {
 - `createDebugObserver(options?)` → Observer for runtime debugging
 - Event types: tool:start, tool:end, tool:error, middleware:start, middleware:end
 
+### Tracing (OpenTelemetry-Compatible)
+- `FusionTracer` / `FusionSpan` — structural subtyping interfaces matching OpenTelemetry (no `@opentelemetry/api` dependency)
+- `SpanStatusCode` — exported constants: `UNSET` (0), `OK` (1), `ERROR` (2)
+- `.tracing(tracer)` on builders — per-tool tracing
+- `ToolRegistry.enableTracing(tracer)` — propagate to all builders
+- `AttachOptions.tracing` — pass tracer to `attachToServer()` for full server tracing
+- **Error classification**: AI errors (`validation_failed`, `missing_discriminator`, `unknown_action`, `handler_returned_error`) → `SpanStatusCode.UNSET` (no PagerDuty). System errors (handler `throw`) → `SpanStatusCode.ERROR` (triggers alerts).
+- **Enterprise attributes**: `mcp.system`, `mcp.tool`, `mcp.action`, `mcp.durationMs`, `mcp.isError`, `mcp.error_type`, `mcp.tags`, `mcp.description`, `mcp.response_size`
+- **Span events**: `mcp.route`, `mcp.validate` (with `mcp.valid`, `mcp.durationMs`), `mcp.middleware` (with `mcp.chainLength`)
+- Zero overhead when no tracer is set — separate fast path
+
 ### Types
 - `ToolResponse` — { content: [{ type: "text", text: string }], isError?: boolean }
 - `MiddlewareFn<TContext>` — (ctx, args, next) => Promise<ToolResponse>
