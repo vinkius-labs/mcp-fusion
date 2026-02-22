@@ -697,11 +697,12 @@ describe('E2E: Registry error boundaries', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
 
-        // TypeScript's ValidateConfig prevents this at compile-time,
-        // but at runtime the pipeline passes through whatever the handler returns
+        // MVA Pipeline: postProcessResult wraps raw returns in valid ToolResponse
+        // This is improved behavior — pipeline always returns a valid response
         const result = await registry.routeCall(undefined, 'bad_handler', { action: 'run' });
-        // Result will be undefined since the handler returned undefined
-        expect(result).toBeUndefined();
+        expect(result).toBeDefined();
+        expect(result.content).toBeDefined();
+        expect(result.content[0].type).toBe('text');
     });
 
     it('should handle handler that throws synchronously', async () => {

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: "MCP Fusion",
-  description: "Advanced structured framework for the Model Context Protocol.",
+  description: "The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol.",
   base: '/mcp-fusion/',
   cleanUrls: true,
   appearance: 'force-dark',
@@ -14,18 +14,23 @@ export default defineConfig({
     },
 
     nav: [
+      { text: 'The MVA Manifesto', link: '/mva-pattern' },
       { text: 'Documentation', link: '/introduction' },
+      { text: 'Examples', link: '/examples' },
       { text: 'API', link: '/api-reference' },
       { text: 'GitHub', link: 'https://github.com/vinkius-labs/mcp-fusion' }
     ],
 
     sidebar: [
       {
-        text: 'Getting Started',
+        text: 'Foundation',
         collapsed: false,
         items: [
           { text: 'Introduction', link: '/introduction' },
+          { text: 'The MVA Manifesto', link: '/mva-pattern' },
           { text: 'Quickstart', link: '/quickstart' },
+          { text: 'Cookbook & Examples', link: '/examples' },
+          { text: 'Architecture', link: '/architecture' },
           { text: 'Migration Guide', link: '/migration' },
         ]
       },
@@ -34,6 +39,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Building Tools', link: '/building-tools' },
+          { text: 'Presenter (MVA View)', link: '/presenter' },
           { text: 'Routing & Groups', link: '/routing' },
           { text: 'State & Context', link: '/context' },
           { text: 'Error Handling', link: '/error-handling' },
@@ -46,12 +52,11 @@ export default defineConfig({
         items: [
           { text: 'Middleware', link: '/middleware' },
           { text: 'FusionClient', link: '/fusion-client' },
-          { text: 'Advanced Configuration', link: '/advanced-configuration' },
-          { text: 'Scaling & Optimization', link: '/scaling' },
-          { text: 'Introspection', link: '/introspection' },
-          { text: 'Observability', link: '/observability' },
           { text: 'State Sync', link: '/state-sync' },
-          { text: 'Architecture', link: '/architecture' },
+          { text: 'Observability', link: '/observability' },
+          { text: 'Scaling & Optimization', link: '/scaling' },
+          { text: 'Advanced Configuration', link: '/advanced-configuration' },
+          { text: 'Introspection', link: '/introspection' },
           { text: 'Testing', link: '/testing' },
         ]
       },

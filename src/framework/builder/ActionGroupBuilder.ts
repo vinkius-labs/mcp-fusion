@@ -83,7 +83,7 @@ export function mapConfigToActionFields<TContext>(
     omitCommonFields: string[] | undefined,
 ): Pick<InternalAction<TContext>,
     'actionName' | 'description' | 'schema' | 'destructive' |
-    'idempotent' | 'readOnly' | 'handler' | 'omitCommonFields'
+    'idempotent' | 'readOnly' | 'handler' | 'omitCommonFields' | 'returns'
 > {
     return {
         actionName: config.name,
@@ -94,6 +94,7 @@ export function mapConfigToActionFields<TContext>(
         readOnly: config.readOnly ?? undefined,
         handler: config.handler,
         omitCommonFields: (omitCommonFields?.length ?? 0) > 0 ? omitCommonFields : undefined,
+        returns: config.returns ?? undefined,
     };
 }
 

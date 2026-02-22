@@ -311,8 +311,10 @@ describe('Invariant: Handler Chaos Modes', () => {
                 handler: async () => undefined as any,
             });
         const r = await b.execute(undefined, { action: 'void' });
-        // Should not throw — returns undefined
-        expect(r).toBeUndefined();
+        // MVA Pipeline: postProcessResult wraps raw returns in valid ToolResponse
+        expect(r).toBeDefined();
+        expect(r.content).toBeDefined();
+        expect(r.content[0].type).toBe('text');
     });
 
     it('should handle handler that returns a plain string (not ToolResponse)', async () => {
@@ -322,8 +324,9 @@ describe('Invariant: Handler Chaos Modes', () => {
                 handler: async () => 'not a ToolResponse' as any,
             });
         const r = await b.execute(undefined, { action: 'bad' });
-        // Framework should pass through without crashing
-        expect(r).toBe('not a ToolResponse');
+        // MVA Pipeline: postProcessResult wraps raw strings in valid ToolResponse
+        expect(r).toBeDefined();
+        expect(r.content[0].text).toBe('not a ToolResponse');
     });
 
     it('should handle middleware that throws', async () => {

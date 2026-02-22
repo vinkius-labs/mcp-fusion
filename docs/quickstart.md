@@ -129,7 +129,6 @@ async function start() {
 start();
 ```
 :::
-```
 
 ---
 

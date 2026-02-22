@@ -27,6 +27,7 @@
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { GroupedToolBuilder } from './GroupedToolBuilder.js';
 import { type ToolResponse, type MiddlewareFn, type ActionConfig } from '../types.js';
+import { type Presenter } from '../presenter/Presenter.js';
 import {
     convertParamsToZod,
     type ParamsMap,
@@ -61,8 +62,8 @@ export interface ActionDef<TContext, TSharedArgs = Record<string, never>, TParam
     idempotent?: boolean;
     /** Common schema fields to omit for this action */
     omitCommon?: string[];
-    /** Action-level middleware */
-    middleware?: MiddlewareFn<TContext>[];
+    /** MVA Presenter — when set, handler returns raw data instead of ToolResponse */
+    returns?: Presenter<unknown>;
     /** The handler function — args are fully typed when params is specified */
     handler: (
         ctx: TContext,
@@ -108,6 +109,8 @@ export interface ToolConfig<TContext, TShared extends ParamsMap = ParamsMap> {
     shared?: TShared | ZodObject<ZodRawShape>;
     /** Global middleware applied to all actions */
     middleware?: MiddlewareFn<TContext>[];
+    /** MCP tool annotations (e.g. `{ readOnlyHint: true, openWorldHint: true }`) */
+    annotations?: Record<string, unknown>;
     /** Flat actions — each action's params are inferred independently */
     actions?: { [K in string]: ActionDef<TContext, InferParams<TShared>> };
     /** Hierarchical groups (mutually exclusive with `actions`) */
@@ -239,6 +242,7 @@ export function defineTool<TContext = void>(
     if (config.tags && config.tags.length > 0) builder.tags(...config.tags);
     if (config.discriminator) builder.discriminator(config.discriminator);
     if (config.toonDescription) builder.toonDescription();
+    if (config.annotations) builder.annotations(config.annotations);
 
     // ── Shared params (commonSchema) ──
     const sharedSchema = resolveSchema(config.shared as ParamsMap | ZodObject<ZodRawShape> | undefined);
@@ -293,6 +297,7 @@ function registerAction<TContext>(
         ...(def.destructive !== undefined && { destructive: def.destructive }),
         ...(def.idempotent !== undefined && { idempotent: def.idempotent }),
         ...((def.omitCommon?.length ?? 0) > 0 && { omitCommon: def.omitCommon }),
+        ...(def.returns && { returns: def.returns }),
     });
 }
 
@@ -331,6 +336,7 @@ function registerGroup<TContext>(
                 ...(actionDef.destructive !== undefined && { destructive: actionDef.destructive }),
                 ...(actionDef.idempotent !== undefined && { idempotent: actionDef.idempotent }),
                 ...((actionDef.omitCommon?.length ?? 0) > 0 && { omitCommon: actionDef.omitCommon }),
+                ...(actionDef.returns && { returns: actionDef.returns }),
             } as unknown as ActionConfig<TContext>);
         }
     });

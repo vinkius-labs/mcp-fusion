@@ -154,6 +154,9 @@ const tool = defineTool<AppContext>('projects', {
 |---|---|---|
 | `description` | `string?` | Tool description for the LLM. |
 | `tags` | `string[]?` | Tags for tag-based filtering. |
+| `discriminator` | `string?` | Discriminator field name (default: `'action'`). |
+| `toonDescription` | `boolean?` | Enable TOON token compression for descriptions. |
+| `annotations` | `Record<string, unknown>?` | Explicit MCP tool annotations. |
 | `shared` | `ParamsMap?` | Parameters injected into every action. |
 | `middleware` | `MiddlewareFn[]?` | Global middleware chain. |
 | `actions` | `Record<string, ActionDef>` | Action definitions (keyed by action name). |
@@ -168,7 +171,7 @@ const tool = defineTool<AppContext>('projects', {
 | `readOnly` | `boolean?` | Marks as read-only for LLM. |
 | `destructive` | `boolean?` | Marks as destructive (⚠️ warning). |
 | `idempotent` | `boolean?` | Marks as safe to retry. |
-| `middleware` | `MiddlewareFn[]?` | Per-action middleware. |
+| `returns` | `Presenter?` | MVA Presenter — handler returns raw data. |
 | `handler` | `(ctx, args) => Promise<ToolResponse>` | Required. The action handler. |
 
 **ParamsMap Shorthand Values:**

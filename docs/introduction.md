@@ -1,57 +1,148 @@
 # Introduction
 
-**MCP Fusion** is a production-grade framework for building servers using the Model Context Protocol (MCP). It is designed to be fully type-safe, highly scalable, and optimized for Large Language Models (LLMs).
+**Every MCP server you've seen is built the same way: switch/case routing, JSON.stringify output, zero guardrails.** That's not an MCP framework. That's a translation layer from 2005.
 
-Whether you are a junior developer building your first AI integration, or a senior engineer architecting a massive backend system, MCP Fusion makes your workflow robust and predictable.
+**mcp-fusion** is the first framework that treats AI agents as **first-class consumers** — not as dumb HTTP clients that happen to speak JSON. It implements the **MVA (Model-View-Agent) pattern**, a fundamentally new architecture where every response is a structured perception package: validated data, domain rules, visual blocks, and explicit action affordances.
 
----
-
-## The Problem
-
-The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is a universal standard that allows AI models (like Claude or GPT-4) to securely connect to your local datasets, APIs, and tools. 
-
-However, building an MCP Server using the native SDK comes with several challenges:
-
-1. **Manual JSON Schemas:** You have to manually write and maintain verbose JSON schemas for every single tool. This is error-prone and offers poor autocomplete for developers.
-2. **Context Window Saturation:** If your application has 50 different operations (e.g., `create_user`, `delete_user`, `list_users`), exposing 50 separate tools to the LLM consumes a massive amount of "token context". This confuses the AI and causes hallucinations.
-3. **No Safety Nets:** The native SDK doesn't automatically protect your handlers from "hallucinated parameters" (when an AI guesses and sends parameters that don't exist).
-4. **Global Boilerplate:** Adding authentication or logging to 50 tools requires repeating code everywhere.
+The AI doesn't guess. It knows.
 
 ---
 
-## Enter MCP Fusion
+## The Paradigm Shift
 
-MCP Fusion solves these problems natively by introducing a structured, router-like approach.
+The AI industry is building agents on top of patterns designed for humans. MVC serves browsers. REST serves mobile apps. Neither was designed for an autonomous consumer that hallucinates when given ambiguous data.
 
-### 1. Zod Runtime Execution
-Instead of writing JSON parameters by hand, you define your inputs using [Zod](https://zod.dev/). Fusion automatically translates your Zod schemas into LLM-friendly descriptions, and deeply type-checks the AI's response at runtime.
+**MVA (Model-View-Agent)** replaces the human-centric View with the **Presenter** — an agent-centric perception layer that tells the AI exactly how to interpret, display, and act on domain data.
 
-### 2. Intelligent Routing (Token Optimization)
-Instead of exposing 50 flat tools, Fusion lets you group related actions into "Namespaces" (like a `users` group and a `billing` group). Under the hood, Fusion creates a **"Discriminator"** that compresses these groups into a single endpoint for the LLM. *This slashes your token usage significantly.*
+```text
+┌─────────────────────────────────────────────────┐
+│             Model-View-Agent (MVA)               │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│   Model           →   View          →   Agent    │
+│   Zod Schema           Presenter        LLM      │
+│   (validates)          (perceives)      (acts)    │
+│                                                  │
+└─────────────────────────────────────────────────┘
+```
 
-### 3. Absolute Protection
-Before your backend code ever runs, Fusion intercepts the LLM's request. It strips away any hallucinated parameters, validates the required fields, and if the AI made a mistake, Fusion automatically replies to the LLM with a friendly error so it can self-correct.
-
-### 4. Middleware & Context Derivation
-You can inject Databases or Authentication tokens into specific tool wrappers via strictly typed Contexts. Use `defineMiddleware()` to derive and inject data (like tRPC). Apply global or feature-specific Middlewares (like `requireAdmin`) protecting entire groups of actions in three lines of code.
-
-### 5. Two APIs — One Framework
-`defineTool()` lets you describe params with plain strings (zero Zod needed). `createTool()` gives you full Zod power for advanced validation. Both produce identical MCP tool definitions.
-
-### 6. Self-Healing Errors
-`toolError()` creates structured error responses with recovery hints, enabling LLM agents to self-correct without human intervention.
-
-### 7. Streaming Progress
-Generator handlers can yield `progress()` events during long-running operations, providing real-time feedback to the MCP runtime.
-
-### 8. Type-Safe Client
-`createFusionClient()` provides tRPC-style end-to-end type safety from server to client, with full autocomplete on action paths and arguments.
+→ [Read the MVA Manifesto](/mva-pattern)
 
 ---
 
-## Who is this for?
+## What mcp-fusion Solves
 
-- **For Beginners:** You get autocomplete for everything. You never have to touch a raw JSON Schema. If you make a mistake, TypeScript catches it immediately.
-- **For Enterprises:** You get strict immutability, programmatic introspection for compliance audits, minimal-overhead abstractions, and strict protection against hallucinated inputs.
+### 1. Context Window Saturation
+Standard MCP servers expose individual tools for every operation. 50 tools = 50 JSON schemas burning precious tokens. The LLM's memory degrades and routing accuracy collapses.
 
-Ready to build? Let's jump into the [Quickstart](/quickstart).
+**mcp-fusion** consolidates related operations into grouped tools behind a discriminator field. The LLM sees ONE tool, not fifty. Token usage drops by an order of magnitude.
+
+### 2. Perception Inconsistency
+Without a View layer, the same entity (invoice, user, task) is presented differently by different tools. The agent cannot build a coherent domain model.
+
+**The Presenter** ensures consistent perception. `InvoicePresenter` is defined once and used across every tool that returns invoices. Same rules, same UI blocks, same affordances.
+
+### 3. Hallucinated Parameters
+Raw MCP gives the AI access to your entire input schema. If the AI guesses a parameter name, your handler may receive poisoned data.
+
+**Zod `.strip()`** silently removes undeclared fields at the framework level. Your handlers are physically incapable of receiving hallucinated parameters.
+
+### 4. Action Blindness
+After receiving data, agents guess what to do next. Without explicit guidance, they hallucinate tool names or skip valid actions entirely.
+
+**Agentic Affordances** (`.suggestActions()`) provide HATEOAS-style next-action hints based on data state. The agent knows exactly what it can do.
+
+### 5. Context DDoS
+A single `list_all` query can return thousands of records, overwhelming the context window and racking up API costs.
+
+**Cognitive Guardrails** (`.agentLimit()`) automatically truncate large collections and inject teaching blocks that guide the agent toward filters and pagination.
+
+---
+
+## The Architecture at a Glance
+
+```text
+LLM calls tool → ToolRegistry routes → GroupedToolBuilder validates
+                                         ↓
+                                    Middleware chain executes
+                                         ↓
+                                    Handler returns raw data
+                                         ↓
+                                    Presenter intercepts:
+                                      1. Truncate (agentLimit)
+                                      2. Validate (Zod schema)
+                                      3. Embed (child Presenters)
+                                      4. Render (UI blocks)
+                                      5. Attach (domain rules)
+                                      6. Suggest (next actions)
+                                         ↓
+                                    Agent receives structured
+                                    perception package
+```
+
+### Two Complementary APIs
+
+| API | Syntax | Zod Required? | Best For |
+|---|---|---|---|
+| `defineTool()` | Declarative config object | No | Rapid prototyping, simple params |
+| `createTool()` | Fluent builder chain | Yes | Complex validation, transforms |
+
+Both produce identical MCP tool definitions and coexist freely in the same registry.
+
+---
+
+## Core Capabilities
+
+| Capability | Layer |
+|---|---|
+| **Grouped Tool Routing** | Action consolidation with discriminator enum |
+| **Presenter (MVA View)** | Domain rules, UI blocks, affordances, composition |
+| **Zod Validation & Stripping** | Security boundary against hallucinated params |
+| **Context Derivation** | tRPC-style `defineMiddleware()` with type inference |
+| **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` keys |
+| **Self-Healing Errors** | `toolError()` with recovery hints for autonomous agents |
+| **Streaming Progress** | Generator handlers yield `progress()` events |
+| **Type-Safe Client** | `createFusionClient()` with full autocomplete |
+| **State Sync** | RFC 7234-inspired cache-control to prevent temporal blindness |
+| **Observability** | Zero-overhead debug observers with typed event system |
+| **TOON Compression** | Token-optimized descriptions and responses |
+| **Freeze-After-Build** | Immutability guarantees for production safety |
+
+---
+
+## Who Is This For?
+
+**For engineers building AI-powered products.** If your backend serves data to LLM agents — through Claude, GPT, or any MCP-compatible runtime — mcp-fusion gives you the architecture to do it at scale without hallucination.
+
+**For teams scaling beyond prototypes.** When your MCP server grows from 5 tools to 500 actions, mcp-fusion's routing, middleware, and Presenter system keep the codebase clean and the agent accurate.
+
+**For enterprises with security requirements.** Zod schema stripping, RBAC-aware Presenters, freeze-after-build immutability, and typed context derivation provide defense-in-depth that raw MCP cannot offer.
+
+---
+
+## Installation
+
+::: code-group
+```bash [npm]
+npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
+```
+```bash [pnpm]
+pnpm add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
+```
+```bash [yarn]
+yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
+```
+:::
+
+---
+
+## Next Steps
+
+<div class="next-steps">
+
+- [**The MVA Manifesto →**](/mva-pattern) — Understand the architectural paradigm shift from MVC to MVA
+- [**Quickstart →**](/quickstart) — Build your first tool in 5 minutes
+- [**Presenter →**](/presenter) — The agent-centric View layer
+- [**Building Tools →**](/building-tools) — `defineTool()` and `createTool()` in depth
+
+</div>

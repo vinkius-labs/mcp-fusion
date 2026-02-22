@@ -13,6 +13,9 @@ MCP Fusion provides **two complementary APIs** for defining tools. Choose the on
 | **Zod needed?** | No (auto-converts to Zod) | Yes |
 | **Shared params** | `shared` field | `.commonSchema()` |
 | **Groups** | `groups` field | `.group()` |
+| **MVA Presenter** | `returns: Presenter` | `returns: Presenter` |
+| **Annotations** | `annotations: {...}` | `.annotations({...})` |
+| **TOON** | `toonDescription: true` | `.toonDescription()` |
 | **Best for** | Rapid prototyping, simple params | Complex validation, transforms |
 
 ---
@@ -251,8 +254,79 @@ Progress events are yielded to the MCP runtime while the handler continues execu
 
 ---
 
+## MVA Integration — `returns: Presenter`
+
+Attach a [Presenter](/presenter) to any action with the `returns` field. When set, your handler returns **raw data** instead of `ToolResponse`. The framework pipes it through the Presenter automatically.
+
+::: code-group
+```typescript [defineTool]
+import { defineTool } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const billing = defineTool<AppContext>('billing', {
+    actions: {
+        get: {
+            readOnly: true,
+            params: { id: 'string' },
+            returns: InvoicePresenter,
+            handler: async (ctx, args) => {
+                return await ctx.db.invoices.findUnique({ where: { id: args.id } });
+                // Raw data → Presenter validates, attaches rules, renders UI
+            },
+        },
+    },
+});
+```
+```typescript [createTool]
+import { createTool } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const billing = createTool<AppContext>('billing')
+    .action({
+        name: 'get',
+        readOnly: true,
+        schema: z.object({ id: z.string() }),
+        returns: InvoicePresenter,
+        handler: async (ctx, args) => {
+            return await ctx.db.invoices.findUnique({ where: { id: args.id } });
+        },
+    });
+```
+:::
+
+> **See:** [Presenter →](/presenter) for the full configuration API.
+
+---
+
+## Response Shortcuts
+
+For handlers that don't use a Presenter but need more than `success()`:
+
+```typescript
+import { response, ui } from '@vinkius-core/mcp-fusion';
+
+// Quick one-liner response
+return response.ok('Task created successfully');
+
+// Response with domain rules (no chaining needed)
+return response.withRules(invoiceData, [
+    'CRITICAL: amounts are in CENTS — divide by 100.',
+    'Use emojis: ✅ Paid, ⚠️ Pending.',
+]);
+
+// Full builder chain for maximum control
+return response(stats)
+    .uiBlock(ui.echarts(chartConfig))
+    .llmHint('Revenue in USD, not cents.')
+    .systemRules(['Always show % change vs. last month.'])
+    .build();
+```
+
+---
+
 ## Next Steps
 
+- [Presenter (MVA View) →](/presenter) — Domain-level Presenters for consistent agent perception
 - [Context & Dependency Injection →](/context)
 - [Middleware & Context Derivation →](/middleware)
 - [Hierarchical Routing →](/routing)

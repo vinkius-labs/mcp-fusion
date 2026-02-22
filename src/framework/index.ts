@@ -59,3 +59,10 @@ export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
 export type {
     CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
 } from './state-sync/index.js';
+
+// ── Presenter (MVA — View Layer) ─────────────────────────
+export { ResponseBuilder, response, isResponseBuilder } from './presenter/index.js';
+export { ui } from './presenter/index.js';
+export type { UiBlock, ActionSuggestion } from './presenter/index.js';
+export { Presenter, createPresenter, isPresenter } from './presenter/index.js';
+export { PresenterValidationError } from './presenter/index.js';
