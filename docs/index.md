@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Stop Writing MCP Servers Like It's 2024."
   text: ""
-  tagline: "Every MCP server today dumps raw JSON and prays the AI figures it out. mcp-fusion changes everything — the MVA (Model-View-Agent) framework makes your AI agents perceive, understand, and act on data like a trained engineer, not a guessing machine."
+  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. mcp-fusion introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer so AI agents perceive, understand, and act on your data like trained engineers, not guessing machines."
   actions:
     - theme: brand
       text: The MVA Manifesto →
@@ -19,27 +19,42 @@ hero:
   textAfterActions: "Open Source. Built by Vinkius Labs."
 ---
 
-<!-- Vinkius Bento Custom Diagramming -->
-<div class="vinkius-bento-grid">
-<div class="bento-hero">
-<h2 class="bento-title">Every MCP Server Today:<br><span class="text-dim">Raw JSON → switch/case → hope the AI doesn't hallucinate.</span></h2>
-<p class="bento-desc">That's not engineering. That's a prayer. mcp-fusion introduces MVA (Model-View-Agent) — a completely new way to build MCP servers where every response is a structured perception package: validated data, domain rules, server-rendered charts, and explicit next-action hints. The AI doesn't guess. It knows.</p>
-<div class="bento-tags">
-<span class="bento-tag">NO MORE SWITCH/CASE</span>
-<span class="bento-tag">NO MORE RAW JSON</span>
-<span class="bento-tag active">A NEW PARADIGM</span>
-<span class="bento-tag">ZERO HALLUCINATION</span>
+<!-- ═══ Section 1: The Problem ═══ -->
+<div class="ms-section">
+<div class="ms-left">
+<div class="ms-label">DOMAIN: MCP SERVERS</div>
+<h2 class="ms-headline">Raw JSON.<br>Switch/case.<br><span class="ms-dim">Hope the AI doesn't hallucinate.</span></h2>
+<p class="ms-sub">That's how every MCP server works today.</p>
+</div>
+<div class="ms-right">
+<p class="ms-body">mcp-fusion introduces MVA (Model-View-Agent) — a completely new way to build MCP servers where every response is a structured perception package: validated data, domain rules, server-rendered charts, and explicit next-action hints. The AI doesn't guess. It knows.</p>
+<div class="ms-metrics">
+<div class="ms-metric">
+<div class="ms-metric-label">CAPABILITIES</div>
+<div class="ms-metric-value">20+</div>
+</div>
+<div class="ms-metric">
+<div class="ms-metric-label">ARCHITECTURE</div>
+<div class="ms-metric-value">MVA</div>
+</div>
+<div class="ms-metric">
+<div class="ms-metric-label">HALLUCINATION</div>
+<div class="ms-metric-value">Zero</div>
+</div>
+</div>
+</div>
 </div>
 
-<div class="bento-code-section">
-<div class="bento-code-header">
-<div class="bento-dots"><span></span><span></span><span></span></div>
-<p class="bento-code-title">Your handler returns raw data. The framework does the rest.</p>
+<!-- ═══ Section 2: Code ═══ -->
+<div class="ms-code-section">
+<div class="ms-code-header">
+<div class="ms-dots"><span></span><span></span><span></span></div>
+<p class="ms-code-title">Your handler returns raw data. The framework does the rest.</p>
 </div>
-<div class="bento-code-box">
+<div class="ms-code-box">
 
 ```typescript
-import { createPresenter, ui, defineTool, success } from '@vinkius-core/mcp-fusion';
+import { createPresenter, ui, defineTool } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 // 1. Define the Presenter — the MVA View Layer
@@ -72,93 +87,96 @@ const billing = defineTool<AppContext>('billing', {
 ```
 
 </div>
-<div class="bento-cli-box">
-<span class="cli-prompt">~</span>
-<span class="cli-text">npm install <span>@vinkius-core/mcp-fusion</span> zod</span>
+<div class="ms-cli">
+<span class="ms-cli-prompt">~</span>
+<span class="ms-cli-text">npm install <span>@vinkius-core/mcp-fusion</span> zod</span>
 </div>
 </div>
 
-<div class="bento-footer">
-<span>PATTERN</span>
-<span>MVA</span>
+<!-- ═══ Section 3: MVA Conviction ═══ -->
+<div class="ms-section ms-conviction">
+<div class="ms-left">
+<div class="ms-label">THE PARADIGM SHIFT</div>
+<h2 class="ms-headline">MVC was designed<br>for humans.<br><span class="ms-accent">Agents are not<br>humans.</span></h2>
+</div>
+<div class="ms-right">
+<p class="ms-body">MVA replaces the human-centric View with the Presenter — an agent-centric perception layer that tells the AI exactly how to interpret, display, and act on domain data. This is not an iteration on MVC. It is a replacement.</p>
+<div class="ms-columns">
+<div class="ms-column">
+<div class="ms-column-label">// MODEL</div>
+<p class="ms-column-text">Zod schema validates input. Unknown fields stripped. The LLM cannot inject parameters your schema does not declare.</p>
+</div>
+<div class="ms-column">
+<div class="ms-column-label">// PRESENTER</div>
+<p class="ms-column-text"><em>The perception layer is alive — not a marketing artifact.</em></p>
+</div>
+</div>
 </div>
 </div>
 
-<div class="mva-callout">
-<div class="mva-callout-eyebrow">🧠 THE ARCHITECTURAL REVOLUTION</div>
-<h2 class="mva-callout-title">Model-View-Agent (MVA)</h2>
-<p class="mva-callout-subtitle">MVC was designed for humans. Agents are not humans.<br/>MVA replaces the View with the <strong>Presenter</strong> — an agent-centric perception layer<br/>that tells the AI exactly how to interpret, display, and act on domain data.</p>
-<div class="mva-callout-diagram">
-<div class="mva-step">
-<div class="mva-step-icon">🔷</div>
-<div class="mva-step-label">Model</div>
-<div class="mva-step-detail">Zod Schema<br/><em>validates</em></div>
+<!-- ═══ Section 4: Technical Authority ═══ -->
+<div class="ms-authority">
+<div class="ms-authority-left">
+<div class="ms-label">TECHNICAL AUTHORITY</div>
+<h2 class="ms-headline">What we<br>built.</h2>
+<p class="ms-sub">Every capability designed for autonomous AI agents operating over the Model Context Protocol.</p>
 </div>
-<div class="mva-arrow">→</div>
-<div class="mva-step active">
-<div class="mva-step-icon">⚡</div>
-<div class="mva-step-label">View (Presenter)</div>
-<div class="mva-step-detail">Rules · Charts · Hints<br/><em>perceives</em></div>
+<div class="ms-grid">
+<div class="ms-card">
+<div class="ms-card-number">01 // MVA</div>
+<h3 class="ms-card-title">Presenter Engine</h3>
+<p class="ms-card-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Define once, reuse everywhere.</p>
+<a href="/presenter" class="ms-card-link">EXPLORE →</a>
 </div>
-<div class="mva-arrow">→</div>
-<div class="mva-step">
-<div class="mva-step-icon">🤖</div>
-<div class="mva-step-label">Agent</div>
-<div class="mva-step-detail">LLM<br/><em>acts</em></div>
+<div class="ms-card">
+<div class="ms-card-number">02 // ROUTING</div>
+<h3 class="ms-card-title">Action Consolidation</h3>
+<p class="ms-card-desc">Nest 5,000+ operations into grouped namespaces. The LLM sees ONE tool, not fifty. Token usage drops by 10x.</p>
+<a href="/routing" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">03 // SECURITY</div>
+<h3 class="ms-card-title">Context Derivation</h3>
+<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strip() ensures handlers never receive hallucinated params.</p>
+<a href="/middleware" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">04 // RESILIENCE</div>
+<h3 class="ms-card-title">Self-Healing Errors</h3>
+<p class="ms-card-desc">toolError() provides structured recovery hints with suggested actions. Agents self-correct without human intervention.</p>
+<a href="/building-tools" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">05 // AFFORDANCE</div>
+<h3 class="ms-card-title">Agentic HATEOAS</h3>
+<p class="ms-card-desc">.suggestActions() tells agents what to do next based on data state. Eliminates action hallucination through explicit affordances.</p>
+<a href="/mva-pattern" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">06 // GUARDRAILS</div>
+<h3 class="ms-card-title">Cognitive Limits</h3>
+<p class="ms-card-desc">.agentLimit() truncates large datasets and teaches agents to use filters. Prevents context DDoS and manages API costs.</p>
+<a href="/presenter" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">07 // STATE</div>
+<h3 class="ms-card-title">Temporal Awareness</h3>
+<p class="ms-card-desc">RFC 7234-inspired cache-control signals prevent LLM Temporal Blindness. Cross-domain causal invalidation after mutations.</p>
+<a href="/state-sync" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">08 // CLIENT</div>
+<h3 class="ms-card-title">Type-Safe Client</h3>
+<p class="ms-card-desc">createFusionClient() provides end-to-end type safety from server to client. Wrong action name? TypeScript catches it at build time.</p>
+<a href="/fusion-client" class="ms-card-link">EXPLORE →</a>
 </div>
 </div>
-<p class="mva-callout-tagline">Every response is a <strong>structured perception package</strong> — not raw JSON.<br/>The AI doesn't guess. It <em>knows</em>.</p>
-<a href="/mva-pattern" class="mva-callout-cta">READ THE FULL MVA GUIDE →</a>
 </div>
 
-<div class="bento-features">
-<div class="bento-cell">
-<div class="cell-eyebrow">// MVA</div>
-<h3 class="cell-title">Presenter Engine <span class="cell-badge">View</span></h3>
-<p class="cell-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Define once, reuse everywhere.</p>
-<a href="/presenter" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// ROUTING</div>
-<h3 class="cell-title">Action Consolidation <span class="cell-badge">Scale</span></h3>
-<p class="cell-desc">Nest 5,000+ operations into grouped namespaces. The LLM sees ONE tool, not fifty. Token usage drops by 10x.</p>
-<a href="/routing" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// SECURITY</div>
-<h3 class="cell-title">Context Derivation <span class="cell-badge">tRPC-style</span></h3>
-<p class="cell-desc">defineMiddleware() derives and injects typed data into context. Zod .strip() ensures handlers never receive hallucinated params.</p>
-<a href="/middleware" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// RESILIENCE</div>
-<h3 class="cell-title">Self-Healing Errors <span class="cell-badge">Agent</span></h3>
-<p class="cell-desc">toolError() provides structured recovery hints with suggested actions. Agents self-correct without human intervention.</p>
-<a href="/building-tools" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// AFFORDANCE</div>
-<h3 class="cell-title">Agentic HATEOAS <span class="cell-badge">Hint</span></h3>
-<p class="cell-desc">.suggestActions() tells agents what to do next based on data state. Eliminates action hallucination through explicit affordances.</p>
-<a href="/mva-pattern" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// GUARDRAILS</div>
-<h3 class="cell-title">Cognitive Limits <span class="cell-badge">Safety</span></h3>
-<p class="cell-desc">.agentLimit() truncates large datasets and teaches agents to use filters. Prevents context DDoS and manages API costs.</p>
-<a href="/presenter" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// STATE</div>
-<h3 class="cell-title">Temporal Awareness <span class="cell-badge">Sync</span></h3>
-<p class="cell-desc">RFC 7234-inspired cache-control signals prevent LLM Temporal Blindness. Cross-domain causal invalidation after mutations.</p>
-<a href="/state-sync" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// CLIENT</div>
-<h3 class="cell-title">Type-Safe Client <span class="cell-badge">tRPC</span></h3>
-<p class="cell-desc">createFusionClient() provides end-to-end type safety from server to client. Wrong action name? TypeScript catches it at build time.</p>
-<a href="/fusion-client" class="cell-link">EXPLORE &rarr;</a>
-</div>
-</div>
+<!-- ═══ Section 5: CTA ═══ -->
+<div class="ms-cta">
+<div class="ms-label">READ THE MANIFESTO</div>
+<h2 class="ms-cta-headline">The AI doesn't guess.<br>It knows.</h2>
+<p class="ms-cta-sub">MVA is a new architectural pattern. The Presenter replaces the View with a <strong>deterministic perception layer</strong> — domain rules, rendered charts, action affordances, and cognitive guardrails. Every response is structured. Every action is explicit.</p>
+<a href="/mva-pattern" class="ms-cta-button">READ THE FULL MVA GUIDE →</a>
 </div>
