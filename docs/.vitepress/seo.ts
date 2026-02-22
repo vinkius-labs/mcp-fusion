@@ -284,6 +284,23 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
+  // TRACING
+  // ═══════════════════════════════════════════════════════
+  'tracing.md': {
+    title: 'Tracing — OpenTelemetry-Compatible Spans for MCP Tools',
+    description: 'Production-grade tracing for AI-native MCP servers. Enterprise error classification, zero dependencies, zero overhead when disabled. Structural subtyping — works with any OTel tracer.',
+    faqs: [
+      { q: 'How does tracing work in mcp-fusion?', a: 'mcp-fusion creates one OpenTelemetry-compatible span per tool call with rich semantic attributes: tool name, action, duration, error type, response size, and tags. Uses structural subtyping (FusionTracer/FusionSpan interfaces) — pass trace.getTracer() from @opentelemetry/api directly. Zero overhead when no tracer is set.' },
+      { q: 'What is enterprise error classification in mcp-fusion tracing?', a: 'mcp-fusion distinguishes AI errors from system errors. AI mistakes (invalid args, wrong action) get SpanStatusCode.UNSET — no PagerDuty alert. System failures (database crash, uncaught exceptions) get SpanStatusCode.ERROR with recordException() — triggers ops alerts. This prevents alert fatigue from expected AI behavior.' },
+      { q: 'Does mcp-fusion tracing require @opentelemetry/api as a dependency?', a: 'No. mcp-fusion uses structural subtyping — FusionTracer and FusionSpan are interfaces that match the real OpenTelemetry types. Any object with startSpan(), setAttribute(), setStatus(), and end() methods works. The real @opentelemetry/api tracer satisfies these interfaces automatically.' },
+      { q: 'What span attributes does mcp-fusion create?', a: 'Core attributes: mcp.system, mcp.tool, mcp.action, mcp.durationMs, mcp.isError, mcp.error_type. Enterprise metadata: mcp.tags (tool tags for dashboard filtering), mcp.description (tool context), mcp.response_size (billing/quota tracking). Events: mcp.route, mcp.validate, mcp.middleware.' },
+      { q: 'How do I enable tracing for all tools at once?', a: 'Three options: (1) Per-tool: tool.tracing(tracer). (2) Registry-level: registry.enableTracing(tracer). (3) Server attachment: registry.attachToServer(server, { tracing: tracer }). Option 3 is recommended for production — one line enables tracing for all registered tools.' },
+      { q: 'Can mcp-fusion tracing and debug coexist?', a: 'Both can be enabled, but tracing takes precedence — debug events are not emitted when tracing is active. A symmetric console.warn is emitted regardless of which is enabled first. This prevents duplicate overhead while keeping users informed.' },
+      { q: 'How does mcp-fusion handle handler exceptions with tracing?', a: 'When a handler throws, the span records SpanStatusCode.ERROR + recordException(), and the method returns a graceful error response instead of re-throwing. This ensures ops alerting via spans while preventing MCP server crashes. The exception is properly classified as system_error.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
   // API REFERENCE
   // ═══════════════════════════════════════════════════════
   'api-reference.md': {

@@ -54,6 +54,9 @@ export type {
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
 } from './observability/DebugObserver.js';
 
+export { SpanStatusCode } from './observability/Tracing.js';
+export type { FusionSpan, FusionTracer, FusionAttributeValue } from './observability/Tracing.js';
+
 // ── State Sync ───────────────────────────────────────────
 export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
 export type {

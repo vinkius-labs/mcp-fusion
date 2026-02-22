@@ -18,6 +18,7 @@ import { type ToolBuilder } from '../types.js';
 import { type ProgressSink, type ProgressEvent } from '../execution/ProgressHelper.js';
 import { resolveServer } from './ServerResolver.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
+import { type FusionTracer } from '../observability/Tracing.js';
 import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
 import { type StateSyncConfig } from '../state-sync/types.js';
 import { type IntrospectionConfig } from '../introspection/types.js';
@@ -136,6 +137,32 @@ export interface AttachOptions<TContext> {
     introspection?: IntrospectionConfig<TContext>;
 
     /**
+     * Enable OpenTelemetry-compatible tracing for ALL registered tools.
+     *
+     * When set, the tracer is automatically propagated to every tool
+     * builder, and registry-level routing spans are also created.
+     *
+     * **Context propagation limitation**: Since MCP Fusion does not depend
+     * on `@opentelemetry/api`, it cannot call `context.with(trace.setSpan(...))`.
+     * Auto-instrumented downstream calls (Prisma, HTTP, Redis) inside tool
+     * handlers will appear as **siblings**, not children, of the MCP span.
+     * This is an intentional trade-off for zero runtime dependencies.
+     *
+     * @example
+     * ```typescript
+     * import { trace } from '@opentelemetry/api';
+     *
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     tracing: trace.getTracer('mcp-fusion'),
+     * });
+     * ```
+     *
+     * @see {@link FusionTracer} for the tracer interface contract
+     */
+    tracing?: FusionTracer;
+
+    /**
      * Server name used in the introspection manifest.
      * @defaultValue `'mcp-fusion-server'`
      */
@@ -152,6 +179,8 @@ export interface RegistryDelegate<TContext> {
     routeCall(ctx: TContext, name: string, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse>;
     /** Propagate a debug observer to all registered builders (duck-typed) */
     enableDebug?(observer: DebugObserverFn): void;
+    /** Propagate a tracer to all registered builders (duck-typed) */
+    enableTracing?(tracer: FusionTracer): void;
     /** Get an iterable of all registered builders (for introspection) */
     getBuilders?(): Iterable<ToolBuilder<TContext>>;
 }
@@ -177,11 +206,16 @@ export function attachToServer<TContext>(
     // Resolve the low-level Server instance via ServerResolver strategy
     const resolved = resolveServer(server) as McpServerTyped;
 
-    const { filter, contextFactory, debug, stateSync, introspection, serverName } = options;
+    const { filter, contextFactory, debug, tracing, stateSync, introspection, serverName } = options;
 
     // Propagate debug observer to all registered builders
     if (debug && registry.enableDebug) {
         registry.enableDebug(debug);
+    }
+
+    // Propagate tracer to all registered builders
+    if (tracing && registry.enableTracing) {
+        registry.enableTracing(tracing);
     }
 
     // Create State Sync layer (zero overhead when not configured)

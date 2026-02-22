@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-02-22
+
+### 🔭 Native OpenTelemetry-Compatible Tracing
+
+Production-grade tracing for AI-native MCP servers. Every tool call creates **one span** with rich semantic attributes — zero dependencies on `@opentelemetry/api`, zero overhead when disabled. Uses structural subtyping: pass `trace.getTracer()` directly.
+
+### Added
+
+- **`FusionTracer` / `FusionSpan` interfaces:** Structural subtyping contracts that match the real OpenTelemetry `Tracer` and `Span` — no `implements` or `import @opentelemetry/api` needed.
+- **`SpanStatusCode` constants:** Exported `UNSET` (0), `OK` (1), `ERROR` (2) matching OTel values.
+- **`.tracing(tracer)` on builders:** Per-tool tracing via fluent API on both `createTool()` and `defineTool()`.
+- **`enableTracing(tracer)` on `ToolRegistry`:** Propagate tracer to all registered builders.
+- **`AttachOptions.tracing`:** Pass tracer to `attachToServer()` for full server observability.
+- **Enterprise error classification:** 5 distinct `mcp.error_type` values (`missing_discriminator`, `unknown_action`, `validation_failed`, `handler_returned_error`, `system_error`) with correct `SpanStatusCode` mapping — AI errors → `UNSET` (no alert), system failures → `ERROR` (PagerDuty).
+- **`mcp.isError` attribute:** Consistent `boolean` on all 5 error paths for unified Datadog/Grafana filtering.
+- **Enterprise metadata attributes:** `mcp.tags` (tool tags for dashboard filtering), `mcp.description` (tool description), `mcp.response_size` (response text length for billing/quota).
+- **Pipeline span events:** `mcp.route`, `mcp.validate` (with `mcp.valid` and `mcp.durationMs`), `mcp.middleware` (with `mcp.chainLength`). Events are optional via `?.` for minimal tracers.
+- **Graceful error handling:** Handler exceptions are caught, span gets `SpanStatusCode.ERROR` + `recordException()`, but method returns error response (no MCP server crash).
+- **Leak-proof span lifecycle:** `finally { span.end() }` guarantees span closure on all paths including exceptions.
+- **Symmetric coexistence warning:** `enableDebug()` ↔ `enableTracing()` emit `console.warn` in either order when both are enabled.
+- **`runChain(rethrow)` parameter:** Optional flag (default `false`) allows traced path to receive raw handler exceptions for proper classification.
+
+### Changed
+
+- **`runChain()` signature:** Added optional `rethrow` parameter (backward compatible, default `false`).
+- **`_executeTraced()` error path:** Returns graceful `error()` response instead of `throw` — prevents MCP server crashes while preserving `SpanStatusCode.ERROR` for ops alerting.
+
+### Documentation
+- **New "Tracing" page:** Dedicated documentation page covering FusionTracer interface, error classification matrix, span attribute reference, pipeline events, context propagation limitation, and production setup example (OTLP/Jaeger).
+- **VitePress sidebar:** Added Tracing under Advanced Guides.
+
+### Test Suite
+- **36 new tracing tests** in `Tracing.test.ts`:
+  - Span lifecycle — creation, end, attributes (4 tests)
+  - Span events — route, validate, middleware, order (5 tests)
+  - Enterprise metadata — tags, description, response size (5 tests)
+  - Error classification — OK, UNSET, ERROR with `mcp.isError` (5 tests)
+  - Span leak prevention — finally guarantees (2 tests)
+  - Zero overhead — fast path when disabled (2 tests)
+  - Registry propagation — enableTracing() (2 tests)
+  - Coexistence — debug + tracing symmetric warnings (3 tests)
+  - addEvent optional, SpanStatusCode constants, defineTool compat (3 tests)
+  - Multiple sequential calls, concurrent calls (2 tests)
+  - Server attachment integration (1 test)
+- **Test count:** 116 tests across Tracing + DebugObserver + McpServerAdapter, all passing.
+
 ## [1.2.0] - 2026-02-22
 
 ### 🛡️ Agentic Error Presenter — LLM-Native Validation & Routing Errors

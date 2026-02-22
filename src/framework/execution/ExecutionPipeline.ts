@@ -102,13 +102,21 @@ export function validateArgs<TContext>(
     return succeed(validated);
 }
 
-/** Step 4: Run pre-compiled middleware chain → handler */
+/**
+ * Step 4: Run pre-compiled middleware chain → handler.
+ *
+ * @param rethrow - When `true`, handler exceptions propagate to the caller
+ *   instead of being caught and converted to error responses. Used by the
+ *   traced execution path so that `_executeTraced` can classify system errors
+ *   (`SpanStatusCode.ERROR` + `recordException`). Default: `false`.
+ */
 export async function runChain<TContext>(
     execCtx: ExecutionContext<TContext>,
     resolved: ResolvedAction<TContext>,
     ctx: TContext,
     args: Record<string, unknown>,
     progressSink?: ProgressSink,
+    rethrow = false,
 ): Promise<ToolResponse> {
     const chain = execCtx.compiledChain.get(resolved.action.key);
     if (!chain) {
@@ -126,6 +134,7 @@ export async function runChain<TContext>(
 
         return postProcessResult(result, resolved.action.returns, ctx);
     } catch (err) {
+        if (rethrow) throw err;
         const message = err instanceof Error ? err.message : String(err);
         return error(`[${execCtx.toolName}/${resolved.discriminatorValue}] ${message}`);
     }

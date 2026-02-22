@@ -55,6 +55,7 @@ import {
     type ActionConfig,
 } from '../types.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
+import { type FusionTracer, SpanStatusCode } from '../observability/Tracing.js';
 import { getActionRequiredFields } from '../schema/SchemaUtils.js';
 import {
     parseDiscriminator, resolveAction, validateArgs, runChain,
@@ -160,6 +161,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _toonMode = false;
     private _frozen = false;
     private _debug?: DebugObserverFn;
+    private _tracer?: FusionTracer;
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -579,6 +581,48 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         return this;
     }
 
+    /**
+     * Enable OpenTelemetry-compatible tracing for this tool.
+     *
+     * When enabled, each `execute()` call creates a single span with
+     * structured events for each pipeline step (`mcp.route`, `mcp.validate`,
+     * `mcp.middleware`, `mcp.execute`).
+     *
+     * **Zero overhead** when disabled — the fast path has no conditionals.
+     *
+     * **OTel direct pass-through**: The `FusionTracer` interface is a
+     * structural subtype of OTel's `Tracer`, so you can pass an OTel
+     * tracer directly without any adapter:
+     *
+     * ```typescript
+     * import { trace } from '@opentelemetry/api';
+     *
+     * const tool = createTool<AppContext>('projects')
+     *     .tracing(trace.getTracer('mcp-fusion'))
+     *     .action({ name: 'list', handler: listProjects });
+     * ```
+     *
+     * **Error classification**:
+     * - Validation failures → `SpanStatusCode.UNSET` + `mcp.error_type` attribute
+     * - Handler exceptions → `SpanStatusCode.ERROR` + `recordException()`
+     *
+     * **Context propagation limitation**: Since MCP Fusion does not depend
+     * on `@opentelemetry/api`, it cannot call `context.with(trace.setSpan(...))`.
+     * Auto-instrumented downstream calls (Prisma, HTTP, Redis) inside handlers
+     * will appear as siblings, not children, of the MCP span.
+     *
+     * @param tracer - A {@link FusionTracer} (or OTel `Tracer`) instance
+     * @returns `this` for chaining
+     *
+     * @see {@link FusionTracer} for the interface contract
+     * @see {@link SpanStatusCode} for status code semantics
+     */
+    tracing(tracer: FusionTracer): this {
+        // No frozen check — tracing is safe to attach after build (like debug)
+        this._tracer = tracer;
+        return this;
+    }
+
     // ── Execute (delegates to ExecutionPipeline) ────────
 
     /**
@@ -615,22 +659,49 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             return error(`Builder "${this._name}" failed to initialize.`);
         }
 
-        // Fast path: no debug observer → zero overhead
-        if (!this._debug) {
-            const disc = parseDiscriminator(execCtx, args);
-            if (!disc.ok) return disc.response;
-
-            const resolved = resolveAction(execCtx, disc.value);
-            if (!resolved.ok) return resolved.response;
-
-            const validated = validateArgs(execCtx, resolved.value, args);
-            if (!validated.ok) return validated.response;
-
-            return runChain(execCtx, resolved.value, ctx, validated.value, progressSink);
+        // Path 1: Tracing — full span hierarchy (enterprise)
+        if (this._tracer) {
+            return this._executeTraced(execCtx, ctx, args, progressSink);
         }
 
-        // Debug path: emit structured events at each step
-        const debug = this._debug;
+        // Path 2: Debug — lightweight event emission (backward compat)
+        if (this._debug) {
+            return this._executeDebug(execCtx, ctx, args, progressSink);
+        }
+
+        // Path 3: Fast — zero overhead (no observability)
+        return this._executeFast(execCtx, ctx, args, progressSink);
+    }
+
+    // ── Execution Paths (private) ────────────────────────
+
+    /** Fast path: zero overhead — no conditionals, no timing, no allocations. */
+    private async _executeFast(
+        execCtx: ExecutionContext<TContext>,
+        ctx: TContext,
+        args: Record<string, unknown>,
+        progressSink?: ProgressSink,
+    ): Promise<ToolResponse> {
+        const disc = parseDiscriminator(execCtx, args);
+        if (!disc.ok) return disc.response;
+
+        const resolved = resolveAction(execCtx, disc.value);
+        if (!resolved.ok) return resolved.response;
+
+        const validated = validateArgs(execCtx, resolved.value, args);
+        if (!validated.ok) return validated.response;
+
+        return runChain(execCtx, resolved.value, ctx, validated.value, progressSink);
+    }
+
+    /** Debug path: emit structured DebugEvent at each step (unchanged from pre-tracing). */
+    private async _executeDebug(
+        execCtx: ExecutionContext<TContext>,
+        ctx: TContext,
+        args: Record<string, unknown>,
+        progressSink?: ProgressSink,
+    ): Promise<ToolResponse> {
+        const debug = this._debug!;
         const startTime = performance.now();
 
         // Step 1: Route
@@ -679,6 +750,107 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             const message = err instanceof Error ? err.message : String(err);
             debug({ type: 'error', tool: this._name, action: actionName, error: message, step: 'execute', timestamp: Date.now() });
             throw err;
+        }
+    }
+
+    /**
+     * Traced path: OpenTelemetry-compatible span creation.
+     *
+     * Creates ONE span per tool call with events for pipeline steps.
+     * Uses `finally` for leak-proof span closure.
+     * AI errors → UNSET, system errors → ERROR.
+     */
+    private async _executeTraced(
+        execCtx: ExecutionContext<TContext>,
+        ctx: TContext,
+        args: Record<string, unknown>,
+        progressSink?: ProgressSink,
+    ): Promise<ToolResponse> {
+        const tracer = this._tracer!;
+        const startAttrs: Record<string, string | number | boolean | ReadonlyArray<string>> = {
+            'mcp.system': 'fusion',
+            'mcp.tool': this._name,
+        };
+        if (this._tags.length > 0) startAttrs['mcp.tags'] = this._tags;
+        if (this._description) startAttrs['mcp.description'] = this._description;
+
+        const span = tracer.startSpan(`mcp.tool.${this._name}`, { attributes: startAttrs });
+        const startTime = performance.now();
+        let statusCode: number = SpanStatusCode.UNSET;
+        let statusMessage: string | undefined;
+        let response: ToolResponse | undefined;
+
+        try {
+            // Route
+            const disc = parseDiscriminator(execCtx, args);
+            if (!disc.ok) {
+                span.setAttribute('mcp.error_type', 'missing_discriminator');
+                span.setAttribute('mcp.isError', true);
+                return (response = disc.response);
+            }
+            span.setAttribute('mcp.action', disc.value);
+            span.addEvent?.('mcp.route');
+
+            // Resolve
+            const resolved = resolveAction(execCtx, disc.value);
+            if (!resolved.ok) {
+                span.setAttribute('mcp.error_type', 'unknown_action');
+                span.setAttribute('mcp.isError', true);
+                return (response = resolved.response);
+            }
+
+            // Validate
+            const validateStart = performance.now();
+            const validated = validateArgs(execCtx, resolved.value, args);
+            const validateMs = performance.now() - validateStart;
+
+            if (!validated.ok) {
+                span.setAttribute('mcp.error_type', 'validation_failed');
+                span.setAttribute('mcp.isError', true);
+                span.addEvent?.('mcp.validate', { 'mcp.valid': false, 'mcp.durationMs': validateMs });
+                return (response = validated.response);
+            }
+            span.addEvent?.('mcp.validate', { 'mcp.valid': true, 'mcp.durationMs': validateMs });
+
+            // Middleware info
+            const actionMwCount = resolved.value.action.middlewares?.length ?? 0;
+            const globalMwCount = this._middlewares.length;
+            const chainLength = globalMwCount + actionMwCount;
+            if (chainLength > 0) {
+                span.addEvent?.('mcp.middleware', { 'mcp.chainLength': chainLength });
+            }
+
+            // Execute — rethrow=true so handler exceptions propagate to our catch block
+            response = await runChain(execCtx, resolved.value, ctx, validated.value, progressSink, true);
+            const isErr = response.isError === true;
+
+            // AI error (handler returned error()) → UNSET, not ERROR
+            statusCode = isErr ? SpanStatusCode.UNSET : SpanStatusCode.OK;
+            if (isErr) span.setAttribute('mcp.error_type', 'handler_returned_error');
+            span.setAttribute('mcp.isError', isErr);
+            return response;
+        } catch (err) {
+            // System failure — THIS is a real SpanStatusCode.ERROR
+            const message = err instanceof Error ? err.message : String(err);
+            span.recordException(err instanceof Error ? err : message);
+            span.setAttribute('mcp.error_type', 'system_error');
+            span.setAttribute('mcp.isError', true);
+            statusCode = SpanStatusCode.ERROR;
+            statusMessage = message;
+            // Return graceful error response — don't throw (would crash MCP server)
+            return (response = error(`[${this._name}] ${message}`));
+        } finally {
+            span.setAttribute('mcp.durationMs', performance.now() - startTime);
+            if (response) {
+                // Response size in bytes — useful for billing/quota dashboards
+                let size = 0;
+                for (const c of response.content) {
+                    if ('text' in c && typeof c.text === 'string') size += c.text.length;
+                }
+                span.setAttribute('mcp.response_size', size);
+            }
+            span.setStatus(statusMessage !== undefined ? { code: statusCode, message: statusMessage } : { code: statusCode });
+            span.end(); // leak-proof: always called
         }
     }
 

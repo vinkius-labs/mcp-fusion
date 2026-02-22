@@ -133,6 +133,7 @@ export default defineConfig({
           { text: 'FusionClient', link: '/fusion-client' },
           { text: 'State Sync', link: '/state-sync' },
           { text: 'Observability', link: '/observability' },
+          { text: 'Tracing', link: '/tracing' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Performance', link: '/performance' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
