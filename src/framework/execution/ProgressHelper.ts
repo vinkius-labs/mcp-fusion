@@ -82,6 +82,6 @@ export function isProgressEvent(value: unknown): value is ProgressEvent {
         typeof value === 'object' &&
         value !== null &&
         '__brand' in value &&
-        (value as ProgressEvent).__brand === 'ProgressEvent'
+        (value as { __brand: unknown }).__brand === 'ProgressEvent'
     );
 }

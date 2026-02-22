@@ -12,7 +12,6 @@
  */
 import { type ToolResponse } from '../response.js';
 import { type InternalAction, type MiddlewareFn } from '../types.js';
-import { type GeneratorResultEnvelope } from './ExecutionPipeline.js';
 
 // ── Public API ───────────────────────────────────────────
 
@@ -30,7 +29,7 @@ function isAsyncGeneratorFunction(fn: unknown): boolean {
     if (typeof fn !== 'function') return false;
     // Symbol.toStringTag is set by the engine on async generator functions
     return (fn as { [Symbol.toStringTag]?: string })[Symbol.toStringTag] === 'AsyncGeneratorFunction'
-        || fn.constructor?.name === 'AsyncGeneratorFunction';
+        || fn.constructor.name === 'AsyncGeneratorFunction';
 }
 
 export function compileMiddlewareChains<TContext>(
@@ -45,10 +44,10 @@ export function compileMiddlewareChains<TContext>(
 
         if (isAsyncGeneratorFunction(action.handler)) {
             // Generator handler: invoke and wrap the generator in an envelope
-            chain = async (ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
+            chain = (ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gen = (action.handler as any)(ctx, args) as AsyncGenerator<unknown, ToolResponse, undefined>;
-                return { __brand: 'GeneratorResultEnvelope', generator: gen } as unknown as ToolResponse;
+                return Promise.resolve({ __brand: 'GeneratorResultEnvelope', generator: gen } as unknown as ToolResponse);
             };
         } else {
             chain = action.handler;

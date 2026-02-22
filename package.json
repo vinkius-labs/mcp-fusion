@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "description": "TypeScript framework that consolidates MCP operations into grouped tools with discriminator-based routing, reducing LLM context pressure and routing errors",
     "type": "module",
     "main": "dist/index.js",
@@ -9,6 +9,10 @@
         ".": {
             "import": "./dist/index.js",
             "types": "./dist/index.d.ts"
+        },
+        "./client": {
+            "import": "./dist/framework/client/index.js",
+            "types": "./dist/framework/client/index.d.ts"
         }
     },
     "scripts": {

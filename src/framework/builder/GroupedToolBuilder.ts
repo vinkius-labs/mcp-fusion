@@ -427,7 +427,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             groupDescription: undefined,
             ...mapConfigToActionFields(
                 config,
-                config.omitCommon?.length ? [...config.omitCommon] : undefined,
+                (config.omitCommon?.length ?? 0) > 0 ? config.omitCommon : undefined,
             ),
             middlewares: undefined,
         });

@@ -412,6 +412,92 @@ describe('defineTool()', () => {
         const def = tool.buildToolDefinition();
         expect(def.inputSchema).toBeDefined();
     });
+
+    // ── Guard: actions + groups mutual exclusivity ──
+
+    it('should throw when both actions and groups are defined', () => {
+        expect(() =>
+            defineTool('invalid', {
+                actions: {
+                    ping: { handler: async () => success('pong') },
+                },
+                groups: {
+                    admin: {
+                        description: 'Admin',
+                        actions: {
+                            reset: { handler: async () => success('reset') },
+                        },
+                    },
+                },
+            } as any),
+        ).toThrow(/mutually exclusive/);
+    });
+
+    // ── omitCommon in defineTool() ──
+
+    it('should support omitCommon on flat actions', async () => {
+        const tool = defineTool('omit_flat', {
+            shared: { workspace_id: 'string' },
+            actions: {
+                profile: {
+                    omitCommon: ['workspace_id'],
+                    handler: async (_ctx, _args) => success('ok'),
+                },
+                list: {
+                    handler: async (_ctx, args) => success((args as Record<string, unknown>)['workspace_id'] as string),
+                },
+            },
+        });
+
+        // 'profile' should NOT require workspace_id (it was omitted)
+        const profileResult = await tool.execute(undefined, { action: 'profile' });
+        expect(profileResult.isError).toBeUndefined();
+        expect(profileResult.content[0].text).toBe('ok');
+
+        // 'list' SHOULD require workspace_id (not omitted)
+        const listFail = await tool.execute(undefined, { action: 'list' });
+        expect(listFail.isError).toBe(true);
+
+        const listOk = await tool.execute(undefined, { action: 'list', workspace_id: 'ws_1' });
+        expect(listOk.content[0].text).toBe('ws_1');
+    });
+
+    it('should support omitCommon on group definitions', async () => {
+        const tool = defineTool('omit_groups', {
+            shared: { tenant_id: 'string' },
+            groups: {
+                internal: {
+                    description: 'Internal ops',
+                    omitCommon: ['tenant_id'],
+                    actions: {
+                        health: {
+                            handler: async () => success('healthy'),
+                        },
+                    },
+                },
+                external: {
+                    description: 'External ops',
+                    actions: {
+                        query: {
+                            handler: async (_ctx, args) => success((args as Record<string, unknown>)['tenant_id'] as string),
+                        },
+                    },
+                },
+            },
+        });
+
+        // 'internal.health' should NOT require tenant_id
+        const healthResult = await tool.execute(undefined, { action: 'internal.health' });
+        expect(healthResult.isError).toBeUndefined();
+        expect(healthResult.content[0].text).toBe('healthy');
+
+        // 'external.query' SHOULD require tenant_id
+        const queryFail = await tool.execute(undefined, { action: 'external.query' });
+        expect(queryFail.isError).toBe(true);
+
+        const queryOk = await tool.execute(undefined, { action: 'external.query', tenant_id: 't_1' });
+        expect(queryOk.content[0].text).toBe('t_1');
+    });
 });
 
 // ============================================================================

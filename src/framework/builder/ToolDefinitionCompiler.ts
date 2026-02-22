@@ -117,10 +117,11 @@ function applyCommonSchemaOmit(
     schema: ZodObject<ZodRawShape> | undefined,
     omitFields: readonly string[] | undefined,
 ): ZodObject<ZodRawShape> | undefined {
-    if (!schema || !omitFields?.length) return schema;
+    if (!schema || (omitFields?.length ?? 0) === 0) return schema;
 
     const omitMask = Object.fromEntries(
-        omitFields
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        omitFields!
             .filter(f => f in schema.shape)
             .map(f => [f, true]),
     ) as { [k: string]: true };

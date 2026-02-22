@@ -79,8 +79,9 @@ function buildOmitSets<TContext>(
 ): Map<string, Set<string>> {
     const sets = new Map<string, Set<string>>();
     for (const action of actions) {
-        if (action.omitCommonFields?.length) {
-            sets.set(action.key, new Set(action.omitCommonFields));
+        if ((action.omitCommonFields?.length ?? 0) > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            sets.set(action.key, new Set(action.omitCommonFields!));
         }
     }
     return sets;

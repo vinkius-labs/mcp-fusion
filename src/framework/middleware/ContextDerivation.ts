@@ -157,7 +157,7 @@ export function isMiddlewareDefinition<TContext>(
         typeof value === 'object' &&
         value !== null &&
         '__brand' in value &&
-        (value as MiddlewareDefinition<TContext, Record<string, unknown>>).__brand === 'MiddlewareDefinition'
+        (value as { __brand: unknown }).__brand === 'MiddlewareDefinition'
     );
 }
 

@@ -245,8 +245,8 @@ export function toolError(code: string, options: ToolErrorOptions): ToolResponse
         lines.push('', `💡 Suggestion: ${options.suggestion}`);
     }
 
-    if (options.availableActions?.length) {
-        lines.push('', `📋 Try: ${options.availableActions.join(', ')}`);
+    if ((options.availableActions?.length ?? 0) > 0) {
+        lines.push('', `📋 Try: ${options.availableActions!.join(', ')}`);
     }
 
     return { content: [{ type: "text", text: lines.join('\n') }], isError: true };

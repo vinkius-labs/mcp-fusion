@@ -93,7 +93,7 @@ export function mapConfigToActionFields<TContext>(
         idempotent: config.idempotent ?? undefined,
         readOnly: config.readOnly ?? undefined,
         handler: config.handler,
-        omitCommonFields: omitCommonFields?.length ? omitCommonFields : undefined,
+        omitCommonFields: (omitCommonFields?.length ?? 0) > 0 ? omitCommonFields : undefined,
     };
 }
 

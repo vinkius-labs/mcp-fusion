@@ -147,7 +147,7 @@ function isGeneratorResultEnvelope(value: unknown): value is GeneratorResultEnve
         typeof value === 'object' &&
         value !== null &&
         '__brand' in value &&
-        (value as GeneratorResultEnvelope).__brand === 'GeneratorResultEnvelope'
+        (value as { __brand: unknown }).__brand === 'GeneratorResultEnvelope'
     );
 }
 

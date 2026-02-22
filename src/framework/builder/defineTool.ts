@@ -26,7 +26,7 @@
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { GroupedToolBuilder } from './GroupedToolBuilder.js';
-import { type ToolResponse, type MiddlewareFn } from '../types.js';
+import { type ToolResponse, type MiddlewareFn, type ActionConfig } from '../types.js';
 import {
     convertParamsToZod,
     type ParamsMap,
@@ -54,6 +54,8 @@ export interface ActionDef<TContext, TArgs = Record<string, never>> {
     destructive?: boolean;
     /** Mark as idempotent (safe to retry) */
     idempotent?: boolean;
+    /** Common schema fields to omit for this action */
+    omitCommon?: string[];
     /** Action-level middleware */
     middleware?: MiddlewareFn<TContext>[];
     /** The handler function */
@@ -69,6 +71,8 @@ export interface ActionDef<TContext, TArgs = Record<string, never>> {
 export interface GroupDef<TContext, TSharedArgs = Record<string, never>> {
     /** Human-readable group description */
     description?: string;
+    /** Common schema fields to omit for all actions in this group */
+    omitCommon?: string[];
     /** Group-scoped middleware */
     middleware?: MiddlewareFn<TContext>[];
     /** Actions within this group */
@@ -105,13 +109,13 @@ export interface ToolConfig<TContext, TShared extends ParamsMap = ParamsMap> {
 // ============================================================================
 
 /** Expected return type for handlers */
-export type ExpectedHandlerReturnType = Promise<ToolResponse> | AsyncGenerator<any, ToolResponse, any>;
+export type ExpectedHandlerReturnType = Promise<ToolResponse> | AsyncGenerator<unknown, ToolResponse, unknown>;
 
 /**
  * Utility type to force a readable, localized TypeScript error if a handler
  * does not return exactly `ToolResponse` or `AsyncGenerator<..., ToolResponse, ...>`.
  */
-export type ValidateActionDef<TAction> = TAction extends { handler: (...args: any[]) => infer R }
+export type ValidateActionDef<TAction> = TAction extends { handler: (...args: unknown[]) => infer R }
     ? [R] extends [ExpectedHandlerReturnType]
         ? TAction
         : Omit<TAction, 'handler'> & {
@@ -123,7 +127,7 @@ export type ValidateActionDef<TAction> = TAction extends { handler: (...args: an
  * Deep validation of the tool config to intercept handler return types
  * and provide readable errors without causing 50-line RecursiveBuilder issues.
  */
-export type ValidateConfig<C> = C extends ToolConfig<any, any>
+export type ValidateConfig<C> = C extends ToolConfig<infer _TContext, infer _TShared>
     ? {
           [K in keyof C]: K extends 'actions'
               ? { [A in keyof C['actions']]: ValidateActionDef<C['actions'][A]> }
@@ -170,15 +174,8 @@ function resolveSchema(
  * The framework handles all Zod schema creation, validation,
  * and MCP protocol details internally.
  *
-export function defineTool<
-    TContext = void,
-    TShared extends ParamsMap = ParamsMap,
-    C extends ToolConfig<TContext, TShared> = ToolConfig<TContext, TShared>
->(
-    name: string,
-    config: C & ValidateConfig<C>,
-): GroupedToolBuilder<TContext> {
-    const builder = new GroupedToolBuilder<TContext>(name);
+ * @example
+ * ```typescript
  * const echo = defineTool('echo', {
  *     actions: {
  *         say: {
@@ -217,11 +214,19 @@ export function defineTool<TContext = void>(
     name: string,
     config: ToolConfig<TContext>,
 ): GroupedToolBuilder<TContext> {
+    // ── Guard: actions and groups are mutually exclusive ──
+    if (config.actions && config.groups) {
+        throw new Error(
+            `defineTool("${name}"): "actions" and "groups" are mutually exclusive. ` +
+            `Use "actions" for flat tools OR "groups" for hierarchical tools, not both.`
+        );
+    }
+
     const builder = new GroupedToolBuilder<TContext>(name);
 
     // ── Optional config ──
     if (config.description) builder.description(config.description);
-    if (config.tags?.length) builder.tags(...config.tags);
+    if (config.tags && config.tags.length > 0) builder.tags(...config.tags);
     if (config.discriminator) builder.discriminator(config.discriminator);
     if (config.toonDescription) builder.toonDescription();
 
@@ -277,6 +282,7 @@ function registerAction<TContext>(
         ...(def.readOnly !== undefined && { readOnly: def.readOnly }),
         ...(def.destructive !== undefined && { destructive: def.destructive }),
         ...(def.idempotent !== undefined && { idempotent: def.idempotent }),
+        ...((def.omitCommon?.length ?? 0) > 0 && { omitCommon: def.omitCommon }),
     });
 }
 
@@ -290,6 +296,12 @@ function registerGroup<TContext>(
     def: GroupDef<TContext, Record<string, unknown>>,
 ): void {
     builder.group(groupName, def.description ?? '', g => {
+        // ── Group-level omitCommon ──
+        if ((def.omitCommon?.length ?? 0) > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            g.omitCommon(...def.omitCommon!);
+        }
+
         if (def.middleware) {
             for (const mw of def.middleware) {
                 g.use(mw);
@@ -299,7 +311,7 @@ function registerGroup<TContext>(
         for (const [actionName, actionDef] of Object.entries(def.actions)) {
             const schema = resolveSchema(actionDef.params as ParamsMap | ZodObject<ZodRawShape> | undefined);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             g.action({
                 name: actionName,
                 handler: actionDef.handler,
@@ -308,7 +320,8 @@ function registerGroup<TContext>(
                 ...(actionDef.readOnly !== undefined && { readOnly: actionDef.readOnly }),
                 ...(actionDef.destructive !== undefined && { destructive: actionDef.destructive }),
                 ...(actionDef.idempotent !== undefined && { idempotent: actionDef.idempotent }),
-            } as any);
+                ...((actionDef.omitCommon?.length ?? 0) > 0 && { omitCommon: actionDef.omitCommon }),
+            } as unknown as ActionConfig<TContext>);
         }
     });
 }

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-02-22
+
+### Fixed
+- **Sub-path export:** Added `"./client"` entry point in `package.json` exports so that the documented import (`@vinkius-core/mcp-fusion/client`) works natively.
+- **Action Group Guard:** Added runtime guard in `defineTool()` throwing an error if both `actions` and `groups` are used simultaneously, aligning with `GroupedToolBuilder` mutual exclusivity.
+- **Dead-code JSDoc stub:** Removed a malformed `export function defineTool(...)` stub that was incorrectly embedded inside the `defineTool` JSDoc text.
+
+### Added
+- **API Parity (`omitCommon`):** `ActionDef` and `GroupDef` now accept `omitCommon?: string[]`, propagating it through `defineTool()` to the internal builders to match the builder API capability.
+
 ## [0.9.0] - 2026-02-22
 
 ### Added
