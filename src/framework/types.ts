@@ -11,6 +11,7 @@
  */
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ZodObject, type ZodRawShape } from 'zod';
+import { type Presenter } from './presenter/Presenter.js';
 
 // ── Re-export from canonical source ──────────────────────
 
@@ -147,8 +148,10 @@ export interface InternalAction<TContext> {
     readonly middlewares: readonly MiddlewareFn<TContext>[] | undefined;
     /** Common schema fields to omit for this action (LLM won't see them, validation skips them) */
     readonly omitCommonFields: readonly string[] | undefined;
-    /** Handler */
-    readonly handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
+    /** Presenter for MVA pattern — transforms raw handler output into rich multi-block responses */
+    readonly returns: Presenter<unknown> | undefined;
+    /** Handler — returns ToolResponse (classic) or raw data (MVA with `returns: Presenter`) */
+    readonly handler: (ctx: TContext, args: Record<string, unknown>) => Promise<unknown>;
 }
 
 // ── Middleware ────────────────────────────────────────────
@@ -193,8 +196,8 @@ export interface InternalAction<TContext> {
 export type MiddlewareFn<TContext> = (
     ctx: TContext,
     args: Record<string, unknown>,
-    next: () => Promise<ToolResponse>
-) => Promise<ToolResponse>;
+    next: () => Promise<unknown>
+) => Promise<unknown>;
 
 // ── Action Configuration ─────────────────────────────────
 
@@ -264,6 +267,28 @@ export interface ActionConfig<TContext> {
      * ```
      */
     omitCommon?: string[];
-    /** Handler function that processes the action */
-    handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
+    /**
+     * Presenter for the MVA (Model-View-Agent) pattern.
+     *
+     * When set, the handler's return type changes from `Promise<ToolResponse>`
+     * to `Promise<TPresenterOutput>` (raw data). The framework intercepts the
+     * raw return value, pipes it through the Presenter (schema validation,
+     * system rules, UI blocks), and compiles the final multi-block response.
+     *
+     * @example
+     * ```typescript
+     * .action({
+     *     name: 'get_invoice',
+     *     returns: InvoicePresenter,
+     *     handler: async (ctx, args) => {
+     *         return await db.invoices.find(args.id); // Raw data
+     *     },
+     * })
+     * ```
+     *
+     * @see {@link Presenter} for creating domain-level presenters
+     */
+    returns?: Presenter<unknown>;
+    /** Handler function — return ToolResponse (classic) or raw data when using `returns: Presenter` */
+    handler: (ctx: TContext, args: Record<string, unknown>) => Promise<unknown>;
 }

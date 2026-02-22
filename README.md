@@ -1,6 +1,7 @@
 <div align="center">
   <h1>⚡️ mcp-fusion</h1>
-  <p><b>The Enterprise Multiplexer for MCP. Route 5,000+ endpoints through a single LLM tool.</b></p>
+  <p><b>The first framework for building MCP servers that agents actually understand.</b></p>
+  <p>Not another SDK wrapper. A fundamentally new architecture for the Model Context Protocol.</p>
   
   [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -10,15 +11,113 @@
 
 <br/>
 
-**[Read the Official Documentation & Guides on GitHub Pages](https://vinkius-labs.github.io/mcp-fusion/)**
+**[📖 Documentation & Guides](https://vinkius-labs.github.io/mcp-fusion/)** · **[🍳 Cookbook & Examples](https://vinkius-labs.github.io/mcp-fusion/examples)**
 
 <br/>
 
-**Stop registering hundreds of individual Model Context Protocol (MCP) tools. Ship ONE.**
+## The Problem: Every MCP Server Today Is Built Wrong
 
-`mcp-fusion` is an advanced TypeScript framework that consolidates related MCP operations into a single tool behind a discriminator field. Built with a strict **domain model layer** for hierarchical entity management and a **build-time strategy engine** designed to scale to 5,000+ endpoints.
+Look at any MCP server on GitHub. They all look like this:
 
-Fewer tools mean less context pressure on the LLM, zero routing hallucinations, and radically cleaner server code.
+```typescript
+// ❌ What every MCP server looks like today
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+
+    switch (name) {
+        case 'get_invoice':
+            const invoice = await db.invoices.findUnique(args.id);
+            return { content: [{ type: 'text', text: JSON.stringify(invoice) }] };
+        //                                          ↑ Raw JSON. The AI has no idea
+        //                                            that amount_cents is in cents,
+        //                                            what actions are available next,
+        //                                            or which fields are sensitive.
+        case 'list_invoices':
+            // ...50 more cases
+    }
+});
+```
+
+**This is the state of the art in 2025.** Raw JSON output. Manual switch/case routing. No validation. No domain context. No guardrails. The AI sees `{ amount_cents: 45000 }` and guesses — often wrong — whether it's dollars, cents, or yen.
+
+The result:
+- 🎯 **Parameter hallucination** — The AI invents field names that don't exist
+- 💀 **Data misinterpretation** — `45000` cents displayed as $45,000 instead of $450
+- 🔀 **Action blindness** — The AI doesn't know what to do next, so it hallucinates tool names
+- 🔓 **No security** — Internal fields leak to the LLM context
+
+---
+
+<div align="center">
+
+### 🧠 The Revolution: MVA (Model-View-Agent)
+
+**MVC was designed for humans. Agents are not humans.**
+
+The AI industry builds agents on MVC, REST, and patterns made for browsers.<br/>
+None of them were designed for an autonomous consumer that **hallucinates when given ambiguous data.**
+
+**mcp-fusion** introduces **MVA** — a foundational architecture where the<br/>**Presenter** replaces the human-centric View with an **agent-centric perception layer.**
+
+</div>
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│              ⚡ Model-View-Agent (MVA)                    │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│    Model              →   View             →   Agent     │
+│    Zod Schema             Presenter            LLM       │
+│    (validates)            (perceives)          (acts)     │
+│                                                          │
+│    ┌────────────────────────────────────────────────┐     │
+│    │  📄 Validated Data                            │     │
+│    │  📋 Domain Rules — "CENTS. Divide by 100."    │     │
+│    │  📊 UI Blocks — ECharts, Mermaid, Summaries   │     │
+│    │  🔗 Action Hints — "→ billing.pay"            │     │
+│    │  ⚠️  Guardrails — "50 shown, 250 hidden."     │     │
+│    └────────────────────────────────────────────────┘     │
+│              ▲ Structured Perception Package              │
+└──────────────────────────────────────────────────────────┘
+```
+
+<div align="center">
+
+> **Every response is a structured perception package — not raw JSON.**<br/>
+> The AI doesn't guess. It *knows*.
+
+📖 **[Read the full MVA Pattern Guide →](https://vinkius-labs.github.io/mcp-fusion/mva-pattern)**
+
+</div>
+
+---
+
+## What It Looks Like in Code
+
+```typescript
+// ✅ The mcp-fusion way — your handler returns raw data. That's it.
+const billing = defineTool<AppContext>('billing', {
+    actions: {
+        get_invoice: {
+            returns: InvoicePresenter,     // ← The AI will UNDERSTAND this data
+            params: { id: 'string' },
+            handler: async (ctx, args) => {
+                return await ctx.db.invoices.findUnique({ where: { id: args.id } });
+                // Raw data → Presenter validates, renders, guides — automatically
+            },
+        },
+    },
+});
+```
+
+The **Presenter** automatically:
+- ✅ **Validates** data through Zod (strips sensitive fields, rejects invalid shapes)
+- ✅ **Injects domain rules** — "amount_cents is in CENTS. Divide by 100."
+- ✅ **Renders charts** — Server-side ECharts, Mermaid diagrams
+- ✅ **Suggests next actions** — "→ billing.pay: Process payment"
+- ✅ **Truncates intelligently** — "50 shown, 250 hidden. Use filters."
+
+No switch/case. No manual JSON.stringify. No praying.
 
 ```bash
 npm install @vinkius-core/mcp-fusion zod
@@ -26,54 +125,121 @@ npm install @vinkius-core/mcp-fusion zod
 
 ---
 
-## 🚨 The Architectural Bottleneck: Context Collapse
+## The Presenter: Your Agent's Perception Layer
 
-Standard MCP servers that expose individual tools for every CRUD operation (`create_project`, `update_project`, `delete_project`, `list_projects`) create two cascading system failures:
+The Presenter is domain-level, not tool-level. Define `InvoicePresenter` once — every tool that returns invoices uses it. Consistent perception. Zero hallucination.
 
-1. **Context Exhaustion:** Every tool definition burns expensive tokens in the LLM's context window. At 30+ tools, API costs explode and the model's memory degrades.
-2. **Routing Confusion:** Semantically similar tools compete for selection. The LLM hallucinates parameters or picks `update_project` when it should pick `create_project`.
+```typescript
+import { createPresenter, ui, defineTool } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
 
-The workaround is writing fewer, bloated tools — or rotating tool sets per conversation. Both are brittle.
+// ── Define the Presenter (MVA View Layer) ──
+export const InvoicePresenter = createPresenter('Invoice')
+    .schema(z.object({
+        id: z.string(),
+        amount_cents: z.number(),
+        status: z.enum(['paid', 'pending', 'overdue']),
+    }))
+    .systemRules((invoice, ctx) => [
+        'CRITICAL: amount_cents is in CENTS. Divide by 100 before display.',
+        ctx?.user?.role !== 'admin'
+            ? 'RESTRICTED: Mask totals for non-admin users.'
+            : null,
+    ])
+    .uiBlocks((invoice) => [
+        ui.echarts({
+            series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
+        }),
+    ])
+    .agentLimit(50, (omitted) =>
+        ui.summary(`⚠️ 50 shown, ${omitted} hidden. Use filters.`)
+    )
+    .suggestActions((invoice) =>
+        invoice.status === 'pending'
+            ? [{ tool: 'billing.pay', reason: 'Process payment' }]
+            : []
+    );
+```
 
-## ✅ The Solution: Build-Time Multiplexing & Context Gating
+The agent receives a complete perception package:
 
-Group related operations under a single tool. The LLM sees ONE `platform` tool and selects the exact operation through an `action` enum. 
+```text
+📄 DATA       → Validated, sensitive fields stripped
+📋 RULES      → "amount_cents is in CENTS. Divide by 100."
+📊 UI BLOCKS  → ECharts gauge rendered server-side
+⚠️ GUARDRAIL  → "50 shown, 250 hidden. Use filters."
+🔗 HINTS      → "→ billing.pay: Process payment"
+```
 
-The framework handles description generation, schema composition, annotation aggregation, middleware compilation, strict validation, and error formatting — **all at build time**.
+### Pipeline Integration — Zero Boilerplate
 
-```mermaid
-graph LR
-    classDef chaos fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
-    classDef gateway fill:#0ea5e9,stroke:#0369a1,stroke-width:3px,color:#fff
-    classDef gate fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
-    classDef engine fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
-    classDef secure fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
-    classDef danger fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff
+Attach the Presenter to any action. The handler returns raw data. The framework handles everything.
 
-    subgraph S1["Standard MCP - Context Collapse"]
-        L1[LLM] -.->|Token Burn| C1["50plus Raw Tools"]:::chaos
-        L1 -.->|Routing Errors| C2[Hallucinated Params]:::chaos
-    end
+```typescript
+const billing = defineTool<AppContext>('billing', {
+    actions: {
+        get_invoice: {
+            returns: InvoicePresenter,  // ← MVA View Layer
+            params: { id: 'string' },
+            handler: async (ctx, args) => {
+                return await ctx.db.invoices.findUnique({
+                    where: { id: args.id },
+                    include: { client: true },
+                });
+                // Raw data → Presenter validates, renders, suggests — automatically
+            },
+        },
+    },
+});
+```
 
-    subgraph S2["mcp-fusion - Enterprise Gateway"]
-        L2[LLM] == "Sees ONE Tool" ==> GATEWAY[Gateway]:::gateway
-        GATEWAY ==>|Context Gating| TAGS{Tag Filter}:::gate
-        TAGS ==>|Build-Time Engine| AST["Zod AST Hints and TOON Compress"]:::engine
-        AST ==>|Routing and Security| ZOD["Zod merge strip"]:::secure
-        ZOD -->|users.create| H1[Type-Safe Handler]:::secure
-        ZOD -->|billing.refund| H2[Destructive]:::danger
-        ZOD -.->|Map.get O1| H3["5000plus Endpoints"]:::engine
-    end
+### Presenter Composition
+
+Real data has relationships. `.embed()` composes child Presenters for nested data — rules and UI blocks merge automatically.
+
+```typescript
+const ClientPresenter = createPresenter('Client')
+    .schema(clientSchema)
+    .systemRules(['Display company name prominently.']);
+
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .embed('client', ClientPresenter);  // ← nested composition
 ```
 
 ---
 
-## 🤯 The "Aha!" Moment: What the LLM Actually Sees
+## Action Consolidation: One Tool, Not Fifty
 
-Instead of flooding the LLM with 50 fragile JSON schemas, `mcp-fusion` uses **Zod AST introspection** to cross-reference every field across all actions. Five individual tools become one registered tool. 
+Standard MCP servers expose individual tools per operation. 50 tools = 50 schemas burning tokens. mcp-fusion consolidates related operations behind a discriminator field.
 
-The LLM simply sees this mathematically perfect, auto-generated prompt:
+```typescript
+const projects = defineTool<AppContext>('projects', {
+    description: 'Manage workspace projects',
+    shared: { workspace_id: 'string' },
+    actions: {
+        list: {
+            readOnly: true,
+            returns: ProjectPresenter,
+            handler: async (ctx, args) => await ctx.db.projects.findMany(),
+        },
+        create: {
+            params: { name: { type: 'string', min: 1 } },
+            handler: async (ctx, args) => await ctx.db.projects.create(args),
+        },
+        delete: {
+            destructive: true,
+            params: { project_id: 'string' },
+            handler: async (ctx, args) => {
+                await ctx.db.projects.delete(args.project_id);
+                return 'Deleted';
+            },
+        },
+    },
+});
+```
 
+The LLM sees one perfectly structured tool:
 ```text
 Action: list | create | delete
 - 'list': Requires: workspace_id. For: list
@@ -81,162 +247,37 @@ Action: list | create | delete
 - 'delete': Requires: workspace_id, project_id ⚠️ DESTRUCTIVE
 ```
 
-*No guessing. No hallucinated parameters. Absolute routing precision.*
+### Two APIs — One Framework
+
+| Feature | `defineTool()` | `createTool()` |
+|---|---|---|
+| **Syntax** | Declarative config object | Fluent builder chain |
+| **Zod needed?** | No (auto-converts) | Yes |
+| **Best for** | Rapid prototyping | Complex validation |
+
+Both produce identical MCP tools. Mix and match freely.
 
 ---
 
-## 🚀 Quick Start
+## Enterprise Engineering Core
 
-mcp-fusion offers **two APIs** — choose the one that fits your team:
-
-### Option A: `defineTool()` — JSON-First (Zero Zod Required)
-
-Perfect for rapid prototyping. No Zod imports needed — describe params with plain strings.
-
-```typescript
-import { defineTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
-
-const projects = defineTool<AppContext>('projects', {
-    description: 'Manage workspace projects',
-    shared: { workspace_id: 'string' },  // Injected into ALL actions
-    actions: {
-        list: {
-            readOnly: true,
-            params: { status: { enum: ['active', 'archived'] as const, optional: true } },
-            handler: async (ctx, args) => success(await ctx.db.projects.findMany()),
-        },
-        create: {
-            params: {
-                name: { type: 'string', min: 1, max: 100 },
-                email: { type: 'string', regex: '^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$' },
-            },
-            handler: async (ctx, args) => success(await ctx.db.projects.create(args)),
-        },
-        delete: {
-            destructive: true,
-            params: { project_id: 'string' },
-            handler: async (ctx, args) => {
-                await ctx.db.projects.delete(args.project_id);
-                return success('Project deleted');
-            },
-        },
-    },
-});
-
-const registry = new ToolRegistry<AppContext>();
-registry.register(projects);
-registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
-});
-```
-
-### Option B: `createTool()` — Full Zod Power Mode
-
-For senior engineers who need custom `.regex()`, `.refine()`, `.transform()`, and advanced Zod.
-
-```typescript
-import { createTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-const projects = createTool<AppContext>('projects')
-    .description('Manage projects')
-    .commonSchema(z.object({
-        workspace_id: z.string().describe('Workspace identifier'),
-    }))
-    .action({
-        name: 'list',
-        readOnly: true,
-        schema: z.object({ status: z.enum(['active', 'archived']).optional() }),
-        handler: async (ctx, args) => success(await ctx.db.projects.findMany()),
-    })
-    .action({
-        name: 'delete',
-        destructive: true,
-        schema: z.object({ project_id: z.string() }),
-        handler: async (ctx, args) => {
-            await ctx.db.projects.delete({ where: { id: args.project_id } });
-            return success('Project deleted');
-        },
-    });
-```
-
-**Both APIs produce identical MCP tool definitions. Mix and match freely in the same registry.**
-
-→ [Read the full Getting Started Guide](docs/quickstart.md)
-
----
-
-## 🏗️ Enterprise Engineering Core
-
-This is not a simple utility wrapper. `mcp-fusion` is a high-performance routing engine built for massive scale, strict security boundaries, and zero-allocation runtime execution.
-
-### Token Management at Scale — Tag-Based Selective Exposure
-> **"5,000 endpoints — won't that blow up the token context?"** No. 
-
-The framework uses a 3-layer Context Gating strategy to keep token usage strictly under control:
-1. **Layer 1 — Grouping reduces tool count:** Instead of 5,000 individual tools, a `platform` tool with 50 actions is ONE tool definition in `tools/list`. The LLM sees 1 tool, not 50.
-2. **Layer 2 — Tag filtering controls what the LLM sees:** You do NOT expose all tools at once. Each builder has `.tags()`, and `attachToServer()` accepts a `filter` with `tags` (include) and `exclude` options.
-3. **Layer 3 — TOON compresses descriptions:** For tools that ARE exposed, metadata is compressed.
-
-```typescript
-// Register 5,000 endpoints across domain-specific grouped tools
-const usersTool = new GroupedToolBuilder<AppContext>('users').tags('core').group(...);
-const adminTool = new GroupedToolBuilder<AppContext>('admin').tags('admin', 'internal').group(...);
-
-registry.registerAll(usersTool, adminTool);
-
-// Conversation about user management? Expose only core tools:
-registry.attachToServer(server, { filter: { tags: ['core'] } }); // LLM sees: 1 tool
-
-// Full access, but never internal tools:
-registry.attachToServer(server, { filter: { exclude: ['internal'] } });
-```
-*Tag filtering acts as a context gate — you control exactly what the LLM sees, per session.*
-
-### Two-Layer Architecture
-1. **Layer 1 — Domain Model:** A hierarchical entity model for MCP primitives (`Group`, `Tool`, `Prompt`, `Resource`, `PromptArgument`) with tree traversal, multi-parent leaves, fully-qualified names (dot-separated, configurable separator), metadata maps, icons, and bidirectional type converters. This is the structural backbone — think of it as the AST for your MCP server.
-2. **Layer 2 — Build-Time Strategy Engine:** `GroupedToolBuilder` orchestrates six pure-function strategy modules to generate a single MCP tool definition. All heavy computation happens at build time. At runtime, `execute()` does a single `Map.get()` lookup and calls a pre-compiled function.
-
-### Per-Field Annotation Intelligence (4-Tier System)
-The `SchemaGenerator` analyzes every field across every action directly from Zod `isOptional()` introspection, cross-referencing them to produce 4 annotation tiers automatically:
-
-| Tier | Condition | Generated Annotation | LLM Reads As |
-|---|---|---|---|
-| **Always Required** | Field is in `commonSchema` and required | `(always required)` | "I must always send this field" |
-| **Required-For** | Required in every action that uses it | `Required for: create, update` | "I need this for specific actions" |
-| **Required + Optional** | Required in some, optional in others | `Required for: create. For: update` | "Required for create, optional for update" |
-| **For** | Optional in all actions that use it | `For: list, search` | "Only relevant for these actions" |
-
-### Zod Parameter Stripping (Built-In Security Layer)
-When the LLM sends arguments, `execute()` merges `commonSchema` + `action.schema` using Zod's `.merge().strip()`, then runs `safeParse()`. 
-1. Unknown/injected fields are silently stripped.
-2. Type coercion happens safely through Zod.
-3. The handler receives exactly the shape it declared. 
-**The LLM cannot inject parameters that your schema does not declare. This is a security boundary, not just validation.**
-
-### Hierarchical Grouping for Large API Surfaces
-For massive API surfaces, actions support `module.action` compound keys. **Flat mode** (`.action()`) and **hierarchical mode** (`.group()`) are mutually exclusive on the same builder.
-
+### Hierarchical Groups — 5,000+ Actions
 ```typescript
 new GroupedToolBuilder<AppContext>('platform')
-    .tags('core') 
+    .tags('core')
     .group('users', 'User management', g => {
-        g.use(requireAdmin)  // Group-scoped middleware
+        g.use(requireAdmin)
          .action({ name: 'list', readOnly: true, handler: listUsers })
          .action({ name: 'ban', destructive: true, schema: banSchema, handler: banUser });
     })
     .group('billing', 'Billing operations', g => {
         g.action({ name: 'refund', destructive: true, schema: refundSchema, handler: issueRefund });
     });
+// Discriminator: users.list | users.ban | billing.refund
 ```
-*The discriminator enum automatically becomes: `users.list | users.ban | billing.refund`.*
 
-### Pre-Compiled Middleware Chains
-Middleware follows the `next()` pattern. But unlike Express.js, chains are compiled at **build time**. The `MiddlewareCompiler` wraps handlers right-to-left into nested closures and stores the result. At runtime, `execute()` calls `this._compiledChain.get(action.key)`. 
-**Zero chain assembly, zero closure allocation per request.** Supports both **Global** and **Group-scoped** execution.
-
-### Context Derivation — `defineMiddleware()` (tRPC-style)
-Middlewares that return data merge it into the context for downstream handlers. TypeScript infers the derived type automatically:
+### Context Derivation — `defineMiddleware()`
+tRPC-style middleware that derives typed data into context:
 ```typescript
 import { defineMiddleware } from '@vinkius-core/mcp-fusion';
 
@@ -245,35 +286,23 @@ const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
     if (!user) throw new Error('Unauthorized');
     return { user };  // ← TS infers: { user: User }
 });
-
-const billing = createTool<AppContext>('billing')
-    .use(requireAuth.toMiddlewareFn())
-    .action({
-        name: 'refund',
-        handler: async (ctx, args) => success(`Refunded by ${ctx.user.id}`),
-    });
 ```
 
 ### Self-Healing Errors — `toolError()`
-Structured error responses with recovery instructions for fully autonomous LLM agents:
+Structured recovery for autonomous agents:
 ```typescript
-import { toolError } from '@vinkius-core/mcp-fusion';
-
 return toolError('ProjectNotFound', {
     message: `Project '${id}' does not exist.`,
     suggestion: 'Call projects.list first to get valid IDs.',
     availableActions: ['projects.list'],
 });
 // Output: [ProjectNotFound] Project 'xyz' does not exist.
-//         💡 Suggestion: Call projects.list first to get valid IDs.
+//         💡 Suggestion: Call projects.list first.
 //         📋 Try: projects.list
 ```
 
-### Streaming Progress — `progress()` 
-Generator handlers can yield progress events during long-running operations:
+### Streaming Progress — `progress()`
 ```typescript
-import { progress, success } from '@vinkius-core/mcp-fusion';
-
 handler: async function* (ctx, args) {
     yield progress(10, 'Cloning repository...');
     yield progress(50, 'Building AST...');
@@ -282,18 +311,9 @@ handler: async function* (ctx, args) {
 }
 ```
 
-### Type-Safe Client — `createFusionClient()` + `InferRouter` (tRPC-style)
-End-to-end type safety from server to client, with full autocomplete — **no manual type definitions**:
+### Type-Safe Client — `createFusionClient()`
+End-to-end type safety from server to client:
 ```typescript
-// ── Server: automatic router extraction ──
-import { createTool, createTypedRegistry } from '@vinkius-core/mcp-fusion';
-import type { InferRouter } from '@vinkius-core/mcp-fusion';
-
-const registry = createTypedRegistry<AppContext>()(projects, billing);
-export type AppRouter = InferRouter<typeof registry>;
-// Produces: { 'projects.list': { workspace_id: string }, 'billing.refund': { invoice_id: string, amount: number } }
-
-// ── Client: full autocomplete ──
 import { createFusionClient } from '@vinkius-core/mcp-fusion/client';
 import type { AppRouter } from './mcp-server';
 
@@ -303,51 +323,10 @@ const result = await client.execute('projects.create', { name: 'Vinkius V2' });
 //                                   autocomplete!       typed args!
 ```
 
-### Compile-Time DX — `ValidateConfig`
-`defineTool()` uses type-level validation to produce readable, localized TypeScript errors instead of deep recursive type explosions:
-```text
-❌ Type Error: handler must return ToolResponse. Use return success(data) or return error(msg).
-```
-
-### TOON Token Optimization (Slash API Costs)
-Descriptions and responses can be encoded in TOON (Token-Oriented Object Notation) via `@toon-format/toon` — a compact pipe-delimited format that eliminates repeated JSON keys:
-```typescript
-builder.toonDescription(); // Token-optimized prompts (saves tokens on tools/list)
-return toonSuccess(users); // Slashes token cost on array responses back to LLM
-```
-
-### Type-Safe Common Schema Propagation
-`commonSchema()` propagates types through generics. The return type narrows from `GroupedToolBuilder<TContext, Record<string, never>>` to `GroupedToolBuilder<TContext, TSchema["_output"]>`. Every subsequent handler receives `TSchema["_output"] & TCommon` — checked at compile time, not runtime. No `as any`, no type assertions needed.
-
-### Duck-Typed Server Resolution
-`attachToServer()` accepts `unknown` and performs runtime duck-type detection:
-1. Has `.server.setRequestHandler`? → `McpServer` (high-level SDK).
-2. Has `.setRequestHandler` directly? → `Server` (low-level SDK).
-**Zero peer dependency coupling to MCP server internals.** If the SDK restructures its exports, this framework does not break. Returns a `DetachFn` for clean teardown testing.
-
-### Conservative Annotation Aggregation
-MCP tool annotations operate at the tool level, but actions have individual behavioral properties. The framework resolves this safely:
-- `destructiveHint: true` if **any** action is destructive (worst case assumption).
-- `readOnlyHint: true` only if **all** actions are read-only.
-- `idempotentHint: true` only if **all** actions are idempotent.
-*(Also supports `openWorldHint` and `returnDirect` via manual overrides).*
-
-### ⚠️ DESTRUCTIVE Warnings & Error Handling
-* **Safety Signal:** When an action is marked `destructive: true`, the `DescriptionGenerator` appends a literal `⚠️ DESTRUCTIVE` warning. LLMs trained on safety data recognize this and request user confirmation.
-* **Error Isolation:** Every error includes the `[toolName/action]` prefix for instant LLM self-correction (e.g., `Error: action is required. Available: list, create, delete`).
-
-### Freeze-After-Build Immutability
-Once `buildToolDefinition()` is called, the builder is permanently frozen. The `_actions` array is sealed with `Object.freeze()`. All mutation methods throw. This eliminates an entire class of bugs where tools are accidentally mutated after registration — adopting the same pattern Protocol Buffers uses.
-
-### 🧠 State Sync — Preventing LLM Temporal Blindness
-
-LLMs have **no sense of time**. They cannot distinguish between data fetched 2 seconds ago and data fetched 20 minutes ago. This causes silent data corruption when AI agents make decisions based on stale state — a phenomenon called **Temporal Blindness**.
-
-State Sync injects RFC 7234-inspired `Cache-Control` directives directly into the MCP protocol:
-
+### State Sync — Temporal Awareness
+RFC 7234-inspired cache-control signals prevent agents from using stale data:
 ```typescript
 registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
     stateSync: {
         defaults: { cacheControl: 'no-store' },
         policies: [
@@ -359,126 +338,64 @@ registry.attachToServer(server, {
 });
 ```
 
-**What happens automatically:**
-1. `tools/list` — Tool descriptions get `[Cache-Control: no-store]` or `[Cache-Control: immutable]` appended
-2. `tools/call` — After a successful mutation, responses get `[System: Cache invalidated for sprints.* — caused by sprints.update]` prepended
+### Zod Parameter Stripping
+When the LLM sends arguments, Fusion merges schemas using `.merge().strip()`, then `safeParse()`. Unknown fields are silently removed. **The LLM cannot inject parameters your schema does not declare.**
 
-The LLM reads `no-store` as "re-fetch before using" and `immutable` as "safe to trust my cached copy". Cross-domain invalidation tells it *exactly* which data changed and why.
-
-**Zero overhead when not configured. Zero imports needed. Fully declarative.**
-
-→ [Read the full State Sync Guide](docs/state-sync.md)
-
-### Introspection API
-Need programmatic documentation, compliance audits, or dashboard generation?
+### Tag-Based Context Gating
+Control exactly what the LLM sees per session:
 ```typescript
-const meta = builder.getActionMetadata();
-// Returns: [{ key, actionName, groupName, description, destructive, readOnly, requiredFields, hasMiddleware }]
+registry.attachToServer(server, { filter: { tags: ['core'] } });      // Only core tools
+registry.attachToServer(server, { filter: { exclude: ['internal'] } }); // No internal tools
 ```
+
+### Freeze-After-Build Immutability
+After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze()` prevents mutation. Mutation methods throw. This eliminates accidental post-registration bugs.
 
 ---
 
-## 🔬 Architecture & Internals
-
-### Project Structure
-
-The codebase is organized into bounded contexts with shallow nesting (max 2 levels):
-
-```
-src/
-├── domain/          → Pure immutable domain models
-├── converters/      → Domain-to-DTO converters
-├── framework/
-│   ├── types.ts     → ALL contracts & shared types (single file)
-│   ├── result.ts    → Result<T> monad (cross-cutting)
-│   ├── response.ts  → Response helpers (cross-cutting)
-│   ├── builder/     → GroupedToolBuilder, ActionGroupBuilder, Compiler
-│   ├── execution/   → ExecutionPipeline, MiddlewareCompiler
-│   ├── schema/      → Schema, Description, Annotation strategies
-│   ├── registry/    → ToolRegistry, ToolFilterEngine
-│   └── server/      → ServerResolver, ServerAttachment
-└── index.ts         → Public API barrel
-```
-
-### Domain Model Layer (`src/domain/`)
-The package provides a full domain model for MCP primitives:
-
-| Class | Purpose |
-|---|---|
-| `Group` | Tree node with parent/child relationships, configurable name separator, recursive FQN |
-| `Tool` | Leaf node with input/output schemas and `ToolAnnotations` |
-| `Prompt` | Leaf node with `PromptArgument` list |
-| `Resource` | Leaf node with URI, size, mimeType, and `Annotations` (audience, priority) |
-| `BaseModel` | Name, title, description, meta, icons |
-| `GroupItem` | Multi-parent group support, root traversal |
-
-*Features Bidirectional converters (`ToolConverterBase`, `GroupConverterBase`, etc.) with null filtering for clean conversion to external representations.*
-
-### Strategy Modules
-Six pure-function modules organized by bounded context. Every module is independently testable and replaceable. **Zero shared state.**
-
-| Context | Module | Responsibility |
-|---|---|---|
-| `schema/` | `SchemaGenerator` | 4-tier per-field annotations from Zod schemas |
-| `schema/` | `DescriptionGenerator` | 3-layer descriptions with ⚠️ DESTRUCTIVE warnings |
-| `schema/` | `ToonDescriptionGenerator` | TOON-encoded descriptions via `@toon-format/toon` |
-| `schema/` | `AnnotationAggregator` | Conservative behavioral hint aggregation |
-| `execution/` | `MiddlewareCompiler` | Right-to-left closure composition at build time |
-| `schema/` | `SchemaUtils` | Zod field extraction + build-time schema collision detection |
-
----
-
-## 🛠️ Key Capabilities Matrix
+## Complete Capability Matrix
 
 | Capability | What It Solves |
 |---|---|
-| **`defineTool()` — JSON-First API** | Build tools without Zod imports — strings, enums, arrays, regex |
-| **`createTool()` — Zod Power Mode** | Full `.refine()`, `.transform()`, `.regex()` for advanced validation |
-| **`createFusionClient()` — Typed Client** | tRPC-style end-to-end type safety from server to client |
-| **`InferRouter<T>` — Automatic Router Types** | Zero-manual-typing: extracts RouterMap from `createTypedRegistry()` at compile time |
-| **Typed Handler Args** | Handler `args` automatically typed from schema/params — no casts needed |
-| **`defineMiddleware()` — Context Derivation** | tRPC-style derive data into context with type inference |
-| **`toolError()` — Self-Healing Errors** | Structured error recovery for autonomous LLM agents |
-| **`progress()` — Streaming Progress** | Generator handlers yield progress during long operations |
-| **`ValidateConfig` — Compile-Time DX** | Readable TypeScript errors instead of recursive type explosions |
-| **Action Consolidation** | Reduces tool count, improves LLM routing accuracy |
-| **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` compound keys |
+| **MVA Presenter** | Domain rules, UI blocks, affordances — consistent agent perception |
+| **Presenter Composition** | `.embed()` nests child Presenters for relational data |
+| **Cognitive Guardrails** | `.agentLimit()` prevents context DDoS from large datasets |
+| **Agentic Affordances** | `.suggestActions()` HATEOAS-style next-action hints |
+| **Context-Aware Rules** | RBAC/DLP through dynamic `systemRules()` with `ctx` |
+| **Action Consolidation** | Grouped tools with discriminator enum reduce token burn |
+| **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` keys |
 | **4-Tier Field Annotations** | LLM knows exactly which fields to send per action |
-| **Zod `.merge().strip()`** | Type-safe schema composition + unknown field stripping |
-| **Common Schema Propagation** | Shared fields with compile-time generic inference |
-| **Pre-Compiled Middleware** | Auth, rate limiting, audit — zero runtime chain assembly |
-| **Group-Scoped Middleware** | Different middleware per namespace (e.g., admin-only for users) |
-| **TOON Encoding** | Token reduction on descriptions and responses |
-| **Conservative Annotations** | Safe MCP behavioral hints from per-action properties |
-| **⚠️ DESTRUCTIVE Warnings** | Safety signal in LLM tool descriptions |
-| **Tag Filtering** | Include/exclude tags for selective tool exposure |
-| **State Sync** | RFC 7234-inspired cache signals prevent LLM Temporal Blindness |
-| **Causal Invalidation** | Cross-domain `invalidates` patterns after successful mutations |
-| **Glob Pattern Matching** | Dot-separated `*` / `**` matching for tool name policies |
-| **Introspection API** | Runtime metadata for compliance, dashboards, audit trails |
-| **Freeze-After-Build** | `Object.freeze()` prevents mutation bugs after registration |
-| **Error Isolation** | `[tool/action]` prefixed errors for instant debugging |
-| **Duck-Typed Server** | Works with `Server` and `McpServer` — zero import coupling |
-| **Detach Function** | Clean teardown for testing via `DetachFn` |
-| **Domain Model** | Hierarchical tree with multi-parent, FQN, converters |
-| **Auto-Build on Execute** | `execute()` triggers `buildToolDefinition()` if not called |
-| **Schema Collision Detection** | Build-time error when field types conflict across actions |
+| **Zod `.merge().strip()`** | Security boundary — unknown fields silently stripped |
+| **Two APIs** | `defineTool()` (zero Zod) and `createTool()` (full Zod) |
+| **Context Derivation** | tRPC-style `defineMiddleware()` with type inference |
+| **Self-Healing Errors** | `toolError()` with recovery hints for autonomous agents |
+| **Streaming Progress** | Generator handlers yield `progress()` events |
+| **Type-Safe Client** | `createFusionClient()` with autocomplete and typed args |
+| **State Sync** | RFC 7234 cache-control prevents temporal blindness |
+| **TOON Encoding** | Token-optimized descriptions and responses |
+| **Tag Filtering** | Context gating — control what the LLM sees per session |
+| **Observability** | Debug observers with zero-overhead typed event system |
+| **Introspection API** | Runtime metadata for compliance audits |
+| **Freeze-After-Build** | `Object.freeze()` — immutability after registration |
+| **Duck-Typed Server** | Works with `Server` and `McpServer` — zero coupling |
 
 ---
 
-## 📚 Official Guides
+## Learn by Doing
 
-Ready to build production agents? Dive into the documentation:
-
-| Guide | What You Will Learn |
+| Guide | Description |
 |---|---|
-| 🏁 **[Getting Started](docs/quickstart.md)** | First tool, context, common schema, groups, TOON — complete examples. |
-| 🏗️ **[Architecture](docs/architecture.md)** | Domain model mapping, Strategy pattern, build-time engine, execution flow. |
-| 📈 **[Scaling Guide](docs/scaling.md)** | How tag filtering, TOON, and unification prevent hallucination at 5,000+ endpoints. |
-| 🛡️ **[Middleware](docs/middleware.md)** | Global, group-scoped, pre-compilation, context derivation, real patterns. |
-| 🧠 **[State Sync](docs/state-sync.md)** | Prevent LLM Temporal Blindness with RFC 7234-inspired cache-control signals. |
-| 🔍 **[Introspection](docs/introspection.md)** | Runtime metadata extraction for Enterprise compliance. |
-| 📖 **[API Reference](docs/api-reference.md)** | Comprehensive typings, methods, and class structures. |
+| 🧠 **[The MVA Manifesto](docs/mva-pattern.md)** | Why every MCP server today is built wrong — and how MVA fixes it |
+| 🏁 **[5-Minute Quickstart](docs/quickstart.md)** | Build your first Fusion server from zero |
+| 🍳 **[Cookbook & Examples](docs/examples.md)** | 14 copy-pasteable real-world patterns for every feature |
+| 🎯 **[Presenter Deep Dive](docs/presenter.md)** | The agent-centric View layer — schema, rules, UI, suggestions |
+| 📖 **[Introduction](docs/introduction.md)** | Core concepts and philosophy |
+| 🏗️ **[Architecture](docs/architecture.md)** | Domain model, strategy engine, execution pipeline |
+| 🛡️ **[Middleware](docs/middleware.md)** | Context derivation, authentication, pre-compiled chains |
+| 📈 **[Scaling](docs/scaling.md)** | Tag filtering, TOON, hierarchical groups at scale |
+| 🧠 **[State Sync](docs/state-sync.md)** | Prevent temporal blindness with cache signals |
+| 🔭 **[Observability](docs/observability.md)** | Zero-overhead debug observers with typed event system |
+| 📖 **[API Reference](docs/api-reference.md)** | Complete typings and method reference |
 
 ---
 

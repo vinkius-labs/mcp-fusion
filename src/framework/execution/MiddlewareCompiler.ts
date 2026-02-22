@@ -17,7 +17,7 @@ import { type InternalAction, type MiddlewareFn } from '../types.js';
 
 export type CompiledChain<TContext> = Map<
     string,
-    (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>
+    (ctx: TContext, args: Record<string, unknown>) => Promise<unknown>
 >;
 
 /**
@@ -40,14 +40,14 @@ export function compileMiddlewareChains<TContext>(
 
     for (const action of actions) {
         // Wrap generator handlers in an envelope
-        let chain: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
+        let chain: (ctx: TContext, args: Record<string, unknown>) => Promise<unknown>;
 
         if (isAsyncGeneratorFunction(action.handler)) {
             // Generator handler: invoke and wrap the generator in an envelope
-            chain = (ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
+            chain = (ctx: TContext, args: Record<string, unknown>): Promise<unknown> => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gen = (action.handler as any)(ctx, args) as AsyncGenerator<unknown, ToolResponse, undefined>;
-                return Promise.resolve({ __brand: 'GeneratorResultEnvelope', generator: gen } as unknown as ToolResponse);
+                return Promise.resolve({ __brand: 'GeneratorResultEnvelope', generator: gen } as unknown);
             };
         } else {
             chain = action.handler;

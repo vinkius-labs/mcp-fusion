@@ -62,6 +62,10 @@ export {
     createTypedRegistry,
     createDebugObserver,
     StateSyncLayer, PolicyEngine, matchGlob,
+    ResponseBuilder, response, isResponseBuilder,
+    ui,
+    Presenter, createPresenter, isPresenter,
+    PresenterValidationError,
 } from './framework/index.js';
 /** @category Framework */
 export type {
@@ -81,4 +85,6 @@ export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
     CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
+    UiBlock,
+    ActionSuggestion,
 } from './framework/index.js';
