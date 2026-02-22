@@ -22,7 +22,7 @@
  *  14. Symbol & Non-String Key Injection — Non-string property keys
  *  15. Denial of Service via Handler — Handlers that never resolve
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
 import { ToolRegistry } from '../../src/framework/registry/ToolRegistry.js';

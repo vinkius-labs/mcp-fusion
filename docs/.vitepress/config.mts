@@ -26,6 +26,7 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/introduction' },
           { text: 'Quickstart', link: '/quickstart' },
+          { text: 'Migration Guide', link: '/migration' },
         ]
       },
       {
@@ -35,6 +36,8 @@ export default defineConfig({
           { text: 'Building Tools', link: '/building-tools' },
           { text: 'Routing & Groups', link: '/routing' },
           { text: 'State & Context', link: '/context' },
+          { text: 'Error Handling', link: '/error-handling' },
+          { text: 'Result Monad', link: '/result-monad' },
         ]
       },
       {
@@ -42,10 +45,12 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Middleware', link: '/middleware' },
+          { text: 'FusionClient', link: '/fusion-client' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Introspection', link: '/introspection' },
           { text: 'Architecture', link: '/architecture' },
+          { text: 'Testing', link: '/testing' },
         ]
       },
       {

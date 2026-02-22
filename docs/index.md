@@ -37,28 +37,27 @@ hero:
 <div class="bento-code-box">
 
 ```typescript
-import { createTool, success } from "@vinkius-core/mcp-fusion";
-import { z } from "zod";
+import { defineTool, success, toolError } from "@vinkius-core/mcp-fusion";
 
-// 1. Fully typed, zero-boilerplate tool definition
-export const deployProjectTool = createTool("deploy_project")
-  .description("Deploys a new architecture instance.")
-  .schema(z.object({
-    projectId: z.string().uuid(),
-    region: z.enum(["us-east-1", "eu-west-1"])
-  }))
-  .action({
-    name: "deploy",
-    description: "Launch the environment",
-    handler: async (ctx, args) => {
-      // 2. 'args' is perfectly inferred! No generic 'any'
-      const { projectId, region } = args;
-      const url = await DeployService.trigger(projectId, region);
-      
-      // 3. Simple, predictable pattern
-      return success(`Instance deployed at: ${url}`);
+// 1. Declarative, zero-boilerplate tool definition
+export const deployTool = defineTool("deploy_project", {
+  description: "Deploys a new architecture instance.",
+  actions: {
+    deploy: {
+      params: {
+        projectId: 'string',
+        region: { enum: ['us-east-1', 'eu-west-1'] as const },
+      },
+      handler: async (ctx, args) => {
+        // 2. args is perfectly inferred! No generic 'any'
+        const url = await DeployService.trigger(args.projectId, args.region);
+        
+        // 3. Simple, predictable pattern
+        return success(`Instance deployed at: ${url}`);
+      }
     }
-  });
+  }
+});
 ```
 
 </div>
@@ -76,8 +75,8 @@ export const deployProjectTool = createTool("deploy_project")
 <div class="bento-features">
 <div class="bento-cell">
 <div class="cell-eyebrow">// CORE</div>
-<h3 class="cell-title">Absolute Type Safety <span class="cell-badge">Zod</span></h3>
-<p class="cell-desc">Define schemas effortlessly. The engine deeply infers handler types and prevents LLM errors at the edge.</p>
+<h3 class="cell-title">Two APIs, One Framework <span class="cell-badge">DX</span></h3>
+<p class="cell-desc">defineTool() for rapid prototyping (zero Zod). createTool() for full Zod power mode. Both produce identical MCP tools.</p>
 <a href="/building-tools" class="cell-link">EXPLORE &rarr;</a>
 </div>
 <div class="bento-cell">
@@ -87,16 +86,40 @@ export const deployProjectTool = createTool("deploy_project")
 <a href="/routing" class="cell-link">EXPLORE &rarr;</a>
 </div>
 <div class="bento-cell">
+<div class="cell-eyebrow">// SECURITY</div>
+<h3 class="cell-title">Context Derivation <span class="cell-badge">tRPC-style</span></h3>
+<p class="cell-desc">defineMiddleware() derives and injects data into context. TypeScript infers the derived types automatically.</p>
+<a href="/middleware" class="cell-link">EXPLORE &rarr;</a>
+</div>
+<div class="bento-cell">
+<div class="cell-eyebrow">// RESILIENCE</div>
+<h3 class="cell-title">Self-Healing Errors <span class="cell-badge">Agent</span></h3>
+<p class="cell-desc">toolError() provides structured recovery hints with suggestions and available actions for autonomous LLM self-correction.</p>
+<a href="/building-tools" class="cell-link">EXPLORE &rarr;</a>
+</div>
+<div class="bento-cell">
+<div class="cell-eyebrow">// STREAMING</div>
+<h3 class="cell-title">Streaming Progress <span class="cell-badge">Async</span></h3>
+<p class="cell-desc">Generator handlers yield progress() events during long-running operations. Real-time feedback to the MCP runtime.</p>
+<a href="/building-tools" class="cell-link">EXPLORE &rarr;</a>
+</div>
+<div class="bento-cell">
+<div class="cell-eyebrow">// SAFETY</div>
+<h3 class="cell-title">Result Monad <span class="cell-badge">Railway</span></h3>
+<p class="cell-desc">Pipeline-oriented error handling with succeed() and fail(). No exceptions, just typed discriminated unions that compose beautifully.</p>
+<a href="/result-monad" class="cell-link">EXPLORE &rarr;</a>
+</div>
+<div class="bento-cell">
+<div class="cell-eyebrow">// CLIENT</div>
+<h3 class="cell-title">FusionClient <span class="cell-badge">tRPC</span></h3>
+<p class="cell-desc">Type-safe MCP client with full autocomplete. Wrong action name? Missing arg? TypeScript catches it at build time.</p>
+<a href="/fusion-client" class="cell-link">EXPLORE &rarr;</a>
+</div>
+<div class="bento-cell">
 <div class="cell-eyebrow">// OPTIMIZATION</div>
 <h3 class="cell-title">Payload Compression <span class="cell-badge">TOON</span></h3>
 <p class="cell-desc">Natively transpile heavy Markdown descriptions into tabular, highly dense TOON structures LLMs adore.</p>
 <a href="/advanced-configuration" class="cell-link">EXPLORE &rarr;</a>
-</div>
-<div class="bento-cell">
-<div class="cell-eyebrow">// SECURITY</div>
-<h3 class="cell-title">Scoped Middleware <span class="cell-badge">Runtime</span></h3>
-<p class="cell-desc">Attach global, group, or per-action level middlewares compiled perfectly transparently at build time.</p>
-<a href="/middleware" class="cell-link">EXPLORE &rarr;</a>
 </div>
 </div>
 </div>

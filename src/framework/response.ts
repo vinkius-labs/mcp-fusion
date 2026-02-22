@@ -51,8 +51,8 @@ import { encode, type EncodeOptions } from '@toon-format/toon';
  * ```
  */
 export interface ToolResponse {
-    content: Array<{ type: "text"; text: string }>;
-    isError?: boolean;
+    readonly content: ReadonlyArray<{ readonly type: "text"; readonly text: string }>;
+    readonly isError?: boolean;
 }
 
 // ============================================================================
@@ -178,4 +178,76 @@ export function toonSuccess(data: unknown, options?: EncodeOptions): ToolRespons
     const defaults: EncodeOptions = { delimiter: '|' };
     const text = encode(data, { ...defaults, ...options });
     return { content: [{ type: "text", text }] };
+}
+
+// ============================================================================
+// Self-Healing Errors (AX — Agent Experience)
+// ============================================================================
+
+/**
+ * Options for a self-healing error response.
+ *
+ * @see {@link toolError} for usage
+ */
+export interface ToolErrorOptions {
+    /** Human-readable error description */
+    message: string;
+    /** Recovery suggestion for the LLM agent */
+    suggestion?: string;
+    /** Action names the agent should try instead */
+    availableActions?: string[];
+}
+
+/**
+ * Create a self-healing error response with recovery instructions.
+ *
+ * Unlike {@link error}, this provides structured guidance so the LLM
+ * agent can self-correct instead of hallucinating or giving up.
+ * The response includes an error code, message, suggestion, and
+ * available actions — all formatted for optimal LLM comprehension.
+ *
+ * @param code - Short error code (e.g. `'ProjectNotFound'`, `'Unauthorized'`)
+ * @param options - Error details and recovery instructions
+ * @returns A {@link ToolResponse} with `isError: true` and recovery guidance
+ *
+ * @example
+ * ```typescript
+ * handler: async (ctx, args) => {
+ *     const project = await ctx.db.get(args.project_id);
+ *
+ *     if (!project) {
+ *         return toolError('ProjectNotFound', {
+ *             message: `Project '${args.project_id}' does not exist.`,
+ *             suggestion: 'Call projects.list first to get valid IDs, then retry.',
+ *             availableActions: ['projects.list'],
+ *         });
+ *     }
+ *
+ *     return success(project);
+ * }
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Minimal usage (no suggestion)
+ * return toolError('RateLimited', {
+ *     message: 'Too many requests. Wait 30 seconds.',
+ * });
+ * ```
+ *
+ * @see {@link error} for simple error responses
+ * @see {@link required} for missing field errors
+ */
+export function toolError(code: string, options: ToolErrorOptions): ToolResponse {
+    const lines: string[] = [`[${code}] ${options.message}`];
+
+    if (options.suggestion) {
+        lines.push('', `💡 Suggestion: ${options.suggestion}`);
+    }
+
+    if (options.availableActions?.length) {
+        lines.push('', `📋 Try: ${options.availableActions.join(', ')}`);
+    }
+
+    return { content: [{ type: "text", text: lines.join('\n') }], isError: true };
 }

@@ -14,6 +14,7 @@ import { type ToolResponse, error } from '../response.js';
 import { type Result, succeed, fail } from '../result.js';
 import { type InternalAction } from '../types.js';
 import { type CompiledChain } from './MiddlewareCompiler.js';
+import { type ProgressSink, isProgressEvent } from './ProgressHelper.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -101,6 +102,7 @@ export async function runChain<TContext>(
     resolved: ResolvedAction<TContext>,
     ctx: TContext,
     args: Record<string, unknown>,
+    progressSink?: ProgressSink,
 ): Promise<ToolResponse> {
     const chain = execCtx.compiledChain.get(resolved.action.key);
     if (!chain) {
@@ -108,9 +110,61 @@ export async function runChain<TContext>(
     }
 
     try {
-        return await chain(ctx, args);
+        const result = await chain(ctx, args);
+
+        // If the middleware chain returned a generator result envelope, drain it
+        if (isGeneratorResultEnvelope(result)) {
+            return await drainGenerator(result.generator, progressSink);
+        }
+
+        return result;
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return error(`[${execCtx.toolName}/${resolved.discriminatorValue}] ${message}`);
     }
+}
+
+// ============================================================================
+// Generator Support
+// ============================================================================
+
+/**
+ * An envelope that wraps an async generator from a handler.
+ * The middleware compiler detects generator handlers and wraps
+ * their return value in this envelope so the pipeline can drain them.
+ */
+export interface GeneratorResultEnvelope {
+    readonly __brand: 'GeneratorResultEnvelope';
+    readonly generator: AsyncGenerator<unknown, ToolResponse, undefined>;
+}
+
+/** @internal */
+function isGeneratorResultEnvelope(value: unknown): value is GeneratorResultEnvelope {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        '__brand' in value &&
+        (value as GeneratorResultEnvelope).__brand === 'GeneratorResultEnvelope'
+    );
+}
+
+/**
+ * Drain an async generator, forwarding ProgressEvents to the sink
+ * and returning the final ToolResponse.
+ * @internal
+ */
+async function drainGenerator(
+    gen: AsyncGenerator<unknown, ToolResponse, undefined>,
+    progressSink?: ProgressSink,
+): Promise<ToolResponse> {
+    let result = await gen.next();
+
+    while (!result.done) {
+        if (progressSink && isProgressEvent(result.value)) {
+            progressSink(result.value);
+        }
+        result = await gen.next();
+    }
+
+    return result.value;
 }

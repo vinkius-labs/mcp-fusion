@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { decode } from '@toon-format/toon';
 import { GroupedToolBuilder } from '../../src/framework/builder/GroupedToolBuilder.js';
 import { generateToonDescription } from '../../src/framework/schema/ToonDescriptionGenerator.js';
 import { generateDescription } from '../../src/framework/schema/DescriptionGenerator.js';

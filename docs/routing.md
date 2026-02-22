@@ -35,39 +35,81 @@ By default, Fusion uses `action` as the discriminator key. This approach forces 
 
 Often, operations share common requirements. For example, if you are building a SaaS platform, practically every executed action requires a `workspaceId`.
 
-Instead of repeating `workspaceId` in every specific Zod schema, Fusion provides `.commonSchema()`.
+Instead of repeating `workspaceId` in every specific Zod schema, Fusion provides shared parameters.
 
-```typescript
+::: code-group
+```typescript [defineTool]
+const projects = defineTool<void>('projects', {
+    description: 'Project management tool',
+    shared: { workspaceId: 'string' },  // Injected into ALL actions
+    actions: {
+        create: {
+            params: { projectName: 'string' },
+            handler: async (ctx, args) => {
+                // args: { workspaceId: string, projectName: string }
+                return success('Created');
+            },
+        },
+    },
+});
+```
+```typescript [createTool]
 const projects = createTool<void>('projects')
     .description('Project management tool')
-    
-    // 1. Declare properties that apply globally across this entire branch
     .commonSchema(z.object({
         workspaceId: z.string().describe('The active SaaS Workspace ID'),
     }))
-    
-    // 2. The downstream schema automatically inherits `workspaceId`
     .action({
         name: 'create',
         schema: z.object({
             projectName: z.string(),
         }),
         handler: async (ctx, args) => {
-            // TypeScript intelligently merged the objects natively!
             // args: { workspaceId: string, projectName: string }
             return success('Created');
         },
     });
 ```
+:::
 When this schema hydrates, Fusion intelligently handles telling the LLM which field belongs to which endpoint.
 
 ---
 
 ## 3. Hierarchical Routing (Namespaces)
 
-When dealing with a massive "Platform" API, having 50 flat actions inside the builder becomes messy. Fusion allows you to create **Hierarchical Namespaces** using the `.group()` method.
+When dealing with a massive "Platform" API, having 50 flat actions inside the builder becomes messy. Fusion allows you to create **Hierarchical Namespaces** using groups.
 
-```typescript
+::: code-group
+```typescript [defineTool]
+import { defineTool, success } from '@vinkius-core/mcp-fusion';
+
+const platform = defineTool<void>('platform', {
+    description: 'Central API for the Platform',
+    shared: { workspaceId: 'string' },
+    groups: {
+        users: {
+            description: 'User management features',
+            actions: {
+                invite: {
+                    params: { email: 'string' },
+                    handler: async (ctx, args) => { /* ... */ },
+                },
+            },
+        },
+        billing: {
+            description: 'Billing operations',
+            actions: {
+                refund: {
+                    params: { invoiceId: 'string' },
+                    handler: async (ctx, args) => { /* ... */ },
+                },
+            },
+        },
+    },
+});
+// Actions become: users.invite | billing.refund
+```
+```typescript [createTool]
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 
 const platform = createTool<void>('platform')
@@ -92,8 +134,9 @@ const platform = createTool<void>('platform')
         });
     });
 ```
+:::
 
-When you use `.group()`, the discriminator value expected from the AI smoothly converts to a dot-notation payload (`users.invite` or `billing.refund`). 
+When you use groups, the discriminator value expected from the AI smoothly converts to a dot-notation payload (`users.invite` or `billing.refund`). 
 
 The LLM still only sees **ONE MCP Tool** named `platform` containing all routes. 
 

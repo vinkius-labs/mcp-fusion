@@ -35,8 +35,9 @@ export interface AttachOptions<TContext> {
      * Factory function to create a per-request context.
      * Receives the MCP `extra` object (session info, meta, etc.).
      * If omitted, `undefined` is used as context (suitable for `ToolRegistry<void>`).
+     * Supports async factories (e.g. for token verification, DB connection).
      */
-    contextFactory?: (extra: unknown) => TContext;
+    contextFactory?: (extra: unknown) => TContext | Promise<TContext>;
 }
 
 /** Function to detach the registry from the server */
@@ -87,7 +88,7 @@ export function attachToServer<TContext>(
     ) => {
         const { name, arguments: args = {} } = request.params;
         const ctx = contextFactory
-            ? contextFactory(extra)
+            ? await contextFactory(extra)
             : (undefined as TContext);
         return registry.routeCall(ctx, name, args);
     };
