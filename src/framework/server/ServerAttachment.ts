@@ -15,6 +15,7 @@ import {
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
 import { type ToolBuilder } from '../types.js';
+import { type ProgressSink, type ProgressEvent } from '../execution/ProgressHelper.js';
 import { resolveServer } from './ServerResolver.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
@@ -31,6 +32,17 @@ import { registerIntrospectionResource } from '../introspection/IntrospectionRes
 interface McpServerTyped {
     setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: never[]) => unknown): void;
     setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: never[]) => unknown): void;
+}
+
+/**
+ * Duck-typed interface for the MCP SDK `extra` object passed to request handlers.
+ * We only extract the fields needed for progress notification wiring.
+ */
+interface McpRequestExtra {
+    /** Metadata from the original JSON-RPC request (contains progressToken) */
+    _meta?: { progressToken?: string | number };
+    /** Send a notification back to the client within the current request scope */
+    sendNotification: (notification: unknown) => Promise<void>;
 }
 
 /** Options for attaching to an MCP Server */
@@ -137,7 +149,7 @@ export type DetachFn = () => void;
 export interface RegistryDelegate<TContext> {
     getAllTools(): McpTool[];
     getTools(filter: { tags?: string[]; anyTag?: string[]; exclude?: string[] }): McpTool[];
-    routeCall(ctx: TContext, name: string, args: Record<string, unknown>): Promise<ToolResponse>;
+    routeCall(ctx: TContext, name: string, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse>;
     /** Propagate a debug observer to all registered builders (duck-typed) */
     enableDebug?(observer: DebugObserverFn): void;
     /** Get an iterable of all registered builders (for introspection) */
@@ -203,7 +215,13 @@ export function attachToServer<TContext>(
         const ctx = contextFactory
             ? await contextFactory(extra)
             : (undefined as TContext);
-        const result = await registry.routeCall(ctx, name, args);
+
+        // Wire progress notifications: extract progressToken from MCP request
+        // metadata and create a ProgressSink that sends notifications/progress.
+        // Zero overhead when the client does not request progress.
+        const progressSink = createProgressSink(extra);
+
+        const result = await registry.routeCall(ctx, name, args, progressSink);
         return syncLayer ? syncLayer.decorateResult(name, result) : result;
     };
 
@@ -217,5 +235,60 @@ export function attachToServer<TContext>(
         resolved.setRequestHandler(CallToolRequestSchema, () =>
             error('Tool handlers have been detached'),
         );
+    };
+}
+
+// ── Progress Sink Factory ────────────────────────────────
+
+/**
+ * Duck-type check: the extra object from MCP SDK has _meta and sendNotification.
+ */
+function isMcpExtra(extra: unknown): extra is McpRequestExtra {
+    return (
+        typeof extra === 'object' &&
+        extra !== null &&
+        'sendNotification' in extra &&
+        typeof (extra as McpRequestExtra).sendNotification === 'function'
+    );
+}
+
+/**
+ * Create a ProgressSink from the MCP request `extra` object.
+ *
+ * When the client includes `_meta.progressToken` in its `tools/call` request,
+ * this factory returns a ProgressSink that maps each internal ProgressEvent
+ * to the MCP `notifications/progress` protocol wire format:
+ *
+ * ```
+ * ProgressEvent { percent: 50, message: 'Building...' }
+ *   → notifications/progress { progressToken, progress: 50, total: 100, message: 'Building...' }
+ * ```
+ *
+ * When no progressToken is present (client didn't opt in),
+ * returns `undefined` — zero overhead.
+ *
+ * @param extra - The MCP request handler's extra argument (duck-typed)
+ * @returns A ProgressSink or undefined
+ */
+function createProgressSink(extra: unknown): ProgressSink | undefined {
+    if (!isMcpExtra(extra)) return undefined;
+
+    const token = extra._meta?.progressToken;
+    if (token === undefined) return undefined;
+
+    const sendNotification = extra.sendNotification;
+
+    return (event: ProgressEvent): void => {
+        // Fire-and-forget: progress notifications are best-effort.
+        // We intentionally do not await to avoid blocking the handler pipeline.
+        void sendNotification({
+            method: 'notifications/progress',
+            params: {
+                progressToken: token,
+                progress: event.percent,
+                total: 100,
+                message: event.message,
+            },
+        });
     };
 }

@@ -38,6 +38,8 @@ import {
     type AttachOptions, type DetachFn,
 } from '../server/ServerAttachment.js';
 
+import { type ProgressSink } from '../execution/ProgressHelper.js';
+
 // ── Re-exports ───────────────────────────────────────────
 
 export type { ToolFilter } from './ToolFilterEngine.js';
@@ -177,6 +179,9 @@ export class ToolRegistry<TContext = void> {
      * @param ctx - Application context
      * @param name - Tool name from the incoming MCP call
      * @param args - Raw arguments from the LLM
+     * @param progressSink - Optional callback for streaming progress notifications.
+     *   When called from `attachToServer()`, this is automatically wired to
+     *   MCP `notifications/progress`. When omitted, progress events are silently consumed.
      * @returns The handler's response
      *
      * @example
@@ -191,6 +196,7 @@ export class ToolRegistry<TContext = void> {
         ctx: TContext,
         name: string,
         args: Record<string, unknown>,
+        progressSink?: ProgressSink,
     ): Promise<ToolResponse> {
         const builder = this._builders.get(name);
         if (!builder) {
@@ -200,7 +206,7 @@ export class ToolRegistry<TContext = void> {
             }
             return error(`Unknown tool: "${name}". Available tools: ${available}`);
         }
-        return builder.execute(ctx, args);
+        return builder.execute(ctx, args, progressSink);
     }
 
     /**

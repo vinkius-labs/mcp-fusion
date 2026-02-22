@@ -250,7 +250,13 @@ handler: async function* (ctx, args) {
 }
 ```
 
-Progress events are yielded to the MCP runtime while the handler continues executing. The final `return` value becomes the tool response.
+Progress events are automatically forwarded to the MCP client as `notifications/progress` when the client includes a `progressToken` in its request metadata. **Zero configuration required** — the framework detects the token and wires the notifications transparently.
+
+| Internal Event | MCP Wire Format |
+|---|---|
+| `yield progress(50, 'Building...')` | `notifications/progress { progressToken, progress: 50, total: 100, message: 'Building...' }` |
+
+When no `progressToken` is present (the client didn't opt in), progress events are silently consumed — **zero overhead**.
 
 ---
 

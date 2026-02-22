@@ -724,6 +724,10 @@ const data = defineTool<AppContext>('data', {
 
 ---
 
+::: tip Automatic MCP Notification Wiring
+When attached to an MCP server via `attachToServer()`, these `yield progress()` calls are automatically forwarded to the client as `notifications/progress` — **zero configuration**. The framework detects the `progressToken` from the client's request metadata and wires the notifications transparently. When no token is present, progress events are silently consumed with zero overhead.
+:::
+
 ## 9. TOON — Token-Optimized Responses
 
 Save ~40% tokens on array/tabular responses. Two approaches:

@@ -12,6 +12,7 @@
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { type Presenter } from './presenter/Presenter.js';
+import { type ProgressSink } from './execution/ProgressHelper.js';
 
 // ── Re-export from canonical source ──────────────────────
 
@@ -59,7 +60,7 @@ export interface ToolBuilder<TContext = void> {
     buildToolDefinition(): McpTool;
 
     /** Execute a tool call with the given context and arguments */
-    execute(ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse>;
+    execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse>;
 
     /**
      * Preview the exact MCP prompt payload that the LLM will receive.

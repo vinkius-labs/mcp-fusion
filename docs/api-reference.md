@@ -239,6 +239,26 @@ yield progress(50, 'Building project...');
 
 Type guard to check if a yielded value is a `ProgressEvent`.
 
+### MCP Notification Wiring
+
+When attached to an MCP server via `attachToServer()`, progress events are **automatically** forwarded to the MCP client as `notifications/progress` when the client includes a `progressToken` in its request `_meta`. Zero configuration required — the framework detects the token and wires the notifications transparently.
+
+| Internal Event | MCP Wire Format |
+|---|---|
+| `yield progress(50, 'Building...')` | `{ method: 'notifications/progress', params: { progressToken, progress: 50, total: 100, message: 'Building...' } }` |
+
+When no `progressToken` is present (the client didn't opt in), progress events are silently consumed — **zero overhead**.
+
+### `ProgressSink`
+
+For direct usage (testing, custom pipelines), `ProgressSink` is a callable type:
+
+```typescript
+type ProgressSink = (event: ProgressEvent) => void;
+```
+
+Pass a `ProgressSink` to `builder.execute()` or `registry.routeCall()` as the optional last parameter.
+
 ---
 
 ## Result Monad
@@ -324,7 +344,7 @@ const registry = new ToolRegistry<AppContext>();
 | `.registerAll(...)` | `void` | Maps variable array of builders seamlessly into memory. |
 | `.getAllTools()` | `McpTool[]` | Returns all registered tool definitions. |
 | `.getTools(filter)` | `McpTool[]` | Filters payload dumps based strictly on inclusion/exclusion tags. |
-| `.routeCall(ctx, name, args)` | `Promise` | Proxies execution requests deeply down into the assigned `Builder`. |
+| `.routeCall(ctx, name, args, progressSink?)` | `Promise` | Proxies execution requests deeply into the assigned `Builder`. Optional `progressSink` forwards generator `ProgressEvent`s. |
 | `.enableDebug(observer)` | `void` | Propagates a debug observer to ALL registered builders. See [Observability](/observability). |
 | `.has(name)` | `boolean` | Check if a tool is registered. |
 | `.clear()` | `void` | Remove all registered tools. |
@@ -345,6 +365,10 @@ const detach = registry.attachToServer(server, {
     // Enable debug observability for ALL tools (optional):
     debug: createDebugObserver(),
 });
+
+// Progress events from generator handlers are automatically sent
+// as MCP notifications/progress when the client provides a progressToken.
+// No configuration needed — zero overhead when not used.
 
 // Optionally strip handlers gracefully from the server memory on shutdown:
 detach();

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-22
+
+### 📡 Streaming Progress — End-to-End MCP Notification Wiring
+
+Generator handlers that `yield progress()` now **automatically** send `notifications/progress` to the MCP client — zero configuration required. The framework detects `progressToken` from the client's request `_meta` and wires the notifications transparently. When no token is present, progress events are silently consumed with **zero overhead**.
+
+### Added
+
+- **MCP Progress Notification Wiring:** `ServerAttachment` now creates a `ProgressSink` from the MCP request `extra` object when the client includes `_meta.progressToken`. Each `yield progress(percent, message)` in a generator handler maps to `notifications/progress { progressToken, progress, total: 100, message }` on the wire. Fire-and-forget delivery — does not block the handler pipeline.
+- **`ProgressSink` threading through the full pipeline:** `ToolBuilder.execute()`, `ToolRegistry.routeCall()`, `GroupedToolBuilder.execute()`, and `runChain()` all accept an optional `ProgressSink` parameter, allowing direct injection for testing and custom pipelines.
+- **`McpRequestExtra` duck-typed interface:** New internal interface for extracting `_meta.progressToken` and `sendNotification` from the SDK's `extra` object without coupling to SDK internals.
+- **`createProgressSink()` factory:** New private helper in `ServerAttachment.ts` that maps `ProgressEvent` to MCP wire format. Returns `undefined` when no token is present (zero overhead).
+- **`isMcpExtra()` type guard:** Duck-type check for the MCP SDK's `extra` object.
+- **`RegistryDelegate.routeCall()` signature updated:** Now accepts optional `progressSink` parameter.
+
+### Documentation
+- **Building Tools:** Streaming Progress section updated to explain automatic MCP notification wiring with wire format table.
+- **API Reference:** `ProgressSink` type, MCP Notification Wiring subsection, updated `routeCall()` signature, and `attachToServer()` progress comment added.
+- **Examples:** Streaming Progress example (§8) updated with a tip about automatic MCP notification wiring.
+
+### Test Suite
+- **8 new tests** in `ProgressWiring.test.ts`:
+  - `builder.execute()` with `progressSink` — 3 tests (forward, backward compat, debug path).
+  - `registry.routeCall()` with `progressSink` — 1 test (full routing pipeline).
+  - MCP ServerAttachment integration — 4 tests (with token, without token, non-MCP extra, numeric token).
+- **Test count:** 1,254 tests across 57 files, all passing.
+
 ## [1.1.0] - 2026-02-22
 
 ### 🔍 Dynamic Manifest — RBAC-Aware Server Capabilities via MCP Resources

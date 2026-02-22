@@ -60,6 +60,7 @@ import {
     parseDiscriminator, resolveAction, validateArgs, runChain,
     type ExecutionContext,
 } from '../execution/ExecutionPipeline.js';
+import { type ProgressSink } from '../execution/ProgressHelper.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
     ActionGroupBuilder,
@@ -591,6 +592,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      *
      * @param ctx - Application context
      * @param args - Raw arguments from the LLM (includes discriminator)
+     * @param progressSink - Optional callback for streaming progress notifications.
+     *   When attached via `attachToServer()`, this is automatically wired to
+     *   MCP `notifications/progress`. When omitted, progress events are silently consumed.
      * @returns The handler's {@link ToolResponse}
      *
      * @example
@@ -602,7 +606,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * });
      * ```
      */
-    async execute(ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> {
+    async execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse> {
         if (!this._executionContext) {
             this.buildToolDefinition();
         }
@@ -622,7 +626,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             const validated = validateArgs(execCtx, resolved.value, args);
             if (!validated.ok) return validated.response;
 
-            return runChain(execCtx, resolved.value, ctx, validated.value);
+            return runChain(execCtx, resolved.value, ctx, validated.value, progressSink);
         }
 
         // Debug path: emit structured events at each step
@@ -666,7 +670,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
         // Step 5: Execute
         try {
-            const response = await runChain(execCtx, resolved.value, ctx, validated.value);
+            const response = await runChain(execCtx, resolved.value, ctx, validated.value, progressSink);
             const totalDuration = performance.now() - startTime;
             const isErr = response.isError === true;
             debug({ type: 'execute', tool: this._name, action: actionName, durationMs: totalDuration, isError: isErr, timestamp: Date.now() });
