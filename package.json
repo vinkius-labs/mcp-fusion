@@ -16,6 +16,7 @@
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
         "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
         "prepublishOnly": "npm run build",
         "docs:dev": "vitepress dev docs",
         "docs:build": "vitepress build docs",
@@ -44,7 +45,9 @@
     "files": [
         "dist",
         "README.md",
-        "LICENSE"
+        "CHANGELOG.md",
+        "LICENSE",
+        "llms.txt"
     ],
     "engines": {
         "node": ">=18.0.0"

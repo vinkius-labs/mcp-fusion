@@ -32,8 +32,20 @@ Instead of exposing 50 flat tools, Fusion lets you group related actions into "N
 ### 3. Absolute Protection
 Before your backend code ever runs, Fusion intercepts the LLM's request. It strips away any hallucinated parameters, validates the required fields, and if the AI made a mistake, Fusion automatically replies to the LLM with a friendly error so it can self-correct.
 
-### 4. Middleware & Context
-You can inject Databases or Authentication tokens into specific tool wrappers via strictly typed Contexts. You can also apply global or feature-specific Middlewares (like `requireAdmin`) protecting entire groups of actions in three lines of code.
+### 4. Middleware & Context Derivation
+You can inject Databases or Authentication tokens into specific tool wrappers via strictly typed Contexts. Use `defineMiddleware()` to derive and inject data (like tRPC). Apply global or feature-specific Middlewares (like `requireAdmin`) protecting entire groups of actions in three lines of code.
+
+### 5. Two APIs — One Framework
+`defineTool()` lets you describe params with plain strings (zero Zod needed). `createTool()` gives you full Zod power for advanced validation. Both produce identical MCP tool definitions.
+
+### 6. Self-Healing Errors
+`toolError()` creates structured error responses with recovery hints, enabling LLM agents to self-correct without human intervention.
+
+### 7. Streaming Progress
+Generator handlers can yield `progress()` events during long-running operations, providing real-time feedback to the MCP runtime.
+
+### 8. Type-Safe Client
+`createFusionClient()` provides tRPC-style end-to-end type safety from server to client, with full autocomplete on action paths and arguments.
 
 ---
 

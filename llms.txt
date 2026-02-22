@@ -9,7 +9,8 @@ mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that c
 ## Core Concepts
 
 - **GroupedToolBuilder**: Fluent builder that groups related actions into a single MCP tool
-- **createTool()**: Factory function to create a GroupedToolBuilder (recommended entry point)
+- **createTool()**: Factory function to create a GroupedToolBuilder with full Zod power
+- **defineTool()**: JSON-first factory — define tools without Zod imports using plain strings/objects
 - **Action**: A single operation within a grouped tool (e.g., "list", "create", "delete")
 - **Group**: Hierarchical namespace for actions (e.g., "users.create", "billing.refund")
 - **Discriminator**: The field name the LLM uses to select the action (default: "action")
@@ -19,7 +20,46 @@ mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that c
 - **Tags**: Capability labels for selective tool exposure per session
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
 
-## Quick Start Pattern
+## Quick Start — defineTool() (No Zod Required)
+
+```typescript
+import { defineTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
+
+const projects = defineTool<AppContext>('projects', {
+    description: 'Manage workspace projects',
+    shared: { workspace_id: 'string' },  // Injected into ALL actions
+    actions: {
+        list: {
+            readOnly: true,
+            params: { status: { enum: ['active', 'archived'] as const, optional: true } },
+            handler: async (ctx, args) => success(await ctx.db.projects.findMany()),
+        },
+        create: {
+            params: {
+                name: { type: 'string', min: 1, max: 100 },
+                email: { type: 'string', regex: '^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$' },
+            },
+            handler: async (ctx, args) => success(await ctx.db.projects.create(args)),
+        },
+        delete: {
+            destructive: true,
+            params: { project_id: 'string' },
+            handler: async (ctx, args) => {
+                await ctx.db.projects.delete(args.project_id);
+                return success('Project deleted');
+            },
+        },
+    },
+});
+
+const registry = new ToolRegistry<AppContext>();
+registry.register(projects);
+registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+});
+```
+
+## Quick Start — createTool() (Full Zod Power)
 
 ```typescript
 import { createTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
@@ -148,23 +188,39 @@ const userId = result.value;             // Narrowed to number
 ## Public API (all from '@vinkius-core/mcp-fusion')
 
 ### Builder
-- `createTool<TContext>(name)` → GroupedToolBuilder
+- `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod for schemas)
+- `defineTool<TContext>(name, config)` → GroupedToolBuilder (JSON-first, no Zod required)
 - `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
 - `ActionGroupBuilder<TContext>` — .use(), .action()
 
 ### Registry
 - `ToolRegistry<TContext>` — .register(), .registerAll(), .getAllTools(), .getTools(filter), .routeCall(), .attachToServer(), .has(), .clear(), .size
 
+### FusionClient (tRPC-style)
+- `createFusionClient<TRouter>(transport)` → FusionClient — type-safe client with autocomplete
+- `FusionClient<TRouter>` — .execute(action, args) with full type inference
+- `FusionTransport` — { callTool(name, args) }
+- `RouterMap` — base type constraint for router definitions
+
 ### Response Helpers
 - `success(data)` → ToolResponse
 - `error(message)` → ToolResponse (isError: true)
 - `required(field)` → ToolResponse (isError: true)
+- `toolError(code, options)` → ToolResponse (structured recovery hints for LLM agents)
 - `toonSuccess(data, options?)` → ToolResponse (TOON-encoded)
+
+### Streaming Progress
+- `progress(percent, message)` → ProgressEvent (yield from generator handlers)
+- `isProgressEvent(value)` → type guard
 
 ### Result Monad
 - `succeed<T>(value)` → Success<T>
 - `fail(response)` → Failure
 - `Result<T>` = Success<T> | Failure
+
+### Middleware
+- `defineMiddleware(deriveFn)` → MiddlewareDefinition (tRPC-style context derivation)
+- `resolveMiddleware(input)` → MiddlewareFn (converts MiddlewareDefinition or MiddlewareFn)
 
 ### Types
 - `ToolResponse` — { content: [{ type: "text", text: string }], isError?: boolean }

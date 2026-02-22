@@ -51,17 +51,27 @@ export {
 // ── Framework ────────────────────────────────────────────
 /** @category Framework */
 export {
-    success, error, required, toonSuccess,
-    GroupedToolBuilder, ActionGroupBuilder, createTool,
+    success, error, required, toonSuccess, toolError,
+    GroupedToolBuilder, ActionGroupBuilder, createTool, defineTool,
     ToolRegistry,
     generateToonDescription,
     succeed, fail,
+    progress,
+    defineMiddleware, resolveMiddleware,
+    createFusionClient,
 } from './framework/index.js';
 /** @category Framework */
 export type {
-    ToolResponse,
+    ToolResponse, ToolErrorOptions,
     ActionConfig, MiddlewareFn, GroupConfigurator,
     ToolFilter,
     ToolBuilder, ActionMetadata, AttachOptions, DetachFn,
     Result, Success, Failure,
+    ToolConfig, ActionDef, GroupDef,
+    ParamDef, ParamsMap, InferParams,
+    StringParamDef, NumberParamDef, BooleanParamDef,
+    EnumParamDef, ArrayParamDef,
+    ProgressEvent, ProgressSink,
+    MiddlewareDefinition, MergeContext, InferContextOut,
+    FusionClient, FusionTransport, RouterMap,
 } from './framework/index.js';

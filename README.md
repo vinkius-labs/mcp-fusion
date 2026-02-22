@@ -85,47 +85,44 @@ Action: list | create | delete
 
 ---
 
-## 🚀 Quick Start (Frictionless Setup)
+## 🚀 Quick Start
+
+mcp-fusion offers **two APIs** — choose the one that fits your team:
+
+### Option A: `defineTool()` — JSON-First (Zero Zod Required)
+
+Perfect for rapid prototyping. No Zod imports needed — describe params with plain strings.
 
 ```typescript
-import { GroupedToolBuilder, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
+import { defineTool, ToolRegistry, success, error } from '@vinkius-core/mcp-fusion';
 
-const projects = new GroupedToolBuilder<AppContext>('projects')
-    .description('Manage projects')
-    // Shared parameters injected into every action safely
-    .commonSchema(z.object({
-        workspace_id: z.string().describe('Workspace identifier'),
-    }))
-    .action({
-        name: 'list',
-        readOnly: true,
-        schema: z.object({ status: z.enum(['active', 'archived']).optional() }),
-        handler: async (ctx, args) => {
-            // args is fully typed: { workspace_id: string, status?: 'active' | 'archived' }
-            const projects = await ctx.db.projects.findMany({ where: { workspaceId: args.workspace_id, status: args.status } });
-            return success(projects);
+const projects = defineTool<AppContext>('projects', {
+    description: 'Manage workspace projects',
+    shared: { workspace_id: 'string' },  // Injected into ALL actions
+    actions: {
+        list: {
+            readOnly: true,
+            params: { status: { enum: ['active', 'archived'] as const, optional: true } },
+            handler: async (ctx, args) => success(await ctx.db.projects.findMany()),
         },
-    })
-    .action({
-        name: 'create',
-        schema: z.object({ name: z.string(), description: z.string().optional() }),
-        handler: async (ctx, args) => {
-            const project = await ctx.db.projects.create({ data: { workspaceId: args.workspace_id, name: args.name, description: args.description } });
-            return success(project);
+        create: {
+            params: {
+                name: { type: 'string', min: 1, max: 100 },
+                email: { type: 'string', regex: '^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$' },
+            },
+            handler: async (ctx, args) => success(await ctx.db.projects.create(args)),
         },
-    })
-    .action({
-        name: 'delete',
-        destructive: true, // Auto-appends ⚠️ DESTRUCTIVE to LLM description
-        schema: z.object({ project_id: z.string() }),
-        handler: async (ctx, args) => {
-            await ctx.db.projects.delete({ where: { id: args.project_id } });
-            return success('Project deleted');
+        delete: {
+            destructive: true,
+            params: { project_id: 'string' },
+            handler: async (ctx, args) => {
+                await ctx.db.projects.delete(args.project_id);
+                return success('Project deleted');
+            },
         },
-    });
+    },
+});
 
-// Attach to ANY standard MCP Server (Duck-typed)
 const registry = new ToolRegistry<AppContext>();
 registry.register(projects);
 registry.attachToServer(server, {
@@ -133,7 +130,39 @@ registry.attachToServer(server, {
 });
 ```
 
-→ [Read the full Getting Started Guide](docs/getting-started.md)
+### Option B: `createTool()` — Full Zod Power Mode
+
+For senior engineers who need custom `.regex()`, `.refine()`, `.transform()`, and advanced Zod.
+
+```typescript
+import { createTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const projects = createTool<AppContext>('projects')
+    .description('Manage projects')
+    .commonSchema(z.object({
+        workspace_id: z.string().describe('Workspace identifier'),
+    }))
+    .action({
+        name: 'list',
+        readOnly: true,
+        schema: z.object({ status: z.enum(['active', 'archived']).optional() }),
+        handler: async (ctx, args) => success(await ctx.db.projects.findMany()),
+    })
+    .action({
+        name: 'delete',
+        destructive: true,
+        schema: z.object({ project_id: z.string() }),
+        handler: async (ctx, args) => {
+            await ctx.db.projects.delete({ where: { id: args.project_id } });
+            return success('Project deleted');
+        },
+    });
+```
+
+**Both APIs produce identical MCP tool definitions. Mix and match freely in the same registry.**
+
+→ [Read the full Getting Started Guide](docs/quickstart.md)
 
 ---
 
@@ -205,6 +234,71 @@ new GroupedToolBuilder<AppContext>('platform')
 ### Pre-Compiled Middleware Chains
 Middleware follows the `next()` pattern. But unlike Express.js, chains are compiled at **build time**. The `MiddlewareCompiler` wraps handlers right-to-left into nested closures and stores the result. At runtime, `execute()` calls `this._compiledChain.get(action.key)`. 
 **Zero chain assembly, zero closure allocation per request.** Supports both **Global** and **Group-scoped** execution.
+
+### Context Derivation — `defineMiddleware()` (tRPC-style)
+Middlewares that return data merge it into the context for downstream handlers. TypeScript infers the derived type automatically:
+```typescript
+import { defineMiddleware } from '@vinkius-core/mcp-fusion';
+
+const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
+    const user = await db.getUser(ctx.token);
+    if (!user) throw new Error('Unauthorized');
+    return { user };  // ← TS infers: { user: User }
+});
+
+const billing = createTool<AppContext>('billing')
+    .use(requireAuth.toMiddlewareFn())
+    .action({
+        name: 'refund',
+        handler: async (ctx, args) => success(`Refunded by ${ctx.user.id}`),
+    });
+```
+
+### Self-Healing Errors — `toolError()`
+Structured error responses with recovery instructions for fully autonomous LLM agents:
+```typescript
+import { toolError } from '@vinkius-core/mcp-fusion';
+
+return toolError('ProjectNotFound', {
+    message: `Project '${id}' does not exist.`,
+    suggestion: 'Call projects.list first to get valid IDs.',
+    availableActions: ['projects.list'],
+});
+// Output: [ProjectNotFound] Project 'xyz' does not exist.
+//         💡 Suggestion: Call projects.list first to get valid IDs.
+//         📋 Try: projects.list
+```
+
+### Streaming Progress — `progress()` 
+Generator handlers can yield progress events during long-running operations:
+```typescript
+import { progress, success } from '@vinkius-core/mcp-fusion';
+
+handler: async function* (ctx, args) {
+    yield progress(10, 'Cloning repository...');
+    yield progress(50, 'Building AST...');
+    yield progress(90, 'Almost done...');
+    return success('Deployed successfully');
+}
+```
+
+### Type-Safe Client — `createFusionClient()` (tRPC-style)
+End-to-end type safety from server to client, with full autocomplete:
+```typescript
+import { createFusionClient } from '@vinkius-core/mcp-fusion/client';
+import type { AppRouter } from './mcp-server';
+
+const client = createFusionClient<AppRouter>(transport);
+const result = await client.execute('projects.create', { name: 'Vinkius V2' });
+//                                   ^^^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^
+//                                   autocomplete!       typed args!
+```
+
+### Compile-Time DX — `ValidateConfig`
+`defineTool()` uses type-level validation to produce readable, localized TypeScript errors instead of deep recursive type explosions:
+```text
+❌ Type Error: handler must return ToolResponse. Use return success(data) or return error(msg).
+```
 
 ### TOON Token Optimization (Slash API Costs)
 Descriptions and responses can be encoded in TOON (Token-Oriented Object Notation) via `@toon-format/toon` — a compact pipe-delimited format that eliminates repeated JSON keys:
@@ -299,6 +393,13 @@ Six pure-function modules organized by bounded context. Every module is independ
 
 | Capability | What It Solves |
 |---|---|
+| **`defineTool()` — JSON-First API** | Build tools without Zod imports — strings, enums, arrays, regex |
+| **`createTool()` — Zod Power Mode** | Full `.refine()`, `.transform()`, `.regex()` for advanced validation |
+| **`createFusionClient()` — Typed Client** | tRPC-style end-to-end type safety from server to client |
+| **`defineMiddleware()` — Context Derivation** | tRPC-style derive data into context with type inference |
+| **`toolError()` — Self-Healing Errors** | Structured error recovery for autonomous LLM agents |
+| **`progress()` — Streaming Progress** | Generator handlers yield progress during long operations |
+| **`ValidateConfig` — Compile-Time DX** | Readable TypeScript errors instead of recursive type explosions |
 | **Action Consolidation** | Reduces tool count, improves LLM routing accuracy |
 | **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` compound keys |
 | **4-Tier Field Annotations** | LLM knows exactly which fields to send per action |
@@ -327,10 +428,10 @@ Ready to build production agents? Dive into the documentation:
 
 | Guide | What You Will Learn |
 |---|---|
-| 🏁 **[Getting Started](docs/getting-started.md)** | First tool, context, common schema, groups, TOON — complete examples. |
+| 🏁 **[Getting Started](docs/quickstart.md)** | First tool, context, common schema, groups, TOON — complete examples. |
 | 🏗️ **[Architecture](docs/architecture.md)** | Domain model mapping, Strategy pattern, build-time engine, execution flow. |
 | 📈 **[Scaling Guide](docs/scaling.md)** | How tag filtering, TOON, and unification prevent hallucination at 5,000+ endpoints. |
-| 🛡️ **[Middleware](docs/middleware.md)** | Global, group-scoped, pre-compilation, real patterns (auth, rate-limit, audit). |
+| 🛡️ **[Middleware](docs/middleware.md)** | Global, group-scoped, pre-compilation, context derivation, real patterns. |
 | 🔍 **[Introspection](docs/introspection.md)** | Runtime metadata extraction for Enterprise compliance. |
 | 📖 **[API Reference](docs/api-reference.md)** | Comprehensive typings, methods, and class structures. |
 

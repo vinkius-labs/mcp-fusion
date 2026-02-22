@@ -41,6 +41,33 @@ import { required } from '@vinkius-core/mcp-fusion';
 return required('project_id');  
 ```
 
+### `toolError(code, options)`
+
+Creates a structured error response with recovery instructions for LLM agents. Includes an error code, a detailed message, and optional suggestions and available actions.
+
+```typescript
+import { toolError } from '@vinkius-core/mcp-fusion';
+
+return toolError('ProjectNotFound', {
+    message: `Project '${id}' does not exist.`,
+    suggestion: 'Call projects.list to see available IDs.',
+    availableActions: ['projects.list'],
+});
+
+// Output:
+// [ProjectNotFound] Project 'xyz' does not exist.
+// 💡 Suggestion: Call projects.list to see available IDs.
+// 📋 Try: projects.list
+```
+
+**Options:**
+
+| Field | Type | Description |
+|---|---|---|
+| `message` | `string` | Required. Human-readable error message. |
+| `suggestion` | `string?` | Optional. Recovery hint for the LLM. |
+| `availableActions` | `string[]?` | Optional. List of valid actions to try. |
+
 ### `toonSuccess(data)`
 
 Creates a standard success response with a TOON-encoded payload via the `@toon-format/toon` compression schema.
@@ -54,11 +81,11 @@ return toonSuccess(users, { delimiter: ',' });    // Custom delimiter
 
 ---
 
-## The Execution Engine
+## Tool Builders
 
-### `GroupedToolBuilder`
+### `createTool(name)` — Builder Pattern
 
-The primary object model for consolidating API scopes.
+The fluent builder for composing tools with Zod schemas.
 
 ```typescript
 import { createTool } from '@vinkius-core/mcp-fusion';
@@ -92,6 +119,189 @@ const tool = createTool<AppContext>('projects');
 | `.getActionNames()` | `string[]` | Dumps native flat keys or dot-notated compound keys. |
 | `.getActionMetadata()` | `Object[]` | Pulls deep context mapping arrays about execution boundaries natively. |
 
+### `defineTool(name, config)` — Declarative Config
+
+The JSON-first API for defining tools without Zod imports.
+
+```typescript
+import { defineTool } from '@vinkius-core/mcp-fusion';
+
+const tool = defineTool<AppContext>('projects', {
+    description: 'Manage projects',
+    tags: ['core'],
+    shared: { workspace_id: 'string' },
+    middleware: [authMiddleware],
+    actions: {
+        list: { readOnly: true, handler: listProjects },
+        create: {
+            params: { name: { type: 'string', min: 1 } },
+            handler: createProject,
+        },
+    },
+    groups: {
+        admin: {
+            middleware: [requireAdmin],
+            actions: { reset: { destructive: true, handler: resetProjects } },
+        },
+    },
+});
+```
+
+**Config Fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `description` | `string?` | Tool description for the LLM. |
+| `tags` | `string[]?` | Tags for tag-based filtering. |
+| `shared` | `ParamsMap?` | Parameters injected into every action. |
+| `middleware` | `MiddlewareFn[]?` | Global middleware chain. |
+| `actions` | `Record<string, ActionDef>` | Action definitions (keyed by action name). |
+| `groups` | `Record<string, GroupDef>?` | Nested group definitions. |
+
+**ActionDef Fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `description` | `string?` | Action-specific description. |
+| `params` | `ParamsMap \| ZodObject?` | Parameters (JSON shorthand or Zod). |
+| `readOnly` | `boolean?` | Marks as read-only for LLM. |
+| `destructive` | `boolean?` | Marks as destructive (⚠️ warning). |
+| `idempotent` | `boolean?` | Marks as safe to retry. |
+| `middleware` | `MiddlewareFn[]?` | Per-action middleware. |
+| `handler` | `(ctx, args) => Promise<ToolResponse>` | Required. The action handler. |
+
+**ParamsMap Shorthand Values:**
+
+| Value | Equivalent |
+|---|---|
+| `'string'` | `{ type: 'string' }` |
+| `'number'` | `{ type: 'number' }` |
+| `'boolean'` | `{ type: 'boolean' }` |
+| `{ type, min, max, regex, optional, array, enum }` | Full descriptor |
+
+---
+
+## Middleware
+
+### `defineMiddleware(deriveFn)`
+
+Creates a context-deriving middleware definition (tRPC-style):
+
+```typescript
+import { defineMiddleware } from '@vinkius-core/mcp-fusion';
+
+const withUser = defineMiddleware(async (ctx: { token: string }) => {
+    const user = await verifyToken(ctx.token);
+    return { user };  // Merged into ctx
+});
+
+// Convert to MiddlewareFn:
+tool.use(withUser.toMiddlewareFn());
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `.toMiddlewareFn()` | `MiddlewareFn` | Converts to a standard middleware function. |
+| `.derive` | `Function` | The raw derive function. |
+
+### `isMiddlewareDefinition(value)`
+
+Type guard to check if a value is a `MiddlewareDefinition`.
+
+### `resolveMiddleware(input)`
+
+Converts either a `MiddlewareDefinition` or a plain `MiddlewareFn` to a `MiddlewareFn`.
+
+---
+
+## Streaming Progress
+
+### `progress(percent, message)`
+
+Creates a `ProgressEvent` for use in generator handlers:
+
+```typescript
+import { progress } from '@vinkius-core/mcp-fusion';
+
+yield progress(50, 'Building project...');
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `percent` | `number` | Progress percentage (0–100). |
+| `message` | `string` | Human-readable status message. |
+
+### `isProgressEvent(value)`
+
+Type guard to check if a yielded value is a `ProgressEvent`.
+
+---
+
+## Result Monad
+
+Railway-Oriented Programming for composable error handling. See [Result Monad Guide](/result-monad) for full patterns.
+
+### `succeed(value)`
+
+Wraps a value into `Success<T>`:
+
+```typescript
+import { succeed } from '@vinkius-core/mcp-fusion';
+
+const result = succeed({ id: '1', name: 'Alice' });
+// { ok: true, value: { id: '1', name: 'Alice' } }
+```
+
+### `fail(response)`
+
+Wraps a `ToolResponse` into `Failure`:
+
+```typescript
+import { fail, error } from '@vinkius-core/mcp-fusion';
+
+const result = fail(error('User not found'));
+// { ok: false, response: ToolResponse }
+```
+
+### Types
+
+| Type | Fields | Description |
+|---|---|---|
+| `Success<T>` | `ok: true`, `value: T` | Successful result |
+| `Failure` | `ok: false`, `response: ToolResponse` | Failed result |
+| `Result<T>` | — | `Success<T> \| Failure` discriminated union |
+
+---
+
+## FusionClient
+
+### `createFusionClient(transport)`
+
+Creates a type-safe client for calling tools through a transport layer:
+
+```typescript
+import { createFusionClient } from '@vinkius-core/mcp-fusion';
+
+type AppRouter = {
+    'projects.list': { workspace_id: string };
+    'projects.create': { workspace_id: string; name: string };
+};
+
+const client = createFusionClient<AppRouter>(transport);
+
+const result = await client.execute('projects.list', { workspace_id: 'ws_1' });
+```
+
+**FusionTransport Interface:**
+
+```typescript
+interface FusionTransport {
+    callTool(name: string, args: Record<string, unknown>): Promise<ToolResponse>;
+}
+```
+
+The client splits dotted action paths: `'projects.list'` → tool `'projects'` + arg `{ action: 'list' }`.
+
 ---
 
 ## ToolRegistry
@@ -108,8 +318,12 @@ const registry = new ToolRegistry<AppContext>();
 |---|---|---|
 | `.register(builder)` | `void` | Mounts a single builder and implicitly fires compilation natively. |
 | `.registerAll(...)` | `void` | Maps variable array of builders seamlessly into memory. |
+| `.getAllTools()` | `McpTool[]` | Returns all registered tool definitions. |
 | `.getTools(filter)` | `McpTool[]` | Filters payload dumps based strictly on inclusion/exclusion tags. |
-| `.routeCall(...)` | `Promise` | Proxies execution requests deeply down into the assigned `Builder`. |
+| `.routeCall(ctx, name, args)` | `Promise` | Proxies execution requests deeply down into the assigned `Builder`. |
+| `.has(name)` | `boolean` | Check if a tool is registered. |
+| `.clear()` | `void` | Remove all registered tools. |
+| `.size` | `number` | Number of registered tools. |
 
 ### `.attachToServer(server, options?)`
 

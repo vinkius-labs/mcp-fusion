@@ -8,7 +8,7 @@
  * - ConverterBase: null/undefined filtering in batch operations
  * - Misc: boundary conditions and defensive code paths
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import {
     GroupedToolBuilder,

@@ -6,9 +6,34 @@ You should not rely on global variables for this. MCP Fusion handles this elegan
 
 ## 1. Type your Context Context
 
-When constructing your `GroupedToolBuilder`, pass an Interface representing your required state into the generic bracket `<TContext>`.
+When constructing your tool, pass an Interface representing your required state into the generic bracket `<TContext>`.
 
-```typescript
+::: code-group
+```typescript [defineTool]
+import { defineTool, success } from '@vinkius-core/mcp-fusion';
+
+interface AppContext {
+    userId: string;
+    db: any; // e.g. PrismaClient, PostgresPool, etc.
+}
+
+const tasks = defineTool<AppContext>('tasks', {
+    description: 'Manage tasks',
+    actions: {
+        list: {
+            readOnly: true,
+            handler: async (ctx, args) => {
+                // `ctx` is perfectly typed as `AppContext`
+                const myTasks = await ctx.db.tasks.findMany({ 
+                    where: { ownerId: ctx.userId } 
+                });
+                return success(myTasks);
+            },
+        },
+    },
+});
+```
+```typescript [createTool]
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 
 // Define your application's state requirements
@@ -24,7 +49,6 @@ const tasks = createTool<AppContext>('tasks')
         name: 'list',
         handler: async (ctx, args) => {
             // `ctx` is perfectly typed as `AppContext` natively.
-            // We can now safely access our database directly!
             const myTasks = await ctx.db.tasks.findMany({ 
                 where: { ownerId: ctx.userId } 
             });
@@ -32,6 +56,7 @@ const tasks = createTool<AppContext>('tasks')
         }
     })
 ```
+:::
 
 ## 2. Supply the Factory Context
 

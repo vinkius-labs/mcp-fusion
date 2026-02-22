@@ -24,20 +24,68 @@ yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 ## 2. Write the Server
 
-Create an `index.ts` file. In MCP Fusion, you build tools by creating a `GroupedToolBuilder` and attaching `.action()` endpoints to it.
+Create an `index.ts` file. MCP Fusion offers **two APIs** — choose the one that fits your team:
 
-```typescript
+::: code-group
+```typescript [defineTool — No Zod]
+// index.ts
+import { defineTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+// 1. Define a tool with plain JSON descriptors — no Zod needed!
+const calculatorTool = defineTool<void>('calculator', {
+    description: 'A basic calculator tool for math operations',
+    actions: {
+        add: {
+            description: 'Adds two numbers together',
+            params: {
+                a: { type: 'number', description: 'The first number' },
+                b: { type: 'number', description: 'The second number' },
+            },
+            handler: async (ctx, args) => {
+                const total = args.a + args.b;
+                return success({ result: total });
+            },
+        },
+        subtract: {
+            description: 'Subtracts the second number from the first',
+            params: { a: 'number', b: 'number' },
+            handler: async (ctx, args) => {
+                const total = args.a - args.b;
+                return success({ result: total });
+            },
+        },
+    },
+});
+
+// 2. Register and start
+const registry = new ToolRegistry<void>();
+registry.register(calculatorTool);
+
+async function start() {
+    const server = new Server(
+        { name: 'my-calculator', version: '1.0.0' }, 
+        { capabilities: { tools: {} } }
+    );
+    registry.attachToServer(server);
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('Calculator Server is running!');
+}
+
+start();
+```
+```typescript [createTool — Full Zod]
 // index.ts
 import { createTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-// 1. Create a tool group called "calculator"
+// 1. Create a tool group with Zod schemas
 const calculatorTool = createTool<void>('calculator')
     .description('A basic calculator tool for math operations')
-    
-    // 2. Add our first operation (an action)
     .action({
         name: 'add',
         description: 'Adds two numbers together',
@@ -46,13 +94,10 @@ const calculatorTool = createTool<void>('calculator')
             b: z.number().describe('The second number'),
         }),
         handler: async (ctx, args) => {
-            // Because of Zod, TypeScript KNOWS args.a and args.b are numbers!
             const total = args.a + args.b;
             return success({ result: total });
         }
     })
-    
-    // 3. Add our second operation
     .action({
         name: 'subtract',
         description: 'Subtracts the second number from the first',
@@ -66,28 +111,24 @@ const calculatorTool = createTool<void>('calculator')
         }
     });
 
-// 4. Register the tool on our framework
+// 2. Register and start
 const registry = new ToolRegistry<void>();
 registry.register(calculatorTool);
 
-// 5. Initialize the official MCP Server and connect them
 async function start() {
     const server = new Server(
         { name: 'my-calculator', version: '1.0.0' }, 
         { capabilities: { tools: {} } }
     );
-
-    // This wires our tools seamlessly into the MCP protocol!
     registry.attachToServer(server);
-
-    // Connect via standard input/output (the default for MCP)
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    
     console.error('Calculator Server is running!');
 }
 
 start();
+```
+:::
 ```
 
 ---

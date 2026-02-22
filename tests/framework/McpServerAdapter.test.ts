@@ -11,7 +11,7 @@
  *   - Detach function (cleanup)
  *   - Error handling (invalid server, handler errors)
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import {
     ListToolsRequestSchema,

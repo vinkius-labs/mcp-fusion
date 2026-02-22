@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`createToolAnnotations()` factory function:** Creates immutable `ToolAnnotations` instances.
 - **`createAnnotations()` factory function:** Creates immutable `Annotations` instances.
 - **Edge-case test suite (`EdgeCases.test.ts`):** 37 new tests covering `getActionMetadata()`, group-level middleware chains, frozen guard on all config methods, error paths (non-Error throws, middleware errors), `ResponseHelper` empty-string fallback, `ConverterBase` null filtering, custom discriminator routing, and description generator edge cases.
-- **Test coverage improved:** 99.58% statement coverage (up from 96.85%), 100% function coverage. Total: 516 tests across 23 files.
+- **Enterprise-grade test suites:** Added `InvariantContracts.test.ts` (56 tests: determinism, execution isolation, context immutability, handler chaos, unicode/binary boundaries, re-entrancy, concurrent registry stress, API equivalence, FusionClient contracts), `DeepVerification.test.ts`, `LargeScaleScenarios.test.ts`, `SecurityDeep.test.ts` (15 attack vectors), `McpServerAdapter.test.ts` (duck-type detection, detach lifecycle), `StreamingProgress.test.ts`, `EndToEnd.test.ts` (full-stack integration), and `ToonDescription.test.ts`.
+- **Test coverage improved:** 773 tests across 33 files, 100% function coverage. Comprehensive invariant, security, and adversarial testing.
 
 ### Changed
 - **BREAKING:** `Icon`, `ToolAnnotations`, and `Annotations` converted from mutable classes to `readonly` interfaces with factory functions (`createIcon()`, `createToolAnnotations()`, `createAnnotations()`). Use factory functions instead of `new Icon()`, `new ToolAnnotations()`, `new Annotations()`.
