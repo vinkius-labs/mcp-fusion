@@ -90,6 +90,25 @@ None of them were designed for an autonomous consumer that **hallucinates when g
 
 </div>
 
+### Without MVA vs With MVA
+
+| | Without MVA | With MVA (mcp-fusion) |
+|---|---|---|
+| **Tool count** | 50 registered tools. LLM sees ALL. Token explosion. | **Action consolidation** — 5,000+ ops in ONE tool via `module.action` discriminator. 10x fewer tokens. |
+| **Response** | `JSON.stringify(data)` — the AI guesses | **Structured perception package** — data + rules + UI + affordances |
+| **Domain context** | None. `45000` — dollars? cents? yen? | **System rules**: *"amount_cents is in CENTS. Divide by 100."* |
+| **Next actions** | AI hallucinates tool names | **Agentic HATEOAS** — `.suggestActions()` with explicit hints |
+| **Large datasets** | 10,000 rows dump into context | **Cognitive guardrails** — `.agentLimit(50)` + filter guidance |
+| **Security** | Internal fields leak to LLM | **Schema as boundary** — Zod `.strip()` strips undeclared fields |
+| **Charts** | Not possible | **UI Blocks** — `.uiBlocks()` — ECharts, Mermaid, summaries |
+| **Routing** | `switch/case` × 50 branches | **Hierarchical groups** — `platform.users.list` — infinite nesting |
+| **Error recovery** | `throw Error` — AI gives up | **Self-healing** — `toolError()` with recovery + retry hints |
+| **Token cost** | Full JSON payloads every time | **TOON encoding** — ~40% fewer tokens |
+| **Type safety** | Manual casting, no client types | **tRPC-style client** — `createFusionClient()` with full inference |
+| **Reusability** | Same entity rendered differently everywhere | **Presenter** — define once, reuse across all tools |
+
+📖 **[See the full side-by-side comparison with code examples →](https://vinkius-labs.github.io/mcp-fusion/comparison)**
+
 ---
 
 ## What It Looks Like in Code

@@ -643,6 +643,111 @@ html.dark .VPFeature:hover {
   color: #d4a5ff;
 }
 
+/* ── Comparison Table ── */
+.ms-compare {
+  border: 1px solid #1a1a1a;
+  border-top: none;
+  background: #000;
+  padding: 80px 60px 60px;
+}
+
+.ms-compare-header {
+  margin-bottom: 48px;
+}
+
+.ms-compare-header .ms-headline {
+  font-size: 36px !important;
+  margin-bottom: 12px !important;
+}
+
+.ms-compare-header .ms-sub {
+  margin-top: 12px;
+}
+
+.ms-compare-table {
+  width: 100%;
+  border: 1px solid #1a1a1a;
+  border-radius: 0;
+}
+
+.ms-compare-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.ms-compare-row:last-child {
+  border-bottom: none;
+}
+
+.ms-compare-head {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ms-compare-head .ms-compare-before,
+.ms-compare-head .ms-compare-after {
+  font-size: 10px;
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 16px 24px;
+}
+
+.ms-compare-head .ms-compare-after {
+  color: #c084fc;
+}
+
+.ms-compare-aspect {
+  padding: 16px 20px;
+  font-size: 11px;
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  color: #555;
+  letter-spacing: 0.05em;
+  border-right: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+}
+
+.ms-compare-before {
+  padding: 16px 24px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #666;
+  border-right: 1px solid #1a1a1a;
+}
+
+.ms-compare-after {
+  padding: 16px 24px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #999;
+}
+
+.ms-compare-after strong {
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.ms-compare-link {
+  display: inline-block;
+  margin-top: 32px;
+  font-size: 11px;
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.ms-compare-link:hover {
+  color: #c084fc;
+}
+
 /* ── Mobile ── */
 @media (max-width: 960px) {
   .ms-section,
@@ -705,6 +810,23 @@ html.dark .VPFeature:hover {
   }
   .ms-cta-headline {
     font-size: 28px !important;
+  }
+  .ms-compare {
+    padding: 40px 24px 40px;
+  }
+  .ms-compare-row {
+    grid-template-columns: 1fr;
+  }
+  .ms-compare-aspect {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .ms-compare-before {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .ms-compare-head {
+    display: none;
   }
 }
 

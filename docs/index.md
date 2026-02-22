@@ -93,6 +93,83 @@ const billing = defineTool<AppContext>('billing', {
 </div>
 </div>
 
+<!-- ═══ Section 2.5: Comparison Table ═══ -->
+<div class="ms-compare">
+<div class="ms-compare-header">
+<div class="ms-label">WHAT CHANGES</div>
+<h2 class="ms-headline">Without MVA vs With MVA</h2>
+<p class="ms-sub">Every line is a capability that exists in mcp-fusion today. Not a roadmap. Not a promise.</p>
+</div>
+<div class="ms-compare-table">
+<div class="ms-compare-row ms-compare-head">
+<div class="ms-compare-aspect"></div>
+<div class="ms-compare-before">Without MVA</div>
+<div class="ms-compare-after">With MVA (mcp-fusion)</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Tool count</div>
+<div class="ms-compare-before">50 individual tools. LLM sees ALL. Token explosion.</div>
+<div class="ms-compare-after"><strong>Action consolidation</strong> — 5,000+ ops behind ONE tool via discriminator. 10x fewer tokens.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Response</div>
+<div class="ms-compare-before">JSON.stringify() — the AI parses and guesses.</div>
+<div class="ms-compare-after"><strong>Structured perception package</strong> — validated data + rules + UI + affordances.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Domain context</div>
+<div class="ms-compare-before">None. 45000 — dollars? cents? yen?</div>
+<div class="ms-compare-after"><strong>System rules</strong> travel with the data. The AI knows it's cents.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Next actions</div>
+<div class="ms-compare-before">AI hallucinates tool names.</div>
+<div class="ms-compare-after"><strong>Agentic HATEOAS</strong> — .suggestActions() with explicit hints based on data state.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Large datasets</div>
+<div class="ms-compare-before">10,000 rows dump into context window.</div>
+<div class="ms-compare-after"><strong>Cognitive guardrails</strong> — .agentLimit(50) truncation + filter guidance.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Security</div>
+<div class="ms-compare-before">Internal fields leak to LLM.</div>
+<div class="ms-compare-after"><strong>Schema as boundary</strong> — Zod .strip() removes undeclared fields. Automatic.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Charts</div>
+<div class="ms-compare-before">Not possible — text only.</div>
+<div class="ms-compare-after"><strong>UI Blocks</strong> — ECharts, Mermaid diagrams, summaries — server-rendered.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Routing</div>
+<div class="ms-compare-before">switch/case with 50 branches.</div>
+<div class="ms-compare-after"><strong>Hierarchical groups</strong> — platform.users.list — infinite nesting.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Error recovery</div>
+<div class="ms-compare-before">throw Error — AI gives up.</div>
+<div class="ms-compare-after"><strong>Self-healing</strong> — toolError() with recovery hints + retry args.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Token cost</div>
+<div class="ms-compare-before">Full JSON payloads every time.</div>
+<div class="ms-compare-after"><strong>TOON encoding</strong> — toonSuccess() reduces tokens by ~40%.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Type safety</div>
+<div class="ms-compare-before">Manual casting, no client types.</div>
+<div class="ms-compare-after"><strong>tRPC-style client</strong> — createFusionClient() with full end-to-end inference.</div>
+</div>
+<div class="ms-compare-row">
+<div class="ms-compare-aspect">Reusability</div>
+<div class="ms-compare-before">Same entity rendered differently everywhere.</div>
+<div class="ms-compare-after"><strong>Presenter</strong> — define once, reuse across all tools. Same rules, same UI.</div>
+</div>
+</div>
+<a href="/mcp-fusion/comparison" class="ms-compare-link">SEE THE FULL COMPARISON WITH CODE EXAMPLES →</a>
+</div>
+
 <!-- ═══ Section 3: MVA Conviction ═══ -->
 <div class="ms-section ms-conviction">
 <div class="ms-left">

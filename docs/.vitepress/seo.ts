@@ -1,0 +1,421 @@
+import type { HeadConfig } from 'vitepress';
+
+const BASE_URL = 'https://vinkius-labs.github.io/mcp-fusion';
+
+interface PageSEO {
+  title: string;
+  description: string;
+  faqs: { q: string; a: string }[];
+}
+
+const pages: Record<string, PageSEO> = {
+
+  // ═══════════════════════════════════════════════════════
+  // LANDING PAGE
+  // ═══════════════════════════════════════════════════════
+  'index.md': {
+    title: 'mcp-fusion — The MVA Framework for MCP Servers',
+    description: 'The first framework where AI agents perceive, understand, and act on your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.',
+    faqs: [
+      { q: 'What is mcp-fusion?', a: 'mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that introduces the MVA (Model-View-Agent) architectural pattern. It replaces raw JSON responses with structured perception packages — validated data, domain rules, server-rendered charts, and explicit action affordances — so AI agents perceive and act on data deterministically instead of guessing.' },
+      { q: 'What is MVA (Model-View-Agent)?', a: 'MVA is a new architectural pattern created by Renato Marinho at Vinkius Labs. It replaces MVC\'s human-centric View with a Presenter — an agent-centric perception layer. The Model validates with Zod, the Presenter adds domain rules, UI blocks, affordances, and guardrails, and the Agent (LLM) consumes structured output to act deterministically.' },
+      { q: 'How is mcp-fusion different from the official MCP SDK?', a: 'The official MCP SDK (@modelcontextprotocol/sdk) provides the protocol transport layer — stdin/stdio, HTTP. mcp-fusion builds on top and adds: MVA architecture with Presenters, action consolidation (5,000+ ops behind one tool), Zod validation with .strip(), tRPC-style middleware, self-healing errors, server-rendered UI blocks (ECharts, Mermaid), cognitive guardrails, state sync with cache signals, TOON encoding for 40% fewer tokens, and a type-safe tRPC-style client.' },
+      { q: 'Is mcp-fusion free and open source?', a: 'Yes. mcp-fusion is open source under the Apache 2.0 license. It is free to use in personal and commercial projects. Built and maintained by Vinkius Labs.' },
+      { q: 'What is action consolidation in mcp-fusion?', a: 'Action consolidation lets you group 5,000+ operations behind a single MCP tool using a discriminator enum. Instead of 50 separate tools flooding the LLM prompt, the agent sees ONE tool with actions like users.list, billing.refund. This reduces token usage by 10x and eliminates tool-selection hallucination.' },
+      { q: 'What are cognitive guardrails in mcp-fusion?', a: 'Cognitive guardrails (.agentLimit()) prevent large datasets from overwhelming the AI context window. When a query returns 10,000 rows, the guardrail automatically truncates to a safe limit (e.g., 50 items) and injects guidance like "Showing 50 of 10,000. Use filters to narrow results." This prevents context DDoS and reduces costs by up to 100x.' },
+      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, supported by Claude, GPT-4, Gemini, and any MCP-compatible client. Structured perception packages work with any LLM that processes text.' },
+      { q: 'What languages and runtimes does mcp-fusion support?', a: 'mcp-fusion is written in TypeScript and runs on Node.js >= 18. It requires TypeScript >= 5.7 for full type inference. All APIs are fully typed with generics, providing autocomplete and compile-time safety.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // THE MVA MANIFESTO
+  // ═══════════════════════════════════════════════════════
+  'mva-pattern.md': {
+    title: 'The MVA Manifesto — Model-View-Agent Architecture',
+    description: 'MVA replaces MVC for the AI era. The Presenter is a deterministic perception layer for AI agents with domain rules, rendered charts, action affordances, and cognitive guardrails.',
+    faqs: [
+      { q: 'What is the MVA (Model-View-Agent) pattern?', a: 'MVA is an architectural pattern that replaces MVC for AI-native applications. Instead of a human-centric View, MVA uses a Presenter — a deterministic perception layer that structures responses for AI agents with validated data, domain rules, UI blocks, suggested actions, and cognitive guardrails. It was created by Renato Marinho at Vinkius Labs.' },
+      { q: 'How does MVA differ from MVC?', a: 'MVC was designed for human users interacting via browsers. MVA replaces the View with the Presenter — designed for AI agents. While MVC Views render HTML/CSS, MVA Presenters render structured perception packages: Zod-validated data, system rules, ECharts/Mermaid visualizations, HATEOAS affordances, and context guardrails.' },
+      { q: 'Who created MVA?', a: 'MVA (Model-View-Agent) was created by Renato Marinho at Vinkius Labs as a purpose-built architecture for AI agents operating over the Model Context Protocol (MCP). It is the core pattern behind the mcp-fusion framework.' },
+      { q: 'Why is MVA needed for AI agents?', a: 'AI agents cannot interpret raw JSON the way humans read UI. They need explicit domain context ("amount_cents is in cents"), explicit next-action hints (what tools to call next), and cognitive guardrails (limits on data volume). MVA provides all of this through the Presenter layer, eliminating guesswork and hallucination.' },
+      { q: 'What is a structured perception package?', a: 'A structured perception package is the output of an MVA Presenter. It contains: (1) Zod-validated and stripped data, (2) system rules with domain context, (3) server-rendered UI blocks (charts, diagrams), (4) suggested next actions with reasons, and (5) cognitive guardrails. This replaces raw JSON.stringify() output.' },
+      { q: 'What is the role of the Presenter in MVA?', a: 'The Presenter is the View layer in MVA. It sits between the Model (raw data) and the Agent (LLM). It transforms raw data into a structured perception package by: validating with a schema, injecting system rules, rendering UI blocks, suggesting next actions based on data state, and enforcing agent limits. It is defined once and reused across all tools that return that entity.' },
+      { q: 'How does MVA prevent AI hallucination?', a: 'MVA prevents hallucination through four deterministic mechanisms: (1) Zod .strip() silently removes parameters the AI invents. (2) System rules provide domain context so the AI interprets data correctly. (3) .suggestActions() tells the AI exactly what tools to call next. (4) .agentLimit() prevents context overflow that degrades accuracy.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COMPARISON
+  // ═══════════════════════════════════════════════════════
+  'comparison.md': {
+    title: 'Without MVA vs With MVA — Feature Comparison',
+    description: 'Side-by-side comparison of traditional MCP servers vs mcp-fusion with MVA. Covers action consolidation, Presenters, cognitive guardrails, self-healing errors, and more.',
+    faqs: [
+      { q: 'What problems does MVA solve that raw MCP doesn\'t?', a: 'Raw MCP servers dump JSON.stringify() output, have no domain context, no action hints, leak internal fields, and force switch/case routing. MVA solves all of this with structured perception packages, system rules, Agentic HATEOAS, Zod .strip() security, and discriminator-based action consolidation.' },
+      { q: 'How does action consolidation reduce token usage?', a: 'Instead of registering 50 individual tools (each with name + description + schema in the prompt consuming ~100 tokens), mcp-fusion consolidates them behind ONE tool with a discriminator enum. The LLM sees a single tool definition instead of 50, reducing prompt token usage by up to 10x.' },
+      { q: 'How do cognitive guardrails prevent context DDoS?', a: 'When a query returns 10,000 rows, .agentLimit(50) truncates to 50 items and injects guidance: "Showing 50 of 10,000. Use filters to narrow results." This prevents context overflow, reduces costs from ~$2.40 to ~$0.02 per call, and maintains AI accuracy.' },
+      { q: 'What are self-healing errors in mcp-fusion?', a: 'toolError() returns structured recovery hints instead of plain error strings. Example: { code: "NOT_FOUND", recovery: { action: "list", suggestion: "List invoices to find the correct ID" }, suggestedArgs: { status: "pending" } }. The AI automatically retries with corrected parameters instead of giving up.' },
+      { q: 'How does mcp-fusion improve security over raw MCP?', a: 'Raw MCP servers leak all database fields to the LLM, including internal data like password_hash and SSN. mcp-fusion uses Zod .strip() as a security boundary — only fields declared in the Presenter schema reach the AI. Undeclared fields are silently removed.' },
+      { q: 'What is Agentic HATEOAS?', a: 'Agentic HATEOAS is the concept of providing explicit next-action hints to AI agents based on data state, inspired by REST HATEOAS. Using .suggestActions(), each response includes tools the agent can call next with reasons. Example: invoice status "pending" suggests { tool: "billing.pay", reason: "Process payment" }.' },
+      { q: 'How does TOON encoding save tokens?', a: 'TOON (Token-Oriented Object Notation) is a compact serialization format in mcp-fusion that reduces token count by ~40% compared to standard JSON. Use toonSuccess(data) instead of success(data). It strips quotes, uses shorthand notation, and minimizes whitespace while remaining parseable by LLMs.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // INTRODUCTION
+  // ═══════════════════════════════════════════════════════
+  'introduction.md': {
+    title: 'Introduction to mcp-fusion',
+    description: 'Get started with mcp-fusion — the MVA framework for building MCP servers that AI agents actually understand.',
+    faqs: [
+      { q: 'What do I need to get started with mcp-fusion?', a: 'You need Node.js >= 18 and TypeScript >= 5.7. Install with: npm install @vinkius-core/mcp-fusion zod. The framework builds on top of the official @modelcontextprotocol/sdk which is included as a peer dependency.' },
+      { q: 'Can I use mcp-fusion with existing MCP servers?', a: 'Yes. mcp-fusion uses the standard MCP SDK under the hood. You can incrementally adopt it by converting tools one at a time. Existing raw handlers continue to work alongside mcp-fusion tools on the same server.' },
+      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, which is supported by Claude, GPT-4, Gemini, and any MCP-compatible client. The structured responses work with any LLM that can process text.' },
+      { q: 'What makes mcp-fusion better than writing raw MCP handlers?', a: 'Raw handlers require manual switch/case routing, manual JSON.stringify, no validation, no domain context, and no security boundary. mcp-fusion gives you: automatic Zod validation, discriminator routing, Presenters with system rules and UI blocks, self-healing errors, middleware chains, and cognitive guardrails — all type-safe and zero-boilerplate.' },
+      { q: 'What is the learning curve for mcp-fusion?', a: 'If you know TypeScript and basic MCP concepts, you can be productive in under 30 minutes. defineTool() requires zero Zod knowledge. createTool() requires basic Zod. Presenters are optional and can be added incrementally after your tools work.' },
+      { q: 'What components does the mcp-fusion architecture include?', a: 'The architecture includes: GroupedToolBuilder (tool definition), ToolRegistry (registration and routing), ExecutionPipeline (middleware + handler execution), Presenter Engine (MVA View layer), ResponseBuilder (manual response composition), FusionClient (tRPC-style type-safe client), and State Sync (cache signals).' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // QUICKSTART
+  // ═══════════════════════════════════════════════════════
+  'quickstart.md': {
+    title: 'Quickstart — mcp-fusion in 5 Minutes',
+    description: 'Build your first MVA-powered MCP server in 5 minutes with mcp-fusion. Step-by-step guide with code examples.',
+    faqs: [
+      { q: 'How long does it take to build an MCP server with mcp-fusion?', a: 'You can have a production-ready MCP server running in under 5 minutes. Define a tool with defineTool(), register it with ToolRegistry, and attach to an MCP server. The framework handles validation, routing, and response formatting automatically.' },
+      { q: 'Do I need to use Zod with mcp-fusion?', a: 'No. mcp-fusion offers two APIs: defineTool() for JSON-first definitions without Zod imports, and createTool() for full Zod power. With defineTool(), you can use simple strings like { id: "string" } instead of z.object({ id: z.string() }).' },
+      { q: 'How do I add a Presenter to my tool?', a: 'Create a Presenter with createPresenter("Name").schema(...).systemRules([...]).suggestActions(...), then assign it to your action with the "returns" property: { returns: InvoicePresenter, handler: async (ctx, args) => rawData }. The framework wraps raw data in the Presenter automatically.' },
+      { q: 'How do I register and attach tools to an MCP server?', a: 'Create a ToolRegistry, register your builders with registry.register(tool), then call registry.attachToServer(server, { contextFactory: (extra) => createContext(extra) }). The registry automatically configures the MCP server with list_tools and call_tool handlers.' },
+      { q: 'What is the minimum code for a working mcp-fusion tool?', a: 'Three steps: (1) const tool = defineTool("hello", { actions: { greet: { handler: async () => success("Hello!") } } }); (2) const registry = new ToolRegistry(); registry.register(tool); (3) registry.attachToServer(server, {}). This creates a tool with one action "greet" that returns "Hello!".' },
+      { q: 'How do I handle parameters in tool actions?', a: 'With defineTool(), use params: { name: "string", age: "number" }. With createTool(), use schema: z.object({ name: z.string(), age: z.number() }). In both cases, the handler receives typed, validated arguments. Invalid inputs are rejected before reaching your handler.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // PRESENTER
+  // ═══════════════════════════════════════════════════════
+  'presenter.md': {
+    title: 'Presenter Engine — The MVA View Layer',
+    description: 'Deep dive into mcp-fusion Presenters: schema validation, system rules, UI blocks (ECharts, Mermaid), cognitive guardrails, suggested actions, and composition via embed().',
+    faqs: [
+      { q: 'What are Presenters in mcp-fusion?', a: 'Presenters are the MVA View layer — domain-level objects created with createPresenter() that define how AI agents should perceive data. They include: Zod schema (validates and strips data), system rules (domain context for the AI), UI blocks (ECharts, Mermaid, summaries), cognitive guardrails (.agentLimit()), and suggested actions (HATEOAS affordances).' },
+      { q: 'How do system rules work in Presenters?', a: 'System rules are domain-specific instructions that travel with the data. Example: "CRITICAL: amount_cents is in CENTS. Divide by 100 for display." Rules can be static strings or dynamic functions: .systemRules((data, ctx) => ctx.isAdmin ? ["Show all fields"] : ["Hide internal fields"]). They execute at response time and the result is embedded in the perception package.' },
+      { q: 'What UI blocks can Presenters render?', a: 'Presenters support three UI block types: ui.echarts() for charts and gauges (Apache ECharts config), ui.mermaid() for diagrams and flowcharts (Mermaid syntax), and ui.summary() for collection statistics ({ total, showing, filtered }). These are server-rendered as structured data that MCP-compatible clients can display visually.' },
+      { q: 'How does Presenter composition work with embed()?', a: 'Use .embed("fieldName", ChildPresenter) to nest Presenters. When an Order has a Customer, embed the CustomerPresenter: OrderPresenter.embed("customer", CustomerPresenter). Child Presenter rules, UI blocks, and suggested actions are automatically merged into the parent response. This enables DRY, composable perception architectures.' },
+      { q: 'What is .agentLimit() and when should I use it?', a: '.agentLimit(n) truncates large datasets to n items and injects guidance for the AI to use filters. Use it on any Presenter that might return collections. Example: .agentLimit(50, { warningMessage: "Showing {shown} of {total}. Use filters." }). This prevents context DDoS, reduces token costs, and maintains accuracy.' },
+      { q: 'How are Presenters different from serializers?', a: 'Serializers (like Rails ActiveModel::Serializer) only transform data shape. Presenters go far beyond serialization: they inject domain-specific system rules, render charts and diagrams, suggest next actions based on data state, enforce cognitive guardrails, and compose via embedding. The output is a structured perception package, not just transformed JSON.' },
+      { q: 'Can I use Presenters with both defineTool() and createTool()?', a: 'Yes. Assign a Presenter to the "returns" property of any action config. With defineTool(): actions: { get: { returns: InvoicePresenter, handler: ... } }. With createTool(): .action({ name: "get", returns: InvoicePresenter, handler: ... }). Both work identically. The handler returns raw data and the Presenter wraps it.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // BUILDING TOOLS
+  // ═══════════════════════════════════════════════════════
+  'building-tools.md': {
+    title: 'Building Tools — defineTool() and createTool()',
+    description: 'Learn how to build MCP tools with mcp-fusion using defineTool() (JSON-first) or createTool() (full Zod). Action handlers, parameter validation, annotations, and more.',
+    faqs: [
+      { q: 'What is the difference between defineTool() and createTool()?', a: 'defineTool() is a JSON-first API — define parameters as plain strings like { id: "string" } without importing Zod. createTool() gives you full Zod power for complex schemas with regex, transforms, and refinements. Both produce identical GroupedToolBuilder instances with the same runtime behavior.' },
+      { q: 'How do I mark a tool action as destructive?', a: 'Set destructive: true on the action config: .action({ name: "delete", destructive: true, handler: ... }). This adds the MCP destructiveHint annotation, letting clients warn users before executing destructive operations. Similarly, use readOnly: true and idempotent: true for read and idempotent operations.' },
+      { q: 'Can I share parameters across all actions in a tool?', a: 'Yes. Use commonSchema (createTool) or shared (defineTool) to define fields that are injected into every action\'s schema automatically. Example: shared: { workspace_id: "string" } makes workspace_id required for all actions in that tool. These are marked "(always required)" in auto-generated descriptions.' },
+      { q: 'What tool annotations does mcp-fusion support?', a: 'mcp-fusion supports all standard MCP tool annotations: destructiveHint, readOnlyHint, idempotentHint, openWorldHint, and returnDirect. Set them per-action with destructive: true, readOnly: true, idempotent: true, or use .annotations() on the builder for tool-level annotations.' },
+      { q: 'How do handlers return responses in mcp-fusion?', a: 'Handlers can return: success(data) for success, error(msg) for errors, toolError(code, opts) for self-healing errors, toonSuccess(data) for token-optimized responses, or raw data when using a Presenter (the Presenter wraps it automatically). Generator handlers can yield progress() events for streaming.' },
+      { q: 'When should I use defineTool() vs createTool()?', a: 'Use defineTool() for simple CRUD tools, rapid prototyping, or when you want to avoid Zod imports. Use createTool() when you need complex Zod schemas with regex validation, transforms, refinements, discriminated unions, or custom error messages. Both have identical runtime behavior.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // ROUTING & GROUPS
+  // ═══════════════════════════════════════════════════════
+  'routing.md': {
+    title: 'Routing & Groups — Action Consolidation',
+    description: 'Consolidate thousands of operations behind a single MCP tool using hierarchical groups and discriminator-based routing. 10x fewer tokens.',
+    faqs: [
+      { q: 'How does action consolidation work in mcp-fusion?', a: 'Instead of registering 50 individual MCP tools, you register ONE tool with grouped actions. The LLM selects the operation via a discriminator field: { action: "users.list" } or { action: "billing.refund" }. This reduces the prompt surface by 10x because the LLM sees one tool definition instead of fifty.' },
+      { q: 'Can I nest groups within groups?', a: 'Yes. Groups support infinite nesting: defineTool("platform").group("users", g => { g.group("admin", g2 => { g2.action("reset", ...) }) }). The discriminator value becomes "users.admin.reset". This lets you organize 5,000+ operations into a clean hierarchy.' },
+      { q: 'How does the discriminator field work?', a: 'The discriminator defaults to "action" and is an enum of all registered action keys. When the LLM calls the tool with { action: "users.list" }, mcp-fusion routes to the correct handler automatically. You can customize the discriminator name with .discriminator("command").' },
+      { q: 'Why is action consolidation better for token usage?', a: 'Each registered MCP tool adds its full name, description, and parameter schema to the LLM system prompt. 50 tools can consume 5,000+ prompt tokens just for definitions. With consolidation, ONE tool with a discriminator enum uses ~500 tokens — a 10x reduction that saves money and improves LLM accuracy by reducing selection ambiguity.' },
+      { q: 'Can I apply middleware to specific groups?', a: 'Yes. Group-scoped middleware only runs for that group\'s actions: .group("admin", g => { g.use(requireSuperAdmin).action("reset", handler) }). The requireSuperAdmin check only fires for admin.* actions, while other groups bypass it entirely.' },
+      { q: 'Are actions() and groups() mutually exclusive?', a: 'Yes. A builder must use either flat actions (.action()) or hierarchical groups (.group()), never both on the same level. This is enforced at build time. Use flat actions for simple CRUD tools and groups for platform-level tools with multiple domains.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // MIDDLEWARE
+  // ═══════════════════════════════════════════════════════
+  'middleware.md': {
+    title: 'Middleware — tRPC-style Context Derivation',
+    description: 'Pre-compiled middleware chains with defineMiddleware() for authentication, authorization, database connections, and context injection.',
+    faqs: [
+      { q: 'How does middleware work in mcp-fusion?', a: 'Middleware follows the next() pattern. Each middleware receives (ctx, args, next) and can modify context, validate, or short-circuit. Middleware chains are pre-compiled at build time for zero runtime allocation. Apply globally with .use() or per-group for scoped execution.' },
+      { q: 'What is defineMiddleware() and context derivation?', a: 'defineMiddleware() provides tRPC-style context derivation — it transforms the context by deriving new data. Example: defineMiddleware(async (ctx) => ({ ...ctx, db: await createDbConnection(ctx.tenantId) })). The derived context is automatically typed and available to all downstream handlers.' },
+      { q: 'Can I apply middleware to specific groups only?', a: 'Yes. Group-scoped middleware only runs for that group\'s actions: .group("admin", g => { g.use(requireSuperAdmin).action("reset", ...) }). Other groups bypass it entirely.' },
+      { q: 'What does pre-compiled middleware chains mean?', a: 'At build time (.buildToolDefinition()), mcp-fusion resolves and composes all middleware into a single function chain per action. At runtime, there is zero middleware resolution — the chain is already built. Even 10 stacked middleware layers add negligible latency.' },
+      { q: 'Can middleware short-circuit a request?', a: 'Yes. Return an error response instead of calling next(): if (!ctx.user) return error("Unauthorized"). The handler never executes. This is how you implement authentication, authorization, rate limiting, and input validation as middleware.' },
+      { q: 'How do I implement authentication middleware in mcp-fusion?', a: 'Create: const requireAuth = async (ctx, args, next) => { if (!ctx.user) return error("Unauthorized"); return next(); }. Apply globally with .use(requireAuth) or per-group for scoped auth. The middleware short-circuits before the handler if auth fails.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // ERROR HANDLING
+  // ═══════════════════════════════════════════════════════
+  'error-handling.md': {
+    title: 'Error Handling — Self-Healing Errors',
+    description: 'Structured error responses with toolError() that provide recovery hints, suggested retry arguments, and self-healing capabilities for AI agents.',
+    faqs: [
+      { q: 'What is toolError() in mcp-fusion?', a: 'toolError() creates structured error responses with machine-readable recovery hints. Instead of a plain "Not found" string, the AI receives: error code, message, recovery action ("list invoices to find the correct ID"), and suggested retry arguments. The AI self-corrects instead of giving up.' },
+      { q: 'How do self-healing errors work in mcp-fusion?', a: 'When toolError() returns { recovery: { action: "list" }, suggestedArgs: { status: "pending" } }, the AI understands it should call the "list" action with those arguments to recover. This creates a self-healing loop where errors are automatically resolved without human intervention.' },
+      { q: 'When should I use error() vs toolError()?', a: 'Use error("message") for simple, non-recoverable errors. Use toolError(code, options) when the AI can potentially recover — not found errors, validation failures, permission issues, or rate limits. toolError provides the structure the AI needs to self-correct.' },
+      { q: 'What error codes should I use with toolError()?', a: 'Common codes: NOT_FOUND (entity missing), INVALID_INPUT (validation failure), UNAUTHORIZED (auth required), FORBIDDEN (permission denied), RATE_LIMITED (too many requests), CONFLICT (duplicate or stale data). The code is machine-readable and the message is human-readable.' },
+      { q: 'Can toolError() include suggested retry arguments?', a: 'Yes. toolError supports suggestedArgs: { start_date: args.end_date, end_date: args.start_date }. The AI reads these and automatically retries with corrected values. For example, if dates are swapped, the error tells the AI exactly how to fix them without human intervention.' },
+      { q: 'How does required() helper work for field validation?', a: 'required("field_name") is a shortcut for a missing field error. It returns error("Missing required field: field_name") with isError: true. Use it for quick validation: if (!args.id) return required("id").' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // FUSION CLIENT
+  // ═══════════════════════════════════════════════════════
+  'fusion-client.md': {
+    title: 'FusionClient — Type-Safe tRPC-style Client',
+    description: 'End-to-end type safety from server to client with createFusionClient(). Full autocomplete, compile-time error checking, and type inference.',
+    faqs: [
+      { q: 'What is FusionClient in mcp-fusion?', a: 'FusionClient provides tRPC-style end-to-end type safety for MCP tools. Created with createFusionClient<TRouter>(transport), it gives full autocomplete and compile-time checking. If you type a wrong action name or wrong argument type, TypeScript catches it before runtime.' },
+      { q: 'How does FusionClient type inference work?', a: 'When you define a tool with defineTool() or createTool(), the action names and parameter schemas are captured as TypeScript types. createFusionClient infers these types, providing autocomplete for action names and type-checked arguments — all the way from server to client, zero code generation.' },
+      { q: 'What is FusionTransport?', a: 'FusionTransport connects the client to the MCP server. It has one method: callTool(name, args) => Promise<ToolResponse>. Implement it with any transport: direct in-memory calls for testing, HTTP for remote servers, or stdio for local processes.' },
+      { q: 'How does FusionClient compare to tRPC?', a: 'Like tRPC, FusionClient infers types end-to-end without code generation. Unlike tRPC, it works over the MCP protocol instead of HTTP. You get the same DX — autocomplete, type checking, refactoring safety — for AI tool calls instead of API routes.' },
+      { q: 'Can FusionClient be used for testing?', a: 'Yes. Create a FusionTransport that calls builder.execute() directly in-memory. This gives type-safe, fast unit tests without starting an MCP server. TypeScript catches invalid action names and wrong argument types at compile time.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // STATE SYNC
+  // ═══════════════════════════════════════════════════════
+  'state-sync.md': {
+    title: 'State Sync — Temporal Awareness for AI Agents',
+    description: 'RFC 7234-inspired cache-control signals that prevent temporal blindness. cacheSignal() and invalidates() for cross-domain causal invalidation.',
+    faqs: [
+      { q: 'What is temporal blindness in AI agents?', a: 'Temporal blindness is when an AI agent uses stale data because it doesn\'t know when data was last fetched or when it became invalid. Without cache signals, an agent might display a 3-hour-old price as current. State sync in mcp-fusion solves this with RFC 7234-inspired cache-control metadata.' },
+      { q: 'How does cacheSignal() work in mcp-fusion?', a: 'cacheSignal(data, { maxAge: 30, scope: "invoices" }) attaches cache-control metadata to responses. The AI knows data is fresh for 30 seconds. After maxAge, it should re-fetch. The scope identifies what domain the cache applies to.' },
+      { q: 'What does invalidates() do in mcp-fusion?', a: 'invalidates(result, ["invoices", "billing"]) signals that a write operation has made those scopes stale. The AI discards cached data in those scopes and re-fetches on next access. This enables cross-domain causal invalidation.' },
+      { q: 'What is cross-domain causal invalidation?', a: 'When creating an invoice also affects the customer balance, invalidates(result, ["invoices", "customers"]) signals both scopes as stale. The AI knows cached customer data is outdated because of the invoice creation — even though they are different domains.' },
+      { q: 'Is state sync based on any standard?', a: 'Yes. Inspired by RFC 7234 (HTTP Caching). Uses familiar concepts: maxAge for freshness, scope for cache partitioning, and invalidation signals for write-through cache busting. Intuitive for backend engineers familiar with HTTP caching.' },
+      { q: 'How does state sync reduce redundant API calls?', a: 'Without state sync, an AI agent re-fetches data every time, even seconds after the last fetch. With cacheSignal({ maxAge: 60 }), the agent knows data is fresh for 60 seconds and skips redundant calls, reducing API load and token costs.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // CONTEXT
+  // ═══════════════════════════════════════════════════════
+  'context.md': {
+    title: 'State & Context — Context Management',
+    description: 'Managing execution context in mcp-fusion with contextFactory, middleware-derived state, and tag-based session context.',
+    faqs: [
+      { q: 'How does context work in mcp-fusion?', a: 'Context is created by contextFactory when attaching to a server. Each tool call receives a fresh context. Middleware can derive additional state (database connections, auth info) using defineMiddleware(), and the enriched context flows to all handlers.' },
+      { q: 'What is tag-based tool filtering?', a: 'Tags selectively expose tools per session. Tag tools with .tags("admin", "billing") and filter at attach time: filter: { tags: ["admin"] }. Only tools matching the filter are visible to the LLM. Enables role-based tool exposure without code changes.' },
+      { q: 'What is contextFactory in mcp-fusion?', a: 'contextFactory is a function provided when calling registry.attachToServer(). It receives MCP request metadata and returns your application context: contextFactory: (extra) => ({ db: createDb(), user: decodeToken(extra) }).' },
+      { q: 'Can I expose different tools to different users?', a: 'Yes, using tag filtering. Tag admin tools with .tags("admin"). At attach time, check the user\'s role: filter: { tags: [user.isAdmin ? "admin" : "user"] }. Each session only sees authorized tools.' },
+      { q: 'How do I exclude specific tools from the LLM?', a: 'Use exclude filter: filter: { exclude: ["internal", "debug"] }. Tools tagged "internal" or "debug" are hidden from the LLM. Useful for development tools that shouldn\'t be exposed in production.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // EXAMPLES
+  // ═══════════════════════════════════════════════════════
+  'examples.md': {
+    title: 'Cookbook & Examples — 14 Copy-Pasteable Patterns',
+    description: 'Production-ready examples covering CRUD, nested groups, middleware chains, Presenter composition, streaming, error handling, and advanced patterns.',
+    faqs: [
+      { q: 'What examples are available in the mcp-fusion cookbook?', a: 'The cookbook includes 14 patterns: basic CRUD tools, nested group hierarchies, middleware chains, Presenter with system rules, UI blocks (ECharts, Mermaid), cognitive guardrails, self-healing errors, Presenter composition with embed(), streaming progress, FusionClient usage, tag filtering, state sync, TOON encoding, and observability setup.' },
+      { q: 'Can I copy-paste mcp-fusion examples into my project?', a: 'Yes. Every example is designed to be copy-pasteable. They use real-world patterns (invoices, users, projects) with proper TypeScript types. Adjust the context type and database calls to match your application.' },
+      { q: 'What real-world domains do the examples cover?', a: 'Examples use: invoice management (billing.get, billing.pay), user CRUD (users.list, users.create, users.ban), project management (projects.list, projects.archive), and platform administration (platform.users.admin.reset).' },
+      { q: 'Are there streaming progress examples?', a: 'Yes. Generator handler: async function* handler() { yield progress(0.25, "Loading..."); const data = await db.query(); yield progress(0.75, "Processing..."); return success(data); }. The MCP client receives real-time progress updates.' },
+      { q: 'Is there an example combining all features?', a: 'Yes. The complete platform example combines: hierarchical groups, middleware chains (auth + db), Presenters with system rules and UI blocks, cognitive guardrails, self-healing errors, tag filtering, and observability — all in one production-ready tool definition.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // RESULT MONAD
+  // ═══════════════════════════════════════════════════════
+  'result-monad.md': {
+    title: 'Result Monad — Type-Safe Error Handling',
+    description: 'Result<T> monad for composable, type-safe error handling with succeed() and fail(). Eliminate uncaught exceptions.',
+    faqs: [
+      { q: 'What is the Result monad in mcp-fusion?', a: 'Result<T> is a discriminated union type: Success<T> | Failure. Use succeed(value) for success and fail(response) for errors. Pattern match with if (!result.ok) return result.response; const value = result.value; Eliminates try/catch and makes errors explicit in the type system.' },
+      { q: 'When should I use Result vs try/catch?', a: 'Use Result for expected errors (not found, validation failures, permission denied) — domain logic. Use try/catch for unexpected infrastructure errors (network, database). Result makes error paths explicit, composable, and visible in the type signature.' },
+      { q: 'How does Result improve TypeScript type narrowing?', a: 'After checking if (!result.ok), TypeScript narrows to Failure. After the guard, result is narrowed to Success<T>, giving typed access to result.value without any type assertions or casts needed.' },
+      { q: 'Can I chain multiple Result operations?', a: 'Yes. const idResult = parseId(args.id); if (!idResult.ok) return idResult.response; const user = await findUser(idResult.value); if (!user) return fail(error("User not found")); return success(user);. Each step is composable and type-safe.' },
+      { q: 'How does fail() create a Failure?', a: 'fail(response) wraps a ToolResponse into a Failure: { ok: false, response }. The response is typically from error() or toolError(). When returned from a handler, the framework sends the error response to the MCP client.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // OBSERVABILITY
+  // ═══════════════════════════════════════════════════════
+  'observability.md': {
+    title: 'Observability — Zero-Overhead Debug Observer',
+    description: 'Runtime debugging with createDebugObserver(). Typed event system for tool:start, tool:end, tool:error, middleware events. Zero overhead when disabled.',
+    faqs: [
+      { q: 'How does observability work in mcp-fusion?', a: 'createDebugObserver() returns an observer that logs tool execution events: tool:start, tool:end, tool:error, middleware:start, middleware:end. Attach to the registry. When no observer is attached, zero runtime overhead — no logging calls, no event objects created.' },
+      { q: 'Can I enable debugging per-tool?', a: 'Yes. Three levels: per-tool (on the builder), per-registry (on ToolRegistry), or per-server (on attachToServer). Per-tool debugging only traces that specific tool\'s execution, reducing noise.' },
+      { q: 'What events does the debug observer emit?', a: 'Five events: tool:start (args + timestamp), tool:end (success + duration), tool:error (error details), middleware:start (chain began), middleware:end (chain completed). All include timestamps and metadata.' },
+      { q: 'Is there performance overhead when observability is disabled?', a: 'Absolutely zero. No observer attached = no event objects, no logging calls, no timing measurements. The observer pattern ensures no production overhead unless explicitly enabled.' },
+      { q: 'Can I build custom observers?', a: 'Yes. Implement handler functions for each event type. Send events to any destination: console, files, DataDog, Sentry, Prometheus, or custom dashboards. The interface is fully typed.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // API REFERENCE
+  // ═══════════════════════════════════════════════════════
+  'api-reference.md': {
+    title: 'API Reference — Complete mcp-fusion API',
+    description: 'Complete API reference for mcp-fusion: builders, registry, presenters, response helpers, middleware, FusionClient, result monad, streaming, and domain models.',
+    faqs: [
+      { q: 'What are the main exports of mcp-fusion?', a: 'Main exports: createTool(), defineTool(), createPresenter(), ToolRegistry, createFusionClient(), success(), error(), toolError(), toonSuccess(), defineMiddleware(), progress(), succeed(), fail(), ResponseBuilder, ui helpers (ui.echarts, ui.mermaid, ui.summary), cacheSignal(), invalidates(), and createDebugObserver().' },
+      { q: 'What TypeScript version is required for mcp-fusion?', a: 'TypeScript >= 5.7 for full type inference support, especially FusionClient and builder APIs. Node.js >= 18 is required as the runtime.' },
+      { q: 'What is the ToolResponse type?', a: 'Standard MCP response: { content: [{ type: "text", text: string }], isError?: boolean }. All response helpers (success, error, toolError, toonSuccess) return this type. Presenters also produce ToolResponse objects.' },
+      { q: 'How many builder methods are available?', a: 'GroupedToolBuilder provides 15+ methods: .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata().' },
+      { q: 'What domain model classes exist in mcp-fusion?', a: 'Domain models: BaseModel (abstract base), GroupItem (leaf with parent), Group (tree node), Tool (schemas + annotations), Resource (uri + mime), Prompt (arguments), PromptArgument (required flag). Used internally and available for custom extensions.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // ARCHITECTURE
+  // ═══════════════════════════════════════════════════════
+  'architecture.md': {
+    title: 'Architecture — How mcp-fusion Works Internally',
+    description: 'Internal architecture of mcp-fusion: execution pipeline, pre-compiled middleware chains, Zod schema merging, discriminator routing, and Presenter composition.',
+    faqs: [
+      { q: 'How does the mcp-fusion execution pipeline work?', a: 'When a tool call arrives: (1) discriminator routes to correct action, (2) Zod validates and strips input, (3) pre-compiled middleware chain executes, (4) handler runs and returns raw data, (5) Presenter wraps data with rules/UI/affordances, (6) structured response is returned to the MCP client.' },
+      { q: 'What does pre-compiled middleware chains mean?', a: 'At build time (.buildToolDefinition()), mcp-fusion resolves and composes all middleware into a single function chain per action. At runtime, zero middleware resolution is needed — the chain is already built, making even complex stacks add negligible latency.' },
+      { q: 'How does Zod schema merging work?', a: 'Each action has its own schema. At build time, mcp-fusion merges the commonSchema with each action\'s schema using Zod .merge().strip(). The merged schema validates input AND strips unknown fields — providing both validation and security in a single pass.' },
+      { q: 'What happens when an action has a Presenter?', a: 'After the handler returns raw data, the ExecutionPipeline passes it through the Presenter. The Presenter validates against its schema (stripping undeclared fields), executes system rule functions, generates UI blocks, evaluates suggested actions, and composes the final structured perception package.' },
+      { q: 'How does freeze-after-build ensure immutability?', a: 'After .buildToolDefinition(), the entire builder state is frozen with Object.freeze(). Tool definitions, schemas, middleware chains, and action configs become immutable. Any attempt to modify them throws a TypeError. This guarantees deterministic behavior.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // SCALING
+  // ═══════════════════════════════════════════════════════
+  'scaling.md': {
+    title: 'Scaling & Optimization — Performance at Scale',
+    description: 'Performance optimization patterns for mcp-fusion: TOON encoding, agent limits, tag filtering, middleware pre-compilation, and freeze-after-build immutability.',
+    faqs: [
+      { q: 'What is TOON encoding in mcp-fusion?', a: 'TOON (Token-Oriented Object Notation) is a compact serialization that reduces token count by ~40% vs standard JSON. Use toonSuccess(data) instead of success(data). Strips quotes, uses shorthand, minimizes whitespace while remaining LLM-parseable.' },
+      { q: 'How does freeze-after-build work?', a: 'After .buildToolDefinition(), the builder is frozen with Object.freeze(). No further modifications possible. Prevents accidental mutation of tool definitions at runtime, ensuring deterministic behavior.' },
+      { q: 'How does .agentLimit() reduce costs?', a: 'Without limits, 10,000 rows at ~500 tokens each costs ~$2.40 per call. With .agentLimit(50), capped at 50 rows (~$0.02) plus filter guidance. 100x cost reduction per call.' },
+      { q: 'When should I use tag filtering for performance?', a: 'When you have many tools but only a subset is relevant per session. Each tool definition consumes prompt tokens. Filtering to relevant tags reduces prompt size and improves LLM accuracy on tool selection.' },
+      { q: 'How do pre-compiled middleware chains improve performance?', a: 'Traditional middleware resolves the chain at every request. mcp-fusion compiles once at build time. For 5 middleware functions, eliminates 5 function lookups per request — operations that add up at thousands of requests per second.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // MIGRATION
+  // ═══════════════════════════════════════════════════════
+  'migration.md': {
+    title: 'Migration Guide — Moving to mcp-fusion',
+    description: 'Step-by-step guide for migrating existing MCP servers to mcp-fusion. Incremental adoption, side-by-side running, and gradual Presenter introduction.',
+    faqs: [
+      { q: 'Can I migrate to mcp-fusion incrementally?', a: 'Yes. mcp-fusion works alongside existing MCP handlers. Start by wrapping one tool with defineTool(), register it alongside your existing switch/case handler. Migrate tools one at a time. No big-bang migration required.' },
+      { q: 'Will mcp-fusion break my existing MCP clients?', a: 'No. mcp-fusion produces standard MCP responses. Existing clients see the same { content: [{ type: "text", text: "..." }] } format. The structured perception package is encoded within the text field.' },
+      { q: 'What is the recommended migration order?', a: '(1) Install mcp-fusion. (2) Convert one simple tool to defineTool(). (3) Add Presenters to tools that return data. (4) Add middleware for auth/logging. (5) Consolidate related tools into groups. (6) Add state sync and observability. Each step is independent.' },
+      { q: 'Do I need to rewrite my business logic?', a: 'No. Your handlers keep the same logic. They just move from switch/case blocks into action handlers. Inputs and outputs remain the same — mcp-fusion wraps them with validation, routing, and Presenters automatically.' },
+      { q: 'Can mcp-fusion and raw handlers coexist?', a: 'Yes. Register mcp-fusion tools with registry.attachToServer() and keep existing setRequestHandler() for raw tools. Both run on the same MCP server. Migrate at your own pace.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // TESTING
+  // ═══════════════════════════════════════════════════════
+  'testing.md': {
+    title: 'Testing — Testing mcp-fusion Tools',
+    description: 'How to test mcp-fusion tools with execute(), mock contexts, and the upcoming createTestClient(). Unit tests, integration tests, and snapshot testing.',
+    faqs: [
+      { q: 'How do I test mcp-fusion tools?', a: 'Use builder.execute(mockContext, { action: "list" }) to call tools directly in tests. Provide a mock context with test database/services. Returns a ToolResponse to assert on. No MCP server needed for unit tests.' },
+      { q: 'Can I snapshot test tool responses?', a: 'Yes. execute() returns a deterministic ToolResponse. Use snapshot testing to catch unintended changes in response format, system rules, or suggested actions. Especially useful for Presenter outputs.' },
+      { q: 'How do I test Presenter output?', a: 'Call tool.execute(ctx, { action: "get", id: "123" }). Check the response text for system rules, UI blocks, and suggested actions. Snapshot tests catch regressions in perception packages.' },
+      { q: 'How do I test middleware in mcp-fusion?', a: 'Test in isolation: const result = await middleware(mockCtx, mockArgs, () => success("ok")). Verify it passes through (calls next()) or short-circuits (returns error) based on context conditions.' },
+      { q: 'Do I need a running MCP server for tests?', a: 'No. builder.execute() runs the full pipeline — validation, middleware, handler, Presenter — entirely in-memory. Tests are fast, deterministic, and CI-friendly.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // ADVANCED CONFIGURATION
+  // ═══════════════════════════════════════════════════════
+  'advanced-configuration.md': {
+    title: 'Advanced Configuration — Customizing mcp-fusion',
+    description: 'Advanced configuration options: custom discriminators, TOON descriptions, tool annotations, and registry-level settings.',
+    faqs: [
+      { q: 'Can I customize the discriminator field name?', a: 'Yes. .discriminator("command") changes the field from "action" to "command". The LLM then uses { command: "users.list" } instead of { action: "users.list" }.' },
+      { q: 'What are TOON descriptions?', a: '.toonDescription() sets a token-optimized description that uses fewer tokens in the LLM prompt while conveying the same information. Useful when you have many tools and need to minimize prompt size.' },
+      { q: 'How do I set tool-level annotations?', a: 'Use .annotations({ title: "Platform Admin", audience: [Role.ASSISTANT], priority: 1 }). These are standard MCP annotations that help clients display and prioritize tools.' },
+      { q: 'Can I override the discriminator value?', a: 'The discriminator value defaults to the action name (or group.action for groups). The field name is customizable via .discriminator(), but values are always derived from the action/group hierarchy for consistency.' },
+      { q: 'What registry-level settings are available?', a: 'ToolRegistry supports: register/registerAll for builders, attachToServer with contextFactory and filter, getAllTools/getTools for inspection, .has() for existence checks, .clear() for removal, and .size for counting registered tools.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // INTROSPECTION
+  // ═══════════════════════════════════════════════════════
+  'introspection.md': {
+    title: 'Introspection — Runtime Tool Inspection',
+    description: 'Inspect registered tools at runtime with getActionNames(), getActionMetadata(), and previewPrompt(). Useful for debugging and documentation generation.',
+    faqs: [
+      { q: 'How can I see what actions a tool has?', a: 'builder.getActionNames() returns all action keys. builder.getActionMetadata() gives detailed metadata: destructive flag, readOnly, requiredFields, hasMiddleware. builder.previewPrompt() shows the exact prompt sent to the LLM.' },
+      { q: 'What information does getActionMetadata() return?', a: 'Per action: key (full discriminator value), actionName, groupName (if nested), description, destructive flag, idempotent flag, readOnly flag, requiredFields list, and hasMiddleware boolean.' },
+      { q: 'What is previewPrompt() used for?', a: 'Returns the exact text prompt sent to the LLM when the tool is registered. Includes tool description, all action names and descriptions, parameter schemas, and common fields. Use for debugging, docs generation, or prompt optimization.' },
+      { q: 'Can I auto-generate documentation from tool definitions?', a: 'Yes. Use getActionNames() and getActionMetadata() to programmatically extract all tool information. Combined with previewPrompt(), auto-generate API docs, OpenAPI specs, or markdown reference pages from your definitions.' },
+      { q: 'How do I inspect the generated Zod schema?', a: 'After .buildToolDefinition(), access the tool definition which includes the merged JSON Schema. Shows exactly what the LLM sees: discriminator enum, per-action parameters, common fields, and descriptions.' },
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// HEAD TAG GENERATOR
+// ═══════════════════════════════════════════════════════
+export function getPageHeadTags(relativePath: string): HeadConfig[] {
+  const page = pages[relativePath];
+  if (!page) return [];
+
+  const slug = relativePath.replace('.md', '').replace('index', '');
+  const url = `${BASE_URL}/${slug}`;
+
+  const heads: HeadConfig[] = [];
+
+  // Page-specific Open Graph
+  heads.push(['meta', { property: 'og:title', content: page.title }]);
+  heads.push(['meta', { property: 'og:description', content: page.description }]);
+  heads.push(['meta', { property: 'og:url', content: url }]);
+
+  // FAQPage JSON-LD
+  if (page.faqs.length > 0) {
+    heads.push(['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': page.faqs.map(faq => ({
+        '@type': 'Question',
+        'name': faq.q,
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': faq.a,
+        },
+      })),
+    })]);
+  }
+
+  // TechArticle JSON-LD per page
+  heads.push(['script', { type: 'application/ld+json' }, JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    'headline': page.title,
+    'description': page.description,
+    'url': url,
+    'author': { '@type': 'Person', 'name': 'Renato Marinho' },
+    'publisher': { '@type': 'Organization', 'name': 'Vinkius Labs' },
+    'mainEntityOfPage': url,
+  })]);
+
+  return heads;
+}

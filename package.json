@@ -1,7 +1,7 @@
 {
     "name": "@vinkius-core/mcp-fusion",
-    "version": "0.11.0",
-    "description": "TypeScript framework that consolidates MCP operations into grouped tools with discriminator-based routing, reducing LLM context pressure and routing errors",
+    "version": "1.0.0",
+    "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety — so AI agents perceive and act on your data deterministically.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -35,7 +35,14 @@
         "typescript",
         "framework",
         "middleware",
-        "zod"
+        "zod",
+        "mva",
+        "model-view-agent",
+        "presenter",
+        "guardrails",
+        "agentic",
+        "structured-data",
+        "action-consolidation"
     ],
     "author": "Vinkius Labs",
     "repository": {

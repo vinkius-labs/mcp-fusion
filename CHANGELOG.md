@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-22
+
+### 🎉 First Stable Release — MVA Architecture for AI-Native MCP Servers
+
+This is the first stable release of `mcp-fusion`, introducing **MVA (Model-View-Agent)** — a new architectural pattern created by Renato Marinho at Vinkius Labs that replaces MVC for the AI era.
+
+### Highlights
+
+- **MVA Architecture:** The Presenter replaces the View with a deterministic perception layer — domain rules, rendered charts, action affordances, and cognitive guardrails. Every response is structured. Every action is explicit.
+- **Presenter Engine:** `createPresenter()` with Zod schema validation, system rules (static & dynamic), UI blocks (ECharts, Mermaid, Summary), suggested actions (Agentic HATEOAS), cognitive guardrails (`.agentLimit()`), and Presenter composition via `.embed()`.
+- **Action Consolidation:** 5,000+ operations behind ONE tool via `module.action` discriminator. 10x fewer tokens. Hierarchical groups with infinite nesting.
+- **Two Builder APIs:** `defineTool()` (JSON-first, zero Zod imports) and `createTool()` (full Zod power). Both produce identical runtime behavior.
+- **tRPC-style Middleware:** Pre-compiled at build time with `defineMiddleware()` for context derivation. Apply globally or per-group. Zero runtime allocation.
+- **Self-Healing Errors:** `toolError()` with structured recovery hints and suggested retry arguments. AI agents self-correct without human intervention.
+- **FusionClient:** tRPC-style end-to-end type safety with `createFusionClient<TRouter>()`. Full autocomplete, compile-time checking, zero code generation.
+- **State Sync:** RFC 7234-inspired cache signals with `cacheSignal()` and `invalidates()` for cross-domain causal invalidation. Prevents temporal blindness.
+- **Cognitive Guardrails:** `.agentLimit(n)` prevents context DDoS. Reduces token costs by up to 100x on large datasets.
+- **TOON Encoding:** `toonSuccess()` reduces token count by ~40% vs standard JSON while remaining LLM-parseable.
+- **Zero-Overhead Observability:** `createDebugObserver()` with typed events. Absolutely zero runtime cost when disabled.
+- **Result Monad:** `succeed()` / `fail()` for composable, type-safe error handling with TypeScript type narrowing.
+- **Streaming Progress:** Generator handlers with `yield progress()` for real-time updates.
+- **Introspection:** `getActionNames()`, `getActionMetadata()`, `previewPrompt()` for runtime inspection and documentation generation.
+- **Typed Handler Args:** `defineTool()` handlers receive fully-typed `args` inferred from params. No casts needed.
+- **InferRouter:** Compile-time router type extraction with `InferRouter<typeof registry>`.
+- **Freeze-After-Build:** `Object.freeze()` after `.buildToolDefinition()` ensures immutable, deterministic tool definitions.
+- **Zod .strip() Security:** Only declared fields reach the AI. Internal fields silently removed.
+- **Tag Filtering:** Role-based tool exposure per session without code changes.
+- **Validation Error Formatter:** LLM-friendly Zod error messages with actionable correction guidance.
+
+### Documentation
+- **23 documentation pages** covering every feature with code examples and real-world patterns.
+- **AEOS-optimized SEO:** 130+ unique FAQs across all pages as JSON-LD structured data, optimized for AI engines (ChatGPT, Perplexity, Gemini, Google SGE).
+- **Per-page Open Graph, TechArticle, and FAQPage JSON-LD** via `transformHead` hook.
+- **Global SoftwareSourceCode JSON-LD** with full metadata.
+- **Comparison table** showing 20+ differentiators vs raw MCP.
+
+### Test Suite
+- **842 tests** across 36 files, all passing.
+- Covers: invariant contracts, security vectors, adversarial inputs, schema collisions, concurrent stress, E2E integration, streaming, FusionClient contracts, and Presenter composition.
+
 ## [0.10.0] - 2026-02-22
 
 ### Added
