@@ -14,10 +14,13 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
+import { type ToolBuilder } from '../types.js';
 import { resolveServer } from './ServerResolver.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
 import { type StateSyncConfig } from '../state-sync/types.js';
+import { type IntrospectionConfig } from '../introspection/types.js';
+import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -87,6 +90,44 @@ export interface AttachOptions<TContext> {
      * @see {@link https://arxiv.org/abs/2510.23853 | "Your LLM Agents are Temporally Blind"}
      */
     stateSync?: StateSyncConfig;
+
+    /**
+     * Enable dynamic introspection manifest (MCP Resource).
+     *
+     * When enabled, the framework registers a `resources/list` and
+     * `resources/read` handler exposing a structured manifest of all
+     * registered tools, actions, and presenters.
+     *
+     * **Security**: Opt-in only. Never enabled silently.
+     * **RBAC**: The `filter` callback allows dynamic per-session
+     * manifest filtering. Unauthorized agents never see hidden tools.
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     introspection: {
+     *         enabled: process.env.NODE_ENV !== 'production',
+     *         uri: 'fusion://manifest.json',
+     *         filter: (manifest, ctx) => {
+     *             if (ctx.user.role !== 'admin') {
+     *                 delete manifest.capabilities.tools['admin.delete_user'];
+     *             }
+     *             return manifest;
+     *         },
+     *     },
+     * });
+     * ```
+     *
+     * @see {@link IntrospectionConfig} for configuration options
+     */
+    introspection?: IntrospectionConfig<TContext>;
+
+    /**
+     * Server name used in the introspection manifest.
+     * @defaultValue `'mcp-fusion-server'`
+     */
+    serverName?: string;
 }
 
 /** Function to detach the registry from the server */
@@ -99,6 +140,8 @@ export interface RegistryDelegate<TContext> {
     routeCall(ctx: TContext, name: string, args: Record<string, unknown>): Promise<ToolResponse>;
     /** Propagate a debug observer to all registered builders (duck-typed) */
     enableDebug?(observer: DebugObserverFn): void;
+    /** Get an iterable of all registered builders (for introspection) */
+    getBuilders?(): Iterable<ToolBuilder<TContext>>;
 }
 
 // ── Attachment ───────────────────────────────────────────
@@ -122,7 +165,7 @@ export function attachToServer<TContext>(
     // Resolve the low-level Server instance via ServerResolver strategy
     const resolved = resolveServer(server) as McpServerTyped;
 
-    const { filter, contextFactory, debug, stateSync } = options;
+    const { filter, contextFactory, debug, stateSync, introspection, serverName } = options;
 
     // Propagate debug observer to all registered builders
     if (debug && registry.enableDebug) {
@@ -131,6 +174,17 @@ export function attachToServer<TContext>(
 
     // Create State Sync layer (zero overhead when not configured)
     const syncLayer = stateSync ? new StateSyncLayer(stateSync) : undefined;
+
+    // Register introspection resource (zero overhead when disabled)
+    if (introspection?.enabled && registry.getBuilders) {
+        registerIntrospectionResource(
+            resolved,
+            introspection,
+            serverName ?? 'mcp-fusion-server',
+            { values: () => registry.getBuilders!() },
+            contextFactory,
+        );
+    }
 
     // ── tools/list handler ────────────────────────────────────────
     const listHandler = () => {

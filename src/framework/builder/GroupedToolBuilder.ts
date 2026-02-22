@@ -811,17 +811,25 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @see {@link ActionMetadata} for the metadata shape
      */
     getActionMetadata(): ActionMetadata[] {
-        return this._actions.map(a => ({
-            key: a.key,
-            actionName: a.actionName,
-            groupName: a.groupName,
-            description: a.description,
-            destructive: a.destructive ?? false,
-            idempotent: a.idempotent ?? false,
-            readOnly: a.readOnly ?? false,
-            requiredFields: getActionRequiredFields(a),
-            hasMiddleware: (a.middlewares?.length ?? 0) > 0,
-        }));
+        return this._actions.map(a => {
+            const presenter = a.returns;
+            return {
+                key: a.key,
+                actionName: a.actionName,
+                groupName: a.groupName,
+                description: a.description,
+                destructive: a.destructive ?? false,
+                idempotent: a.idempotent ?? false,
+                readOnly: a.readOnly ?? false,
+                requiredFields: getActionRequiredFields(a),
+                hasMiddleware: (a.middlewares?.length ?? 0) > 0,
+                // Presenter metadata (introspection)
+                presenterName: presenter?.name,
+                presenterSchemaKeys: presenter?.getSchemaKeys(),
+                presenterUiBlockTypes: presenter?.getUiBlockTypes(),
+                presenterHasContextualRules: presenter?.hasContextualRules(),
+            };
+        });
     }
 
     // ── Private ─────────────────────────────────────────

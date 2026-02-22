@@ -405,6 +405,24 @@ const pages: Record<string, PageSEO> = {
       { q: 'How do I inspect the generated Zod schema?', a: 'After .buildToolDefinition(), access the tool definition which includes the merged JSON Schema. Shows exactly what the LLM sees: discriminator enum, per-action parameters, common fields, and descriptions.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // DYNAMIC MANIFEST
+  // ═══════════════════════════════════════════════════════
+  'dynamic-manifest.md': {
+    title: 'Dynamic Manifest — RBAC-Aware Server Capabilities',
+    description: 'Expose a live, RBAC-filtered server capabilities manifest as a native MCP Resource. Orchestrators and admin dashboards discover every tool, action, and presenter — filtered per session.',
+    faqs: [
+      { q: 'What is the Dynamic Manifest in mcp-fusion?', a: 'The Dynamic Manifest is an opt-in MCP Resource (fusion://manifest.json) that exposes every registered tool, action, and presenter on the server. It uses the native MCP resources/list and resources/read protocol — no custom HTTP endpoints. RBAC filtering ensures each session only sees authorized capabilities.' },
+      { q: 'How do I enable the Dynamic Manifest?', a: 'Pass introspection: { enabled: true } to registry.attachToServer(). The server then advertises fusion://manifest.json via resources/list and serves the manifest on resources/read. Configure a filter callback for RBAC, and set serverName for the manifest header.' },
+      { q: 'How does RBAC filtering work with the Dynamic Manifest?', a: 'The filter callback receives a deep clone of the full manifest plus the session context (from contextFactory). You delete tools, actions, or presenters the user should not see. Each request gets a fresh clone — concurrent sessions with different roles never interfere. Unauthorized users don\'t even know hidden tools exist.' },
+      { q: 'What information does the Dynamic Manifest contain?', a: 'The manifest includes: server name, MCP Fusion version, MVA architecture label, all registered tools (with tags, descriptions, input schemas), all actions per tool (destructive/readOnly flags, required fields, Presenter references), and all referenced Presenters (schema keys, UI block types, contextual rules flag).' },
+      { q: 'Is the Dynamic Manifest safe for production?', a: 'The Dynamic Manifest is strictly opt-in. When disabled, zero handlers are registered, zero resources are advertised, and zero code runs. For production, use enabled: process.env.NODE_ENV !== \'production\' to restrict to development/staging. RBAC filtering provides an additional security layer even when enabled.' },
+      { q: 'What is the difference between Builder Introspection and the Dynamic Manifest?', a: 'Builder Introspection (getActionNames, getActionMetadata, previewPrompt) is for developers inspecting individual tools at development time. The Dynamic Manifest is an enterprise feature for operators — it exposes the entire server capabilities tree as an MCP Resource, with per-session RBAC filtering for admin dashboards, compliance audits, and orchestration.' },
+      { q: 'Can I customize the manifest URI?', a: 'Yes. Set introspection: { enabled: true, uri: \'fusion://custom/v2/manifest.json\' }. The custom URI is used in both resources/list (advertising) and resources/read (serving). The default is fusion://manifest.json.' },
+      { q: 'Does the Dynamic Manifest reflect late-registered tools?', a: 'Yes. The manifest is compiled fresh on every resources/read request by iterating registry.getBuilders(). Tools registered after attachToServer() automatically appear in subsequent manifest reads — no restart required.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

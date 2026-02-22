@@ -123,6 +123,7 @@ export default defineConfig({
           { text: 'Performance', link: '/performance' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
           { text: 'Introspection', link: '/introspection' },
+          { text: 'Dynamic Manifest', link: '/dynamic-manifest' },
           { text: 'Testing', link: '/testing' },
         ]
       },

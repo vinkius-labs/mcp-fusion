@@ -358,6 +358,52 @@ export class Presenter<T> {
         return this;
     }
 
+    // ── Introspection (read-only metadata accessors) ─────
+
+    /**
+     * Get the Zod schema's top-level keys.
+     *
+     * Returns the field names declared in the Presenter's schema.
+     * Safe to call at any time — does NOT seal the Presenter.
+     *
+     * @returns Array of key names, or empty array if no schema is set
+     */
+    getSchemaKeys(): string[] {
+        if (!this._schema) return [];
+        // ZodType may not have `.shape` (e.g. z.array). Guard safely.
+        const shape = (this._schema as { shape?: Record<string, unknown> }).shape;
+        return shape ? Object.keys(shape) : [];
+    }
+
+    /**
+     * Get which UI block factory methods were configured.
+     *
+     * Inspects the configuration callbacks to determine supported
+     * UI block types. Does NOT execute any callbacks.
+     *
+     * @returns Array of UI block type labels
+     */
+    getUiBlockTypes(): string[] {
+        const types: string[] = [];
+        if (this._itemUiBlocks) types.push('item');
+        if (this._collectionUiBlocks) types.push('collection');
+        // Note: specific types (echarts, mermaid, etc.) are only known at
+        // runtime when callbacks execute. We report callback presence here.
+        return types;
+    }
+
+    /**
+     * Whether the Presenter uses dynamic (context-aware) system rules.
+     *
+     * Static rules (string arrays) are NOT contextual.
+     * Functions `(data, ctx?) => ...` ARE contextual.
+     *
+     * @returns `true` if rules are a function
+     */
+    hasContextualRules(): boolean {
+        return typeof this._rules === 'function';
+    }
+
     // ── Execution ────────────────────────────────────────
 
     /**

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-22
+
+### 🔍 Dynamic Manifest — RBAC-Aware Server Capabilities via MCP Resources
+
+Expose a **live capabilities manifest** (`fusion://manifest.json`) as a native MCP Resource. Orchestrators, admin dashboards, and AI agents can discover every tool, action, and presenter registered on the server — dynamically filtered by the requesting user's role and permissions.
+
+### Added
+
+- **Dynamic Manifest Resource:** New opt-in MCP Resource (`fusion://manifest.json`) that exposes the full server capabilities tree. Uses native MCP `resources/list` and `resources/read` protocol — no custom HTTP endpoints. Zero overhead when disabled.
+- **ManifestCompiler:** New `compileManifest()` function that extracts metadata from all registered `ToolBuilder` instances and produces a structured `ManifestPayload` with tools, actions, input schemas, and presenter references. `cloneManifest()` provides deep-clone isolation for RBAC filtering.
+- **IntrospectionResource:** New `registerIntrospectionResource()` function that registers `resources/list` and `resources/read` handlers on the low-level MCP Server. Supports custom URIs, RBAC filter callbacks, and context factory integration.
+- **RBAC Filtering:** Filter callback receives a deep clone of the manifest plus the session context (from `contextFactory`). Delete tools, actions, or presenters the user should not see. Each request gets a fresh clone — concurrent sessions with different roles never interfere.
+- **Presenter Introspection Accessors:** `getSchemaKeys()`, `getUiBlockTypes()`, and `hasContextualRules()` on the `Presenter` class — read-only accessors that extract metadata without executing `.make()`, no side effects, don't seal.
+- **`ActionMetadata` Presenter Fields:** Extended `ActionMetadata` with `presenterName`, `presenterSchemaKeys`, `presenterUiBlockTypes`, and `presenterHasContextualRules` for action-level presenter metadata.
+- **`ToolRegistry.getBuilders()`:** New method returning an iterable of all registered `ToolBuilder` instances for introspection.
+- **`AttachOptions.introspection`:** New `IntrospectionConfig<TContext>` option with `enabled`, `uri`, and `filter` fields.
+- **`AttachOptions.serverName`:** New option to set the manifest's server name (default: `'mcp-fusion-server'`).
+
+### Documentation
+- **New "Dynamic Manifest" page:** Dedicated documentation page with full configuration guide, RBAC patterns, payload structure reference, architecture diagram, and real-world examples (multi-tenant RBAC, compliance audits, admin dashboards).
+- **SEO:** 8 new FAQs for the Dynamic Manifest page with full structured data (FAQPage + TechArticle JSON-LD).
+
+### Test Suite
+- **50 new tests** across 2 new test files:
+  - `Introspection.test.ts` — 31 tests covering ManifestCompiler, Presenter accessors, RBAC filtering, cloneManifest, ToolRegistry.getBuilders, ActionMetadata presenter fields.
+  - `IntrospectionIntegration.test.ts` — 19 mock-based integration tests covering handler registration, resources/list and resources/read, RBAC with context factory, zero-overhead guarantee, custom URIs, concurrent reads, dynamic registry, and full payload structure.
+- **Test count:** 1,246 tests across 56 files, all passing.
+
 ## [1.0.0] - 2026-02-22
 
 ### 🎉 First Stable Release — MVA Architecture for AI-Native MCP Servers

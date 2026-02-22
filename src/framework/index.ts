@@ -66,3 +66,12 @@ export { ui } from './presenter/index.js';
 export type { UiBlock, ActionSuggestion } from './presenter/index.js';
 export { Presenter, createPresenter, isPresenter } from './presenter/index.js';
 export { PresenterValidationError } from './presenter/index.js';
+
+// ── Introspection (Dynamic Manifest) ─────────────────────
+export { compileManifest, cloneManifest, registerIntrospectionResource } from './introspection/index.js';
+export type {
+    IntrospectionConfig, ManifestPayload,
+    ManifestCapabilities, ManifestTool,
+    ManifestAction, ManifestPresenter,
+    IntrospectionRegistryDelegate,
+} from './introspection/index.js';

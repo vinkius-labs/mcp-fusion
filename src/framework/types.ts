@@ -113,6 +113,17 @@ export interface ActionMetadata {
     readonly requiredFields: readonly string[];
     /** Whether this action has group/action-level middleware */
     readonly hasMiddleware: boolean;
+
+    // ── Presenter Metadata (Introspection) ───────────────
+
+    /** Presenter name (if MVA pattern is used via `returns: Presenter`) */
+    readonly presenterName: string | undefined;
+    /** Schema keys exposed by the Presenter (Zod shape keys) */
+    readonly presenterSchemaKeys: readonly string[] | undefined;
+    /** UI block types supported by the Presenter (e.g. 'echarts', 'mermaid') */
+    readonly presenterUiBlockTypes: readonly string[] | undefined;
+    /** Whether the Presenter has dynamic (context-aware) system rules */
+    readonly presenterHasContextualRules: boolean | undefined;
 }
 
 // ── Internal Action (Strategy Input) ─────────────────────

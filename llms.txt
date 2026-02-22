@@ -33,6 +33,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Tags**: Capability labels for selective tool exposure per session
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
+- **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
 
 ## Quick Start — MVA with Presenter
 
@@ -244,13 +245,38 @@ return toolError('INVALID_DATE_RANGE', {
 ## State Sync
 
 ```typescript
-import { cacheSignal, invalidates } from '@vinkius-core/mcp-fusion';
+registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+    stateSync: {
+        defaults: { cacheControl: 'no-store' },
+        policies: [
+            { match: 'sprints.update', invalidates: ['sprints.*'] },
+            { match: 'tasks.update',   invalidates: ['tasks.*', 'sprints.*'] },
+            { match: 'countries.*',    cacheControl: 'immutable' },
+        ],
+    },
+});
+```
 
-// Read action — tell the agent how long data is fresh
-handler: async (ctx, args) => cacheSignal(data, { maxAge: 30, scope: 'invoices' });
+## Dynamic Manifest
 
-// Write action — tell the agent what data is now stale
-handler: async (ctx, args) => invalidates(result, ['invoices', 'billing']);
+```typescript
+registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+    serverName: 'my-platform',
+    introspection: {
+        enabled: process.env.NODE_ENV !== 'production',
+        filter: (manifest, ctx) => {
+            if (ctx.user.role !== 'admin') {
+                delete manifest.capabilities.tools['admin'];
+            }
+            return manifest;
+        },
+    },
+});
+// Exposes fusion://manifest.json via MCP resources/list + resources/read
+// Manifest includes: all tools, actions (destructive/readOnly flags, required_fields),
+// input schemas, presenter references — RBAC-filtered per session
 ```
 
 ## Tag Filtering
@@ -332,6 +358,15 @@ handler: async function* (ctx, args) {
 - `cacheSignal(data, options)` → ToolResponse with cache-control metadata
 - `invalidates(data, scopes)` → ToolResponse with invalidation signals
 
+### Dynamic Manifest
+- `registerIntrospectionResource(server, config, serverName, builders, contextFactory?)` — registers MCP resources/list + resources/read handlers
+- `compileManifest(serverName, builders)` → ManifestPayload (structured server capabilities)
+- `cloneManifest(manifest)` → deep clone for RBAC isolation
+- `Presenter.getSchemaKeys()` → string[] (read-only accessor)
+- `Presenter.getUiBlockTypes()` → string[] (read-only accessor)
+- `Presenter.hasContextualRules()` → boolean (read-only accessor)
+- `ToolRegistry.getBuilders()` → Iterable<ToolBuilder> (for introspection)
+
 ### Streaming Progress
 - `progress(percent, message)` → ProgressEvent (yield from generator handlers)
 - `isProgressEvent(value)` → type guard
@@ -355,9 +390,14 @@ handler: async function* (ctx, args) {
 - `ActionConfig<TContext>` — { name, description?, schema?, destructive?, readOnly?, handler, returns? }
 - `PresenterConfig` — { schema, systemRules?, uiBlocks?, agentLimit?, suggestActions?, embeds? }
 - `ToolBuilder<TContext>` — Interface for custom builders
-- `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware }
+- `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware, presenterName?, presenterSchemaKeys?, presenterUiBlockTypes?, presenterHasContextualRules? }
 - `ToolFilter` — { tags?: string[], exclude?: string[] }
-- `AttachOptions<TContext>` — { contextFactory?, filter? }
+- `AttachOptions<TContext>` — { contextFactory?, filter?, debug?, stateSync?, introspection?, serverName? }
+- `IntrospectionConfig<TContext>` — { enabled, uri?, filter? }
+- `ManifestPayload` — { server, mcp_fusion_version, architecture, capabilities: { tools, presenters } }
+- `ManifestTool` — { description, tags, actions, input_schema }
+- `ManifestAction` — { description, destructive, idempotent, readOnly, required_fields, returns_presenter }
+- `ManifestPresenter` — { schema_keys, ui_blocks_supported, has_contextual_rules }
 
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)

@@ -133,6 +133,18 @@ export class ToolRegistry<TContext = void> {
     }
 
     /**
+     * Get an iterable of all registered tool builders.
+     *
+     * Used by the introspection module to extract action
+     * metadata and presenter information from each builder.
+     *
+     * @returns Iterable of registered ToolBuilder instances
+     */
+    getBuilders(): Iterable<ToolBuilder<TContext>> {
+        return this._builders.values();
+    }
+
+    /**
      * Get tool definitions filtered by tags.
      *
      * Uses the {@link ToolFilter} to include/exclude tools
