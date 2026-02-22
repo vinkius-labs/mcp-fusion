@@ -339,6 +339,36 @@ MCP tool annotations operate at the tool level, but actions have individual beha
 ### Freeze-After-Build Immutability
 Once `buildToolDefinition()` is called, the builder is permanently frozen. The `_actions` array is sealed with `Object.freeze()`. All mutation methods throw. This eliminates an entire class of bugs where tools are accidentally mutated after registration — adopting the same pattern Protocol Buffers uses.
 
+### 🧠 State Sync — Preventing LLM Temporal Blindness
+
+LLMs have **no sense of time**. They cannot distinguish between data fetched 2 seconds ago and data fetched 20 minutes ago. This causes silent data corruption when AI agents make decisions based on stale state — a phenomenon called **Temporal Blindness**.
+
+State Sync injects RFC 7234-inspired `Cache-Control` directives directly into the MCP protocol:
+
+```typescript
+registry.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+    stateSync: {
+        defaults: { cacheControl: 'no-store' },
+        policies: [
+            { match: 'sprints.update', invalidates: ['sprints.*'] },
+            { match: 'tasks.update',   invalidates: ['tasks.*', 'sprints.*'] },
+            { match: 'countries.*',    cacheControl: 'immutable' },
+        ],
+    },
+});
+```
+
+**What happens automatically:**
+1. `tools/list` — Tool descriptions get `[Cache-Control: no-store]` or `[Cache-Control: immutable]` appended
+2. `tools/call` — After a successful mutation, responses get `[System: Cache invalidated for sprints.* — caused by sprints.update]` prepended
+
+The LLM reads `no-store` as "re-fetch before using" and `immutable` as "safe to trust my cached copy". Cross-domain invalidation tells it *exactly* which data changed and why.
+
+**Zero overhead when not configured. Zero imports needed. Fully declarative.**
+
+→ [Read the full State Sync Guide](docs/state-sync.md)
+
 ### Introspection API
 Need programmatic documentation, compliance audits, or dashboard generation?
 ```typescript
@@ -422,6 +452,9 @@ Six pure-function modules organized by bounded context. Every module is independ
 | **Conservative Annotations** | Safe MCP behavioral hints from per-action properties |
 | **⚠️ DESTRUCTIVE Warnings** | Safety signal in LLM tool descriptions |
 | **Tag Filtering** | Include/exclude tags for selective tool exposure |
+| **State Sync** | RFC 7234-inspired cache signals prevent LLM Temporal Blindness |
+| **Causal Invalidation** | Cross-domain `invalidates` patterns after successful mutations |
+| **Glob Pattern Matching** | Dot-separated `*` / `**` matching for tool name policies |
 | **Introspection API** | Runtime metadata for compliance, dashboards, audit trails |
 | **Freeze-After-Build** | `Object.freeze()` prevents mutation bugs after registration |
 | **Error Isolation** | `[tool/action]` prefixed errors for instant debugging |
@@ -443,6 +476,7 @@ Ready to build production agents? Dive into the documentation:
 | 🏗️ **[Architecture](docs/architecture.md)** | Domain model mapping, Strategy pattern, build-time engine, execution flow. |
 | 📈 **[Scaling Guide](docs/scaling.md)** | How tag filtering, TOON, and unification prevent hallucination at 5,000+ endpoints. |
 | 🛡️ **[Middleware](docs/middleware.md)** | Global, group-scoped, pre-compilation, context derivation, real patterns. |
+| 🧠 **[State Sync](docs/state-sync.md)** | Prevent LLM Temporal Blindness with RFC 7234-inspired cache-control signals. |
 | 🔍 **[Introspection](docs/introspection.md)** | Runtime metadata extraction for Enterprise compliance. |
 | 📖 **[API Reference](docs/api-reference.md)** | Comprehensive typings, methods, and class structures. |
 

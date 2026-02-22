@@ -53,3 +53,9 @@ export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
 } from './observability/DebugObserver.js';
+
+// ── State Sync ───────────────────────────────────────────
+export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
+export type {
+    CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
+} from './state-sync/index.js';

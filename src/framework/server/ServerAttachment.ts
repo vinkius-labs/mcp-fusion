@@ -16,6 +16,8 @@ import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
 import { resolveServer } from './ServerResolver.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
+import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
+import { type StateSyncConfig } from '../state-sync/types.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -56,6 +58,35 @@ export interface AttachOptions<TContext> {
      * @see {@link createDebugObserver} for creating an observer
      */
     debug?: DebugObserverFn;
+
+    /**
+     * Enable State Sync to prevent LLM Temporal Blindness and Causal State Drift.
+     *
+     * When configured, Fusion automatically:
+     * 1. Appends `[Cache-Control: X]` to tool descriptions during `tools/list`
+     * 2. Prepends `[System: Cache invalidated...]` after successful mutations in `tools/call`
+     *
+     * Zero overhead when omitted — no state-sync code runs.
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     stateSync: {
+     *         defaults: { cacheControl: 'no-store' },
+     *         policies: [
+     *             { match: 'sprints.update', invalidates: ['sprints.*'] },
+     *             { match: 'tasks.update',   invalidates: ['tasks.*', 'sprints.*'] },
+     *             { match: 'countries.*',     cacheControl: 'immutable' },
+     *         ],
+     *     },
+     * });
+     * ```
+     *
+     * @see {@link StateSyncConfig} for configuration options
+     * @see {@link https://arxiv.org/abs/2510.23853 | "Your LLM Agents are Temporally Blind"}
+     */
+    stateSync?: StateSyncConfig;
 }
 
 /** Function to detach the registry from the server */
@@ -91,19 +122,22 @@ export function attachToServer<TContext>(
     // Resolve the low-level Server instance via ServerResolver strategy
     const resolved = resolveServer(server) as McpServerTyped;
 
-    const { filter, contextFactory, debug } = options;
+    const { filter, contextFactory, debug, stateSync } = options;
 
     // Propagate debug observer to all registered builders
     if (debug && registry.enableDebug) {
         registry.enableDebug(debug);
     }
 
+    // Create State Sync layer (zero overhead when not configured)
+    const syncLayer = stateSync ? new StateSyncLayer(stateSync) : undefined;
+
     // ── tools/list handler ────────────────────────────────────────
     const listHandler = () => {
         const tools = filter
             ? registry.getTools(filter)
             : registry.getAllTools();
-        return { tools };
+        return { tools: syncLayer ? syncLayer.decorateTools(tools) : tools };
     };
 
     // ── tools/call handler ────────────────────────────────────────
@@ -115,7 +149,8 @@ export function attachToServer<TContext>(
         const ctx = contextFactory
             ? await contextFactory(extra)
             : (undefined as TContext);
-        return registry.routeCall(ctx, name, args);
+        const result = await registry.routeCall(ctx, name, args);
+        return syncLayer ? syncLayer.decorateResult(name, result) : result;
     };
 
     // Register both handlers

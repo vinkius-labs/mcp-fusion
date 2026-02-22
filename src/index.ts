@@ -61,6 +61,7 @@ export {
     createFusionClient,
     createTypedRegistry,
     createDebugObserver,
+    StateSyncLayer, PolicyEngine, matchGlob,
 } from './framework/index.js';
 /** @category Framework */
 export type {
@@ -79,4 +80,5 @@ export type {
     InferRouter, TypedToolRegistry,
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
+    CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
 } from './framework/index.js';

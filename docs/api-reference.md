@@ -354,6 +354,7 @@ detach();
 | `filter` | `ToolFilter?` | Tag-based inclusion/exclusion filter. |
 | `contextFactory` | `Function?` | Per-request context factory. Supports async. |
 | `debug` | `DebugObserverFn?` | Debug observer — propagated to all builders. See [Observability](/observability). |
+| `stateSync` | `StateSyncConfig?` | Cache-control and causal invalidation. See [State Sync](/state-sync). |
 
 ---
 
@@ -395,6 +396,79 @@ Attach a debug observer to a single tool:
 const tool = createTool<AppContext>('projects')
     .debug(createDebugObserver())
     .action({ name: 'list', handler: listProjects });
+```
+
+---
+
+## State Sync
+
+Prevents LLM Temporal Blindness by injecting cache-control signals into the MCP protocol. See [State Sync Guide](/state-sync) for comprehensive examples.
+
+### `StateSyncConfig`
+
+```typescript
+interface StateSyncConfig {
+    policies: SyncPolicy[];
+    defaults?: { cacheControl?: CacheDirective };
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `policies` | `SyncPolicy[]` | Policy rules, evaluated in declaration order (first match wins). |
+| `defaults` | `object?` | Fallback cache directive for unmatched tools. |
+
+### `SyncPolicy`
+
+```typescript
+interface SyncPolicy {
+    match: string;
+    cacheControl?: CacheDirective;
+    invalidates?: string[];
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `match` | `string` | Dot-separated glob pattern (e.g. `sprints.*`, `**.get`). |
+| `cacheControl` | `CacheDirective?` | `'no-store'` or `'immutable'` — appended to tool descriptions. |
+| `invalidates` | `string[]?` | Glob patterns of tools whose cache is invalidated on success. |
+
+### `CacheDirective`
+
+```typescript
+type CacheDirective = 'no-store' | 'immutable';
+```
+
+### `ResolvedPolicy`
+
+```typescript
+interface ResolvedPolicy {
+    cacheControl?: CacheDirective;
+    invalidates?: readonly string[];
+}
+```
+
+### `PolicyEngine`
+
+For advanced use cases (custom pipelines, testing).
+
+| Method | Returns | Description |
+|---|---|---|
+| `constructor(policies, defaults?)` | — | Validates and caches policies |
+| `resolve(toolName)` | `ResolvedPolicy \| null` | Resolves the applicable policy (cached) |
+
+### `matchGlob(pattern, name)`
+
+Pure function for dot-separated glob matching.
+
+```typescript
+import { matchGlob } from '@vinkius-core/mcp-fusion';
+
+matchGlob('sprints.*',  'sprints.get');       // true
+matchGlob('sprints.*',  'sprints.tasks.get'); // false
+matchGlob('sprints.**', 'sprints.tasks.get'); // true
+matchGlob('**',         'anything.at.all');   // true
 ```
 
 ---

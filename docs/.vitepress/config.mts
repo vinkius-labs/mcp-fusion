@@ -50,6 +50,7 @@ export default defineConfig({
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Introspection', link: '/introspection' },
           { text: 'Observability', link: '/observability' },
+          { text: 'State Sync', link: '/state-sync' },
           { text: 'Architecture', link: '/architecture' },
           { text: 'Testing', link: '/testing' },
         ]
