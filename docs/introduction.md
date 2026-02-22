@@ -112,7 +112,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 
 ## Who Is This For?
 
-**For engineers building AI-powered products.** If your backend serves data to LLM agents — through Claude, GPT, or any MCP-compatible runtime — mcp-fusion gives you the architecture to do it at scale without hallucination.
+**For engineers building AI-powered products.** If your backend serves data to LLM agents — through Claude, GPT-5.2, or any MCP-compatible runtime — mcp-fusion gives you the architecture to do it at scale without hallucination.
 
 **For teams scaling beyond prototypes.** When your MCP server grows from 5 tools to 500 actions, mcp-fusion's routing, middleware, and Presenter system keep the codebase clean and the agent accurate.
 

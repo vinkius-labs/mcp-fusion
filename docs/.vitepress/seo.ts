@@ -23,7 +23,7 @@ const pages: Record<string, PageSEO> = {
       { q: 'Is mcp-fusion free and open source?', a: 'Yes. mcp-fusion is open source under the Apache 2.0 license. It is free to use in personal and commercial projects. Built and maintained by Vinkius Labs.' },
       { q: 'What is action consolidation in mcp-fusion?', a: 'Action consolidation lets you group 5,000+ operations behind a single MCP tool using a discriminator enum. Instead of 50 separate tools flooding the LLM prompt, the agent sees ONE tool with actions like users.list, billing.refund. This reduces token usage by 10x and eliminates tool-selection hallucination.' },
       { q: 'What are cognitive guardrails in mcp-fusion?', a: 'Cognitive guardrails (.agentLimit()) prevent large datasets from overwhelming the AI context window. When a query returns 10,000 rows, the guardrail automatically truncates to a safe limit (e.g., 50 items) and injects guidance like "Showing 50 of 10,000. Use filters to narrow results." This prevents context DDoS and reduces costs by up to 100x.' },
-      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, supported by Claude, GPT-4, Gemini, and any MCP-compatible client. Structured perception packages work with any LLM that processes text.' },
+      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, supported by Claude, GPT-5.2, Gemini, and any MCP-compatible client. Structured perception packages work with any LLM that processes text.' },
       { q: 'What languages and runtimes does mcp-fusion support?', a: 'mcp-fusion is written in TypeScript and runs on Node.js >= 18. It requires TypeScript >= 5.7 for full type inference. All APIs are fully typed with generics, providing autocomplete and compile-time safety.' },
     ],
   },
@@ -63,6 +63,23 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
+  // COST & HALLUCINATION
+  // ═══════════════════════════════════════════════════════
+  'cost-and-hallucination.md': {
+    title: 'Cost Reduction & Anti-Hallucination — Design Principles',
+    description: 'How mcp-fusion reduces LLM API costs and prevents hallucination through fewer tokens, fewer requests, action consolidation, TOON encoding, cognitive guardrails, and self-healing errors.',
+    faqs: [
+      { q: 'How does mcp-fusion reduce LLM API costs?', a: 'mcp-fusion targets cost reduction through eight mechanisms: action consolidation (fewer tools in the prompt), TOON encoding (~30-50% fewer tokens), cognitive guardrails (bounded response sizes), JIT context (no wasted tokens on irrelevant rules), Zod .strip() (fewer hallucinated-parameter retries), self-healing errors (fewer correction attempts), agentic affordances (fewer wrong-tool selections), and State Sync (fewer stale-data re-reads).' },
+      { q: 'What is the relationship between tokens and hallucination?', a: 'Cost and hallucination share a root cause: too many tokens flowing through the context window and too many requests because the agent did not get what it needed the first time. Reducing prompt noise improves accuracy, and better accuracy reduces retries — creating a virtuous cycle of lower cost and better behavior.' },
+      { q: 'What is action consolidation in mcp-fusion?', a: 'Action consolidation groups multiple operations behind a single MCP tool using a discriminator enum. Instead of 50 separate tools flooding the prompt with ~10,000 schema tokens, a grouped tool uses ~1,500 tokens. This reduces the token budget consumed by tool definitions and helps the agent select the correct action.' },
+      { q: 'What is TOON encoding?', a: 'TOON (Token-Oriented Object Notation) is a compact serialization format that replaces verbose JSON with pipe-delimited tabular data. It achieves roughly 30-50% token reduction over equivalent JSON for tabular data, reducing both prompt and response token costs. Available via toonSuccess() for responses and toonMode for descriptions.' },
+      { q: 'How do cognitive guardrails reduce costs?', a: 'The Presenter .agentLimit() method truncates large result sets before they reach the LLM. A query returning 10,000 rows (~5 million tokens, ~$8.75 at GPT-5.2 pricing) is truncated to 50 rows (~25,000 tokens, ~$0.04). The truncation includes guidance for the agent to use filters, teaching it to narrow results instead of requesting everything.' },
+      { q: 'What are self-healing errors and how do they reduce retries?', a: 'Self-healing errors translate raw validation failures into directive correction prompts. Instead of "Validation failed: email: Invalid", the agent receives: "Expected: a valid email address (e.g. user@example.com). You sent: admin@local." This aims to help the agent self-correct on the first retry rather than guessing blindly across multiple attempts.' },
+      { q: 'How does State Sync prevent unnecessary LLM requests?', a: 'State Sync injects causal invalidation signals after mutations (e.g., "[System: Cache invalidated for sprints.* — caused by sprints.update]") and cache-control directives in tool descriptions (e.g., "[Cache-Control: immutable]"). This helps the agent know when to re-read data and when cached results are still valid, avoiding unnecessary API calls.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
   // INTRODUCTION
   // ═══════════════════════════════════════════════════════
   'introduction.md': {
@@ -71,7 +88,7 @@ const pages: Record<string, PageSEO> = {
     faqs: [
       { q: 'What do I need to get started with mcp-fusion?', a: 'You need Node.js >= 18 and TypeScript >= 5.7. Install with: npm install @vinkius-core/mcp-fusion zod. The framework builds on top of the official @modelcontextprotocol/sdk which is included as a peer dependency.' },
       { q: 'Can I use mcp-fusion with existing MCP servers?', a: 'Yes. mcp-fusion uses the standard MCP SDK under the hood. You can incrementally adopt it by converting tools one at a time. Existing raw handlers continue to work alongside mcp-fusion tools on the same server.' },
-      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, which is supported by Claude, GPT-4, Gemini, and any MCP-compatible client. The structured responses work with any LLM that can process text.' },
+      { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, which is supported by Claude, GPT-5.2, Gemini, and any MCP-compatible client. The structured responses work with any LLM that can process text.' },
       { q: 'What makes mcp-fusion better than writing raw MCP handlers?', a: 'Raw handlers require manual switch/case routing, manual JSON.stringify, no validation, no domain context, and no security boundary. mcp-fusion gives you: automatic Zod validation, discriminator routing, Presenters with system rules and UI blocks, self-healing errors, middleware chains, and cognitive guardrails — all type-safe and zero-boilerplate.' },
       { q: 'What is the learning curve for mcp-fusion?', a: 'If you know TypeScript and basic MCP concepts, you can be productive in under 30 minutes. defineTool() requires zero Zod knowledge. createTool() requires basic Zod. Presenters are optional and can be added incrementally after your tools work.' },
       { q: 'What components does the mcp-fusion architecture include?', a: 'The architecture includes: GroupedToolBuilder (tool definition), ToolRegistry (registration and routing), ExecutionPipeline (middleware + handler execution), Presenter Engine (MVA View layer), ResponseBuilder (manual response composition), FusionClient (tRPC-style type-safe client), and State Sync (cache signals).' },
@@ -308,6 +325,24 @@ const pages: Record<string, PageSEO> = {
       { q: 'How does .agentLimit() reduce costs?', a: 'Without limits, 10,000 rows at ~500 tokens each costs ~$2.40 per call. With .agentLimit(50), capped at 50 rows (~$0.02) plus filter guidance. 100x cost reduction per call.' },
       { q: 'When should I use tag filtering for performance?', a: 'When you have many tools but only a subset is relevant per session. Each tool definition consumes prompt tokens. Filtering to relevant tags reduces prompt size and improves LLM accuracy on tool selection.' },
       { q: 'How do pre-compiled middleware chains improve performance?', a: 'Traditional middleware resolves the chain at every request. mcp-fusion compiles once at build time. For 5 middleware functions, eliminates 5 function lookups per request — operations that add up at thousands of requests per second.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // PERFORMANCE
+  // ═══════════════════════════════════════════════════════
+  'performance.md': {
+    title: 'Performance — Zero-Cost Abstractions for MCP Servers',
+    description: 'Deep dive into mcp-fusion performance: pre-compiled middleware chains, O(1) action routing, zero-overhead observability, railway-oriented pipelines, TOON compression, and bounded caching.',
+    faqs: [
+      { q: 'How does mcp-fusion pre-compile middleware chains?', a: 'At build time, MiddlewareCompiler wraps all middleware right-to-left around each handler, producing a single ready-to-call function per action. At runtime, calling an action with 10 stacked middleware layers is a single function call — zero chain assembly, zero closure allocation per request.' },
+      { q: 'What is zero-overhead observability in mcp-fusion?', a: 'When no debug observer is attached, the entire execution pipeline runs via a fast path with ZERO conditionals, no Date.now(), no performance.now(), and no object allocations. The debug path only activates when explicitly enabled via createDebugObserver().' },
+      { q: 'How does mcp-fusion achieve O(1) action routing?', a: 'Action resolution uses a Map<string, InternalAction> built at compile time. When the LLM sends { action: "users.list" }, the pipeline resolves the handler with a single Map.get() call — O(1) regardless of how many actions are registered.' },
+      { q: 'What is the railway-oriented execution pipeline?', a: 'The ExecutionPipeline uses a Result<T> monad (Success<T> | Failure) for zero-exception error handling. Each step returns Result<T>. On failure, the pipeline short-circuits immediately with a typed Failure — no exception throw, no stack unwinding, no try/catch overhead.' },
+      { q: 'How does TOON encoding improve performance?', a: 'TOON (Token-Oriented Object Notation) reduces description token count by 30-50% and response payload by ~40% compared to JSON. Uses pipe-delimited tabular format where column headers appear once, eliminating JSON key repetition per row.' },
+      { q: 'How does mcp-fusion handle large datasets efficiently?', a: 'Presenter agentLimit() truncates large collections BEFORE Zod validation and serialization. A 10,000-row dataset capped at 50 items reduces token costs from ~$150 to ~$0.75 per request — a 200x reduction. The truncation happens before any expensive processing.' },
+      { q: 'What caching strategies does mcp-fusion use?', a: 'Multiple caching layers: validation schema cache (build-time), policy resolution cache (bounded to 2048 entries with full eviction), pre-frozen shared policy objects, tool description decoration cache, and cached buildToolDefinition() results. All caches use Map for O(1) access.' },
+      { q: 'Why does mcp-fusion use pure-function modules?', a: 'Ten critical modules are pure functions with no state and no side effects: MiddlewareCompiler, ExecutionPipeline, ToolFilterEngine, GlobMatcher, and more. V8 can inline and optimize them aggressively, with no garbage collection pressure from instance allocation.' },
     ],
   },
 

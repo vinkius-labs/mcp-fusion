@@ -11,7 +11,7 @@
 
 <br/>
 
-**[📖 Documentation & Guides](https://vinkius-labs.github.io/mcp-fusion/)** · **[🍳 Cookbook & Examples](https://vinkius-labs.github.io/mcp-fusion/examples)**
+**[📖 Documentation & Guides](https://vinkius-labs.github.io/mcp-fusion/)** · **[💰 Cost & Hallucination](https://vinkius-labs.github.io/mcp-fusion/cost-and-hallucination)** · **[🍳 Cookbook & Examples](https://vinkius-labs.github.io/mcp-fusion/examples)**
 
 <br/>
 
@@ -405,6 +405,7 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | Guide | Description |
 |---|---|
 | 🧠 **[The MVA Manifesto](docs/mva-pattern.md)** | Why every MCP server today is built wrong — and how MVA fixes it |
+| 💰 **[Cost & Hallucination](docs/cost-and-hallucination.md)** | Fewer tokens + fewer requests = less hallucination + less cost |
 | 🏁 **[5-Minute Quickstart](docs/quickstart.md)** | Build your first Fusion server from zero |
 | 🍳 **[Cookbook & Examples](docs/examples.md)** | 14 copy-pasteable real-world patterns for every feature |
 | 🎯 **[Presenter Deep Dive](docs/presenter.md)** | The agent-centric View layer — schema, rules, UI, suggestions |

@@ -697,7 +697,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * - Tool name and description
      * - Input schema (JSON)
      * - Annotations (if any)
-     * - Approximate token count (~4 chars per token, GPT-4 heuristic)
+     * - Approximate token count (~4 chars per token, GPT-5.2 heuristic)
      *
      * Call this from your dev environment to optimize token usage
      * and verify the LLM-facing prompt without starting an MCP server.
@@ -748,7 +748,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         ];
         const totalChars = payloadParts.reduce((sum, part) => sum + part.length, 0);
 
-        // GPT-4 heuristic: ~4 characters per token for English/code
+        // GPT-5.2 heuristic: ~4 characters per token for English/code
         const estimatedTokens = Math.ceil(totalChars / 4);
 
         const W = 56;
