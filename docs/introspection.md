@@ -182,6 +182,73 @@ describe('platform tool', () => {
 
 ---
 
+## Build-Time Prompt Preview
+
+Use `previewPrompt()` to see the exact MCP payload the LLM will receive — without starting a server:
+
+```typescript
+const projects = defineTool<AppContext>('projects', {
+    description: 'Manage workspace projects',
+    tags: ['api'],
+    actions: {
+        list:   { readOnly: true, handler: listProjects },
+        create: { params: { name: 'string' }, handler: createProject },
+        delete: { destructive: true, params: { id: 'string' }, handler: deleteProject },
+    },
+});
+
+console.log(projects.previewPrompt());
+```
+
+**Output:**
+
+```
+┌────────────────────────────────────────────────────────┐
+│  MCP Tool Preview: projects
+├─── Summary ────────────────────────────────────────────┤
+│  Name: projects
+│  Actions: 3 (list, create, delete)
+│  Tags: api
+├─── Description ────────────────────────────────────────┤
+│  Manage workspace projects. Actions: list, create, delete
+│
+│  Workflow:
+│  - 'create': Requires: name
+│  - 'delete':  [DESTRUCTIVE]
+├─── Input Schema ───────────────────────────────────────┤
+│  {
+│    "type": "object",
+│    "properties": {
+│      "action": { "type": "string", "enum": ["list", "create", "delete"] },
+│      "name": { "type": "string" },
+│      "id": { "type": "string" }
+│    },
+│    "required": ["action"]
+│  }
+├─── Annotations ────────────────────────────────────────┤
+│  {
+│    "readOnlyHint": false,
+│    "destructiveHint": true,
+│    "idempotentHint": false
+│  }
+├─── Token Estimate ─────────────────────────────────────┤
+│  ~185 tokens (740 chars)
+└────────────────────────────────────────────────────────┘
+```
+
+This is invaluable for:
+
+- **Token budgeting** — know exactly how many tokens each tool consumes before deployment
+- **Prompt grammar** — verify the auto-generated description reads well for LLMs
+- **Schema validation** — check that the union schema is correct before an LLM tries it
+- **TOON comparison** — preview with `.toonDescription(true)` vs standard to measure savings
+
+::: tip
+`previewPrompt()` auto-calls `buildToolDefinition()` if the tool hasn't been built yet, so you can call it at any point.
+:::
+
+---
+
 ## Connection to the Execution Engine
 
 The Introspection data you retrieve is exactly the same underlying mapping engine that generates your final LLM payloads. For instance, the result of whether `destructive` exists identically matches how `AnnotationAggregator` enforces the `destructiveHint` tag to the language model.

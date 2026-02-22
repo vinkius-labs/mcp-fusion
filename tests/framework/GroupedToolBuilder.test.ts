@@ -873,3 +873,82 @@ describe('Scenario — E-Commerce Tool', () => {
     });
 });
 
+// ============================================================================
+// previewPrompt()
+// ============================================================================
+
+describe('GroupedToolBuilder — previewPrompt', () => {
+    it('should return a formatted preview with box-drawing characters', () => {
+        const builder = new GroupedToolBuilder('projects')
+            .description('Manage projects')
+            .action({ name: 'list', readOnly: true, handler: dummyHandler })
+            .action({ name: 'create', handler: dummyHandler });
+
+        const preview = builder.previewPrompt();
+
+        // Box-drawing characters
+        expect(preview).toContain('┌');
+        expect(preview).toContain('└');
+        expect(preview).toContain('├');
+
+        // Sections
+        expect(preview).toContain('MCP Tool Preview: projects');
+        expect(preview).toContain('Name: projects');
+        expect(preview).toContain('Actions: 2 (list, create)');
+        expect(preview).toContain('Description');
+        expect(preview).toContain('Manage projects');
+        expect(preview).toContain('Input Schema');
+        expect(preview).toContain('Token Estimate');
+    });
+
+    it('should include approximate token count', () => {
+        const builder = new GroupedToolBuilder('math')
+            .action({ name: 'add', handler: dummyHandler });
+
+        const preview = builder.previewPrompt();
+
+        // Should contain "~N tokens (M chars)"
+        expect(preview).toMatch(/~\d+ tokens \(\d[\d,]* chars\)/);
+    });
+
+    it('should include annotations when present', () => {
+        const builder = new GroupedToolBuilder('admin')
+            .annotations({ openWorldHint: true })
+            .action({ name: 'reset', destructive: true, handler: dummyHandler });
+
+        const preview = builder.previewPrompt();
+
+        expect(preview).toContain('Annotations');
+        expect(preview).toContain('openWorldHint');
+        expect(preview).toContain('destructiveHint');
+    });
+
+    it('should show tags when present', () => {
+        const builder = new GroupedToolBuilder('core')
+            .tags('api', 'admin')
+            .action({ name: 'status', handler: dummyHandler });
+
+        const preview = builder.previewPrompt();
+
+        expect(preview).toContain('Tags: api, admin');
+    });
+
+    it('should auto-call buildToolDefinition if not built', () => {
+        const builder = new GroupedToolBuilder('lazy')
+            .action({ name: 'ping', handler: dummyHandler });
+
+        // previewPrompt before buildToolDefinition
+        const preview = builder.previewPrompt();
+        expect(preview).toContain('MCP Tool Preview: lazy');
+        expect(preview).toContain('Actions: 1 (ping)');
+    });
+
+    it('should be idempotent', () => {
+        const builder = new GroupedToolBuilder('stable')
+            .action({ name: 'check', handler: dummyHandler });
+
+        const first = builder.previewPrompt();
+        const second = builder.previewPrompt();
+        expect(first).toBe(second);
+    });
+});

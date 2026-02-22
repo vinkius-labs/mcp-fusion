@@ -190,7 +190,7 @@ const userId = result.value;             // Narrowed to number
 ### Builder
 - `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod for schemas)
 - `defineTool<TContext>(name, config)` → GroupedToolBuilder (JSON-first, no Zod required)
-- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
+- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
 - `ActionGroupBuilder<TContext>` — .use(), .action()
 
 ### Registry

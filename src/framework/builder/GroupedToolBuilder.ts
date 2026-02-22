@@ -599,6 +599,109 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     getActionNames(): string[] { return this._actions.map(a => a.key); }
 
     /**
+     * Preview the exact MCP protocol payload that the LLM will receive.
+     *
+     * Builds the tool definition if not already built, then renders
+     * a human-readable preview of the complete tool including:
+     * - Tool name and description
+     * - Input schema (JSON)
+     * - Annotations (if any)
+     * - Approximate token count (~4 chars per token, GPT-4 heuristic)
+     *
+     * Call this from your dev environment to optimize token usage
+     * and verify the LLM-facing prompt without starting an MCP server.
+     *
+     * @returns Formatted string showing the exact MCP payload + token estimate
+     *
+     * @example
+     * ```typescript
+     * const projects = defineTool<AppContext>('projects', { ... });
+     * console.log(projects.previewPrompt());
+     *
+     * // Output:
+     * // ┌─────────────────────────────────────────┐
+     * // │  MCP Tool Preview: projects              │
+     * // ├─────────────────────────────────────────┤
+     * // │  Name: projects                          │
+     * // │  Actions: 3 (list, create, delete)       │
+     * // │  Tags: api, admin                        │
+     * // ├─── Description ─────────────────────────┤
+     * // │  Manage workspace projects. ...          │
+     * // ├─── Input Schema ────────────────────────┤
+     * // │  { "type": "object", ...  }              │
+     * // ├─── Annotations ─────────────────────────┤
+     * // │  readOnlyHint: false                     │
+     * // │  destructiveHint: true                   │
+     * // ├─── Token Estimate ──────────────────────┤
+     * // │  ~342 tokens (1,368 chars)               │
+     * // └─────────────────────────────────────────┘
+     * ```
+     *
+     * @see {@link buildToolDefinition} for the raw MCP Tool object
+     */
+    previewPrompt(): string {
+        const tool = this.buildToolDefinition();
+
+        const schemaJson = JSON.stringify(tool.inputSchema, null, 2);
+        const annotations = (tool as { annotations?: Record<string, unknown> }).annotations;
+        const annotationsJson = annotations
+            ? JSON.stringify(annotations, null, 2)
+            : undefined;
+
+        // Calculate total char payload (what the MCP protocol transmits)
+        const payloadParts = [
+            tool.name,
+            tool.description ?? '',
+            schemaJson,
+            annotationsJson ?? '',
+        ];
+        const totalChars = payloadParts.reduce((sum, part) => sum + part.length, 0);
+
+        // GPT-4 heuristic: ~4 characters per token for English/code
+        const estimatedTokens = Math.ceil(totalChars / 4);
+
+        const W = 56;
+        const divider = '─'.repeat(W);
+        const line = (label: string, value: string): string =>
+            `│  ${label}: ${value}`;
+
+        const actionKeys = this._actions.map(a => a.key);
+        const lines: string[] = [
+            `┌${'─'.repeat(W)}┐`,
+            `│  MCP Tool Preview: ${this._name}`,
+            `├─── Summary ${'─'.repeat(W - 12)}┤`,
+            line('Name', tool.name),
+            line('Actions', `${actionKeys.length} (${actionKeys.join(', ')})`),
+        ];
+
+        if (this._tags.length > 0) {
+            lines.push(line('Tags', this._tags.join(', ')));
+        }
+
+        lines.push(
+            `├─── Description ${divider.slice(17)}┤`,
+            `│  ${tool.description ?? '(none)'}`.split('\n').join('\n│  '),
+            `├─── Input Schema ${divider.slice(18)}┤`,
+            schemaJson.split('\n').map(l => `│  ${l}`).join('\n'),
+        );
+
+        if (annotationsJson) {
+            lines.push(
+                `├─── Annotations ${divider.slice(17)}┤`,
+                annotationsJson.split('\n').map(l => `│  ${l}`).join('\n'),
+            );
+        }
+
+        lines.push(
+            `├─── Token Estimate ${divider.slice(20)}┤`,
+            `│  ~${estimatedTokens} tokens (${totalChars.toLocaleString()} chars)`,
+            `└${divider}┘`,
+        );
+
+        return lines.join('\n');
+    }
+
+    /**
      * Get metadata for all registered actions.
      *
      * Useful for programmatic documentation, compliance audits,
