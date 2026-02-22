@@ -301,13 +301,16 @@ return toolError('NOT_FOUND', { message: 'Invoice not found', recovery: { action
 
 ## Streaming Progress
 
+Generator handlers yield `progress()` events that are **automatically** forwarded to the MCP client as `notifications/progress` when the client includes a `progressToken` in its request `_meta`. Zero configuration, zero overhead when not used.
+
 ```typescript
 handler: async function* (ctx, args) {
-    yield progress(0.25, 'Loading data...');
+    yield progress(25, 'Loading data...');
     const data = await ctx.db.query();
-    yield progress(0.75, 'Processing...');
+    yield progress(75, 'Processing...');
     return success(data);
 }
+// Wire format: { method: 'notifications/progress', params: { progressToken, progress: 25, total: 100, message: 'Loading data...' } }
 ```
 
 ## Important Rules
@@ -370,6 +373,7 @@ handler: async function* (ctx, args) {
 ### Streaming Progress
 - `progress(percent, message)` → ProgressEvent (yield from generator handlers)
 - `isProgressEvent(value)` → type guard
+- `ProgressSink` — callback type `(event: ProgressEvent) => void` — auto-wired by `attachToServer()`, or pass manually to `execute()` / `routeCall()` for testing
 
 ### Result Monad
 - `succeed<T>(value)` → Success<T>
