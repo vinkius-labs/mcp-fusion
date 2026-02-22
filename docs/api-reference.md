@@ -116,6 +116,7 @@ const tool = createTool<AppContext>('projects');
 |---|---|---|
 | `.buildToolDefinition()` | `McpTool` | Triggers framework compilation loop and freezes internal mappings. |
 | `.execute(ctx, args)` | `Promise` | Safely evaluates discriminator chains and fires the middleware array. |
+| `.debug(observer)` | `this` | Attaches a `DebugObserverFn` for pipeline observability. See [Observability](/observability). |
 | `.getActionNames()` | `string[]` | Dumps native flat keys or dot-notated compound keys. |
 | `.getActionMetadata()` | `Object[]` | Pulls deep context mapping arrays about execution boundaries natively. |
 
@@ -321,6 +322,7 @@ const registry = new ToolRegistry<AppContext>();
 | `.getAllTools()` | `McpTool[]` | Returns all registered tool definitions. |
 | `.getTools(filter)` | `McpTool[]` | Filters payload dumps based strictly on inclusion/exclusion tags. |
 | `.routeCall(ctx, name, args)` | `Promise` | Proxies execution requests deeply down into the assigned `Builder`. |
+| `.enableDebug(observer)` | `void` | Propagates a debug observer to ALL registered builders. See [Observability](/observability). |
 | `.has(name)` | `boolean` | Check if a tool is registered. |
 | `.clear()` | `void` | Remove all registered tools. |
 | `.size` | `number` | Number of registered tools. |
@@ -336,10 +338,63 @@ const detach = registry.attachToServer(server, {
     
     // Injects highly specific Context variables per MCP execution context:
     contextFactory: (extra) => resolveSessionContext(extra),
+
+    // Enable debug observability for ALL tools (optional):
+    debug: createDebugObserver(),
 });
 
 // Optionally strip handlers gracefully from the server memory on shutdown:
 detach();
+```
+
+**AttachOptions Fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `filter` | `ToolFilter?` | Tag-based inclusion/exclusion filter. |
+| `contextFactory` | `Function?` | Per-request context factory. Supports async. |
+| `debug` | `DebugObserverFn?` | Debug observer — propagated to all builders. See [Observability](/observability). |
+
+---
+
+## Observability
+
+### `createDebugObserver(handler?)`
+
+Factory function that creates a typed debug event observer. See [Observability Guide](/observability) for comprehensive examples.
+
+```typescript
+import { createDebugObserver } from '@vinkius-core/mcp-fusion';
+
+// Default: pretty console.debug output
+const debug = createDebugObserver();
+
+// Custom: forward to telemetry
+const debug = createDebugObserver((event) => {
+    opentelemetry.addEvent(event.type, event);
+});
+```
+
+### `DebugEvent`
+
+Discriminated union of all pipeline events. Use `event.type` for exhaustive handling.
+
+| Event Type | Fields | When Emitted |
+|---|---|---|
+| `route` | `tool, action, timestamp` | First event — incoming call matched |
+| `validate` | `tool, action, valid, error?, durationMs, timestamp` | After Zod validation |
+| `middleware` | `tool, action, chainLength, timestamp` | Before middleware chain (only if middleware exists) |
+| `execute` | `tool, action, durationMs, isError, timestamp` | After handler completes |
+| `error` | `tool, action, error, step, timestamp` | On unrecoverable pipeline errors |
+
+### Builder `.debug(observer)`
+
+Attach a debug observer to a single tool:
+
+```typescript
+const tool = createTool<AppContext>('projects')
+    .debug(createDebugObserver())
+    .action({ name: 'list', handler: listProjects });
 ```
 
 ---

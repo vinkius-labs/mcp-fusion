@@ -46,3 +46,10 @@ export type { MiddlewareDefinition, MergeContext, InferContextOut } from './midd
 // ── Client (type-safe tRPC-style) ────────────────────────
 export { createFusionClient, createTypedRegistry } from './client/index.js';
 export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRegistry } from './client/index.js';
+
+// ── Observability ────────────────────────────────────────
+export { createDebugObserver } from './observability/DebugObserver.js';
+export type {
+    DebugEvent, DebugObserverFn,
+    RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
+} from './observability/DebugObserver.js';

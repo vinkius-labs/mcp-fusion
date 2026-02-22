@@ -15,6 +15,7 @@ import {
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
 import { resolveServer } from './ServerResolver.js';
+import { type DebugObserverFn } from '../observability/DebugObserver.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -38,6 +39,23 @@ export interface AttachOptions<TContext> {
      * Supports async factories (e.g. for token verification, DB connection).
      */
     contextFactory?: (extra: unknown) => TContext | Promise<TContext>;
+    /**
+     * Enable debug observability for ALL registered tools.
+     *
+     * When set, the observer is automatically propagated to every tool
+     * builder, and registry-level routing events are also emitted.
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     debug: createDebugObserver(),
+     * });
+     * ```
+     *
+     * @see {@link createDebugObserver} for creating an observer
+     */
+    debug?: DebugObserverFn;
 }
 
 /** Function to detach the registry from the server */
@@ -48,6 +66,8 @@ export interface RegistryDelegate<TContext> {
     getAllTools(): McpTool[];
     getTools(filter: { tags?: string[]; anyTag?: string[]; exclude?: string[] }): McpTool[];
     routeCall(ctx: TContext, name: string, args: Record<string, unknown>): Promise<ToolResponse>;
+    /** Propagate a debug observer to all registered builders (duck-typed) */
+    enableDebug?(observer: DebugObserverFn): void;
 }
 
 // ── Attachment ───────────────────────────────────────────
@@ -71,7 +91,12 @@ export function attachToServer<TContext>(
     // Resolve the low-level Server instance via ServerResolver strategy
     const resolved = resolveServer(server) as McpServerTyped;
 
-    const { filter, contextFactory } = options;
+    const { filter, contextFactory, debug } = options;
+
+    // Propagate debug observer to all registered builders
+    if (debug && registry.enableDebug) {
+        registry.enableDebug(debug);
+    }
 
     // ── tools/list handler ────────────────────────────────────────
     const listHandler = () => {

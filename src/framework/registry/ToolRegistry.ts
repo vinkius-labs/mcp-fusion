@@ -31,6 +31,7 @@
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
 import { type ToolBuilder } from '../types.js';
+import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { filterTools, type ToolFilter } from './ToolFilterEngine.js';
 import {
     attachToServer as attachToServerStrategy,
@@ -71,6 +72,7 @@ export type { AttachOptions, DetachFn } from '../server/ServerAttachment.js';
  */
 export class ToolRegistry<TContext = void> {
     private readonly _builders = new Map<string, ToolBuilder<TContext>>();
+    private _debug?: DebugObserverFn;
 
     /**
      * Register a single tool builder.
@@ -181,6 +183,9 @@ export class ToolRegistry<TContext = void> {
         const builder = this._builders.get(name);
         if (!builder) {
             const available = Array.from(this._builders.keys()).join(', ');
+            if (this._debug) {
+                this._debug({ type: 'error', tool: name, action: '?', error: `Unknown tool: "${name}"`, step: 'route', timestamp: Date.now() });
+            }
             return error(`Unknown tool: "${name}". Available tools: ${available}`);
         }
         return builder.execute(ctx, args);
@@ -232,4 +237,31 @@ export class ToolRegistry<TContext = void> {
 
     /** Number of registered tools. */
     get size(): number { return this._builders.size; }
+
+    /**
+     * Enable debug observability for ALL registered tools.
+     *
+     * Propagates the debug observer to every registered builder that
+     * supports it (duck-typed via `.debug()` method).
+     *
+     * Also enables registry-level debug events (unknown tool errors).
+     *
+     * @param observer - A {@link DebugObserverFn} created by `createDebugObserver()`
+     *
+     * @example
+     * ```typescript
+     * const debug = createDebugObserver();
+     * registry.enableDebug(debug);
+     * // Now ALL tools + registry routing emit debug events
+     * ```
+     */
+    enableDebug(observer: DebugObserverFn): void {
+        this._debug = observer;
+        for (const builder of this._builders.values()) {
+            // Duck-type: call .debug() if it exists on the builder
+            if ('debug' in builder && typeof (builder as { debug: unknown }).debug === 'function') {
+                (builder as { debug: (fn: DebugObserverFn) => void }).debug(observer);
+            }
+        }
+    }
 }

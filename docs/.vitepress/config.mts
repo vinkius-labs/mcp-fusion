@@ -49,6 +49,7 @@ export default defineConfig({
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Introspection', link: '/introspection' },
+          { text: 'Observability', link: '/observability' },
           { text: 'Architecture', link: '/architecture' },
           { text: 'Testing', link: '/testing' },
         ]

@@ -60,6 +60,7 @@ export {
     defineMiddleware, resolveMiddleware,
     createFusionClient,
     createTypedRegistry,
+    createDebugObserver,
 } from './framework/index.js';
 /** @category Framework */
 export type {
@@ -76,4 +77,6 @@ export type {
     MiddlewareDefinition, MergeContext, InferContextOut,
     FusionClient, FusionTransport, RouterMap,
     InferRouter, TypedToolRegistry,
+    DebugEvent, DebugObserverFn,
+    RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
 } from './framework/index.js';

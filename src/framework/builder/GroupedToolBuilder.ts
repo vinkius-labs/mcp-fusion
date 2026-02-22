@@ -54,6 +54,7 @@ import {
     type MiddlewareFn,
     type ActionConfig,
 } from '../types.js';
+import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { getActionRequiredFields } from '../schema/SchemaUtils.js';
 import {
     parseDiscriminator, resolveAction, validateArgs, runChain,
@@ -157,6 +158,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _hasGroup = false;
     private _toonMode = false;
     private _frozen = false;
+    private _debug?: DebugObserverFn;
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -545,6 +547,37 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         return result.tool;
     }
 
+    // ── Debug (opt-in observability) ──────────────────────
+
+    /**
+     * Enable debug observability for this tool.
+     *
+     * When enabled, structured {@link DebugEvent} events are emitted at
+     * each step of the execution pipeline.
+     *
+     * When disabled (the default), there is **zero runtime overhead** —
+     * no conditionals, no timing, no object allocations in the hot path.
+     *
+     * @param observer - A {@link DebugObserverFn} created by `createDebugObserver()`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * import { createTool, createDebugObserver, success } from '@vinkius-core/mcp-fusion';
+     *
+     * const debug = createDebugObserver();
+     *
+     * const tool = createTool<void>('users')
+     *     .debug(debug)  // ← enable observability
+     *     .action({ name: 'list', handler: async () => success([]) });
+     * ```
+     */
+    debug(observer: DebugObserverFn): this {
+        // No frozen check — debug is safe to attach after build
+        this._debug = observer;
+        return this;
+    }
+
     // ── Execute (delegates to ExecutionPipeline) ────────
 
     /**
@@ -553,6 +586,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * Pipeline: `parseDiscriminator → resolveAction → validateArgs → runChain`
      *
      * Auto-calls {@link buildToolDefinition} if not called yet.
+     * If a debug observer is active, structured events are emitted
+     * at each pipeline step with timing information.
      *
      * @param ctx - Application context
      * @param args - Raw arguments from the LLM (includes discriminator)
@@ -576,16 +611,71 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             return error(`Builder "${this._name}" failed to initialize.`);
         }
 
+        // Fast path: no debug observer → zero overhead
+        if (!this._debug) {
+            const disc = parseDiscriminator(execCtx, args);
+            if (!disc.ok) return disc.response;
+
+            const resolved = resolveAction(execCtx, disc.value);
+            if (!resolved.ok) return resolved.response;
+
+            const validated = validateArgs(execCtx, resolved.value, args);
+            if (!validated.ok) return validated.response;
+
+            return runChain(execCtx, resolved.value, ctx, validated.value);
+        }
+
+        // Debug path: emit structured events at each step
+        const debug = this._debug;
+        const startTime = performance.now();
+
+        // Step 1: Route
         const disc = parseDiscriminator(execCtx, args);
-        if (!disc.ok) return disc.response;
+        if (!disc.ok) {
+            debug({ type: 'error', tool: this._name, action: '?', error: 'Missing discriminator', step: 'route', timestamp: Date.now() });
+            return disc.response;
+        }
+        const actionName = disc.value;
+        debug({ type: 'route', tool: this._name, action: actionName, timestamp: Date.now() });
 
-        const resolved = resolveAction(execCtx, disc.value);
-        if (!resolved.ok) return resolved.response;
+        // Step 2: Resolve
+        const resolved = resolveAction(execCtx, actionName);
+        if (!resolved.ok) {
+            debug({ type: 'error', tool: this._name, action: actionName, error: `Unknown action "${actionName}"`, step: 'route', timestamp: Date.now() });
+            return resolved.response;
+        }
 
+        // Step 3: Validate
+        const validateStart = performance.now();
         const validated = validateArgs(execCtx, resolved.value, args);
-        if (!validated.ok) return validated.response;
+        const validateDuration = performance.now() - validateStart;
 
-        return runChain(execCtx, resolved.value, ctx, validated.value);
+        if (!validated.ok) {
+            debug({ type: 'validate', tool: this._name, action: actionName, valid: false, error: 'Validation failed', durationMs: validateDuration, timestamp: Date.now() });
+            return validated.response;
+        }
+        debug({ type: 'validate', tool: this._name, action: actionName, valid: true, durationMs: validateDuration, timestamp: Date.now() });
+
+        // Step 4: Middleware chain info (global + action-level)
+        const actionMwCount = resolved.value.action.middlewares?.length ?? 0;
+        const globalMwCount = this._middlewares.length;
+        const chainLength = globalMwCount + actionMwCount;
+        if (chainLength > 0) {
+            debug({ type: 'middleware', tool: this._name, action: actionName, chainLength, timestamp: Date.now() });
+        }
+
+        // Step 5: Execute
+        try {
+            const response = await runChain(execCtx, resolved.value, ctx, validated.value);
+            const totalDuration = performance.now() - startTime;
+            const isErr = response.isError === true;
+            debug({ type: 'execute', tool: this._name, action: actionName, durationMs: totalDuration, isError: isErr, timestamp: Date.now() });
+            return response;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            debug({ type: 'error', tool: this._name, action: actionName, error: message, step: 'execute', timestamp: Date.now() });
+            throw err;
+        }
     }
 
     // ── Introspection ───────────────────────────────────
