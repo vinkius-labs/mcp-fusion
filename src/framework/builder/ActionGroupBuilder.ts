@@ -71,6 +71,7 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
     private readonly _groupName: string;
     private readonly _groupDescription: string;
     private readonly _groupMiddlewares: MiddlewareFn<TContext>[] = [];
+    private _groupOmitCommon: string[] = [];
 
     constructor(groupName: string, description?: string) {
         this._groupName = groupName;
@@ -98,6 +99,30 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      */
     use(mw: MiddlewareFn<TContext>): this {
         this._groupMiddlewares.push(mw);
+        return this;
+    }
+
+    /**
+     * Omit common schema fields for all actions in this group.
+     *
+     * Use when an entire group derives common fields from context
+     * (e.g. a "profile" group that resolves `workspace_id` from the JWT).
+     *
+     * Per-action `omitCommon` merges with group-level omissions.
+     *
+     * @param fields - Common field names to omit
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * builder.group('profile', 'User profile', g => {
+     *     g.omitCommon('workspace_id')  // All profile.* actions skip workspace_id
+     *      .action({ name: 'me', readOnly: true, handler: meHandler });
+     * });
+     * ```
+     */
+    omitCommon(...fields: string[]): this {
+        this._groupOmitCommon.push(...fields);
         return this;
     }
 
@@ -132,14 +157,15 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      *
      * @see {@link ActionConfig} for all configuration options
      */
-    action<TSchema extends ZodObject<ZodRawShape>>(config: {
+    action<TSchema extends ZodObject<ZodRawShape>, TOmit extends keyof TCommon = never>(config: {
         name: string;
         description?: string;
         schema: TSchema;
         destructive?: boolean;
         idempotent?: boolean;
         readOnly?: boolean;
-        handler: (ctx: TContext, args: TSchema["_output"] & TCommon) => Promise<ToolResponse>;
+        omitCommon?: TOmit[];
+        handler: (ctx: TContext, args: TSchema["_output"] & Omit<TCommon, TOmit>) => Promise<ToolResponse>;
     }): this;
     /** Register an action within this group (untyped: no schema) */
     action(config: ActionConfig<TContext>): this;
@@ -150,6 +176,11 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
                 `The framework uses dots internally for group.action compound keys.`
             );
         }
+
+        // Merge group-level + per-action omissions (deduped)
+        const perAction = (config as { omitCommon?: string[] }).omitCommon ?? [];
+        const mergedOmit = [...new Set([...this._groupOmitCommon, ...perAction])];
+
         this._actions.push({
             key: `${this._groupName}.${config.name}`,
             groupName: this._groupName,
@@ -163,6 +194,7 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
             handler: config.handler,
             middlewares: this._groupMiddlewares.length > 0
                 ? [...this._groupMiddlewares] : undefined,
+            omitCommonFields: mergedOmit.length > 0 ? mergedOmit : undefined,
         });
         return this;
     }

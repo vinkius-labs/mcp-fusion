@@ -99,7 +99,26 @@ function buildValidationSchema<TContext>(
     action: InternalAction<TContext>,
     commonSchema: ZodObject<ZodRawShape> | undefined,
 ): ZodObject<ZodRawShape> | null {
-    const base = commonSchema;
+    let base = commonSchema;
+
+    // Apply surgical omission of common fields for this action
+    if (base && action.omitCommonFields?.length) {
+        const omitMask = Object.fromEntries(
+            action.omitCommonFields
+                .filter(f => f in base!.shape)
+                .map(f => [f, true]),
+        ) as { [k: string]: true };
+
+        if (Object.keys(omitMask).length > 0) {
+            base = base.omit(omitMask);
+        }
+
+        // If all common fields were omitted, base becomes effectively empty
+        if (Object.keys(base.shape).length === 0) {
+            base = undefined;
+        }
+    }
+
     const specific = action.schema;
     if (!base && !specific) return null;
     const merged = base && specific ? base.merge(specific) : (base ?? specific);

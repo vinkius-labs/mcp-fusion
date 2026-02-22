@@ -145,6 +145,8 @@ export interface InternalAction<TContext> {
     readonly readOnly: boolean | undefined;
     /** Per-action/group middleware (applied after global middleware) */
     readonly middlewares: readonly MiddlewareFn<TContext>[] | undefined;
+    /** Common schema fields to omit for this action (LLM won't see them, validation skips them) */
+    readonly omitCommonFields: readonly string[] | undefined;
     /** Handler */
     readonly handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
 }
@@ -245,6 +247,23 @@ export interface ActionConfig<TContext> {
      * Affects the aggregated `readOnlyHint` annotation.
      */
     readOnly?: boolean;
+    /**
+     * Common schema fields to omit for this specific action.
+     *
+     * Use when an action derives a common field from context (e.g. middleware)
+     * instead of requiring the LLM to provide it.
+     *
+     * @example
+     * ```typescript
+     * // workspace_id is derived from the JWT token for profile.me
+     * .action({
+     *     name: 'me',
+     *     omitCommon: ['workspace_id'],
+     *     handler: async (ctx, args) => success(ctx.user),
+     * })
+     * ```
+     */
+    omitCommon?: string[];
     /** Handler function that processes the action */
     handler: (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
 }

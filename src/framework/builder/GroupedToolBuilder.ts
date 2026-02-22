@@ -393,14 +393,15 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @see {@link ActionConfig} for all configuration options
      * @see {@link GroupedToolBuilder.group} for hierarchical grouping
      */
-    action<TSchema extends ZodObject<ZodRawShape>>(config: {
+    action<TSchema extends ZodObject<ZodRawShape>, TOmit extends keyof TCommon = never>(config: {
         name: string;
         description?: string;
         schema: TSchema;
         destructive?: boolean;
         idempotent?: boolean;
         readOnly?: boolean;
-        handler: (ctx: TContext, args: TSchema["_output"] & TCommon) => Promise<ToolResponse>;
+        omitCommon?: TOmit[];
+        handler: (ctx: TContext, args: TSchema["_output"] & Omit<TCommon, TOmit>) => Promise<ToolResponse>;
     }): this;
     /** Register a flat action (untyped: no schema) */
     action(config: ActionConfig<TContext>): this;
@@ -431,6 +432,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             readOnly: config.readOnly ?? undefined,
             handler: config.handler,
             middlewares: undefined,
+            omitCommonFields: config.omitCommon?.length ? [...config.omitCommon] : undefined,
         });
         return this;
     }

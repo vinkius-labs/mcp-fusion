@@ -44,6 +44,14 @@ export function generateInputSchema<TContext>(
     // Track field → action keys mapping for annotations
     const fieldActions = new Map<string, { keys: string[]; requiredIn: string[] }>();
 
+    // Build per-action omit sets for O(1) lookup
+    const actionOmitSets = new Map<string, Set<string>>();
+    for (const action of actions) {
+        if (action.omitCommonFields?.length) {
+            actionOmitSets.set(action.key, new Set(action.omitCommonFields));
+        }
+    }
+
     // Common schema fields
     const commonRequiredFields = new Set<string>();
     if (commonSchema) {
@@ -53,14 +61,28 @@ export function generateInputSchema<TContext>(
 
         for (const field of schemaRequired) {
             commonRequiredFields.add(field);
-            topLevelRequired.push(field);
         }
 
         for (const [key, value] of Object.entries(schemaProps)) {
+            // Determine which actions actually use this common field
+            const actionsUsingField = actionKeys.filter(ak => {
+                const omitSet = actionOmitSets.get(ak);
+                return !omitSet || !omitSet.has(key);
+            });
+
+            // If no action uses the field, skip it entirely
+            if (actionsUsingField.length === 0) continue;
+
             properties[key] = value;
+
+            // Only add to topLevelRequired if ALL actions use this field
+            if (commonRequiredFields.has(key) && actionsUsingField.length === actionKeys.length) {
+                topLevelRequired.push(key);
+            }
+
             fieldActions.set(key, {
-                keys: [...actionKeys],
-                requiredIn: commonRequiredFields.has(key) ? [...actionKeys] : [],
+                keys: [...actionsUsingField],
+                requiredIn: commonRequiredFields.has(key) ? [...actionsUsingField] : [],
             });
         }
     }
@@ -97,7 +119,8 @@ export function generateInputSchema<TContext>(
 
     // Apply per-field annotations
     for (const [key, tracking] of fieldActions.entries()) {
-        if (commonRequiredFields.has(key)) {
+        if (commonRequiredFields.has(key) && tracking.keys.length === actionKeys.length) {
+            // All actions use the field → "(always required)"
             annotateField(properties, key, '(always required)');
         } else if (tracking.requiredIn.length > 0 && tracking.requiredIn.length === tracking.keys.length) {
             annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`);
