@@ -5,3 +5,5 @@ export type {
     FusionTransport,
     RouterMap,
 } from './FusionClient.js';
+export { createTypedRegistry } from './createTypedRegistry.js';
+export type { InferRouter, TypedToolRegistry } from './InferRouter.js';

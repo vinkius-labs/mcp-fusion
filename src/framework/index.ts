@@ -44,5 +44,5 @@ export { defineMiddleware, resolveMiddleware } from './middleware/index.js';
 export type { MiddlewareDefinition, MergeContext, InferContextOut } from './middleware/index.js';
 
 // ── Client (type-safe tRPC-style) ────────────────────────
-export { createFusionClient } from './client/index.js';
-export type { FusionClient, FusionTransport, RouterMap } from './client/index.js';
+export { createFusionClient, createTypedRegistry } from './client/index.js';
+export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRegistry } from './client/index.js';

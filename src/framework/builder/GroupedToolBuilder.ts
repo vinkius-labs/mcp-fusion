@@ -122,8 +122,8 @@ export type { GroupConfigurator } from './ActionGroupBuilder.js';
  * @see {@link GroupedToolBuilder} for the full builder API
  * @see {@link ToolRegistry.register} for tool registration
  */
-export function createTool<TContext = void>(name: string): GroupedToolBuilder<TContext> {
-    return new GroupedToolBuilder<TContext>(name);
+export function createTool<TContext = void, TName extends string = string>(name: TName): GroupedToolBuilder<TContext, Record<string, never>, TName> {
+    return new GroupedToolBuilder<TContext, Record<string, never>, TName>(name);
 }
 
 // ============================================================================
@@ -139,10 +139,12 @@ export function createTool<TContext = void>(name: string): GroupedToolBuilder<TC
  *
  * @typeParam TContext - Application context passed to every handler
  * @typeParam TCommon - Shape of the common schema (inferred automatically)
+ * @typeParam TName - Tool name literal (inferred by createTool)
+ * @typeParam TRouterMap - Accumulated action entries for InferRouter (phantom type)
  *
  * @see {@link createTool} for the recommended factory function
  */
-export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, unknown> = Record<string, never>> implements ToolBuilder<TContext> {
+export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, unknown> = Record<string, never>, TName extends string = string, TRouterMap extends Record<string, unknown> = Record<string, never>> implements ToolBuilder<TContext> {
     private readonly _name: string;
     private _description?: string;
     private _discriminator: string = 'action';
@@ -294,10 +296,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      */
     commonSchema<TSchema extends ZodObject<ZodRawShape>>(
         schema: TSchema,
-    ): GroupedToolBuilder<TContext, TSchema["_output"]> {
+    ): GroupedToolBuilder<TContext, TSchema["_output"], TName, TRouterMap> {
         this._assertNotFrozen();
         this._commonSchema = schema;
-        return this as unknown as GroupedToolBuilder<TContext, TSchema["_output"]>;
+        return this as unknown as GroupedToolBuilder<TContext, TSchema["_output"], TName, TRouterMap>;
     }
 
     /**
@@ -394,8 +396,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @see {@link ActionConfig} for all configuration options
      * @see {@link GroupedToolBuilder.group} for hierarchical grouping
      */
-    action<TSchema extends ZodObject<ZodRawShape>, TOmit extends keyof TCommon = never>(config: {
-        name: string;
+    action<TActionName extends string, TSchema extends ZodObject<ZodRawShape>, TOmit extends keyof TCommon = never>(config: {
+        name: TActionName;
         description?: string;
         schema: TSchema;
         destructive?: boolean;
@@ -403,10 +405,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         readOnly?: boolean;
         omitCommon?: TOmit[];
         handler: (ctx: TContext, args: TSchema["_output"] & Omit<TCommon, TOmit>) => Promise<ToolResponse>;
-    }): this;
-    /** Register a flat action (untyped: no schema) */
-    action(config: ActionConfig<TContext>): this;
-    action(config: ActionConfig<TContext>): this {
+    }): GroupedToolBuilder<TContext, TCommon, TName, TRouterMap & { [K in `${TName}.${TActionName}`]: TSchema["_output"] & Omit<TCommon, TOmit> }>;
+    /** Register a flat action (untyped: no schema, args default to Record<string, unknown>) */
+    action<TActionName extends string>(config: ActionConfig<TContext> & { name: TActionName }): GroupedToolBuilder<TContext, TCommon, TName, TRouterMap & { [K in `${TName}.${TActionName}`]: TCommon extends Record<string, never> ? Record<string, unknown> : TCommon }>;
+    action(config: ActionConfig<TContext>): GroupedToolBuilder<TContext, TCommon, TName, TRouterMap & Record<string, unknown>> {
         this._assertNotFrozen();
         if (this._hasGroup) {
             throw new Error(

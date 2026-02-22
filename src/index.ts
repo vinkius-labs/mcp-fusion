@@ -59,6 +59,7 @@ export {
     progress,
     defineMiddleware, resolveMiddleware,
     createFusionClient,
+    createTypedRegistry,
 } from './framework/index.js';
 /** @category Framework */
 export type {
@@ -74,4 +75,5 @@ export type {
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
     FusionClient, FusionTransport, RouterMap,
+    InferRouter, TypedToolRegistry,
 } from './framework/index.js';

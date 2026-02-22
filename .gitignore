@@ -11,6 +11,7 @@ coverage/
 .idea/
 .vscode/
 .gemini/
+.agents/
 *.swp
 *.swo
 *~
@@ -47,3 +48,8 @@ ehthumbs.db
 docs/api/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Lint artifacts
+lint.json
+lint.txt
+lint_report.txt
