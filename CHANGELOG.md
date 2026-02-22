@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-02-22
+
+### Added
+- **`ValidationErrorFormatter`:** New pure-function module that translates raw Zod validation errors into LLM-friendly directive correction prompts. Instead of `"Validation failed: email: Invalid"`, the LLM now receives actionable guidance: `"❌ Validation failed for 'users/create': • email — Invalid email. You sent: 'bad'. Expected: a valid email address. 💡 Fix the fields above and call the action again."` Supports all major Zod issue codes: `invalid_type`, `invalid_string` (email, url, uuid, datetime, regex, ip), `too_small`/`too_big` (number, string, array, date bounds), `invalid_enum_value` (lists valid options), `invalid_literal`, `unrecognized_keys`, and `invalid_union`.
+- **`omitCommon()`:** Surgical omission of common schema fields per action or group. Fields omitted are excluded from the LLM-facing schema and runtime validation. Supports per-action (`omitCommon: ['field']`) and group-level (`g.omitCommon('field')`) with automatic merge and deduplication.
+- **`previewPrompt()`:** Build-time MCP payload preview with token estimate. Returns the full tool definition including generated description and schema, with an approximate token count for LLM context budgeting.
+- **22 new tests** for `ValidationErrorFormatter` (17 unit + 5 integration).
+- **18 new tests** for `omitCommon` covering flat/group/merge/edge cases.
+- **Test count:** 819 tests across 35 files, all passing.
+
+### Changed
+- **`ExecutionPipeline.validateArgs()`:** Now delegates to `formatValidationError()` instead of raw `ZodIssue.message` joining. Backward-compatible — existing assertions on `'Validation failed'` still match.
+- **SRP refactoring — `SchemaGenerator`:** Decomposed the monolithic `generateInputSchema` (120 lines, 4 responsibilities) into 5 focused helpers: `addDiscriminatorProperty()`, `buildOmitSets()`, `collectCommonFields()`, `collectActionFields()`, `applyAnnotations()`.
+- **SRP refactoring — `ToolDefinitionCompiler`:** Extracted `applyCommonSchemaOmit()` — pure function for surgical Zod `.omit()` with empty-schema guard — from `buildValidationSchema()`.
+- **SRP refactoring — `ActionGroupBuilder`:** Extracted `mapConfigToActionFields()` — shared `ActionConfig → InternalAction` mapper used by both `GroupedToolBuilder.action()` and `ActionGroupBuilder.action()`, eliminating 6-field duplication.
+- **`InternalAction`:** Added `omitCommonFields?: readonly string[]` for runtime omission tracking.
+- **`ActionConfig`:** Added `omitCommon?: string[]` to the public API.
+
 ## [0.6.0] - 2026-02-21
 
 ### Added
