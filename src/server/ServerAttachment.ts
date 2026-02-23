@@ -27,7 +27,7 @@ import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
 import { type ToolExposition } from '../exposition/types.js';
 import { compileExposition, type FlatRoute, type ExpositionResult } from '../exposition/ExpositionCompiler.js';
-import { type PromptRegistry } from '../prompt/PromptRegistry.js';
+import { type PromptRegistry, type PromptFilter } from '../prompt/PromptRegistry.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -403,11 +403,13 @@ function registerPromptHandlers<TContext>(
     }
 
     // prompts/list
-    resolved.setRequestHandler(ListPromptsRequestSchema, () => {
-        const allPrompts = filter
-            ? prompts.getPrompts(filter)
-            : prompts.getAllPrompts();
-        return { prompts: allPrompts };
+    resolved.setRequestHandler(ListPromptsRequestSchema, async (
+        request: { params?: { cursor?: string } },
+    ) => {
+        const params: { filter?: PromptFilter; cursor?: string } = {};
+        if (filter) params.filter = filter as PromptFilter;
+        if (request?.params?.cursor) params.cursor = request.params.cursor;
+        return await prompts.listPrompts(params);
     });
 
     // prompts/get — with loopback dispatcher and signal propagation

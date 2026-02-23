@@ -30,7 +30,7 @@ const admin = createTool('admin')
 :::
 
 **How it works:**
-The framework intercepts the internal compiler and switches from Markdown to Token-Oriented Object Notation ([TOON](https://github.com/toon-format/toon)). The metadata for all actions within the tool is structured into a dense, pipe-delimited data table with zero JSON repetition. This preserves 100% of the LLM's understanding while dropping description token consumption by ~30–50%.
+The framework intercepts the internal compiler and switches from Markdown to Token-Oriented Object Notation ([TOON](https://github.com/toon-format/toon)). The metadata for all actions within the tool is structured into a dense, pipe-delimited data table with zero JSON repetition. This preserves 100% of the LLM's structural perception while dropping description token consumption by ~30–50%.
 
 ---
 

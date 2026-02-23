@@ -219,7 +219,7 @@ const TaskPresenter = createPresenter('Task')
 
 **Why "teaching block" instead of just truncation?**
 
-Raw truncation still wastes the agent's next turn. It will call `list_all` again. The teaching block ensures the agent understands *what happened* and *what to do differently*:
+Raw truncation still wastes the agent's next turn. It will call `list_all` again. The teaching block ensures the agent interprets *what happened* and *what to do differently*:
 
 ```text
 ⚠️ Dataset truncated. Showing 50 of 3,200 tasks.

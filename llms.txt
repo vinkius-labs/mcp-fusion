@@ -454,6 +454,15 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 });
 ```
 
+## Stateless Cursor Pagination
+
+Prompt Registries support cryptographic, stateless cursor-based pagination out of the box. Cursors encode the current position securely (`globalThis.crypto.subtle`) ensuring O(1) memory overhead.
+
+```typescript
+const registry = new PromptRegistry<AppContext>();
+registry.configurePagination({ pageSize: 50 }); // enable pagination
+```
+
 ## Important Rules
 
 1. `.action()` and `.group()` are MUTUALLY EXCLUSIVE on the same builder

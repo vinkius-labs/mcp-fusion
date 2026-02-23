@@ -62,10 +62,12 @@ function createMockServer() {
             if (!handler) throw new Error('No tools/call handler');
             return handler({ method: 'tools/call', params: { name, arguments: args } }, extra);
         },
-        async callListPrompts() {
+        async callListPrompts(cursor?: string) {
             const handler = handlers.get('prompts/list');
             if (!handler) throw new Error('No prompts/list handler');
-            return handler({ method: 'prompts/list', params: {} }, {});
+            const params: Record<string, unknown> = {};
+            if (cursor) params.cursor = cursor;
+            return handler({ method: 'prompts/list', params }, {});
         },
         async callGetPrompt(name: string, args: Record<string, string> = {}, extra: unknown = {}) {
             const handler = handlers.get('prompts/get');
@@ -1676,5 +1678,291 @@ describe('Integration Sad Path: Detach Error Handling', () => {
         detach();
         // Second detach should not throw
         expect(() => detach()).not.toThrow();
+    });
+});
+
+// ============================================================================
+// 23. Stateless Cursor Pagination (Prompt List via Server)
+// ============================================================================
+
+describe('Integration: Stateless Cursor Pagination → PromptRegistry → Server', () => {
+    it('should paginate prompts/list end-to-end through server with cursor', async () => {
+        interface PagCtx { source: string }
+
+        // 25 prompts → pageSize 10 → 3 pages (10, 10, 5)
+        const prompts = Array.from({ length: 25 }, (_, i) =>
+            definePrompt<PagCtx>(`prompt-${String(i).padStart(2, '0')}`, {
+                description: `Prompt ${i}`,
+                handler: async () => ({
+                    messages: [{
+                        role: 'user' as const,
+                        content: { type: 'text' as const, text: `Hello from ${i}` },
+                    }],
+                }),
+            }),
+        );
+
+        const toolRegistry = new ToolRegistry<PagCtx>();
+        toolRegistry.register(
+            createTool<PagCtx>('dummy').action({
+                name: 'ping',
+                handler: async () => success('pong'),
+            }),
+        );
+
+        const promptRegistry = new PromptRegistry<PagCtx>();
+        promptRegistry.registerAll(...prompts);
+        promptRegistry.configurePagination({ pageSize: 10 });
+
+        const server = createMockServer();
+        toolRegistry.attachToServer(server, {
+            toolExposition: 'grouped',
+            contextFactory: () => ({ source: 'test' }),
+            prompts: promptRegistry,
+        });
+
+        // ── Page 1 ──
+        const page1 = await server.callListPrompts();
+        expect(page1.prompts).toHaveLength(10);
+        expect(page1.prompts[0].name).toBe('prompt-00');
+        expect(page1.prompts[9].name).toBe('prompt-09');
+        expect(page1.nextCursor).toBeDefined();
+
+        // ── Page 2 ──
+        const page2 = await server.callListPrompts(page1.nextCursor);
+        expect(page2.prompts).toHaveLength(10);
+        expect(page2.prompts[0].name).toBe('prompt-10');
+        expect(page2.prompts[9].name).toBe('prompt-19');
+        expect(page2.nextCursor).toBeDefined();
+
+        // ── Page 3 (last) ──
+        const page3 = await server.callListPrompts(page2.nextCursor);
+        expect(page3.prompts).toHaveLength(5);
+        expect(page3.prompts[0].name).toBe('prompt-20');
+        expect(page3.prompts[4].name).toBe('prompt-24');
+        expect(page3.nextCursor).toBeUndefined(); // No more pages
+
+        // ── No duplicates across pages ──
+        const allNames = [
+            ...page1.prompts.map((p: any) => p.name),
+            ...page2.prompts.map((p: any) => p.name),
+            ...page3.prompts.map((p: any) => p.name),
+        ];
+        expect(new Set(allNames).size).toBe(25);
+    });
+
+    it('should reject tampered cursors gracefully', async () => {
+        interface PagCtx { source: string }
+
+        const promptRegistry = new PromptRegistry<PagCtx>();
+        promptRegistry.registerAll(
+            ...Array.from({ length: 5 }, (_, i) =>
+                definePrompt<PagCtx>(`p-${i}`, {
+                    handler: async () => ({
+                        messages: [{ role: 'user' as const, content: { type: 'text' as const, text: `${i}` } }],
+                    }),
+                }),
+            ),
+        );
+        promptRegistry.configurePagination({ pageSize: 2 });
+
+        const toolRegistry = new ToolRegistry<PagCtx>();
+        toolRegistry.register(
+            createTool<PagCtx>('x').action({ name: 'y', handler: async () => success('z') }),
+        );
+
+        const server = createMockServer();
+        toolRegistry.attachToServer(server, {
+            toolExposition: 'grouped',
+            contextFactory: () => ({ source: 'test' }),
+            prompts: promptRegistry,
+        });
+
+        // Tampered cursor → should fallback to first page
+        const result = await server.callListPrompts('TAMPERED_CURSOR_123');
+        expect(result.prompts).toHaveLength(2);
+        expect(result.prompts[0].name).toBe('p-0');
+    });
+
+    it('should filter AND paginate simultaneously', async () => {
+        interface PagCtx { source: string }
+
+        const promptRegistry = new PromptRegistry<PagCtx>();
+        // Register 20 prompts: 10 tagged 'analytics', 10 tagged 'reports'
+        promptRegistry.registerAll(
+            ...Array.from({ length: 10 }, (_, i) =>
+                definePrompt<PagCtx>(`analytics-${i}`, {
+                    tags: ['analytics'],
+                    handler: async () => ({
+                        messages: [{ role: 'user' as const, content: { type: 'text' as const, text: `a-${i}` } }],
+                    }),
+                }),
+            ),
+            ...Array.from({ length: 10 }, (_, i) =>
+                definePrompt<PagCtx>(`report-${i}`, {
+                    tags: ['reports'],
+                    handler: async () => ({
+                        messages: [{ role: 'user' as const, content: { type: 'text' as const, text: `r-${i}` } }],
+                    }),
+                }),
+            ),
+        );
+        promptRegistry.configurePagination({ pageSize: 4 });
+
+        const toolRegistry = new ToolRegistry<PagCtx>();
+        toolRegistry.register(
+            createTool<PagCtx>('x').action({ name: 'y', handler: async () => success('z') }),
+        );
+
+        const server = createMockServer();
+        toolRegistry.attachToServer(server, {
+            toolExposition: 'grouped',
+            contextFactory: () => ({ source: 'test' }),
+            prompts: promptRegistry,
+            filter: { tags: ['analytics'] },
+        });
+
+        // Only 'analytics' prompts should be listed (10 total, 4 per page)
+        const page1 = await server.callListPrompts();
+        expect(page1.prompts).toHaveLength(4);
+        expect(page1.prompts.every((p: any) => p.name.startsWith('analytics-'))).toBe(true);
+        expect(page1.nextCursor).toBeDefined();
+
+        const page2 = await server.callListPrompts(page1.nextCursor);
+        expect(page2.prompts).toHaveLength(4);
+        expect(page2.nextCursor).toBeDefined();
+
+        const page3 = await server.callListPrompts(page2.nextCursor);
+        expect(page3.prompts).toHaveLength(2);
+        expect(page3.nextCursor).toBeUndefined();
+
+        // All 10 analytics prompts accounted for
+        const total = page1.prompts.length + page2.prompts.length + page3.prompts.length;
+        expect(total).toBe(10);
+    });
+});
+
+// ============================================================================
+// 24. Progress Notifications (Generator Handler → ProgressSink → Server)
+// ============================================================================
+
+describe('Integration: Progress Notifications → Server', () => {
+    it('should forward progress events from a generator handler when progressToken is present', async () => {
+        const notifications: Array<{ method: string; params: unknown }> = [];
+
+        const tool = createTool<void>('deploy')
+            .action({
+                name: 'run',
+                schema: z.object({ target: z.string() }),
+                handler: async function* (_ctx, args) {
+                    const { progress } = await import('../../src/core/execution/ProgressHelper.js');
+                    yield progress(10, 'Starting deployment...');
+                    yield progress(50, `Deploying to ${args.target}...`);
+                    yield progress(90, 'Finalizing...');
+                    return success(`Deployed to ${args.target}`);
+                },
+            });
+
+        const registry = new ToolRegistry<void>();
+        registry.register(tool);
+
+        const server = createMockServer();
+        registry.attachToServer(server, { toolExposition: 'grouped' });
+
+        // Simulate extra object with progressToken and sendNotification
+        const extra = {
+            _meta: { progressToken: 'tok_abc' },
+            sendNotification: async (notif: unknown) => {
+                notifications.push(notif as any);
+            },
+        };
+
+        const result = await server.callTool('deploy', { action: 'run', target: 'prod' }, extra);
+        expect(result.content[0].text).toBe('Deployed to prod');
+        expect(result.isError).toBeUndefined();
+
+        // Progress notifications should have been sent
+        expect(notifications.length).toBe(3);
+
+        const p1 = notifications[0]! as any;
+        expect(p1.method).toBe('notifications/progress');
+        expect(p1.params.progressToken).toBe('tok_abc');
+        expect(p1.params.progress).toBe(10);
+        expect(p1.params.total).toBe(100);
+        expect(p1.params.message).toBe('Starting deployment...');
+
+        const p2 = notifications[1]! as any;
+        expect(p2.params.progress).toBe(50);
+        expect(p2.params.message).toContain('prod');
+
+        const p3 = notifications[2]! as any;
+        expect(p3.params.progress).toBe(90);
+    });
+
+    it('should NOT send progress notifications when no progressToken (zero overhead)', async () => {
+        const notifications: unknown[] = [];
+
+        const tool = createTool<void>('build')
+            .action({
+                name: 'run',
+                handler: async function* () {
+                    const { progress } = await import('../../src/core/execution/ProgressHelper.js');
+                    yield progress(50, 'Building...');
+                    return success('built');
+                },
+            });
+
+        const registry = new ToolRegistry<void>();
+        registry.register(tool);
+
+        const server = createMockServer();
+        registry.attachToServer(server, { toolExposition: 'grouped' });
+
+        // No progressToken in extra → no notifications should be sent
+        const result = await server.callTool('build', { action: 'run' }, {});
+        expect(result.content[0].text).toBe('built');
+        expect(notifications).toHaveLength(0); // Zero overhead confirmed
+    });
+});
+
+// ============================================================================
+// 25. Cooperative Cancellation (AbortSignal via Server)
+// ============================================================================
+
+describe('Integration: AbortSignal Cancellation → Server', () => {
+    it('should cancel a long-running generator handler when signal is aborted', async () => {
+        const tool = createTool<void>('longTask')
+            .action({
+                name: 'run',
+                handler: async function* () {
+                    const { progress } = await import('../../src/core/execution/ProgressHelper.js');
+                    yield progress(10, 'Step 1');
+                    // Simulate long work
+                    await new Promise(r => setTimeout(r, 50));
+                    yield progress(50, 'Step 2');
+                    await new Promise(r => setTimeout(r, 50));
+                    yield progress(90, 'Step 3');
+                    return success('done');
+                },
+            });
+
+        const registry = new ToolRegistry<void>();
+        registry.register(tool);
+
+        const server = createMockServer();
+        registry.attachToServer(server, { toolExposition: 'grouped' });
+
+        // Create an AbortController and abort after 30ms
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 30);
+
+        const extra = {
+            signal: controller.signal,
+            sendNotification: async () => {},
+        };
+
+        const result = await server.callTool('longTask', { action: 'run' }, extra);
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('cancelled');
     });
 });

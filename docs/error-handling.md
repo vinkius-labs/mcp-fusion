@@ -1,6 +1,6 @@
 # Error Handling
 
-**MCP Fusion** uses a unified XML error protocol designed for both human debugging and LLM agent self-correction. Every error — from simple failures to complex validation issues — is wrapped in structured XML that agents can parse, understand, and act on deterministically.
+**MCP Fusion** uses a unified XML error protocol designed for both human debugging and LLM agent self-correction. Every error — from simple failures to complex validation issues — is wrapped in structured XML that agents can parse, structurally perceive, and act on deterministically.
 
 ## Why XML?
 
@@ -100,7 +100,7 @@ handler: async (ctx, args) => {
 ```
 
 This structured format helps the agent:
-1. **Understand the error** — via the `code` attribute
+1. **Structurally perceive the error** — via the `code` attribute
 2. **Know what to do** — via `<recovery>`
 3. **Know which actions exist** — via `<available_actions>`
 

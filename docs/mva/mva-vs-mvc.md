@@ -2,7 +2,7 @@
 
 <div class="mva-manifesto-header">
 
-> MVC was designed for a consumer that navigates by sight. MVA was designed for a consumer that navigates by understanding.
+> MVC was designed for a consumer that navigates by sight. MVA was designed for a consumer that navigates by structural perception.
 
 </div>
 

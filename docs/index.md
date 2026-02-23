@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Stop Writing MCP Servers Like It's 2024."
   text: ""
-  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. **MCP Fusion** introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer so AI agents perceive, understand, and act on your data like trained engineers, not guessing machines."
+  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. **MCP Fusion** introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer with a Structured Perception Layer on your data like trained engineers, not guessing machines."
   actions:
     - theme: brand
       text: The MVA Manifesto →
@@ -38,8 +38,8 @@ hero:
 <div class="ms-metric-value">MVA</div>
 </div>
 <div class="ms-metric">
-<div class="ms-metric-label">HALLUCINATION</div>
-<div class="ms-metric-value">Zero</div>
+<div class="ms-metric-label">CONTEXT CONTROL</div>
+<div class="ms-metric-value">Deterministic</div>
 </div>
 </div>
 </div>
@@ -170,6 +170,89 @@ const billing = defineTool<AppContext>('billing', {
 <a href="/mcp-fusion/comparison" class="ms-compare-link">SEE THE FULL COMPARISON WITH CODE EXAMPLES →</a>
 </div>
 
+<!-- ═══ Section 2.7: Three Core Problems ═══ -->
+<div class="ms-problems">
+<div class="ms-problems-header">
+<div class="ms-label">WHAT WE SOLVE</div>
+<h2 class="ms-headline">Three problems.<br>Framework-level solutions.</h2>
+<p class="ms-sub">Every claim below maps to real code in the repository. Not a roadmap. Not a promise.</p>
+</div>
+
+<div class="ms-problem-grid">
+
+<div class="ms-problem-card">
+<div class="ms-problem-number">01</div>
+<h3 class="ms-problem-title">Egress Firewall</h3>
+<p class="ms-problem-pain"><strong>The problem:</strong> The developer does <code>SELECT *</code> and calls <code>JSON.stringify()</code>. Passwords, API keys, tenant IDs — all leaked to the LLM provider over the network. A compliance nightmare waiting to happen.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> The Zod <code>.schema()</code> on every Presenter physically strips undeclared fields in server RAM via <code>Zod.parse()</code>. Sensitive data is destroyed before serialization — not by developer discipline, but by the framework itself. Combined with <code>.strict()</code> on inputs, this creates a bidirectional data boundary on every tool.</p>
+
+```typescript
+const UserPresenter = createPresenter('User')
+    .schema(z.object({
+        id: z.string(),
+        name: z.string(),
+        email: z.string(),
+        // password_hash, tenant_id, internal_flags
+        // → physically absent from output. Not filtered. GONE.
+    }));
+```
+
+<a href="/mcp-fusion/presenter" class="ms-card-link">SEE HOW IT WORKS →</a>
+</div>
+
+<div class="ms-problem-card">
+<div class="ms-problem-number">02</div>
+<h3 class="ms-problem-title">Context Tree-Shaking</h3>
+<p class="ms-problem-pain"><strong>The problem:</strong> To teach the AI about invoices, tasks, sprints, and users, the company writes a 10,000-token system prompt — sent on every call. The LLM loses coherence in the middle of the text, misapplies rules across domains, and the company pays for irrelevant tokens on every request.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> Just like webpack tree-shaking removes unused code from a bundle, <code>.systemRules()</code> removes unused rules from the agent's context window. Domain rules travel <strong>with the data</strong> — the invoice rule only exists in the prompt at the exact millisecond the agent processes an invoice. Token overhead drops from ~2,000/call to ~200/call.</p>
+
+```typescript
+// Invoice rules — sent ONLY when invoice data is returned
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .systemRules((invoice, ctx) => [
+        'CRITICAL: amount_cents is in CENTS. Divide by 100.',
+        ctx?.user?.role !== 'admin'
+            ? 'RESTRICTED: Mask exact totals for non-admin users.'
+            : null,
+    ]);
+
+// Task rules — sent ONLY when task data is returned
+const TaskPresenter = createPresenter('Task')
+    .schema(taskSchema)
+    .systemRules(['Use emojis: 🔄 In Progress, ✅ Done, ❌ Blocked']);
+```
+
+<a href="/mcp-fusion/mva/context-tree-shaking" class="ms-card-link">SEE HOW IT WORKS →</a>
+</div>
+
+<div class="ms-problem-card">
+<div class="ms-problem-number">03</div>
+<h3 class="ms-problem-title">SSR for Agents</h3>
+<p class="ms-problem-pain"><strong>The problem:</strong> The developer begs in the prompt: "Please generate valid ECharts JSON." The AI gets the syntax wrong 20% of the time. The UI breaks. Charts become a probabilistic coinflip instead of deterministic output.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> The agent is demoted to its correct role — a messenger. Complex chart configs, Mermaid diagrams, and Markdown tables are compiled server-side in Node.js (100% deterministic) via <code>.uiBlocks()</code>. The AI receives a <code>[SYSTEM]</code> pass-through directive and forwards the block unchanged. Visual hallucination drops to zero.</p>
+
+```typescript
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .uiBlocks((invoice) => [
+        ui.echarts({
+            series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
+        }),
+        ui.table(
+            ['Field', 'Value'],
+            [['Status', invoice.status], ['Amount', `$${invoice.amount_cents / 100}`]],
+        ),
+    ]);
+// The LLM passes the chart config through. It never generates it.
+```
+
+<a href="/mcp-fusion/mva/perception-package" class="ms-card-link">SEE HOW IT WORKS →</a>
+</div>
+
+</div>
+</div>
+
 <!-- ═══ Section 3: MVA Conviction ═══ -->
 <div class="ms-section ms-conviction">
 <div class="ms-left">
@@ -181,11 +264,11 @@ const billing = defineTool<AppContext>('billing', {
 <div class="ms-columns">
 <div class="ms-column">
 <div class="ms-column-label">// MODEL</div>
-<p class="ms-column-text">Zod schema validates input. Unknown fields rejected with actionable errors. The LLM cannot inject parameters your schema does not declare.</p>
+<p class="ms-column-text">Zod schema validates and filters data. Unknown fields rejected with actionable errors. The LLM cannot inject parameters your schema does not declare.</p>
 </div>
 <div class="ms-column">
 <div class="ms-column-label">// PRESENTER</div>
-<p class="ms-column-text"><em>The perception layer is alive — not a marketing artifact.</em></p>
+<p class="ms-column-text">JIT rules, server-rendered UI, cognitive guardrails, action affordances — all deterministic, all framework-enforced.</p>
 </div>
 </div>
 </div>

@@ -140,7 +140,7 @@ yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 <div class="next-steps">
 
-- [**The MVA Manifesto →**](/mva-pattern) — Understand the architectural paradigm shift from MVC to MVA
+- [**The MVA Manifesto →**](/mva-pattern) — Learn the architectural paradigm shift from MVC to MVA
 - [**Quickstart →**](/quickstart) — Build your first tool in 5 minutes
 - [**Presenter →**](/presenter) — The agent-centric View layer
 - [**Building Tools →**](/building-tools) — `defineTool()` and `createTool()` in depth

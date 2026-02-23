@@ -93,7 +93,7 @@ The agent self-corrects: *"There are 3,200 tasks. Let me filter by status: block
 
 ### Why "Teaching" Matters
 
-Raw truncation alone doesn't help. Without guidance, the agent's next move is to call `list_all` again — getting the same truncated result. The teaching block ensures the agent understands:
+Raw truncation alone doesn't help. Without guidance, the agent's next move is to call `list_all` again — getting the same truncated result. The teaching block ensures the agent interprets:
 
 1. **What happened** — "Showing 50 of 3,200"
 2. **Why it happened** — dataset too large for efficient processing

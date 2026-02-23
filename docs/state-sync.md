@@ -22,7 +22,7 @@ A more dangerous variant: the LLM calls `tasks.update` to move a task to a diffe
 
 ### The Insight
 
-LLMs are trained on billions of web pages containing HTTP cache headers. They understand `Cache-Control: no-store` (don't cache this) and `Cache-Control: immutable` (this never changes) at a semantic level. State Sync exploits this training.
+LLMs are trained on billions of web pages containing HTTP cache headers. They interpret `Cache-Control: no-store` (don't cache this) and `Cache-Control: immutable` (this never changes) at a semantic level. State Sync exploits this training.
 
 > 📄 Based on the research paper: ["Your LLM Agents are Temporally Blind"](https://arxiv.org/abs/2510.23853)
 

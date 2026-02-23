@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-02-23
+
+### 📄 Stateless Cursor Pagination for Prompts
+
+**MCP Fusion** now provides O(1) memory, cryptographic cursor-based pagination for `prompts/list`. Instead of loading thousands of prompts into memory or sending large payloads to MCP clients, the framework emits pages using an RFC-compliant cursor algorithm powered by the native Web Crypto API.
+
+### Added
+
+- **`PromptRegistry.configurePagination({ pageSize })`:** Enables stateless pagination. By default, pagination is disabled (all prompts returned).
+- **`CursorCodec` module:** Implements a robust encoded cursor utilizing native `globalThis.crypto.subtle`. Zero external crypto dependencies.
+- **Server integration:** Automatically extracts the `cursor` param from the `prompts/list` MCP request, decodes it, applies filters, and generates the `nextCursor` transparently.
+- **Tamper resistance:** Adulterated cursors fallback gracefully to the first page without crashing the server.
+- **Progress Notifications Integration:** Full E2E testing of `ProgressSink` mapping to `notifications/progress`. Generator handlers firing `yield progress()` map seamlessly without overhead.
+- **Cooperative Cancellation Integration:** Full E2E testing of `AbortSignal` interception causing runaway generators and chains to abort instantly.
+
 ## [1.10.0] - 2026-02-23
 
 ### Hydration Timeout Sandbox — Graceful Degradation for Prompt Hydration

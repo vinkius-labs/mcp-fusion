@@ -110,6 +110,66 @@ describe('PromptRegistry', () => {
         });
     });
 
+    // ── listPrompts (pagination & filters) ───────────────────────
+
+    describe('listPrompts', () => {
+        beforeEach(() => {
+            // Register 50 prompts to test pagination
+            const builderArray = Array.from({ length: 50 }).map((_, i) =>
+                makePrompt(`prompt-${String(i).padStart(2, '0')}`, i % 2 === 0 ? ['even'] : ['odd'])
+            );
+            registry.registerAll(...builderArray);
+        });
+
+        it('returns initial page of prompts', async () => {
+            registry.configurePagination({ pageSize: 10 });
+            const { prompts, nextCursor } = await registry.listPrompts();
+            
+            expect(prompts).toHaveLength(10);
+            expect(prompts[0]!.name).toBe('prompt-00');
+            expect(prompts[9]!.name).toBe('prompt-09');
+            expect(nextCursor).toBeDefined();
+        });
+
+        it('paginates over multiple pages', async () => {
+            registry.configurePagination({ pageSize: 10 });
+            
+            const firstPage = await registry.listPrompts();
+            expect(firstPage.prompts).toHaveLength(10);
+            
+            // Fetch page 2
+            const secondPage = await registry.listPrompts({ cursor: firstPage.nextCursor });
+            expect(secondPage.prompts).toHaveLength(10);
+            expect(secondPage.prompts[0]!.name).toBe('prompt-10');
+            expect(secondPage.prompts[9]!.name).toBe('prompt-19');
+            expect(secondPage.nextCursor).toBeDefined();
+        });
+
+        it('applies filters over paginated results', async () => {
+            registry.configurePagination({ pageSize: 15 });
+            
+            const { prompts, nextCursor } = await registry.listPrompts({
+                filter: { tags: ['even'] } 
+            });
+            
+            // Total 'even' tags is 25. First page pageSize 15, so we should get 15 evenly numbered ones?
+            // Wait, the filter is applied DURING the iteration over builder maps.
+            // My implementation filters allNames first, then slices.
+            expect(prompts).toHaveLength(15);
+            expect(prompts[0]!.name).toBe('prompt-00');
+            expect(prompts[1]!.name).toBe('prompt-02');
+            expect(nextCursor).toBeDefined();
+            
+            const secondPage = await registry.listPrompts({
+                filter: { tags: ['even'] },
+                cursor: nextCursor
+            });
+            // Remaining 'even' prompts are 10
+            expect(secondPage.prompts).toHaveLength(10);
+            expect(secondPage.nextCursor).toBeUndefined();
+        });
+    });
+
     // ── routeGet ─────────────────────────────────────────
 
     describe('routeGet', () => {

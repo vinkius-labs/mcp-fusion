@@ -42,6 +42,8 @@ import {
 } from './types.js';
 import { runWithHydrationDeadline } from './HydrationSandbox.js';
 
+import { CursorCodec, type CursorMode } from './CursorCodec.js';
+
 // ── Types ────────────────────────────────────────────────
 
 /** MCP Prompt definition (for `prompts/list`) */
@@ -63,6 +65,23 @@ export interface PromptFilter {
     anyTag?: string[];
     /** Exclude prompts that have ANY of these tags */
     exclude?: string[];
+}
+
+/** Options for configuring pagination in PromptRegistry */
+export interface PromptPaginationOptions {
+    /** 
+     * Maximum number of prompts to return per page.
+     * Default: 50
+     */
+    pageSize?: number;
+    /**
+     * 'signed' (HMAC) or 'encrypted' (AES-GCM). Default: 'signed'
+     */
+    cursorMode?: CursorMode;
+    /**
+     * 32-byte secret for the cursor codec. If omitted, uses ephemeral keys.
+     */
+    cursorSecret?: string;
 }
 
 // ── Notification Sink ────────────────────────────────────
@@ -95,6 +114,26 @@ export class PromptRegistry<TContext = void> {
     private _notificationSink?: PromptNotificationSink;
     private _notifyDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     private _defaultHydrationTimeout: number | undefined;
+
+    // Pagination
+    private _cursorCodec: CursorCodec = new CursorCodec();
+    private _pageSize: number = 50;
+
+    /**
+     * Configure stateless cursor-based pagination for `prompts/list`.
+     * Overrides the default page size of 50.
+     * 
+     * @param options Pagination configuration (pageSize, modes, secrets)
+     */
+    configurePagination(options: PromptPaginationOptions): void {
+        if (options.pageSize) this._pageSize = options.pageSize;
+        if (options.cursorMode || options.cursorSecret) {
+            this._cursorCodec = new CursorCodec({
+                mode: options.cursorMode ?? 'signed',
+                ...(options.cursorSecret ? { secret: options.cursorSecret } : {})
+            });
+        }
+    }
 
     /**
      * Set a global hydration timeout for ALL prompts in this registry.
@@ -179,6 +218,7 @@ export class PromptRegistry<TContext = void> {
      * Get all registered MCP Prompt definitions.
      *
      * Returns the compiled prompt metadata for `prompts/list`.
+     * @deprecated Use `listPrompts({ filter })` instead for pagination support.
      */
     getAllPrompts(): McpPromptDef[] {
         const prompts: McpPromptDef[] = [];
@@ -192,6 +232,7 @@ export class PromptRegistry<TContext = void> {
      * Get prompt definitions filtered by tags.
      *
      * Uses Set-based lookups for O(1) tag matching.
+     * @deprecated Use `listPrompts({ filter })` instead for pagination support.
      */
     getPrompts(filter: PromptFilter): McpPromptDef[] {
         const requiredTags = filter.tags && filter.tags.length > 0
@@ -225,6 +266,63 @@ export class PromptRegistry<TContext = void> {
         }
 
         return prompts;
+    }
+
+    /**
+     * Get paginated prompt definitions for `prompts/list`.
+     * 
+     * Applies tag filters and decodes stateless cursors to return
+     * the requested slice of prompts, along with a `nextCursor` if more exist.
+     * Memory consumption is strictly O(1) across connections.
+     * 
+     * @param request - Configuration containing optional `filter` and `cursor`.
+     * @returns Object with the array of prompts and an optional `nextCursor`.
+     */
+    async listPrompts(request?: { filter?: PromptFilter; cursor?: string }): Promise<{ prompts: McpPromptDef[]; nextCursor?: string }> {
+        const filter = request?.filter;
+        
+        const requiredTags = filter?.tags && filter.tags.length > 0 ? new Set(filter.tags) : undefined;
+        const anyTags = filter?.anyTag && filter.anyTag.length > 0 ? new Set(filter.anyTag) : undefined;
+        const excludeTags = filter?.exclude && filter.exclude.length > 0 ? new Set(filter.exclude) : undefined;
+
+        // Iterate maps in insertion order
+        const allNames: string[] = [];
+        for (const [name, builder] of this._builders.entries()) {
+            if (filter) {
+                const builderTags = builder.getTags();
+                // AND logic
+                if (requiredTags && !Array.from(requiredTags).every(t => builderTags.includes(t))) continue;
+                // OR logic
+                if (anyTags && !builderTags.some(t => anyTags.has(t))) continue;
+                // Exclude
+                if (excludeTags && builderTags.some(t => excludeTags.has(t))) continue;
+            }
+            allNames.push(name);
+        }
+
+        let startIndex = 0;
+        if (request?.cursor) {
+            const decoded = await this._cursorCodec.decode(request.cursor);
+            if (decoded && decoded.after) {
+                const lastIndex = allNames.indexOf(decoded.after);
+                if (lastIndex !== -1) {
+                    startIndex = lastIndex + 1; // start from the next item
+                }
+            }
+        }
+
+        const pageNames = allNames.slice(startIndex, startIndex + this._pageSize);
+        const prompts = pageNames.map(name => this._builders.get(name)!.buildPromptDefinition());
+        
+        let nextCursor: string | undefined;
+        if (startIndex + this._pageSize < allNames.length) {
+            const lastInPage = pageNames[pageNames.length - 1];
+            if (lastInPage) {
+                nextCursor = await this._cursorCodec.encode({ after: lastInPage });
+            }
+        }
+
+        return nextCursor ? { prompts, nextCursor } : { prompts };
     }
 
     /**

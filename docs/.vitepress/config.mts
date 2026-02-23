@@ -11,7 +11,7 @@ export default defineConfig({
   head: [
     // ── Open Graph ──
     ['meta', { property: 'og:title', content: 'mcp-fusion — The MVA Framework for MCP Servers' }],
-    ['meta', { property: 'og:description', content: 'The first framework where AI agents perceive, understand, and act on your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
+    ['meta', { property: 'og:description', content: 'The first framework with a Structured Perception Layer for your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:url', content: 'https://vinkius-labs.github.io/mcp-fusion/' }],
     ['meta', { property: 'og:site_name', content: 'mcp-fusion' }],

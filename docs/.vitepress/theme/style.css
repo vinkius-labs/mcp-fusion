@@ -748,6 +748,111 @@ html.dark .VPFeature:hover {
   color: #c084fc;
 }
 
+/* ── Three Core Problems Section ── */
+.ms-problems {
+  border: 1px solid #1a1a1a;
+  border-top: none;
+  background: #000;
+  padding: 80px 60px 60px;
+}
+
+.ms-problems-header {
+  margin-bottom: 48px;
+}
+
+.ms-problems-header .ms-headline {
+  font-size: 36px !important;
+  margin-bottom: 12px !important;
+}
+
+.ms-problems-header .ms-sub {
+  margin-top: 12px;
+}
+
+.ms-problem-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border: 1px solid #1a1a1a;
+}
+
+.ms-problem-card {
+  padding: 48px 40px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.ms-problem-card:last-child {
+  border-bottom: none;
+}
+
+.ms-problem-number {
+  font-size: 11px;
+  font-family: var(--vp-font-family-mono);
+  color: #c084fc;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.ms-problem-title {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  margin: 0 0 20px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  letter-spacing: -0.02em !important;
+}
+
+.ms-problem-pain {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #777;
+  margin-bottom: 16px;
+}
+
+.ms-problem-pain strong {
+  color: #999;
+}
+
+.ms-problem-solution {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #777;
+  margin-bottom: 24px;
+}
+
+.ms-problem-solution strong {
+  color: #c084fc;
+}
+
+.ms-problem-solution code {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.ms-problem-pain code {
+  color: #999;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.ms-problem-card .ms-card-link {
+  display: inline-block;
+  margin-top: 24px;
+}
+
+.ms-problem-card div[class*="language-"] {
+  margin: 0 0 8px 0 !important;
+  border-radius: 6px !important;
+}
+
 /* ── Mobile ── */
 @media (max-width: 960px) {
   .ms-section,
@@ -827,6 +932,15 @@ html.dark .VPFeature:hover {
   }
   .ms-compare-head {
     display: none;
+  }
+  .ms-problems {
+    padding: 40px 24px 40px;
+  }
+  .ms-problem-card {
+    padding: 30px 24px;
+  }
+  .ms-problem-title {
+    font-size: 20px !important;
   }
 }
 
