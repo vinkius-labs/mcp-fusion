@@ -1,8 +1,24 @@
 /**
- * @module
- * @description
- * Models representing the core structures of MCP Fusion.
+ * MCP Fusion — Root Barrel Export
+ *
+ * Public API entry point. Aggregates all bounded-context modules
+ * into a single flat namespace for consumers.
+ *
+ * Architecture:
+ *   src/
+ *   ├── core/          ← Builder, Registry, Execution, Middleware, Schema
+ *   ├── client/        ← tRPC-style FusionClient
+ *   ├── observability/ ← Debug Observer, Tracing
+ *   ├── presenter/     ← MVA View Layer
+ *   ├── prompt/        ← Prompt Engine
+ *   ├── server/        ← Server Attachment
+ *   ├── exposition/    ← Flat/Grouped Topology Compiler
+ *   ├── state-sync/    ← Epistemic Cache-Control
+ *   ├── introspection/ ← Dynamic Manifest
+ *   ├── domain/        ← Domain Models
+ *   └── converters/    ← Zod Converters
  */
+
 // ── Domain Models ────────────────────────────────────────
 /** @category Domain Models */
 export { Role } from './domain/Role.js';
@@ -27,11 +43,6 @@ export { Prompt } from './domain/Prompt.js';
 /** @category Domain Models */
 export { Resource } from './domain/Resource.js';
 
-/**
- * @module
- * @description
- * Code structure for mapping internal schema representation to Zod.
- */
 // ── Converters ───────────────────────────────────────────
 /** @category Converters */
 export {
@@ -43,13 +54,8 @@ export {
     type ToolAnnotationsConverter, ToolAnnotationsConverterBase
 } from './converters/index.js';
 
-/**
- * @module
- * @description
- * API for building and composing Actions, Groups, and the Tool Registry.
- */
-// ── Framework ────────────────────────────────────────────
-/** @category Framework */
+// ── Core (Builder, Registry, Execution, Middleware) ──────
+/** @category Core */
 export {
     success, error, required, toonSuccess, toolError,
     GroupedToolBuilder, ActionGroupBuilder, createTool, defineTool,
@@ -58,28 +64,13 @@ export {
     succeed, fail,
     progress,
     defineMiddleware, resolveMiddleware,
-    createFusionClient,
-    createTypedRegistry,
-    createDebugObserver,
-    SpanStatusCode,
-    StateSyncLayer, PolicyEngine, matchGlob,
-    ResponseBuilder, response, isResponseBuilder,
-    ui,
-    Presenter, createPresenter, isPresenter,
-    PresenterValidationError,
-    definePrompt,
-    PromptMessage,
-    PromptRegistry,
-    assertFlatSchema,
-    coercePromptArgs,
-} from './framework/index.js';
-/** @category Framework */
+} from './core/index.js';
+/** @category Core */
 export type {
     ToolResponse, ToolErrorOptions,
     ActionConfig, MiddlewareFn, GroupConfigurator,
     ToolFilter,
-    ToolBuilder, ActionMetadata, AttachOptions, DetachFn,
-    ToolExposition, ExpositionConfig,
+    ToolBuilder, ActionMetadata,
     Result, Success, Failure,
     ToolConfig, ActionDef, GroupDef,
     ParamDef, ParamsMap, InferParams,
@@ -87,16 +78,61 @@ export type {
     EnumParamDef, ArrayParamDef,
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
-    FusionClient, FusionTransport, RouterMap,
-    InferRouter, TypedToolRegistry,
+} from './core/index.js';
+
+// ── Client (tRPC-style type-safe) ────────────────────────
+/** @category Client */
+export { createFusionClient, createTypedRegistry } from './client/index.js';
+/** @category Client */
+export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRegistry } from './client/index.js';
+
+// ── Observability (Debug + Tracing) ──────────────────────
+/** @category Observability */
+export { createDebugObserver, SpanStatusCode } from './observability/index.js';
+/** @category Observability */
+export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
     FusionSpan, FusionTracer, FusionAttributeValue,
-    CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
-    UiBlock,
-    ActionSuggestion,
+} from './observability/index.js';
+
+// ── Presenter (MVA View Layer) ───────────────────────────
+/** @category Presenter */
+export {
+    ResponseBuilder, response, isResponseBuilder,
+    ui,
+    Presenter, createPresenter, isPresenter,
+    PresenterValidationError,
+} from './presenter/index.js';
+/** @category Presenter */
+export type { UiBlock, ActionSuggestion } from './presenter/index.js';
+
+// ── Prompt Engine ────────────────────────────────────────
+/** @category Prompt */
+export { definePrompt, PromptMessage, assertFlatSchema, coercePromptArgs } from './prompt/index.js';
+/** @category Prompt */
+export { PromptRegistry } from './prompt/PromptRegistry.js';
+/** @category Prompt */
+export type {
     PromptMessagePayload, PromptResult,
     PromptParamDef, PromptParamsMap,
     PromptBuilder, PromptConfig,
-    McpPromptDef, PromptFilter,
-} from './framework/index.js';
+} from './prompt/index.js';
+/** @category Prompt */
+export type { McpPromptDef, PromptFilter } from './prompt/PromptRegistry.js';
+
+// ── Server Integration ───────────────────────────────────
+/** @category Server */
+export type { AttachOptions, DetachFn } from './server/index.js';
+
+// ── Exposition (Topology Compiler) ───────────────────────
+/** @category Exposition */
+export type { ToolExposition, ExpositionConfig } from './exposition/index.js';
+
+// ── State Sync (Epistemic Cache-Control) ─────────────────
+/** @category StateSync */
+export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
+/** @category StateSync */
+export type {
+    CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
+} from './state-sync/index.js';

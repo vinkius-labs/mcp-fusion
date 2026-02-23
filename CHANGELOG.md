@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.6.2] - 2026-02-23
+
+### 🧪 End-to-End Integration Test Suite
+
+Comprehensive integration test suite (`tests/integration/FullStack.test.ts`) covering **all modules working together** through the MCP Server mock — happy paths AND sad paths. Ensures the framework resolves developer mistakes gracefully without crashing.
+
+### Added
+
+- **37 integration tests** in `FullStack.test.ts` organized across 22 `describe` blocks:
+
+  **Happy paths (15 tests):**
+  - Builder → Registry → Server → ContextFactory
+  - Builder → Presenter → Server (auto-view composition)
+  - Builder → Middleware → Debug Observability (cross-layer events)
+  - Builder → Middleware → Tracing (OTel span lifecycle)
+  - Builder → StateSync → Server (cache-control + invalidation)
+  - PromptRegistry → Server (prompts/list + prompts/get)
+  - Builder → Flat Exposition → Server (atomic tool projection)
+  - Flat Exposition → Debug + Tracing (2 tests)
+  - Full Stack — ALL modules in a single server attachment
+  - Concurrent multi-tool calls (20 parallel + traced, 2 tests)
+  - Presenter → Tracing → Server
+  - Detach → Re-attach lifecycle
+  - defineMiddleware → defineTool → Server
+
+  **Sad paths (22 tests):**
+  - **Routing Failures (4):** Unknown tool (`UNKNOWN_TOOL` + suggestions), unknown action, missing/null/empty discriminator, unknown flat tool name
+  - **Validation Failures (3):** Wrong types, constraint violations (min/max/email), strict mode extra field rejection, flat mode validation
+  - **Handler Exceptions (3):** Handler `throw` → `isError=true` (grouped + flat), soft fail vs hard fail tracing distinction (`UNSET` vs `ERROR` + `recordException`)
+  - **Middleware Failures (3):** Middleware block + debug error event, middleware exception traced as system error, multi-middleware chain ordering (first blocker wins)
+  - **Concurrent Mixed Results (1):** 5 simultaneous calls — 2 success + 1 validation error + 1 throw + 1 unknown action — isolated
+  - **Debug + Tracing Error Correlation (2):** Debug error for unknown tool, traced validation error when both debug+tracing coexist
+  - **defineTool Param Descriptor Errors (2):** Constraint violations via descriptors, shared param missing/empty
+  - **StateSync Config Errors (2):** Invalid `cacheControl` directives rejected at attach time
+  - **Detach Error Handling (2):** Post-detach calls return error, tools/list returns empty, double detach is idempotent
+
+- **Mock strategy:** Only the MCP Server is mocked — no internal framework mocking. Tests exercise the full pipeline (routing → validation → middleware → handler → observability → response).
+
+### Test Suite
+
+- **1,492 tests** across 68 files, all passing.
+
 ## [1.6.1] - 2026-02-23
 
 ### 🛡️ XML Security & Error Protocol Hardening

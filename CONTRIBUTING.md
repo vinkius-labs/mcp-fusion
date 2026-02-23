@@ -96,15 +96,24 @@ npm run build
 
 ```
 src/
-├── framework/           # GroupedToolBuilder, ToolRegistry, ResponseHelper
-│   └── strategies/      # Pure-function strategy modules
+├── core/                # Builder, Registry, Execution, Middleware, Schema
+├── client/              # tRPC-style FusionClient
+├── observability/       # Debug Observer, OpenTelemetry Tracing
+├── presenter/           # MVA (Model-View-Agent) View Layer
+├── prompt/              # Prompt Engine
+├── server/              # MCP Server Attachment
+├── exposition/          # Flat/Grouped Topology Compiler
+├── state-sync/          # Epistemic Cache-Control (LLM Temporal Blindness)
+├── introspection/       # Dynamic Manifest Resource
+├── domain/              # Domain model classes
 ├── converters/          # Bidirectional type converters
-├── *.ts                 # Domain model classes
+└── index.ts             # Root barrel export
 tests/
-├── framework/           # Framework tests (including security tests)
+├── core/                # Core engine tests (including security)
+├── state-sync/          # State sync tests
 └── *.test.ts            # Domain model tests
 docs/
-└── *.md                 # Documentation
+└── *.md                 # Documentation (VitePress)
 ```
 
 ## Questions?

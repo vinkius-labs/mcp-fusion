@@ -64,9 +64,9 @@ describe('Barrel Export (src/index.ts)', () => {
 // Client Sub-path Barrel Export
 // ============================================================================
 
-describe('Client Barrel Export (src/framework/client/index.ts)', () => {
+describe('Client Barrel Export (src/client/index.ts)', () => {
     it('should export all client symbols from the client sub-path', async () => {
-        const mod = await import('../src/framework/client/index.js');
+        const mod = await import('../src/client/index.js');
 
         expect(mod.createFusionClient).toBeTypeOf('function');
     });

@@ -235,11 +235,112 @@ it('marks destructive actions correctly', () => {
 });
 ```
 
+## End-to-End Integration Testing
+
+For comprehensive integration tests that validate **all modules working together** through the MCP Server layer, create a lightweight mock server and use `attachToServer()`:
+
+```typescript
+import { ToolRegistry, createTool, success, error } from '@vinkius-core/mcp-fusion';
+import { createDebugObserver } from '@vinkius-core/mcp-fusion/observability';
+import type { DebugEvent } from '@vinkius-core/mcp-fusion/observability';
+
+// Lightweight mock that captures setRequestHandler calls
+function createMockServer() {
+    const handlers = new Map<string, Function>();
+    return {
+        setRequestHandler: (schema: any, handler: Function) => {
+            handlers.set(schema.method, handler);
+        },
+        async callTool(name: string, args: Record<string, unknown>, extra?: any) {
+            const handler = handlers.get('tools/call');
+            return handler!({ params: { name, arguments: args } }, extra);
+        },
+        async callListTools() {
+            const handler = handlers.get('tools/list');
+            return handler!({});
+        },
+    };
+}
+```
+
+### Happy path: context factory + debug observability
+
+```typescript
+interface Ctx { userId: string; role: string }
+
+it('should wire context + debug through the full pipeline', async () => {
+    const events: DebugEvent[] = [];
+
+    const tool = createTool<Ctx>('tasks')
+        .use(async (ctx, args, next) => {
+            if (ctx.role !== 'admin') return error('Forbidden');
+            return next(ctx, args);
+        })
+        .action({
+            name: 'list',
+            handler: async (ctx) => success(`Tasks for ${ctx.userId}`),
+        });
+
+    const registry = new ToolRegistry<Ctx>();
+    registry.register(tool);
+
+    const server = createMockServer();
+    registry.attachToServer(server, {
+        toolExposition: 'grouped',
+        contextFactory: (extra: any) => ({
+            userId: extra?.userId ?? 'anonymous',
+            role: extra?.role ?? 'viewer',
+        }),
+        debug: createDebugObserver((e) => events.push(e)),
+    });
+
+    const result = await server.callTool(
+        'tasks', { action: 'list' }, { userId: 'u_1', role: 'admin' },
+    );
+
+    expect(result.content[0].text).toBe('Tasks for u_1');
+    expect(events.some(e => e.type === 'execute')).toBe(true);
+});
+```
+
+### Sad path: validation failures, handler exceptions, middleware blocks
+
+```typescript
+it('should return isError=true for validation failures', async () => {
+    const tool = createTool<void>('calc').action({
+        name: 'add',
+        schema: z.object({ a: z.number(), b: z.number() }),
+        handler: async (_ctx, args) => success(`${args.a + args.b}`),
+    });
+
+    const registry = new ToolRegistry<void>();
+    registry.register(tool);
+    const server = createMockServer();
+    registry.attachToServer(server, { toolExposition: 'grouped' });
+
+    // Wrong type → structured validation error
+    const r = await server.callTool('calc', { action: 'add', a: 'oops', b: 5 });
+    expect(r.isError).toBe(true);
+
+    // Unknown tool → UNKNOWN_TOOL with suggestions
+    const r2 = await server.callTool('ghost', { action: 'run' });
+    expect(r2.isError).toBe(true);
+    expect(r2.content[0].text).toContain('UNKNOWN_TOOL');
+});
+```
+
+::: tip Complete Reference
+See [`tests/integration/FullStack.test.ts`](https://github.com/VinkiusLabs/mcp-fusion/blob/main/tests/integration/FullStack.test.ts) for a production-grade integration test suite with **37 tests** covering all modules — Builder, Registry, Server, Presenter, Middleware, Debug, Tracing, StateSync, PromptRegistry, and Flat Exposition — with both happy and sad paths.
+:::
+
 ## Best Practices
 
-1. **Test via `.execute()`** — avoids MCP infrastructure complexity
+1. **Test via `.execute()`** — avoids MCP infrastructure complexity for unit tests
 2. **Create typed mock contexts** — keeps tests readable and type-safe
 3. **Test error paths explicitly** — verify unknown actions, validation failures, middleware blocks
 4. **Use `ToolRegistry.routeCall()`** for integration tests that span multiple tools
-5. **Check `buildToolDefinition()`** — ensures schema, description, and annotations are correct
-6. **Freeze-after-build** — verify that `.action()` after `.buildToolDefinition()` throws
+5. **Use `attachToServer()` with a mock** — for E2E tests that validate the full MCP pipeline including observability, prompts, and exposition strategies
+6. **Test both happy AND sad paths** — the framework must resolve developer mistakes (wrong types, missing fields, invalid config) gracefully
+7. **Check `buildToolDefinition()`** — ensures schema, description, and annotations are correct
+8. **Freeze-after-build** — verify that `.action()` after `.buildToolDefinition()` throws
+

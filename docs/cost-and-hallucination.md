@@ -239,7 +239,7 @@ const projects = defineTool<AppContext>('projects', {
 Under the hood, `SchemaGenerator.ts` compiles all actions into **one** `inputSchema` with a discriminator enum, and `applyAnnotations()` adds per-field context — telling the LLM which fields are needed for which action:
 
 ```typescript
-// From: src/framework/schema/SchemaGenerator.ts
+// From: src/core/schema/SchemaGenerator.ts
 // Per-field annotations reduce parameter-guessing by providing explicit context
 annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`);
 ```
@@ -263,7 +263,7 @@ annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`
 TOON (Token-Oriented Object Notation) replaces JSON structure with compact pipe-delimited tabular data — both in tool descriptions and in response payloads:
 
 ```typescript
-// From: src/framework/schema/ToonDescriptionGenerator.ts
+// From: src/core/schema/ToonDescriptionGenerator.ts
 function encodeFlatActions<TContext>(
     actions: readonly InternalAction<TContext>[],
 ): string {
@@ -276,7 +276,7 @@ function encodeFlatActions<TContext>(
 For responses, `toonSuccess()` provides an opt-in encoding path:
 
 ```typescript
-// From: src/framework/response.ts
+// From: src/core/response.ts
 export function toonSuccess(data: unknown, options?: EncodeOptions): ToolResponse {
     const defaults: EncodeOptions = { delimiter: '|' };
     const text = encode(data, { ...defaults, ...options });
@@ -297,7 +297,7 @@ Based on our testing, TOON achieves roughly **40-50% token reduction** over equi
 Every action's Zod schema is compiled with `.strict()` at build time. Undeclared fields are **explicitly rejected** with an actionable error telling the LLM exactly which fields are invalid:
 
 ```typescript
-// From: src/framework/builder/ToolDefinitionCompiler.ts
+// From: src/core/builder/ToolDefinitionCompiler.ts
 function buildValidationSchema(action, commonSchema) {
     const base = applyCommonSchemaOmit(commonSchema, action.omitCommonFields);
     const specific = action.schema;
@@ -310,7 +310,7 @@ function buildValidationSchema(action, commonSchema) {
 This validation happens in `ExecutionPipeline.ts` before the handler runs — making it physically impossible for hallucinated parameters to reach application code:
 
 ```typescript
-// From: src/framework/execution/ExecutionPipeline.ts
+// From: src/core/execution/ExecutionPipeline.ts
 const result = validationSchema.safeParse(argsWithoutDiscriminator);
 // Valid: validated args go to handler
 // Invalid: self-healing error (see mechanism ④)
@@ -327,7 +327,7 @@ const result = validationSchema.safeParse(argsWithoutDiscriminator);
 `ValidationErrorFormatter.ts` translates Zod errors into directive correction prompts that aim to help the agent self-correct on the first retry:
 
 ```typescript
-// From: src/framework/execution/ValidationErrorFormatter.ts
+// From: src/core/execution/ValidationErrorFormatter.ts
 // Instead of: "Validation failed: email: Invalid"
 // Produces actionable correction:
 // "❌ Validation failed for 'users.create':
@@ -340,7 +340,7 @@ const result = validationSchema.safeParse(argsWithoutDiscriminator);
 For business-logic errors, `toolError()` provides structured recovery guidance:
 
 ```typescript
-// From: src/framework/response.ts
+// From: src/core/response.ts
 return toolError('ProjectNotFound', {
     message: `Project '${args.project_id}' does not exist.`,
     suggestion: 'Call projects.list first to get valid IDs, then retry.',
@@ -361,7 +361,7 @@ The design goal is to bring the average retries-per-error as close to 1 as possi
 The Presenter's `.agentLimit()` truncates data **before** it reaches the LLM and injects a teaching block that guides the agent toward filters and pagination:
 
 ```typescript
-// From: src/framework/presenter/Presenter.ts — make()
+// From: src/presenter/Presenter.ts — make()
 if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
     const omitted = data.length - this._agentLimit.max;
     data = data.slice(0, this._agentLimit.max);
@@ -399,7 +399,7 @@ Beyond cost, the truncated response stays within the context window, which shoul
 `.suggestActions()` provides HATEOAS-style next-action hints based on data state, which we hope reduces wrong-tool selection:
 
 ```typescript
-// From: src/framework/presenter/Presenter.ts
+// From: src/presenter/Presenter.ts
 .suggestActions((invoice, ctx) => {
     if (invoice.status === 'pending') {
         return [
@@ -432,7 +432,7 @@ The principle is borrowed from REST's HATEOAS — the server tells the client wh
 Rules travel **with the data**, not in the system prompt. We call this **Context Tree-Shaking** — domain rules only appear in the LLM's context when that specific domain is active:
 
 ```typescript
-// From: src/framework/presenter/Presenter.ts — _attachRules()
+// From: src/presenter/Presenter.ts — _attachRules()
 if (typeof this._rules === 'function') {
     const resolved = this._rules(singleData, ctx)
         .filter((r): r is string => r !== null && r !== undefined);
@@ -462,7 +462,7 @@ This should reduce both wasted tokens (irrelevant rules in the system prompt) an
 State Sync injects causal invalidation signals at the protocol layer, inspired by [RFC 7234](https://tools.ietf.org/html/rfc7234) cache-control semantics:
 
 ```typescript
-// From: src/framework/state-sync/CausalEngine.ts
+// From: src/state-sync/CausalEngine.ts
 // Safety: only invalidate on SUCCESS (failed mutation = state unchanged)
 export function resolveInvalidations(policy, isError) {
     if (isError) return [];
@@ -671,7 +671,7 @@ The exact savings depend on the workload, model, and use case. Our design goal i
 We believe developers should be able to measure their token footprint before deployment. **MCP Fusion** includes a preview tool for this:
 
 ```typescript
-// From: src/framework/builder/GroupedToolBuilder.ts
+// From: src/core/builder/GroupedToolBuilder.ts
 const projects = defineTool<AppContext>('projects', { ... });
 console.log(projects.previewPrompt());
 
