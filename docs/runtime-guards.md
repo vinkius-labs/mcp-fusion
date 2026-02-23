@@ -28,9 +28,13 @@ Tool Call arrives
 │     ├── queue has space? → wait              │
 │     └── both full? → SERVER_BUSY (shed)      │
 │                                              │
-│  ② Handler executes normally                 │
+│  ② Intent Mutex (Anti-Race Condition)        │
+│     ├── destructive: true? → per-key mutex   │
+│     └── otherwise? → pass-through            │
 │                                              │
-│  ③ Egress Guard (Payload Limiter)            │
+│  ③ Handler executes normally                 │
+│                                              │
+│  ④ Egress Guard (Payload Limiter)            │
 │     ├── within limit? → pass-through         │
 │     └── exceeded? → truncate + intervention  │
 └──────────────────────────────────────────────┘
@@ -162,6 +166,45 @@ const users = createTool<AppContext>('users')
     });
 ```
 
+## Intent Mutex (Anti-Race Condition)
+
+When an LLM hallucinates and fires identical destructive calls in the same millisecond (e.g., two `delete_user` calls for the same ID), it creates a race condition. The **Intent Mutex** automatically serializes these calls to provide transactional isolation.
+
+### Zero-Configuration Setup
+
+The Intent Mutex is completely automatic. It is activated whenever an action is marked with `destructive: true`.
+
+```typescript
+const billing = createTool<AppContext>('billing')
+    .action({
+        name: 'refund',
+        destructive: true, // Enables Intent Mutex serialization
+        schema: z.object({ invoiceId: z.string() }),
+        handler: async (ctx, args) => {
+            // Concurrent 'refund' calls are strictly queued (FIFO).
+            // Safe from LLM double-firing hallucinations.
+            await ctx.stripe.refunds.create({ charge: args.invoiceId });
+            return success('Refund processed');
+        },
+    })
+    .action({
+        name: 'list_invoices',
+        readOnly: true,
+        handler: async (ctx) => {
+            // Concurrent 'list_invoices' calls execute in parallel.
+            // Zero overhead from the mutex.
+            return success(await ctx.stripe.invoices.list());
+        },
+    });
+```
+
+### How It Works
+
+1. **Per-Action Serialization**: The mutex uses the action key (e.g., `billing.refund`). Concurrent calls to `billing.refund` execute in strict FIFO order, while calls to `billing.delete` run independently.
+2. **Zero Dependencies**: Implements the idiomatic async mutex promise-chain pattern. No external locks, no Redis, no OS primitives.
+3. **Promise Chain GC**: Completed promise chains are automatically garbage collected to prevent memory leaks.
+4. **Cooperative Cancellation**: Waiters queued in the mutex will instantly abort if the request `AbortSignal` fires before they acquire the lock.
+
 ## Combined Usage
 
 Apply both guards for maximum protection:
@@ -272,7 +315,9 @@ maxPayloadBytes(bytes: number): this
 | Per-tool concurrency limits | ✅ `.concurrency()` |
 | Backpressure queue with FIFO drain | ✅ Built-in |
 | Load shedding with self-healing error | ✅ `toolError('SERVER_BUSY')` |
-| AbortSignal integration for queued waiters | ✅ Cooperative cancellation |
+| Automatic Intent Mutex for AI agents | ✅ `destructive: true` flag |
+| Per-action serialization | ✅ FIFO guarantee per action key |
+| AbortSignal integration for queued waiters | ✅ Cooperative cancellation (all guards) |
 | Slot release on handler crash | ✅ `try/finally` guarantee |
 | Per-tool payload byte limit | ✅ `.maxPayloadBytes()` |
 | UTF-8 safe truncation | ✅ `TextEncoder`/`TextDecoder` |

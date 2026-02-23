@@ -292,9 +292,18 @@ const analytics = createTool<AppContext>('analytics')
         name: 'query',
         handler: async (ctx, args) => success(await ctx.db.$queryRaw(args.sql)),
     });
+
+// Intent Mutex — anti-race condition guard
+const users = createTool<AppContext>('users')
+    .action({
+        name: 'delete',
+        destructive: true, // Automatically serializes concurrent calls to this action key
+        handler: async (ctx, args) => success(await ctx.db.users.delete(args.id)),
+    });
 ```
 
-Load shedding returns `toolError('SERVER_BUSY')` — a self-healing error that causes the LLM to reduce its cadence. Egress truncation injects `[SYSTEM INTERVENTION: Payload truncated. You MUST use pagination.]`. Zero overhead when not configured.
+Load shedding returns `toolError('SERVER_BUSY')` — a self-healing error that causes the LLM to reduce its cadence. Egress truncation injects `[SYSTEM INTERVENTION: Payload truncated. You MUST use pagination.]`. Intent Mutex prevents LLM double-firing hallucinations. Zero overhead when not configured.
+
 
 ## Dynamic Manifest
 

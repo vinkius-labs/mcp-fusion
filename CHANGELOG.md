@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-02-23
+
+### Intent Mutex (Anti-Race Condition)
+
+**MCP Fusion** now provides automatic transactional isolation for AI agents via the **Intent Mutex**. When an LLM hallucinates and fires identical destructive calls in the exact same millisecond (e.g., double-deleting a user), the framework serializes them to guarantee isolation.
+
+### Added
+
+- **`MutationSerializer` class:** Implements an idiomatic JS async mutex using per-key promise-chaining. Strict FIFO queue order without external locks, Redis, or OS primitives.
+- **Zero-Configuration Setup:** Automatically enabled strictly for actions marked with `destructive: true`. Fast-path bypass for all other actions (zero overhead).
+- **Per-Action Serialization:** `billing.refund` and `billing.delete` run independently, but concurrent `billing.refund` requests are strictly serialized.
+- **Cooperative Cancellation:** Waiters queued in the mutex instantly abort if the request `AbortSignal` fires before they acquire the lock.
+- **Automatic Garbage Collection:** Completed promise chains are aggressively pruned to prevent memory leaks.
+- **Builder Integration:** Handled inside `_executePipeline` seamlessly; `GroupedToolBuilder` manages the mutex internally.
+- **14 New Tests:** Unit tests covering chain GC, error recovery, signal abortion, parallel execution, and builder integration with other guards.
+
 ## [1.8.0] - 2026-02-23
 
 ### Runtime Guards — Concurrency Bulkhead & Egress Limiter

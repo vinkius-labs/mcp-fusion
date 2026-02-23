@@ -64,6 +64,7 @@ import {
 import { type ProgressSink } from '../execution/ProgressHelper.js';
 import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
 import { applyEgressGuard } from '../execution/EgressGuard.js';
+import { MutationSerializer } from '../execution/MutationSerializer.js';
 import { computeResponseSize, type PipelineHooks } from '../execution/PipelineHooks.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
@@ -168,6 +169,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _tracer?: FusionTracer;
     private _concurrencyGuard?: ConcurrencyGuard;
     private _egressMaxBytes?: number;
+    private _mutationSerializer?: MutationSerializer;
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -621,6 +623,14 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         this._frozen = true;
         Object.freeze(this._actions);
 
+        // Auto-create MutationSerializer if any action is destructive.
+        // Converts `destructive: true` from a manifest hint into a
+        // transactional isolation guarantee — concurrent mutations to
+        // the same action key are serialized in FIFO order.
+        if (this._actions.some(a => a.destructive === true)) {
+            this._mutationSerializer = new MutationSerializer();
+        }
+
         return result.tool;
     }
 
@@ -858,16 +868,29 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         }
 
         // Step 5: Execute
+        // If the action is destructive and a MutationSerializer exists,
+        // wrap the execution in a per-key mutex to prevent concurrent
+        // mutations (LLM hallucination anti-race-condition guard).
+        const executeChain = () => runChain(
+            execCtx, resolved.value, ctx, validated.value,
+            progressSink, hooks?.rethrow, signal,
+        );
+
         try {
-            const response = await runChain(
-                execCtx, resolved.value, ctx, validated.value,
-                progressSink, hooks?.rethrow, signal,
-            );
+            const isDestructive = resolved.value.action.destructive === true;
+            const response = (isDestructive && this._mutationSerializer)
+                ? await this._mutationSerializer.serialize(actionName, executeChain, signal)
+                : await executeChain();
+
             hooks?.onExecuteOk?.(actionName, response);
             return hooks?.wrapResponse?.(response) ?? response;
         } catch (err) {
             hooks?.onExecuteError?.(actionName, err);
-            throw err; // only reached when rethrow=true (traced path handles it)
+            if (hooks?.rethrow) throw err;
+            // Convert MutationSerializer abort (or unexpected throws) to error response
+            const message = err instanceof Error ? err.message : String(err);
+            const response = error(`[${execCtx.toolName}/${actionName}] ${message}`);
+            return hooks?.wrapResponse?.(response) ?? response;
         }
     }
 

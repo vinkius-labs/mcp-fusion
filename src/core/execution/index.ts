@@ -8,3 +8,4 @@ export { progress, isProgressEvent, type ProgressEvent, type ProgressSink } from
 export { computeResponseSize, type PipelineHooks } from './PipelineHooks.js';
 export { ConcurrencyGuard, type ConcurrencyConfig, createConcurrencyGuard } from './ConcurrencyGuard.js';
 export { applyEgressGuard, type EgressConfig } from './EgressGuard.js';
+export { MutationSerializer } from './MutationSerializer.js';
