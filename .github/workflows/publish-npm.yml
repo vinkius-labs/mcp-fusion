@@ -44,3 +44,9 @@ jobs:
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               continue-on-error: true
+
+            - name: Publish openapi-gen package
+              run: npm publish -w packages/openapi --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              continue-on-error: true
