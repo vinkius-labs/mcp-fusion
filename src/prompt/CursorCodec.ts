@@ -17,6 +17,38 @@ export interface CursorCodecOptions {
     secret?: string; 
 }
 
+/**
+ * Lazily resolves the Web Crypto API.
+ * Works in Node >= 16 (via node:crypto.webcrypto), Node >= 19 (globalThis.crypto),
+ * Deno, Bun, and Cloudflare Workers.
+ */
+let _resolvedCrypto: Crypto | undefined;
+async function getCrypto(): Promise<Crypto> {
+    if (_resolvedCrypto) return _resolvedCrypto;
+
+    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
+        _resolvedCrypto = globalThis.crypto;
+        return _resolvedCrypto;
+    }
+
+    // Node.js fallback — webcrypto has been stable since Node 16
+    // Use string indirection to avoid TypeScript module resolution (no @types/node)
+    try {
+        const moduleName = 'node:crypto';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const nodeCryptoModule: any = await (Function('m', 'return import(m)')(moduleName));
+        if (nodeCryptoModule?.webcrypto) {
+            _resolvedCrypto = nodeCryptoModule.webcrypto as Crypto;
+            return _resolvedCrypto;
+        }
+    } catch { /* not in Node */ }
+
+    throw new Error(
+        'CursorCodec requires the Web Crypto API. ' +
+        'Ensure globalThis.crypto.subtle is available or use Node >= 16.',
+    );
+}
+
 function base64UrlEncode(buffer: ArrayBuffer | Uint8Array): string {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     let binary = '';
@@ -42,16 +74,18 @@ function base64UrlDecode(base64: string): Uint8Array {
 /**
  * Stateless Cryptographic Cursor for pagination using Web Crypto API.
  * 
- * Works in Node >= 18, Deno, Bun, and Cloudflare Workers.
+ * Works in Node >= 16, Deno, Bun, and Cloudflare Workers.
  */
 export class CursorCodec {
     private readonly _mode: CursorMode;
-    private readonly _secretBytes: Uint8Array;
+    private _secretBytes: Uint8Array | undefined;
+    private readonly _providedSecret: string | undefined;
     private _hmacKey?: CryptoKey;
     private _aesKey?: CryptoKey;
 
     constructor(options?: CursorCodecOptions) {
         this._mode = options?.mode ?? 'signed';
+        this._providedSecret = options?.secret;
         
         if (options?.secret) {
             const encoder = new TextEncoder();
@@ -60,16 +94,24 @@ export class CursorCodec {
                 throw new Error('CursorCodec secret must be exactly 32 bytes (256 bits)');
             }
             this._secretBytes = buf;
-        } else {
-            this._secretBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
         }
+        // When no secret provided, _secretBytes is deferred to first use (async)
+    }
+
+    private async ensureSecret(): Promise<Uint8Array> {
+        if (this._secretBytes) return this._secretBytes;
+        const crypto = await getCrypto();
+        this._secretBytes = crypto.getRandomValues(new Uint8Array(32));
+        return this._secretBytes;
     }
 
     private async getHmacKey(): Promise<CryptoKey> {
         if (!this._hmacKey) {
-            this._hmacKey = await globalThis.crypto.subtle.importKey(
+            const secret = await this.ensureSecret();
+            const crypto = await getCrypto();
+            this._hmacKey = await crypto.subtle.importKey(
                 'raw',
-                this._secretBytes as any,
+                secret as any,
                 { name: 'HMAC', hash: 'SHA-256' },
                 false,
                 ['sign', 'verify']
@@ -80,9 +122,11 @@ export class CursorCodec {
 
     private async getAesKey(): Promise<CryptoKey> {
         if (!this._aesKey) {
-            this._aesKey = await globalThis.crypto.subtle.importKey(
+            const secret = await this.ensureSecret();
+            const crypto = await getCrypto();
+            this._aesKey = await crypto.subtle.importKey(
                 'raw',
-                this._secretBytes as any,
+                secret as any,
                 'AES-GCM',
                 false,
                 ['encrypt', 'decrypt']
@@ -100,9 +144,10 @@ export class CursorCodec {
         
         if (this._mode === 'encrypted') {
             const aesKey = await this.getAesKey();
-            const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+            const crypto = await getCrypto();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
             
-            const encryptedBuf = await globalThis.crypto.subtle.encrypt(
+            const encryptedBuf = await crypto.subtle.encrypt(
                 { name: 'AES-GCM', iv: iv as any },
                 aesKey,
                 dataBuffer as any
@@ -113,7 +158,8 @@ export class CursorCodec {
         } else {
             // Signed HMAC
             const hmacKey = await this.getHmacKey();
-            const signatureBuf = await globalThis.crypto.subtle.sign(
+            const cryptoApi = await getCrypto();
+            const signatureBuf = await cryptoApi.subtle.sign(
                 'HMAC',
                 hmacKey,
                 dataBuffer as any
@@ -140,7 +186,8 @@ export class CursorCodec {
                 const encrypted = base64UrlDecode(encryptedStr);
                 
                 const aesKey = await this.getAesKey();
-                const decryptedBuf = await globalThis.crypto.subtle.decrypt(
+                const cryptoApi = await getCrypto();
+                const decryptedBuf = await cryptoApi.subtle.decrypt(
                     { name: 'AES-GCM', iv: iv as any },
                     aesKey,
                     encrypted as any
@@ -161,7 +208,9 @@ export class CursorCodec {
                 
                 const hmacKey = await this.getHmacKey();
                 
-                const isValid = await globalThis.crypto.subtle.verify(
+                const cryptoApi2 = await getCrypto();
+                
+                const isValid = await cryptoApi2.subtle.verify(
                     'HMAC',
                     hmacKey,
                     signatureBuf as any,
