@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-02-23
+
+### Hydration Timeout Sandbox — Graceful Degradation for Prompt Hydration
+
+**MCP Fusion** now protects prompt handlers from slow/failing external data sources via the **Hydration Timeout Sandbox**. When a handler fetches data from Jira, Stripe, databases, or any external source and the call hangs, the framework enforces a strict deadline, unblocks the UI immediately, and returns a structured SYSTEM ALERT.
+
+### Added
+
+- **`HydrationSandbox` module** (`src/prompt/HydrationSandbox.ts`): Core timeout mechanism using `Promise.race`. Wraps handler execution with a strict deadline and catches both timeouts and handler errors, converting them to graceful `<hydration_alert>` XML-structured messages.
+- **`hydrationTimeout` config** on `definePrompt()`: Per-prompt deadline in milliseconds. Example: `definePrompt('briefing', { hydrationTimeout: 3000, handler: ... })`.
+- **`setDefaultHydrationTimeout(ms)`** on `PromptRegistry`: Global safety net for ALL prompts. Individual prompt timeouts override the registry default.
+- **Three-scenario coverage**: Handler completes → normal result. Handler exceeds deadline → TIMEOUT alert. Handler throws → ERROR alert. The UI ALWAYS unblocks.
+- **Timer cleanup**: `clearTimeout` via `finally` block — no resource leaks, no dangling timers keeping Node.js alive.
+- **Zero overhead**: When no timeout is configured, no timer is created, no `Promise.race` wrapping — the handler runs directly.
+- **Interceptor composition**: Prompt Interceptors still execute after a timeout, ensuring compliance headers and tenant context are always injected.
+- **`getHydrationTimeout()`** on `PromptBuilder` interface: Read the configured timeout for introspection and testing.
+- **17 new tests**: Unit tests covering timeout, early completion, error-as-degradation, timer cleanup, non-Error throws, plus integration tests for per-prompt config, registry defaults, override precedence, backward compatibility, and interceptor composition after timeout.
+
+### Design Influences
+
+- Go's `context.WithDeadline` (structured cancellation)
+- gRPC deadline propagation (strict, per-RPC)
+- Resilience4j TimeLimiter (JVM circuit breaker pattern)
+
 ## [1.9.0] - 2026-02-23
 
 ### Intent Mutex (Anti-Race Condition)

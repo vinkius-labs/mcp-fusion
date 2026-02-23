@@ -413,6 +413,17 @@ export interface PromptBuilder<TContext = void> {
      * @returns The hydrated prompt result with messages
      */
     execute(ctx: TContext, args: Record<string, string>): Promise<PromptResult>;
+
+    /**
+     * Get the configured hydration timeout (in milliseconds).
+     *
+     * When set, the handler is wrapped in a strict deadline.
+     * If the handler doesn't complete within this time, a
+     * SYSTEM ALERT is returned instead of freezing the UI.
+     *
+     * @returns Timeout in ms, or `undefined` if no deadline is configured
+     */
+    getHydrationTimeout(): number | undefined;
 }
 
 // ── PromptConfig (definePrompt input) ────────────────────
@@ -450,6 +461,28 @@ export interface PromptConfig<TContext, TArgs extends Record<string, unknown> = 
 
     /** Middleware chain (same signature as tool middleware) */
     middleware?: MiddlewareFn<TContext>[];
+
+    /**
+     * Maximum hydration time in milliseconds.
+     *
+     * When set, the handler is wrapped in a strict deadline. If external
+     * data sources (APIs, databases) don't respond within this time,
+     * the framework cuts the Promise and returns a graceful SYSTEM ALERT.
+     * The UI unblocks immediately — the user never sees a frozen screen.
+     *
+     * @example
+     * ```typescript
+     * definePrompt('morning_briefing', {
+     *     hydrationTimeout: 3000, // 3 seconds strict
+     *     handler: async (ctx, args) => {
+     *         // If Jira takes 15s, the framework cuts at 3s
+     *         const tickets = await ctx.invokeTool('jira.get_assigned');
+     *         return { messages: [...] };
+     *     },
+     * });
+     * ```
+     */
+    hydrationTimeout?: number;
 
     /**
      * The hydration handler.

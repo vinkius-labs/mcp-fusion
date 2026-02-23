@@ -69,6 +69,7 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
     private readonly _middlewares: readonly MiddlewareFn<TContext>[];
     private readonly _schema: ZodObject<ZodRawShape> | undefined;
     private readonly _handler: (ctx: TContext & LoopbackContext, args: Record<string, unknown>) => Promise<PromptResult>;
+    private readonly _hydrationTimeout: number | undefined;
 
     constructor(
         name: string,
@@ -80,6 +81,7 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
             middleware?: MiddlewareFn<TContext>[];
             schema?: ZodObject<ZodRawShape>;
             handler: (ctx: TContext & LoopbackContext, args: Record<string, unknown>) => Promise<PromptResult>;
+            hydrationTimeout?: number;
         },
     ) {
         this._name = name;
@@ -90,6 +92,7 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
         this._middlewares = config.middleware ?? [];
         this._schema = config.schema;
         this._handler = config.handler;
+        this._hydrationTimeout = config.hydrationTimeout;
     }
 
     getName(): string {
@@ -106,6 +109,10 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
 
     hasMiddleware(): boolean {
         return this._middlewares.length > 0;
+    }
+
+    getHydrationTimeout(): number | undefined {
+        return this._hydrationTimeout;
     }
 
     buildPromptDefinition(): {
@@ -161,6 +168,7 @@ interface PromptConfigBase<TContext> {
     icons?: { light?: string; dark?: string };
     tags?: string[];
     middleware?: MiddlewareFn<TContext>[];
+    hydrationTimeout?: number;
 }
 
 // ── definePrompt() Overloads ─────────────────────────────
@@ -214,6 +222,7 @@ export function definePrompt<TContext = void>(
     name: string,
     config: PromptConfigBase<TContext> & {
         args?: PromptParamsMap | ZodObject<ZodRawShape>;
+        hydrationTimeout?: number;
         handler: (ctx: TContext, args: Record<string, unknown>) => Promise<PromptResult>;
     },
 ): PromptBuilder<TContext> {
@@ -240,6 +249,7 @@ export function definePrompt<TContext = void>(
         middleware: config.middleware,
         schema,
         handler: config.handler,
+        hydrationTimeout: config.hydrationTimeout,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 }

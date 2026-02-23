@@ -40,6 +40,7 @@ import {
     type PromptMeta,
     type PromptMessagePayload,
 } from './types.js';
+import { runWithHydrationDeadline } from './HydrationSandbox.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -93,6 +94,29 @@ export class PromptRegistry<TContext = void> {
     private readonly _interceptors: PromptInterceptorFn<TContext>[] = [];
     private _notificationSink?: PromptNotificationSink;
     private _notifyDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+    private _defaultHydrationTimeout: number | undefined;
+
+    /**
+     * Set a global hydration timeout for ALL prompts in this registry.
+     *
+     * Individual prompts can override with their own `hydrationTimeout`.
+     * If neither is set, no timeout is applied (backward compatible).
+     *
+     * **Enterprise use case**: The platform team sets a 5s global deadline.
+     * Critical prompts like `morning_briefing` set their own 3s deadline.
+     * Simple prompts (no external I/O) inherit the 5s safety net.
+     *
+     * @param ms - Maximum hydration time in milliseconds (must be > 0)
+     *
+     * @example
+     * ```typescript
+     * const promptRegistry = new PromptRegistry<AppContext>();
+     * promptRegistry.setDefaultHydrationTimeout(5000); // 5s global safety net
+     * ```
+     */
+    setDefaultHydrationTimeout(ms: number): void {
+        this._defaultHydrationTimeout = ms;
+    }
 
     /**
      * Register a single prompt builder.
@@ -233,7 +257,17 @@ export class PromptRegistry<TContext = void> {
             };
         }
 
-        const result = await builder.execute(ctx, args);
+        // ── Hydration Deadline ───────────────────────────
+        // Per-prompt timeout overrides registry default.
+        // Zero overhead when no timeout configured.
+        const effectiveTimeout = builder.getHydrationTimeout() ?? this._defaultHydrationTimeout;
+
+        const result = effectiveTimeout && effectiveTimeout > 0
+            ? await runWithHydrationDeadline(
+                () => builder.execute(ctx, args),
+                effectiveTimeout,
+            )
+            : await builder.execute(ctx, args);
 
         // ── Prompt Interceptors ──────────────────────────
         // Zero overhead when no interceptors registered.

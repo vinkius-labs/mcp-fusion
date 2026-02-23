@@ -411,6 +411,29 @@ const SummarizePrompt = definePrompt<AppContext>('summarize', {
 });
 ```
 
+## Hydration Timeout Sandbox
+
+Prompt handlers fetch data from external sources (APIs, databases). If any source hangs, the UI freezes. The Hydration Timeout Sandbox wraps the handler in a strict `Promise.race` deadline. Three guarantees: (1) handler completes → normal result, (2) handler exceeds deadline → `<hydration_alert><status>TIMEOUT</status>` alert, (3) handler throws → `<hydration_alert><status>ERROR</status>` alert. The UI ALWAYS unblocks.
+
+```typescript
+// Per-prompt deadline
+const Briefing = definePrompt<AppContext>('morning_briefing', {
+    hydrationTimeout: 3000, // 3 seconds strict
+    handler: async (ctx, args) => {
+        // If Jira takes 15s, framework cuts at 3s → returns SYSTEM ALERT
+        const tickets = await ctx.invokeTool('jira.get_assigned');
+        return { messages: [PromptMessage.user(tickets.text)] };
+    },
+});
+
+// Registry-level default (global safety net)
+const prompts = new PromptRegistry<AppContext>();
+prompts.setDefaultHydrationTimeout(5000); // 5s for all prompts
+prompts.register(Briefing); // overrides with 3s
+```
+
+Zero overhead when no timeout configured. Timer cleanup via `finally` — no resource leaks. Interceptors still run after timeout.
+
 ## MVA-Driven Prompts — fromView()
 
 Bridge your Presenter layer into Prompts with zero duplication. `PromptMessage.fromView()` decomposes a `ResponseBuilder` into XML-tagged prompt messages (`<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`) optimized for frontier LLMs. Domain rules, UI blocks, and action suggestions from the Presenter are automatically extracted — single source of truth.
@@ -502,7 +525,7 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 - `PromptMessage.audio(role, data, mimeType)` → PromptMessagePayload
 - `PromptMessage.resource(role, uri, options?)` → PromptMessagePayload
 - `PromptMessage.fromView(builder)` → PromptMessagePayload[] — decomposes ResponseBuilder into XML-tagged messages (<domain_rules>, <dataset>, <visual_context>, <system_guidance>)
-- `PromptRegistry<TContext>` — .register(), .registerAll(), .getAllPrompts(), .getPrompts(filter), .routeGet(), .notifyChanged(), .has(), .clear(), .size
+- `PromptRegistry<TContext>` — .register(), .registerAll(), .getAllPrompts(), .getPrompts(filter), .routeGet(), .setDefaultHydrationTimeout(), .notifyChanged(), .has(), .clear(), .size
 
 ### Result Monad
 - `succeed<T>(value)` → Success<T>
@@ -549,7 +572,7 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 - `PromptMessagePayload` — { role: 'user' | 'assistant', content: PromptContentBlock }
 - `PromptContentBlock` — PromptTextContent | PromptImageContent | PromptAudioContent | PromptResourceContent
 - `PromptBuilder<TContext>` — DIP interface: .name, .getDefinition(), .handleGet(), .tags
-- `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, handler }
+- `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, hydrationTimeout?, handler }
 
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)

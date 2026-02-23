@@ -394,6 +394,117 @@ Middleware is pre-compiled at registration time (same as tool middleware) — ze
 
 ---
 
+## Hydration Timeout Sandbox <Badge type="tip" text="v1.10.0" />
+
+Prompt handlers fetch data from external sources — APIs, databases, third-party services. If any source hangs (15s Jira timeout, API 500), the UI freezes and the user stares at a blank screen.
+
+The **Hydration Timeout Sandbox** wraps the handler in a strict `Promise.race` deadline. If the handler doesn't complete in time, the framework cuts the Promise, unblocks the UI immediately, and returns a structured SYSTEM ALERT.
+
+::: danger The Problem
+```
+User: /morning_briefing
+  └── handler:
+        ├── ctx.invokeTool('jira.get_assigned')  ← 15s timeout 💀
+        ├── ctx.invokeTool('billing.invoices')   ← Stripe OK
+        └── return { messages: [...] }           ← never reached
+
+User staring at frozen screen for 15 seconds...
+```
+:::
+
+### Per-Prompt Deadline
+
+Set a strict deadline for individual prompts:
+
+```typescript
+const MorningBriefing = definePrompt<AppContext>('morning_briefing', {
+    hydrationTimeout: 3000, // 3 seconds strict
+    description: 'Daily briefing with Jira tickets and invoices.',
+    handler: async (ctx, args) => {
+        // If Jira takes 15s, the framework cuts at 3s
+        const tickets = await ctx.invokeTool('jira.get_assigned', { user: ctx.user.id });
+        const invoices = await ctx.invokeTool('billing.list_invoices', { date: args.date });
+
+        return {
+            messages: [
+                PromptMessage.system('Plan my day based on this context:'),
+                PromptMessage.user(`### Tickets\n${tickets.text}\n\n### Invoices\n${invoices.text}`),
+            ],
+        };
+    },
+});
+```
+
+### Registry-Level Default
+
+Set a global safety net for ALL prompts. Individual prompts can still override:
+
+```typescript
+const prompts = new PromptRegistry<AppContext>();
+prompts.setDefaultHydrationTimeout(5000); // 5s global safety net
+
+// This prompt inherits the 5s default:
+prompts.register(HelpPrompt);
+
+// This prompt overrides with its own 3s deadline:
+prompts.register(MorningBriefing); // hydrationTimeout: 3000
+```
+
+### Three Guarantees
+
+The sandbox covers **three** scenarios — the UI ALWAYS unblocks:
+
+| Scenario | Result | Alert |
+|---|---|---|
+| **Handler completes in time** | Returns `PromptResult` normally | None |
+| **Handler exceeds deadline** | Returns structured TIMEOUT alert | `<hydration_alert><status>TIMEOUT</status>` |
+| **Handler throws** (API error, crash) | Returns structured ERROR alert | `<hydration_alert><status>ERROR</status>` |
+
+### The SYSTEM ALERT Format
+
+When a timeout or error occurs, the framework returns an XML-structured alert:
+
+```xml
+<hydration_alert>
+  <status>TIMEOUT</status>
+  <deadline_ms>3000</deadline_ms>
+  <message>Prompt hydration did not complete within 3.0s. External data sources (APIs, databases) did not respond within the deadline.</message>
+  <guidance>Proceed with the conversation using available context. The user's request is still valid — answer with your general knowledge and inform the user that live data could not be fetched at this time. Do NOT retry the same prompt automatically.</guidance>
+</hydration_alert>
+```
+
+::: info Why XML?
+The same pattern used by `<tool_error>` and `<validation_error>` — frontier LLMs (Claude, GPT-4, Gemini) parse XML semantic boundaries deterministically. The LLM knows exactly what happened and how to proceed.
+:::
+
+### Interceptors Still Run
+
+Even when the handler times out, **Prompt Interceptors still execute**. This ensures compliance headers, tenant context, and RBAC constraints are always injected:
+
+```typescript
+// This interceptor runs even after a timeout:
+prompts.useInterceptor(async (ctx, builder) => {
+    builder.appendUser('--- Compliance Footer ---');
+});
+
+// Result after timeout: [TIMEOUT ALERT, Compliance Footer]
+```
+
+### Design Influences
+
+| Pattern | Source | Application |
+|---|---|---|
+| `context.WithDeadline` | Go stdlib | Structured cancellation per-call |
+| gRPC Deadline Propagation | Google | Strict, per-RPC time limits |
+| Resilience4j TimeLimiter | JVM | Circuit breaker timeout pattern |
+| `Promise.race` | ECMAScript | Native race condition resolution |
+
+::: tip Zero Overhead
+When no `hydrationTimeout` is configured (neither per-prompt nor registry-level), no timer is created, no Promise.race is executed. The handler runs directly — zero overhead.
+:::
+
+---
+
 ## Lifecycle Sync
 
 When the prompt catalog changes at runtime (e.g., RBAC update, feature flag toggle), connected clients need to re-fetch `prompts/list`. The `PromptRegistry` handles this via **debounced lifecycle notifications**.
@@ -466,6 +577,7 @@ prompt/
 ├── PromptTypes.ts              → Core types, contracts, InferPromptArgs<T> (zero runtime)
 ├── PromptMessage.ts            → Factory helpers: text, image, audio, resource
 ├── PromptExecutionPipeline.ts  → Coercion, validation, middleware, execution
+├── HydrationSandbox.ts         → Structured deadline for handler execution
 ├── definePrompt.ts             → definePrompt() overloads + PromptBuilderImpl
 └── index.ts                    → Barrel exports
 
@@ -488,7 +600,10 @@ When a `prompts/get` request arrives, the execution flows through:
 │ 3. Middleware Chain                                        │
 │    auth → rbac → audit → ... (pre-compiled)               │
 ├───────────────────────────────────────────────────────────┤
-│ 4. Handler Execution                                       │
+│ 4. Hydration Deadline (if configured)                      │
+│    Promise.race: handler vs timeout → SYSTEM ALERT        │
+├───────────────────────────────────────────────────────────┤
+│ 5. Handler Execution                                       │
 │    Fetches data, builds messages, returns PromptResult     │
 └───────────────────────────────────────────────────────────┘
 ```
@@ -709,6 +824,7 @@ featureFlags.on('beta-audit.enabled', () => {
 | `config.args` | `PromptParamsMap \| ZodObject?` | Argument definitions (flat only) |
 | `config.tags` | `string[]?` | Capability tags for RBAC filtering |
 | `config.middleware` | `MiddlewareFn[]?` | Middleware chain |
+| `config.hydrationTimeout` | `number?` | Maximum hydration time in ms. Returns SYSTEM ALERT on timeout. |
 | `config.handler` | `(ctx, args) => Promise<PromptResult>` | Hydration handler (args are **fully typed**) |
 | **Returns** | `PromptBuilder<TContext>` | Ready for `PromptRegistry.register()` |
 
@@ -733,6 +849,7 @@ featureFlags.on('beta-audit.enabled', () => {
 | `getAllPrompts()` | Get all prompt definitions for `prompts/list` |
 | `getPrompts(filter)` | Get filtered prompt definitions |
 | `routeGet(ctx, name, args)` | Route a `prompts/get` request to the correct builder |
+| `setDefaultHydrationTimeout(ms)` | Set global hydration deadline for all prompts |
 | `setNotificationSink(sink)` | Set the lifecycle sync callback (internal) |
 | `notifyChanged()` | Notify clients that the catalog changed (debounced) |
 | `has(name)` | Check if a prompt is registered |
