@@ -11,6 +11,8 @@
 import {
     ListToolsRequestSchema,
     CallToolRequestSchema,
+    ListPromptsRequestSchema,
+    GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, error } from '../response.js';
@@ -25,6 +27,8 @@ import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
 import { type ToolExposition } from './ExpositionTypes.js';
 import { compileExposition, type FlatRoute } from './ExpositionCompiler.js';
+import { type PromptResult } from '../prompt/PromptTypes.js';
+import { type PromptRegistry } from '../registry/PromptRegistry.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -35,6 +39,8 @@ import { compileExposition, type FlatRoute } from './ExpositionCompiler.js';
 interface McpServerTyped {
     setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: never[]) => unknown): void;
     setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(schema: typeof ListPromptsRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(schema: typeof GetPromptRequestSchema, handler: (...args: never[]) => unknown): void;
 }
 
 /**
@@ -211,6 +217,33 @@ export interface AttachOptions<TContext> {
      * ```
      */
     actionSeparator?: string;
+
+    // ── Prompt Engine ────────────────────────────────────
+
+    /**
+     * Prompt registry for server-side hydrated prompts.
+     *
+     * When provided, the framework registers `prompts/list` and
+     * `prompts/get` handlers on the MCP server, enabling slash
+     * command discovery and Zero-Shot Context hydration.
+     *
+     * Zero overhead when omitted — no prompt code runs.
+     *
+     * @example
+     * ```typescript
+     * const promptRegistry = new PromptRegistry<AppContext>();
+     * promptRegistry.register(AuditPrompt);
+     *
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     prompts: promptRegistry,
+     * });
+     * ```
+     *
+     * @see {@link PromptRegistry} for prompt registration
+     * @see {@link definePrompt} for creating prompts
+     */
+    prompts?: PromptRegistry<TContext>;
 }
 
 /** Function to detach the registry from the server */
@@ -254,6 +287,7 @@ export function attachToServer<TContext>(
         filter, contextFactory, debug, tracing, stateSync,
         introspection, serverName,
         toolExposition = 'flat', actionSeparator = '_',
+        prompts,
     } = options;
 
     // Propagate debug observer to all registered builders
@@ -358,12 +392,52 @@ export function attachToServer<TContext>(
     resolved.setRequestHandler(ListToolsRequestSchema, listHandler);
     resolved.setRequestHandler(CallToolRequestSchema, callHandler);
 
+    // ── Prompt Engine: prompts/list + prompts/get handlers ────────
+    if (prompts) {
+        // Wire lifecycle sync: give registry access to server notifications
+        // Check on the original `server` (not `resolved`) because sendPromptListChanged
+        // lives on the high-level McpServer, which ServerResolver may have unwrapped.
+        const serverAny = server as Record<string, unknown>;
+        const sendFn = serverAny['sendPromptListChanged'];
+        if (typeof sendFn === 'function') {
+            prompts.setNotificationSink(() => { sendFn.call(server); });
+        }
+
+        const promptListHandler = () => {
+            const allPrompts = filter
+                ? prompts.getPrompts(filter)
+                : prompts.getAllPrompts();
+            return { prompts: allPrompts };
+        };
+
+        const promptGetHandler = async (
+            request: { params: { name: string; arguments?: Record<string, string> } },
+            extra: unknown,
+        ) => {
+            const { name, arguments: args = {} } = request.params;
+            const ctx = contextFactory
+                ? await contextFactory(extra)
+                : (undefined as TContext);
+
+            return prompts.routeGet(ctx, name, args);
+        };
+
+        resolved.setRequestHandler(ListPromptsRequestSchema, promptListHandler);
+        resolved.setRequestHandler(GetPromptRequestSchema, promptGetHandler);
+    }
+
     // Return detach function
     return () => {
         resolved.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [] }));
         resolved.setRequestHandler(CallToolRequestSchema, () =>
             error('Tool handlers have been detached'),
         );
+        if (prompts) {
+            resolved.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: [] }));
+            resolved.setRequestHandler(GetPromptRequestSchema, () => ({
+                messages: [{ role: 'user', content: { type: 'text', text: 'Prompt handlers have been detached' } }],
+            }));
+        }
     };
 }
 

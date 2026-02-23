@@ -391,6 +391,7 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | **Streaming Progress** | Generator handlers yield `progress()` events |
 | **Type-Safe Client** | `createFusionClient()` with autocomplete and typed args |
 | **State Sync** | RFC 7234 cache-control prevents temporal blindness |
+| **Prompt Engine** | `definePrompt()` — server-side hydrated templates with flat schema constraint |
 | **TOON Encoding** | Token-optimized descriptions and responses |
 | **Tag Filtering** | Context gating — control what the LLM sees per session |
 | **Observability** | Debug observers with zero-overhead typed event system |
@@ -415,6 +416,7 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | 🛡️ **[Middleware](docs/middleware.md)** | Context derivation, authentication, pre-compiled chains |
 | 📈 **[Scaling](docs/scaling.md)** | Tag filtering, TOON, hierarchical groups at scale |
 | 🧠 **[State Sync](docs/state-sync.md)** | Prevent temporal blindness with cache signals |
+| 💬 **[Prompt Engine](docs/prompts.md)** | Server-side hydrated prompts with coercion and lifecycle sync |
 | 🔭 **[Observability](docs/observability.md)** | Zero-overhead debug observers with typed event system |
 | 🔀 **[Tool Exposition](docs/tool-exposition.md)** | Flat vs grouped wire strategies — per-action isolation |
 | 📖 **[API Reference](docs/api-reference.md)** | Complete typings and method reference |

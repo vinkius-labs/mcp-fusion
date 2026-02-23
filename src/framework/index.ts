@@ -29,7 +29,9 @@ export type {
 
 // ── Registry ─────────────────────────────────────────────
 export { ToolRegistry } from './registry/index.js';
+export { PromptRegistry } from './registry/index.js';
 export type { ToolFilter } from './registry/index.js';
+export type { McpPromptDef, PromptFilter } from './registry/index.js';
 export type { AttachOptions, DetachFn, ToolExposition, ExpositionConfig } from './server/index.js';
 
 // ── Schema (public strategies) ───────────────────────────
@@ -78,3 +80,13 @@ export type {
     ManifestAction, ManifestPresenter,
     IntrospectionRegistryDelegate,
 } from './introspection/index.js';
+
+// ── Prompt Engine ────────────────────────────────────────
+export { definePrompt } from './prompt/index.js';
+export { PromptMessage } from './prompt/index.js';
+export { assertFlatSchema, coercePromptArgs } from './prompt/index.js';
+export type {
+    PromptMessagePayload, PromptResult,
+    PromptParamDef, PromptParamsMap,
+    PromptBuilder, PromptConfig,
+} from './prompt/index.js';

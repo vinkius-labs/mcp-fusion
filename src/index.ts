@@ -67,6 +67,11 @@ export {
     ui,
     Presenter, createPresenter, isPresenter,
     PresenterValidationError,
+    definePrompt,
+    PromptMessage,
+    PromptRegistry,
+    assertFlatSchema,
+    coercePromptArgs,
 } from './framework/index.js';
 /** @category Framework */
 export type {
@@ -90,4 +95,8 @@ export type {
     CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
     UiBlock,
     ActionSuggestion,
+    PromptMessagePayload, PromptResult,
+    PromptParamDef, PromptParamsMap,
+    PromptBuilder, PromptConfig,
+    McpPromptDef, PromptFilter,
 } from './framework/index.js';

@@ -85,27 +85,59 @@ export default defineConfig({
     ],
 
     sidebar: [
+      // ── Getting Started ────────────────────────────────
       {
-        text: 'Foundation',
+        text: 'Getting Started',
         collapsed: false,
         items: [
           { text: 'Introduction', link: '/introduction' },
-          { text: 'The MVA Manifesto', link: '/mva-pattern' },
-          { text: 'Without MVA vs With MVA', link: '/comparison' },
-          { text: 'Cost & Hallucination', link: '/cost-and-hallucination' },
           { text: 'Quickstart', link: '/quickstart' },
-          { text: 'Cookbook & Examples', link: '/examples' },
           { text: 'Architecture', link: '/architecture' },
+          { text: 'Cookbook & Examples', link: '/examples' },
           { text: 'Migration Guide', link: '/migration' },
         ]
       },
+
+      // ── MVA Architecture ───────────────────────────────
       {
         text: 'MVA Architecture',
         collapsed: false,
         items: [
+          { text: 'The MVA Manifesto', link: '/mva-pattern' },
           { text: 'MVA At a Glance', link: '/mva/' },
           { text: 'The Theory Behind MVA', link: '/mva/theory' },
           { text: 'MVA vs MVC', link: '/mva/mva-vs-mvc' },
+          { text: 'Without MVA vs With MVA', link: '/comparison' },
+          { text: 'Cost & Hallucination', link: '/cost-and-hallucination' },
+        ]
+      },
+
+      // ── MCP Primitives ─────────────────────────────────
+      {
+        text: 'Tools',
+        collapsed: false,
+        items: [
+          { text: 'Building Tools', link: '/building-tools' },
+          { text: 'Routing & Groups', link: '/routing' },
+          { text: 'Tool Exposition', link: '/tool-exposition' },
+          { text: 'Error Handling', link: '/error-handling' },
+          { text: 'Result Monad', link: '/result-monad' },
+        ]
+      },
+      {
+        text: 'Prompts',
+        collapsed: false,
+        items: [
+          { text: 'Prompt Engine', link: '/prompts' },
+        ]
+      },
+
+      // ── Presenter (MVA View) ───────────────────────────
+      {
+        text: 'Presenter',
+        collapsed: false,
+        items: [
+          { text: 'Presenter (MVA View)', link: '/presenter' },
           { text: 'Anatomy of the Presenter', link: '/mva/presenter-anatomy' },
           { text: 'Perception Package', link: '/mva/perception-package' },
           { text: 'Agentic Affordances', link: '/mva/affordances' },
@@ -113,43 +145,43 @@ export default defineConfig({
           { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
         ]
       },
+
+      // ── Framework ──────────────────────────────────────
       {
-        text: 'Core Concepts',
+        text: 'Framework',
         collapsed: false,
         items: [
-          { text: 'Building Tools', link: '/building-tools' },
-          { text: 'Presenter (MVA View)', link: '/presenter' },
-          { text: 'Routing & Groups', link: '/routing' },
-          { text: 'Tool Exposition', link: '/tool-exposition' },
           { text: 'State & Context', link: '/context' },
-          { text: 'Error Handling', link: '/error-handling' },
-          { text: 'Result Monad', link: '/result-monad' },
-        ]
-      },
-      {
-        text: 'Advanced Guides',
-        collapsed: false,
-        items: [
           { text: 'Middleware', link: '/middleware' },
           { text: 'FusionClient', link: '/fusion-client' },
+          { text: 'Dynamic Manifest', link: '/dynamic-manifest' },
+          { text: 'Advanced Configuration', link: '/advanced-configuration' },
+        ]
+      },
+
+      // ── Production ─────────────────────────────────────
+      {
+        text: 'Production',
+        collapsed: false,
+        items: [
           { text: 'State Sync', link: '/state-sync' },
           { text: 'Observability', link: '/observability' },
           { text: 'Tracing', link: '/tracing' },
+          { text: 'Introspection', link: '/introspection' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Performance', link: '/performance' },
-          { text: 'Advanced Configuration', link: '/advanced-configuration' },
-          { text: 'Introspection', link: '/introspection' },
-          { text: 'Dynamic Manifest', link: '/dynamic-manifest' },
           { text: 'Testing', link: '/testing' },
         ]
       },
+
+      // ── Reference ──────────────────────────────────────
       {
         text: 'Reference',
         collapsed: false,
         items: [
-          { text: 'API Reference', link: '/api-reference' }
+          { text: 'API Reference', link: '/api-reference' },
         ]
-      }
+      },
     ],
 
     socialLinks: [
