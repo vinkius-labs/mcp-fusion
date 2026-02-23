@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-02-23
+
+### 🔌 n8n Connector — Turn Workflows into MCP Tools
+
+New `mcp-fusion-n8n` package. Auto-discovers n8n webhook workflows and produces MCP Fusion tool builders — so AI agents can call your automations natively.
+
+### Added
+
+- **`packages/n8n/`:** New `mcp-fusion-n8n` connector package:
+  - `createN8nConnector()` — Auto-discovery mode: connects to n8n, finds webhook workflows, produces `SynthesizedTool[]`
+  - `defineN8nTool()` — Manual/enterprise mode: surgically define a specific workflow as an MCP tool
+  - `N8nClient` — HTTP client for n8n REST API with auth and timeout
+  - `WorkflowDiscovery` — Filters webhook-triggered workflows, tag include/exclude
+  - `SchemaInferrer` — Query params → strict Zod, body → `z.record(z.any())`, notes → `.describe()`
+  - `ToolSynthesizer` — Workflow metadata → `defineTool()`-compatible configs
+- **Hack Semântico:** Workflow "Notes" field becomes tool description — LLMs build correct payloads in zero-shot
+- **CI publish step** for n8n package
+
+### Test Suite
+
+- **34 new tests** covering `toToolName`, `SchemaInferrer`, `WorkflowDiscovery`, `ToolSynthesizer`, `defineN8nTool`
+
 ## [2.1.0] - 2026-02-23
 
 ### 🧬 OpenAPI Generator — Spec to MCP Server in One Command
