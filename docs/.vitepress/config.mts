@@ -187,6 +187,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'OpenAPI Generator', link: '/openapi-gen' },
+          { text: 'n8n Connector', link: '/n8n-connector' },
         ]
       },
 

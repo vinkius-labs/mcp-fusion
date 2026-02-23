@@ -23,6 +23,14 @@ New `mcp-fusion-n8n` package. Auto-discovers n8n webhook workflows and produces 
 - **Hack Semântico:** Workflow "Notes" field becomes tool description — LLMs build correct payloads in zero-shot
 - **CI publish step** for n8n package
 
+### Documentation
+
+- **`docs/n8n-connector.md`:** Full VitePress documentation page — 5 Engineering Primitives with impact sections
+- **`packages/n8n/README.md`:** Package README with primitive breakdown and usage examples
+- **`README.md`:** New "From Spaghetti Code to MCP Fusion" power statement — pain-first structure with full capability coverage
+- **`README.md`:** Added `mcp-fusion-n8n` to Packages table and Documentation guides
+- **`.vitepress/config.mts`:** Added n8n Connector sidebar entry
+
 ### Test Suite
 
 - **34 new tests** covering `toToolName`, `SchemaInferrer`, `WorkflowDiscovery`, `ToolSynthesizer`, `defineN8nTool`

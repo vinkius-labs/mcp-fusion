@@ -18,6 +18,20 @@
 
 ---
 
+## From Spaghetti Code to MCP Fusion
+
+Every MCP server in the ecosystem is built the same way: one `switch/case` handler, `JSON.stringify` as the entire response strategy, zero validation, zero separation of concerns — a monolithic spaghetti that would look outdated in 2005. 50 operations become 50 individual tools that flood the context window with 10,000 tokens of schema. The handler returns raw database rows — internal IDs, password hashes, tenant flags — straight into the LLM. The agent hallucinates parameter names because there's no strict boundary. After receiving data it guesses the next step because nothing tells it what actions are valid. A single `list_all` returns 10,000 rows and blows through the context window. You compensate with a 2,000-token system prompt with rules for every entity, sent on every call regardless of relevance. Every wrong guess costs a full retry — input tokens, output tokens, latency, API bill.
+
+**MCP Fusion** is a TypeScript framework for building MCP servers that solves all of this at the framework level:
+
+Your server consolidates 50 operations into 5 discriminator-routed tools — schema tokens drop from ~10,000 to ~1,670. The **Presenter** — the first View layer built for AI agents — validates responses through Zod, strips undeclared fields, attaches domain rules that travel with data (not in a bloated system prompt), renders server-side UI blocks, auto-truncates oversized collections, and suggests the next action based on data state. `.strict()` rejects hallucinated parameters with per-field correction prompts. `toolError()` returns structured recovery hints. `.agentLimit()` caps response size. Tag-based RBAC gates tool visibility per session.
+
+Concurrent destructive mutations serialize through an async mutex. Concurrency bulkheads, timeout sandboxes, and circuit breakers protect every tool. Egress guards measure payload bytes and truncate before OOM. RFC 7234 cache-control signals and causal invalidation after mutations prevent the agent from acting on stale data. `PromptMessage.fromView()` decomposes any Presenter into prompt messages — same source of truth. tRPC-style type-safe client, OpenTelemetry tracing, TOON encoding (~40% fewer tokens), `Object.freeze()` immutability after build.
+
+Generate a server from an OpenAPI spec in one command, or wire an n8n instance that live-syncs workflows into typed tools.
+
+You write the handler. **MCP Fusion** builds the server.
+
 ## Overview
 
 **MCP Fusion** adds an MVA Presenter layer between your data and the AI agent. The Presenter validates data through a Zod schema, strips undeclared fields, attaches just-in-time domain rules, renders UI blocks server-side, and suggests next actions — all before the response reaches the network.
@@ -318,6 +332,7 @@ handler: async function* (ctx, args) {
 | Package | Description |
 |---|---|
 | [`mcp-fusion-openapi-gen`](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
+| [`mcp-fusion-n8n`](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
 
 ## Documentation
 
@@ -337,6 +352,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency, timeouts, circuit breakers |
 | [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) | Debug observers, tracing |
 | [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
+| [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
 | [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
 | [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |
 
