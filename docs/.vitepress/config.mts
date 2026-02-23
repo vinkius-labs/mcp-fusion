@@ -147,6 +147,7 @@ export default defineConfig({
           { text: 'Agentic Affordances', link: '/mva/affordances' },
           { text: 'Context Tree-Shaking', link: '/mva/context-tree-shaking' },
           { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
+          { text: 'MVA Convention', link: '/mva-convention' },
         ]
       },
 
@@ -177,6 +178,15 @@ export default defineConfig({
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Performance', link: '/performance' },
           { text: 'Testing', link: '/testing' },
+        ]
+      },
+
+      // ── Packages ────────────────────────────────────────
+      {
+        text: 'Packages',
+        collapsed: false,
+        items: [
+          { text: 'OpenAPI Generator', link: '/openapi-gen' },
         ]
       },
 

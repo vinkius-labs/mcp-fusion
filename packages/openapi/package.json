@@ -1,0 +1,68 @@
+{
+    "name": "mcp-fusion-openapi-gen",
+    "version": "1.0.0",
+    "description": "OpenAPI-to-MCP Fusion Server Generator. Parses OpenAPI 3.x specs and generates a complete, ready-to-run MCP Server with full MVA tool stacks (Presenters, Tools, Registry, Server) — all features configurable via YAML.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "openapi-gen": "./dist/cli.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint src/",
+        "lint:fix": "eslint src/ --fix",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "openapi",
+        "swagger",
+        "code-generator",
+        "mcp-fusion",
+        "zod",
+        "mva",
+        "presenter",
+        "ai",
+        "llm"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/openapi"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://vinkius-labs.github.io/mcp-fusion/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "yaml": "^2.7.0"
+    },
+    "peerDependencies": {
+        "@vinkius-core/mcp-fusion": "^2.0.0",
+        "zod": "^3.25.1 || ^4.0.0"
+    },
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@types/node": "^25.3.0"
+    }
+}

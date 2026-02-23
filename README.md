@@ -313,6 +313,12 @@ handler: async function* (ctx, args) {
 | **Introspection** | Runtime metadata via `fusion://manifest.json` MCP resource |
 | **Immutability** | `Object.freeze()` after `buildToolDefinition()` |
 
+## Packages
+
+| Package | Description |
+|---|---|
+| [`mcp-fusion-openapi-gen`](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
+
 ## Documentation
 
 Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vinkius-labs.github.io/mcp-fusion/)**.
@@ -330,6 +336,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [State Sync](https://vinkius-labs.github.io/mcp-fusion/state-sync) | Cache-control signals, causal invalidation |
 | [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency, timeouts, circuit breakers |
 | [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) | Debug observers, tracing |
+| [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
 | [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
 | [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |
 

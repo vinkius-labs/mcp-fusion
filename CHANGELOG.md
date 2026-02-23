@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-23
+
+### 🧬 OpenAPI Generator — Spec to MCP Server in One Command
+
+New `mcp-fusion-openapi-gen` package that generates a complete **MCP Fusion** server from any OpenAPI 3.x specification. One command produces Zod schemas, Presenters, tool definitions, ToolRegistry, and server bootstrap — all following the MVA Convention.
+
+### Added
+
+- **`packages/openapi/`:** New `mcp-fusion-openapi-gen` package with full pipeline:
+  - `OpenApiParser` — resolves `$ref`, extracts groups/actions/params/responses
+  - `EndpointMapper` — `operationId` → `snake_case`, dedup, HTTP method → MCP annotations
+  - `ZodCompiler` — `SchemaNode` → Zod code with coercion, formats, constraints
+  - `CodeEmitter` — generates MVA structure (`models/`, `views/`, `agents/`, Registry, Server)
+  - `ConfigLoader` — YAML config auto-detection with CLI flag overrides
+  - `GeneratorConfig` — full config system with `mergeConfig()` and `DEFAULT_CONFIG`
+- **`toolExposition` config** (`'flat'` | `'grouped'`): Controls how generated tools are exposed to the LLM via `attachToServer()`.
+- **`actionSeparator` config** (string, default `'_'`): Controls flat mode delimiter in generated server bootstrap.
+- **MVA Convention — `agents/` directory:** Renamed `tools/` → `agents/` to align directory names with MVA architectural layers (Model, View, Agent). Updated across all source, tests, and documentation.
+
+### Documentation
+
+- **`docs/openapi-gen.md`:** Full generator documentation — quick start, configuration reference, generated code walkthrough, exposition strategy, name resolution, programmatic API, and pipeline architecture.
+- **`docs/mva-convention.md`:** MVA Convention reference — structure, dependency flow, file naming, header annotations, and separation of concerns.
+- **VitePress sidebar:** Added OpenAPI Generator and MVA Convention pages.
+
+### Test Suite
+
+- **11 new tests** for `toolExposition` and `actionSeparator`:
+  - `GeneratorConfig.test.ts` — 7 tests: default values, merge overrides for both configs
+  - `CodeEmitter.test.ts` — 5 tests: emitter output for flat/grouped/custom separator
+- **1,768 tests** across 82 files, all passing.
+
 ## [2.0.0] - 2026-02-23
 
 ### 🏗️ Monorepo Refactor — Multi-Package Architecture
