@@ -78,6 +78,7 @@ export type {
     EnumParamDef, ArrayParamDef,
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
+    ConcurrencyConfig, EgressConfig,
 } from './core/index.js';
 
 // ── Client (tRPC-style type-safe) ────────────────────────

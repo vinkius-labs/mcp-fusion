@@ -170,6 +170,7 @@ export default defineConfig({
         items: [
           { text: 'State Sync', link: '/state-sync' },
           { text: 'Cancellation', link: '/cancellation' },
+          { text: 'Runtime Guards', link: '/runtime-guards' },
           { text: 'Observability', link: '/observability' },
           { text: 'Tracing', link: '/tracing' },
           { text: 'Introspection', link: '/introspection' },

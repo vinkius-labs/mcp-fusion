@@ -261,6 +261,41 @@ registry.attachToServer(server, {
 });
 ```
 
+## Runtime Guards
+
+Built-in concurrency control and payload size limiting. Fulfills the MCP spec requirement: "Servers MUST rate limit tool invocations."
+
+```typescript
+// Concurrency Bulkhead — limit simultaneous executions per tool
+const billing = createTool<AppContext>('billing')
+    .concurrency({ maxActive: 5, maxQueue: 20 })
+    .action({
+        name: 'process_invoice',
+        handler: async (ctx, args) => success(await ctx.stripe.charges.create(args)),
+    });
+// 5 concurrent, 20 queued, rest rejected with SERVER_BUSY
+
+// Egress Guard — truncate oversized responses
+const logs = createTool<AppContext>('logs')
+    .maxPayloadBytes(2 * 1024 * 1024) // 2MB
+    .action({
+        name: 'search',
+        handler: async (ctx, args) => success(await ctx.db.logs.findMany(args)),
+    });
+// Responses > 2MB are truncated + system intervention injected
+
+// Both combined
+const analytics = createTool<AppContext>('analytics')
+    .concurrency({ maxActive: 3, maxQueue: 10 })
+    .maxPayloadBytes(2 * 1024 * 1024)
+    .action({
+        name: 'query',
+        handler: async (ctx, args) => success(await ctx.db.$queryRaw(args.sql)),
+    });
+```
+
+Load shedding returns `toolError('SERVER_BUSY')` — a self-healing error that causes the LLM to reduce its cadence. Egress truncation injects `[SYSTEM INTERVENTION: Payload truncated. You MUST use pagination.]`. Zero overhead when not configured.
+
 ## Dynamic Manifest
 
 ```typescript
@@ -405,7 +440,7 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 ### Builder
 - `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod)
 - `defineTool<TContext>(name, config)` → GroupedToolBuilder (JSON-first, no Zod required)
-- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
+- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .concurrency(), .maxPayloadBytes(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
 - `ActionGroupBuilder<TContext>` — .use(), .action()
 
 ### Presenter (MVA View Layer)
@@ -493,6 +528,8 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 - `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware, presenterName?, presenterSchemaKeys?, presenterUiBlockTypes?, presenterHasContextualRules? }
 - `ToolFilter` — { tags?: string[], exclude?: string[] }
 - `AttachOptions<TContext>` — { contextFactory?, filter?, debug?, stateSync?, introspection?, serverName?, toolExposition?, actionSeparator?, tracing? }
+- `ConcurrencyConfig` — { maxActive: number, maxQueue?: number }
+- `EgressConfig` — { maxPayloadBytes: number }
 - `ToolExposition` — 'flat' | 'grouped'
 - `IntrospectionConfig<TContext>` — { enabled, uri?, filter? }
 - `ManifestPayload` — { server, mcp_fusion_version, architecture, capabilities: { tools, presenters } }

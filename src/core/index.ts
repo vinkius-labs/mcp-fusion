@@ -39,9 +39,11 @@ export type { ToolFilter } from './registry/index.js';
 // ── Schema (public strategies) ───────────────────────────
 export { generateToonDescription } from './schema/index.js';
 
-// ── Execution (progress streaming) ───────────────────────
+// ── Execution (progress streaming + runtime guards) ──────
 export { progress } from './execution/index.js';
 export type { ProgressEvent, ProgressSink } from './execution/index.js';
+export type { ConcurrencyConfig } from './execution/index.js';
+export type { EgressConfig } from './execution/index.js';
 
 // ── Middleware (context derivation) ──────────────────────
 export { defineMiddleware, resolveMiddleware } from './middleware/index.js';

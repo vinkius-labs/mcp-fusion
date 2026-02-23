@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-02-23
+
+### Runtime Guards — Concurrency Bulkhead & Egress Limiter
+
+**MCP Fusion** now provides two built-in runtime guards that fulfill the MCP specification requirement: *"Servers MUST rate limit tool invocations."* Both guards have **zero overhead** when not configured — no objects created, no branches in the hot path.
+
+### Added
+
+- **Concurrency Guard (Bulkhead):** Per-tool semaphore with configurable `maxActive` concurrent executions and `maxQueue` backpressure queue. Load shedding rejects excess calls with `toolError('SERVER_BUSY')` — a self-healing error that causes the LLM to reduce its cadence.
+  - `ConcurrencyGuard` class in `src/core/execution/ConcurrencyGuard.ts`
+  - `.concurrency({ maxActive, maxQueue })` fluent method on `GroupedToolBuilder`
+  - `ConcurrencyConfig` type exported from root barrel
+  - AbortSignal integration: queued waiters are cancelled cooperatively
+  - Slot release guarantee via `try/finally` — no leaks on handler crash
+- **Egress Guard (Payload Limiter):** Per-tool maximum response size in bytes. Truncates oversized payloads at UTF-8 character boundaries and injects a system intervention message forcing the LLM to use pagination.
+  - `applyEgressGuard()` function in `src/core/execution/EgressGuard.ts`
+  - `.maxPayloadBytes(bytes)` fluent method on `GroupedToolBuilder`
+  - `EgressConfig` type exported from root barrel
+  - UTF-8 safe truncation via `TextEncoder`/`TextDecoder`
+  - Minimum enforced at 1024 bytes to prevent unusable responses
+- **`_executeWithObservability()` internal method:** Extracted from `execute()` to keep the concurrency/egress guard integration clean. No behavioral change — same tracing/debug/fast paths.
+
+### Documentation
+
+- **New "Runtime Guards" page (`docs/runtime-guards.md`):** Problem statement, architecture diagram, Quick Start for both guards, combined usage, testing patterns, MCP spec compliance section, configuration reference, and compatibility matrix.
+- **VitePress sidebar:** Added Runtime Guards under Production section.
+- **SEO:** 7 new FAQs for the Runtime Guards page with FAQPage + TechArticle JSON-LD structured data.
+- **llms.txt:** Updated with Runtime Guards section and public API entries.
+
+### Test Suite
+
+- **24 new tests** in `RuntimeGuards.test.ts`:
+  - ConcurrencyGuard: Semaphore Basics (3 tests)
+  - ConcurrencyGuard: Backpressure Queue (3 tests)
+  - ConcurrencyGuard: AbortSignal Integration (2 tests)
+  - EgressGuard: Payload Truncation (5 tests)
+  - Builder Integration: .concurrency() (5 tests)
+  - Builder Integration: .maxPayloadBytes() (3 tests)
+  - Runtime Guards: Combined (2 tests + abort scenario)
+- **Test count:** 1,525 tests across 70 files, all passing.
+
 ## [1.7.0] - 2026-02-23
 
 ### 🚫 Cancellation Propagation — Cooperative AbortSignal for MCP Tools

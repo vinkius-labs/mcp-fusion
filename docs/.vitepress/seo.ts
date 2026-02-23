@@ -457,6 +457,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'How do I test cancellation in my tools?', a: 'Use AbortController in tests: const controller = new AbortController(); controller.abort(); const result = await tool.execute(ctx, args, undefined, controller.signal); expect(result.isError).toBe(true). The signal is the 4th parameter of execute(). For mid-execution cancellation, call controller.abort() inside a setTimeout.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // RUNTIME GUARDS
+  // ═══════════════════════════════════════════════════════
+  'runtime-guards.md': {
+    title: 'Runtime Guards — Concurrency Bulkhead & Egress Limiter for MCP Tools',
+    description: 'MCP Fusion provides built-in concurrency control (semaphore + backpressure queue) and payload size limiting per tool. Fulfills the MCP specification requirement: Servers MUST rate limit tool invocations.',
+    faqs: [
+      { q: 'What are Runtime Guards in mcp-fusion?', a: 'Runtime Guards are two built-in safety mechanisms: (1) the Concurrency Guard (Bulkhead pattern) limits simultaneous tool executions using a semaphore with backpressure queue, and (2) the Egress Guard truncates oversized response payloads at the byte level. Both have zero overhead when not configured — no guard objects are created.' },
+      { q: 'How does the Concurrency Guard prevent thundering herd?', a: 'The Concurrency Guard implements a per-tool semaphore with configurable maxActive slots and maxQueue capacity. When the LLM fires 50 concurrent calls, only maxActive execute simultaneously. Excess calls are either queued (up to maxQueue) or immediately rejected with a SERVER_BUSY error — preventing downstream API rate limiting and cascade failures.' },
+      { q: 'What happens when a tool is at capacity?', a: 'When all active slots and queue positions are full, the tool returns a structured toolError with code SERVER_BUSY. The error includes a recovery suggestion telling the LLM to reduce concurrent calls and retry sequentially. This self-healing error causes the LLM to naturally slow down its cadence — no manual intervention needed.' },
+      { q: 'How does the Egress Guard prevent OOM crashes?', a: 'The Egress Guard measures the total UTF-8 byte length of all content blocks in a ToolResponse. If it exceeds maxPayloadBytes, the text is truncated at a safe character boundary and a system intervention message is injected: \"You MUST use pagination (limit/offset) or filters.\" This prevents Node.js OOM crashes from serializing large payloads and protects against LLM context window overflow.' },
+      { q: 'Does mcp-fusion comply with the MCP rate limiting requirement?', a: 'Yes. The MCP specification requires servers to rate limit tool invocations. The .concurrency() method on the builder fulfills this requirement at the framework level. Without it, developers must implement rate limiting manually per tool — which is error-prone and inconsistent.' },
+      { q: 'How do Runtime Guards work with AbortSignal?', a: 'The Concurrency Guard cooperates with AbortSignal for queued waiters. If a user cancels while a call is waiting in the backpressure queue, the waiter is immediately rejected without ever executing handler code. Active executions use the existing Cancellation pipeline. The concurrency slot is always released via try/finally — no leaks.' },
+      { q: 'How do I test Runtime Guards?', a: 'For concurrency: fire multiple tool.execute() calls simultaneously and assert the Nth call returns SERVER_BUSY. For egress: return a large payload (e.g., 10,000 characters) with maxPayloadBytes set low (2048) and verify the response contains SYSTEM INTERVENTION. Both guards work with direct builder.execute() — no server mock needed.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

@@ -45,7 +45,7 @@
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import { error } from '../response.js';
+import { error, toolError } from '../response.js';
 import {
     type ToolResponse,
     type ToolBuilder,
@@ -62,6 +62,8 @@ import {
     type ExecutionContext,
 } from '../execution/ExecutionPipeline.js';
 import { type ProgressSink } from '../execution/ProgressHelper.js';
+import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
+import { applyEgressGuard } from '../execution/EgressGuard.js';
 import { computeResponseSize, type PipelineHooks } from '../execution/PipelineHooks.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
@@ -164,6 +166,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _frozen = false;
     private _debug?: DebugObserverFn;
     private _tracer?: FusionTracer;
+    private _concurrencyGuard?: ConcurrencyGuard;
+    private _egressMaxBytes?: number;
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -329,6 +333,74 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     toonDescription(): this {
         this._assertNotFrozen();
         this._toonMode = true;
+        return this;
+    }
+
+    /**
+     * Set concurrency limits for this tool (Bulkhead pattern).
+     *
+     * Prevents thundering-herd scenarios where the LLM fires N
+     * concurrent calls in the same millisecond. Implements a
+     * semaphore with backpressure queue and load shedding.
+     *
+     * When all active slots are occupied, new calls enter the queue.
+     * When the queue is full, calls are immediately rejected with
+     * a self-healing `SERVER_BUSY` error.
+     *
+     * **MCP Spec Compliance**: The MCP specification requires servers
+     * to rate-limit tool invocations. This method fulfills that requirement.
+     *
+     * **Zero overhead** when not configured — no semaphore exists.
+     *
+     * @param config - Concurrency configuration
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool<AppContext>('billing')
+     *     .concurrency({ maxActive: 5, maxQueue: 20 })
+     *     .action({ name: 'process_invoice', handler: processInvoice });
+     * // 5 concurrent executions, 20 queued, rest rejected
+     * ```
+     *
+     * @see {@link ConcurrencyConfig} for configuration options
+     */
+    concurrency(config: ConcurrencyConfig): this {
+        this._assertNotFrozen();
+        this._concurrencyGuard = new ConcurrencyGuard(config);
+        return this;
+    }
+
+    /**
+     * Set maximum payload size for tool responses (Egress Guard).
+     *
+     * Prevents oversized responses from crashing the Node process
+     * with OOM or overflowing the LLM context window.
+     *
+     * When a response exceeds the limit, the text content is truncated
+     * and a system intervention message is injected, forcing the LLM
+     * to use pagination or filters.
+     *
+     * This is a **brute-force safety net**. For domain-aware truncation
+     * with guidance, use Presenter `.agentLimit()` instead.
+     *
+     * **Zero overhead** when not configured.
+     *
+     * @param bytes - Maximum payload size in bytes
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool<AppContext>('logs')
+     *     .maxPayloadBytes(2 * 1024 * 1024) // 2MB
+     *     .action({ name: 'search', handler: searchLogs });
+     * ```
+     *
+     * @see {@link Presenter.agentLimit} for domain-level truncation
+     */
+    maxPayloadBytes(bytes: number): this {
+        this._assertNotFrozen();
+        this._egressMaxBytes = Math.max(1024, Math.floor(bytes));
         return this;
     }
 
@@ -665,6 +737,51 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             return error(`Builder "${this._name}" failed to initialize.`);
         }
 
+        // ── Concurrency Gate (Bulkhead) ──────────────────
+        // Acquire a slot BEFORE entering the pipeline.
+        // If acquire() returns null, load shedding kicks in.
+        let release: (() => void) | undefined;
+        if (this._concurrencyGuard) {
+            const result = this._concurrencyGuard.acquire(signal);
+            if (result === null) {
+                // Load shedding: all slots occupied + queue full
+                return toolError('SERVER_BUSY', {
+                    message: `Tool "${this._name}" is at capacity (${this._concurrencyGuard.active} active, ${this._concurrencyGuard.queued} queued). Retry after a short delay.`,
+                    suggestion: 'Reduce the number of concurrent calls to this tool. Send requests sequentially or in smaller batches.',
+                });
+            }
+            try {
+                release = await result;
+            } catch {
+                // Waiter was cancelled while queued (AbortSignal)
+                return error(`[${this._name}] Request cancelled while waiting for execution slot.`);
+            }
+        }
+
+        try {
+            const response = await this._executeWithObservability(execCtx, ctx, args, progressSink, signal);
+
+            // ── Egress Guard (Payload Size Limiter) ──────
+            if (this._egressMaxBytes) {
+                return applyEgressGuard(response, this._egressMaxBytes);
+            }
+            return response;
+        } finally {
+            release?.();
+        }
+    }
+
+    /**
+     * Internal: execute with the appropriate observability path.
+     * Extracted to keep the concurrency/egress guards clean.
+     */
+    private async _executeWithObservability(
+        execCtx: ExecutionContext<TContext>,
+        ctx: TContext,
+        args: Record<string, unknown>,
+        progressSink?: ProgressSink,
+        signal?: AbortSignal,
+    ): Promise<ToolResponse> {
         // Traced path: wrap in try/catch for system error → graceful response
         if (this._tracer) {
             const hooks = this._buildTracedHooks();
