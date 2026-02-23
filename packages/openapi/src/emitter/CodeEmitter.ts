@@ -288,7 +288,7 @@ function emitAction(
     }
 
     // Deprecated
-    if (action.deprecated && cfg.features.deprecated === 'warn') {
+    if (action.deprecated && cfg.features.deprecated === 'comment') {
         lines.push(`            // ⚠️ DEPRECATED — consider removal`);
     }
 
