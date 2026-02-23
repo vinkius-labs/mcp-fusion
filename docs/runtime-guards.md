@@ -23,7 +23,7 @@ Tool Call arrives
     │
     ▼
 ┌──────────────────────────────────────────────┐
-│  ① Concurrency Guard (Bulkhead)              │
+│  ① Concurrency Guard (Semaphore + Queue)       │
 │     ├── slot free? → continue                │
 │     ├── queue has space? → wait              │
 │     └── both full? → SERVER_BUSY (shed)      │
@@ -40,7 +40,7 @@ Tool Call arrives
 └──────────────────────────────────────────────┘
 ```
 
-## Concurrency Guard (Bulkhead Pattern)
+## Concurrency Guard (Semaphore + Queue)
 
 Limits the number of simultaneous executions per tool. Implements a semaphore with a backpressure queue and load shedding.
 

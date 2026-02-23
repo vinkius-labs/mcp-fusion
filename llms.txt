@@ -266,7 +266,7 @@ registry.attachToServer(server, {
 Built-in concurrency control and payload size limiting. Fulfills the MCP spec requirement: "Servers MUST rate limit tool invocations."
 
 ```typescript
-// Concurrency Bulkhead — limit simultaneous executions per tool
+// Concurrency Limiter — limit simultaneous executions per tool
 const billing = createTool<AppContext>('billing')
     .concurrency({ maxActive: 5, maxQueue: 20 })
     .action({

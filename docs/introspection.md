@@ -69,7 +69,7 @@ interface ActionMetadata {
 }
 ```
 
-::: info Magic Zod Parsing
+::: info Automatic Zod Schema Extraction
 The `requiredFields` array is uniquely extracted from the action's underlying Zod schema via `SchemaUtils.getActionRequiredFields()`. It natively inspects the internal Zod shape graph and pushes non-optional keys.
 :::
 

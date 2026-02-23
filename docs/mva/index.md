@@ -64,7 +64,7 @@ Every piece of data should arrive with:
 4. **Action guidance** — explicit next steps based on data state
 5. **Cognitive limits** — bounded results with filter guidance
 
-When all five are present, the agent perceives the domain identically every time. Hallucination is eliminated at the architecture level, not patched at the prompt level.
+When all five are present, the agent perceives the domain consistently. Hallucination risk is reduced at the architecture level, not patched at the prompt level.
 
 </div>
 
@@ -138,7 +138,7 @@ The handler returns **raw data**. The Presenter intercepts it in the execution p
 
 - [**The Theory Behind MVA →**](/mva/theory) — Why this architecture exists and what problem it solves at the deepest level
 - [**MVA vs MVC →**](/mva/mva-vs-mvc) — Formal paradigm comparison, layer by layer
-- [**The MVA Manifesto →**](/mva-pattern) — The original manifesto (concise overview)
+- [**The MVA Pattern →**](/mva-pattern) — The original overview (concise introduction)
 - [**Quickstart →**](/quickstart) — Build your first MVA tool in 5 minutes
 
 </div>

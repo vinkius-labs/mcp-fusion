@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains the internal philosophy of **MCP Fusion**: *why* the framework is structured the way it is, *what* each execution component does, and *how* they work together to eliminate payload bloat.
+This document explains the internal philosophy of **MCP Fusion**: *why* the framework is structured the way it is, *what* each execution component does, and *how* they work together to reduce payload bloat.
 
 ---
 

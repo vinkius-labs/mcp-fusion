@@ -1,7 +1,7 @@
 /**
  * RuntimeGuards.test.ts
  *
- * Tests for Concurrency Bulkhead and Egress Guard.
+ * Tests for Concurrency Limiter and Egress Guard.
  *
  * Validates:
  *   - ConcurrencyGuard: semaphore, backpressure queue, load shedding

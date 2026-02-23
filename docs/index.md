@@ -7,7 +7,7 @@ hero:
   tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. **MCP Fusion** introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer with a Structured Perception Layer on your data like trained engineers, not guessing machines."
   actions:
     - theme: brand
-      text: The MVA Manifesto →
+      text: The MVA Pattern →
       link: /mva-pattern
     - theme: alt
       text: 5-Minute Quickstart
@@ -256,7 +256,7 @@ const InvoicePresenter = createPresenter('Invoice')
 <!-- ═══ Section 3: MVA Conviction ═══ -->
 <div class="ms-section ms-conviction">
 <div class="ms-left">
-<div class="ms-label">THE PARADIGM SHIFT</div>
+<div class="ms-label">THE MVA ARCHITECTURE</div>
 <h2 class="ms-headline">MVC was designed<br>for humans.<br><span class="ms-accent">Agents are not<br>humans.</span></h2>
 </div>
 <div class="ms-right">
@@ -297,7 +297,7 @@ const InvoicePresenter = createPresenter('Invoice')
 <div class="ms-card">
 <div class="ms-card-number">03 // SECURITY</div>
 <h3 class="ms-card-title">Context Derivation</h3>
-<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strict() ensures handlers never receive hallucinated params.</p>
+<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strict() protects handlers from hallucinated params.</p>
 <a href="/middleware" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
@@ -309,7 +309,7 @@ const InvoicePresenter = createPresenter('Invoice')
 <div class="ms-card">
 <div class="ms-card-number">05 // AFFORDANCE</div>
 <h3 class="ms-card-title">Agentic HATEOAS</h3>
-<p class="ms-card-desc">.suggestActions() tells agents what to do next based on data state. Eliminates action hallucination through explicit affordances.</p>
+<p class="ms-card-desc">.suggestActions() tells agents what to do next based on data state. Reduces action hallucination through explicit affordances.</p>
 <a href="/mva-pattern" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
@@ -335,7 +335,7 @@ const InvoicePresenter = createPresenter('Invoice')
 
 <!-- ═══ Section 5: CTA ═══ -->
 <div class="ms-cta">
-<div class="ms-label">READ THE MANIFESTO</div>
+<div class="ms-label">READ THE MVA GUIDE</div>
 <h2 class="ms-cta-headline">The AI doesn't guess.<br>It knows.</h2>
 <p class="ms-cta-sub">MVA is a new architectural pattern. The Presenter replaces the View with a <strong>deterministic perception layer</strong> — domain rules, rendered charts, action affordances, and cognitive guardrails. Every response is structured. Every action is explicit.</p>
 <a href="/mva-pattern" class="ms-cta-button">READ THE FULL MVA GUIDE →</a>

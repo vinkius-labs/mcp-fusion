@@ -6,7 +6,7 @@
 
 </div>
 
-In MVA, every other layer exists to serve the Presenter. The Model validates data *for* the Presenter. The Agent consumes data *through* the Presenter. The Presenter is the single component that transforms raw database records into something an AI agent can perceive, interpret, and act upon deterministically.
+In MVA, every other layer exists to serve the Presenter. The Model validates data *for* the Presenter. The Agent consumes data *through* the Presenter. The Presenter is the single component that structures raw data into a format an AI agent can parse, interpret, and act on consistently.
 
 This page documents the Presenter's internal anatomy — its six responsibilities, its lifecycle, its composition model, and the patterns that emerge from its use at scale.
 
@@ -232,7 +232,7 @@ The agent self-corrects: *"Let me filter by status: pending and assignee: john."
 
 ### ⑤ Agentic Affordances — HATEOAS for AI
 
-After receiving data, the agent must decide what to do next. Without guidance, it hallucinates tool names. `.suggestActions()` eliminates this by providing explicit, state-driven next-action hints.
+After receiving data, the agent must decide what to do next. Without guidance, it hallucinates tool names. `.suggestActions()` addresses this by providing explicit, state-driven next-action hints.
 
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')

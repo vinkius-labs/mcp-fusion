@@ -99,7 +99,7 @@ Raw truncation alone doesn't help. Without guidance, the agent's next move is to
 2. **Why it happened** — dataset too large for efficient processing
 3. **What to do differently** — specific filter parameters with valid values
 
-This is not a static error message. It's a **coaching prompt** — an instruction that transforms a limitation into a learning opportunity for the agent.
+This is not a static error message. It's a **correction prompt** — a structured instruction that guides the agent toward valid parameters.
 
 ---
 

@@ -132,7 +132,7 @@ Content Block 4 — NEXT ACTIONS (computed from data state):
 
 No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-driven. Charts server-rendered.
 
-**The agent gets it right the first time.** Fewer tokens in the prompt. Fewer retries. Faster response. Lower cost.
+**The agent has the context to resolve it on the first call.** Fewer tokens in the prompt. Fewer retries. Faster response. Lower cost.
 
 ---
 
@@ -307,7 +307,7 @@ function buildValidationSchema(action, commonSchema) {
 }
 ```
 
-This validation happens in `ExecutionPipeline.ts` before the handler runs — making it physically impossible for hallucinated parameters to reach application code:
+This validation happens in `ExecutionPipeline.ts` before the handler runs — hallucinated parameters are rejected before reaching application code:
 
 ```typescript
 // From: packages/core/src/core/execution/ExecutionPipeline.ts
@@ -607,7 +607,7 @@ The key insight is that this context is **scoped and precise**:
 - **Domain rules** appear only when their domain is active (Context Tree-Shaking)
 - **Action suggestions** are computed from the actual data state, not from a static list
 - **UI blocks** are server-rendered with a `[SYSTEM]` directive, so the LLM passes them through unchanged instead of trying to recreate them
-- **Per-field annotations** tell the LLM exactly which parameters to send, eliminating parameter guessing
+- **Per-field annotations** tell the LLM exactly which parameters to send, reducing parameter guessing
 - **Embedded Presenter blocks** compose relational context (invoice rules + client rules) into a single response
 
 None of this lives in the system prompt. It all travels **just-in-time** with the data, and only when relevant. The result is that the LLM operates with precise, task-specific context instead of reasoning over a generic, bloated instruction set.
@@ -718,7 +718,7 @@ We're not claiming perfection — we're sharing the design principles and mechan
 
 ## Next Steps
 
-- [The MVA Manifesto →](/mva-pattern) — The architectural pattern behind these mechanisms
+- [The MVA Pattern →](/mva-pattern) — The architectural pattern behind these mechanisms
 - [Performance →](/performance) — Runtime optimizations and benchmarks
 - [Building Tools →](/building-tools) — Implement with `defineTool()` and `createTool()`
 - [Presenter →](/presenter) — Configure guardrails, rules, and affordances

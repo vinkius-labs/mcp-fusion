@@ -1,4 +1,4 @@
-# MVA vs MVC: The Paradigm Shift
+# MVA vs MVC: Architectural Comparison
 
 <div class="mva-manifesto-header">
 
@@ -90,7 +90,7 @@ const userSchema = z.object({
 
 ### The View Layer
 
-This is where the paradigm shift is most visible. In MVC, the View is a **visual rendering layer** — it produces HTML, CSS, and JavaScript for human eyes. It is tool-level: each controller action has its own view template.
+This is where the architectural difference is most visible. In MVC, the View is a **visual rendering layer** — it produces HTML, CSS, and JavaScript for human eyes. It is tool-level: each controller action has its own view template.
 
 In MVA, the View is a **perception layer** — the Presenter. It does not produce visual output. It produces a **Structured Perception Package**: data + rules + UI blocks + affordances + guardrails. It is domain-level: each domain entity has one Presenter shared across all tools.
 
@@ -123,7 +123,7 @@ const InvoicePresenter = createPresenter('Invoice')
 ```
 
 ::: tip The Key Insight
-In MVC, domain knowledge is scattered across view templates. In MVA, domain knowledge is **centralized in the Presenter** and automatically attached to every response. This is why MVA eliminates perception inconsistency — the rules can't diverge because they live in one place.
+In MVC, domain knowledge is scattered across view templates. In MVA, domain knowledge is **centralized in the Presenter** and automatically attached to every response. This is how MVA reduces perception inconsistency — the rules can't diverge because they live in one place.
 :::
 
 ### The Controller / Agent Layer
@@ -247,7 +247,7 @@ Both serve the same business data. Both use the same database. But they serve fu
 
 ## Historical Precedent
 
-Architectural paradigm shifts follow a pattern: a new consumer class emerges, and the existing architecture cannot serve it well.
+Architectural transitions follow a pattern: a new consumer class emerges, and the existing architecture cannot serve it well.
 
 | Era | Consumer Change | Old Architecture | New Architecture |
 |---|---|---|---|

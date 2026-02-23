@@ -14,7 +14,7 @@ If you expose 100 individual flat tools to an LLM, two negative things happen:
 
 If you followed the [Building Tools](/building-tools) guide, you might have noticed we added an `add` action and a `subtract` action to a single `calculator` tool.
 
-When Fusion compiled that tool, it created **one single endpoint** using a magical `enum` called a discriminator.
+When Fusion compiled that tool, it created **one single endpoint** using an `enum` discriminator field.
 
 ```jsonc
 // How the LLM views your tool:

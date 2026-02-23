@@ -215,7 +215,7 @@ Agent: "I'll call billing.pay."
 → ✅ Success! (First attempt. Zero wasted round-trips.)
 ```
 
-**The cost difference compounds.** Every avoided retry saves input tokens (tool schemas + prompt) + output tokens (agent reasoning) + latency. In a 10-step workflow, eliminating even one retry per step saves 10 full round-trips.
+**The cost difference compounds.** Every avoided retry saves input tokens (tool schemas + prompt) + output tokens (agent reasoning) + latency. In a 10-step workflow, avoiding even one retry per step saves 10 full round-trips.
 
 ---
 

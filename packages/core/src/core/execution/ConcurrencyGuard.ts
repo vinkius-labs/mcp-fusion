@@ -1,7 +1,7 @@
 /**
  * ConcurrencyGuard — Per-Tool Semaphore with Backpressure Queue
  *
- * Implements the Bulkhead pattern to prevent thundering-herd scenarios
+ * Implements the Semaphore pattern to prevent thundering-herd scenarios
  * where an LLM fires N concurrent tool calls in the same millisecond.
  *
  * Architecture:

@@ -272,7 +272,7 @@ Block 6 — ACTIONS:
   → billing.send_reminder: Send payment reminder to client
 ```
 
-The difference is architectural, not cosmetic. The AI operating on the second response **cannot hallucinate** the same way it would on the first. It has explicit rules, explicit actions, and explicit boundaries.
+The difference is architectural, not cosmetic. The AI operating on the second response has explicit rules, explicit actions, and explicit boundaries that reduce hallucination compared to raw JSON.
 
 ---
 

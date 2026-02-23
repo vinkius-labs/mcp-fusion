@@ -16,7 +16,7 @@ Debug observers, State Sync, middleware, Presenters — when not configured, the
 
 ### Middleware Chain Compilation
 
-Traditional middleware frameworks resolve and compose middleware chains **on every request** — N function lookups per call. **MCP Fusion** eliminates this entirely.
+Traditional middleware frameworks resolve and compose middleware chains **on every request** — N function lookups per call. **MCP Fusion** avoids this by pre-compiling middleware chains at build time.
 
 When `buildToolDefinition()` is called (or lazily on first `execute()`), the `MiddlewareCompiler` wraps middlewares right-to-left around each handler **once**, producing a single ready-to-call function per action:
 
@@ -472,7 +472,7 @@ Critical performance modules are implemented as pure functions with **no state a
 
 ## 14. Self-Healing Error Responses (Reduced LLM Retry Loops)
 
-While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` dramatically reduce **total system cost** by eliminating unnecessary LLM retries:
+While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` reduce **total system cost** by avoiding unnecessary LLM retries:
 
 ```typescript
 // From: packages/core/src/core/execution/ValidationErrorFormatter.ts

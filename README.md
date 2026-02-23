@@ -18,19 +18,58 @@
 
 ---
 
-## From Spaghetti Code to MCP Fusion
+# The MCP Fusion Manifesto
 
-Every MCP server in the ecosystem is built the same way: one `switch/case` handler, `JSON.stringify` as the entire response strategy, zero validation, zero separation of concerns — a monolithic spaghetti that would look outdated in 2005. 50 operations become 50 individual tools that flood the context window with 10,000 tokens of schema. The handler returns raw database rows — internal IDs, password hashes, tenant flags — straight into the LLM. The agent hallucinates parameter names because there's no strict boundary. After receiving data it guesses the next step because nothing tells it what actions are valid. A single `list_all` returns 10,000 rows and blows through the context window. You compensate with a 2,000-token system prompt with rules for every entity, sent on every call regardless of relevance. Every wrong guess costs a full retry — input tokens, output tokens, latency, API bill.
+**From Spaghetti Code to Enterprise Agentic Infrastructure**
 
-**MCP Fusion** is a TypeScript framework for building MCP servers that solves all of this at the framework level:
+Every MCP server in the ecosystem today is built the exact same way: a monolithic `switch/case` handler, `JSON.stringify()` as the entire response strategy, zero validation, and zero separation of concerns. It is an architecture that would look outdated in 2005.
 
-Your server consolidates 50 operations into 5 discriminator-routed tools — schema tokens drop from ~10,000 to ~1,670. The **Presenter** — the first View layer built for AI agents — validates responses through Zod, strips undeclared fields, attaches domain rules that travel with data (not in a bloated system prompt), renders server-side UI blocks, auto-truncates oversized collections, and suggests the next action based on data state. `.strict()` rejects hallucinated parameters with per-field correction prompts. `toolError()` returns structured recovery hints. `.agentLimit()` caps response size. Tag-based RBAC gates tool visibility per session.
+**The "Naked JSON" Anti-Pattern is catastrophic for production AI:**
 
-Concurrent destructive mutations serialize through an async mutex. Concurrency bulkheads, timeout sandboxes, and circuit breakers protect every tool. Egress guards measure payload bytes and truncate before OOM. RFC 7234 cache-control signals and causal invalidation after mutations prevent the agent from acting on stale data. `PromptMessage.fromView()` decomposes any Presenter into prompt messages — same source of truth. tRPC-style type-safe client, OpenTelemetry tracing, TOON encoding (~40% fewer tokens), `Object.freeze()` immutability after build.
+* **Context Bloat:** 50 API operations become 50 individual tools, flooding the LLM's context window with 10,000 tokens of dead schema before a single prompt is even sent.
+* **Data Leaks (SOC2 Violations):** Handlers blindly dump raw database rows. Internal IDs, password hashes, and tenant flags bypass security and flow completely unfiltered straight into the LLM.
+* **OOM Crashes:** A single `list_all` returns 10,000 rows, blowing through the context window and crashing your Node.js server.
+* **The "System Prompt" Tax:** You compensate by packing a 2,000-token global prompt with rules for *every* entity, paying Anthropic/OpenAI for it on *every single turn* regardless of relevance.
+* **Hallucination Loops:** The agent hallucinates parameter names because boundaries are weak. It guesses the next step because nothing tells it what actions are valid.
 
-Generate a server from an OpenAPI spec in one command, or wire an n8n instance that live-syncs workflows into typed tools.
+Every wrong guess costs you a full retry—burning input tokens, output tokens, latency, and your API bill.
 
-You write the handler. **MCP Fusion** builds the server.
+---
+
+### The Paradigm Shift: Model-View-Agent (MVA)
+
+**MCP Fusion** is a rigorous TypeScript framework that elevates Model Context Protocol (MCP) to an Enterprise Engineering discipline. It introduces the **Model-View-Agent (MVA)** paradigm, giving LLMs their first dedicated Presentation Layer.
+
+You don't just wrap the MCP protocol; you govern the agent.
+
+**Cognitive Routing & Token FinOps**
+Stop flooding the context. Your server consolidates 50 flat operations into 5 discriminator-routed tools. Schema footprint drops from ~10,000 to ~1,670 tokens. **TOON encoding** compresses JSON payloads, reducing wire tokens by ~40%.
+
+**The Egress Firewall (Presenter Layer)**
+The **Presenter** is the strict membrane between your data and the LLM. It passes responses through Zod, physically stripping undeclared fields (PII, passwords) in RAM before they ever touch the network. It auto-truncates oversized collections via `.agentLimit()` and renders server-side UI blocks for the client.
+
+**Just-In-Time (JIT) Prompting & Self-Healing**
+Domain rules now travel *with* the data state, not in a bloated global prompt. The Presenter suggests valid next actions based on current data, eliminating LLM guesswork.
+
+* `.strict()` automatically rejects hallucinated parameters with per-field correction prompts.
+* `toolError()` returns structured recovery hints instead of dead ends.
+
+**Enterprise Resilience & Traffic Control**
+Concurrent destructive mutations are strictly serialized through an async mutex. Per-tool concurrency limits gate simultaneous executions with backpressure queuing and load shedding. Egress guards measure payload bytes and truncate before OOM. RFC 7234 cache-control and causal invalidation prevent the agent from acting on stale data. Tag-based RBAC gates tool visibility per session.
+
+**Next-Gen DX & The Ingestion Ecosystem**
+tRPC-style type-safe clients, OpenTelemetry tracing built-in, `Object.freeze()` immutability after build, and `PromptMessage.fromView()` to decompose any Presenter into prompt messages from the exact same source of truth.
+
+Don't write boilerplate. Parasitize the infrastructure you already have:
+
+* **Legacy APIs:** `openapi-gen` compiles an OpenAPI spec into a fully-typed MVA server in one command.
+* **Databases:** `prisma-gen` reads your `schema.prisma` annotations to auto-generate LLM-safe CRUD tools with Tenant Isolation and OOM protection.
+* **Visual Workflows:** `n8n` connector auto-discovers and live-syncs hundreds of webhooks into typed, AI-callable tools.
+
+**You write the business logic. MCP Fusion builds the server.**
+
+---
+
 
 ## Overview
 
@@ -287,7 +326,7 @@ tools.enableTracing(tracer);
 
 ### Runtime Guards
 
-Concurrency bulkhead, timeout enforcement, and circuit breakers per-tool:
+Per-tool concurrency limits, egress payload guards, and mutation serialization:
 
 → [Runtime Guards docs](https://vinkius-labs.github.io/mcp-fusion/runtime-guards)
 
@@ -322,7 +361,7 @@ handler: async function* (ctx, args) {
 | **Tool Exposition** | `'flat'` or `'grouped'` wire format |
 | **Tag Filtering** | RBAC context gating — `{ tags: ['core'] }` / `{ exclude: ['internal'] }` |
 | **Observability** | Zero-overhead debug observers + OpenTelemetry-compatible tracing |
-| **Runtime Guards** | Concurrency bulkhead, timeout enforcement, circuit breakers |
+| **Runtime Guards** | Per-tool concurrency limits, egress payload guards, mutation serialization |
 | **TOON Encoding** | Token-Optimized Object Notation — ~40% fewer tokens |
 | **Introspection** | Runtime metadata via `fusion://manifest.json` MCP resource |
 | **Immutability** | `Object.freeze()` after `buildToolDefinition()` |
@@ -349,7 +388,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [Cost & Hallucination](https://vinkius-labs.github.io/mcp-fusion/cost-and-hallucination) | Token reduction analysis |
 | [Middleware](https://vinkius-labs.github.io/mcp-fusion/middleware) | Context derivation, authentication |
 | [State Sync](https://vinkius-labs.github.io/mcp-fusion/state-sync) | Cache-control signals, causal invalidation |
-| [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency, timeouts, circuit breakers |
+| [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency limits, egress guards, mutation serialization |
 | [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) | Debug observers, tracing |
 | [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
 | [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |

@@ -1,14 +1,12 @@
 # Introduction
 
-**Every MCP server you've seen is built the same way: switch/case routing, JSON.stringify output, zero guardrails.** That's not an MCP framework. That's a translation layer from 2005.
+**Most MCP servers are built the same way: switch/case routing, JSON.stringify output, no validation, no response shaping.** The handler receives raw input and returns raw output — everything else is left to the developer.
 
-**mcp-fusion** is the first framework that treats AI agents as **first-class consumers** — not as dumb HTTP clients that happen to speak JSON. It implements the **MVA (Model-View-Agent) pattern**, a fundamentally new architecture where every response is a structured perception package: validated data, domain rules, visual blocks, and explicit action affordances.
-
-The AI doesn't guess. It knows.
+**MCP Fusion** is a framework designed to treat AI agents as **first-class consumers**. It implements the **MVA (Model-View-Agent) pattern**, an architecture where every response is a structured perception package: validated data, domain rules, visual blocks, and explicit action affordances.
 
 ---
 
-## The Paradigm Shift
+## The MVA Architecture
 
 The AI industry is building agents on top of patterns designed for humans. MVC serves browsers. REST serves mobile apps. Neither was designed for an autonomous consumer that hallucinates when given ambiguous data.
 
@@ -26,7 +24,7 @@ The AI industry is building agents on top of patterns designed for humans. MVC s
 └─────────────────────────────────────────────────┘
 ```
 
-→ [Read the MVA Manifesto](/mva-pattern)
+→ [Read the MVA Pattern Guide](/mva-pattern)
 
 ---
 
@@ -116,7 +114,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 
 **For teams scaling beyond prototypes.** When your MCP server grows from 5 tools to 500 actions, mcp-fusion's routing, middleware, and Presenter system keep the codebase clean and the agent accurate.
 
-**For enterprises with security requirements.** Zod `.strict()` validation, RBAC-aware Presenters, freeze-after-build immutability, and typed context derivation provide defense-in-depth that raw MCP cannot offer.
+**For enterprises with security requirements.** Zod `.strict()` validation, RBAC-aware Presenters, freeze-after-build immutability, and typed context derivation provide defense-in-depth for production MCP deployments.
 
 ---
 
@@ -140,7 +138,7 @@ yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 <div class="next-steps">
 
-- [**The MVA Manifesto →**](/mva-pattern) — Learn the architectural paradigm shift from MVC to MVA
+- [**The MVA Pattern →**](/mva-pattern) — Learn the MVA architectural pattern
 - [**Quickstart →**](/quickstart) — Build your first tool in 5 minutes
 - [**Presenter →**](/presenter) — The agent-centric View layer
 - [**Building Tools →**](/building-tools) — `defineTool()` and `createTool()` in depth

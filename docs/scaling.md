@@ -86,7 +86,7 @@ registry.attachToServer(server, {
 ```
 
 ::: tip Dynamic Scoping
-The LLM never sees tools that don't match the filter. They consume **zero tokens**. Also, if the LLM attempts to hallucinate a call to a hidden tool, `routeCall()` intercepts it and returns `"Unknown tool"`.
+Filtered tools are excluded from the `tools/list` response \u2014 they consume **zero tokens**. Also, if the LLM attempts to call a hidden tool, `routeCall()` intercepts it and returns `"Unknown tool"`.
 :::
 
 ---

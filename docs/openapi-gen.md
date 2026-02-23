@@ -1,29 +1,20 @@
 # OpenAPI Generator
 
-Go from OpenAPI spec to running MCP server in one command.
+A compile-time and runtime translation driver between any OpenAPI 3.x specification and **MCP Fusion**'s in-memory object model.
+
+When you install this package, you gain **4 engineering primitives** that turn any REST API into AI-native MCP tools — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying HTTP calls at runtime.
 
 ```bash
-npx openapi-gen --input ./petstore.yaml --output ./generated
+npx openapi-gen generate -i ./petstore.yaml -o ./generated
 ```
 
 ```bash
 API_BASE_URL=https://api.example.com npx tsx ./generated/server.ts
 ```
 
-That's it. Full MCP server — typed schemas, validated responses, ready for any LLM.
+That's it. Full MCP server — strict Zod schemas, Presenter-shaped responses, annotation-aware actions, ready for any LLM.
 
-## What you get
-
-```
-generated/
-├── models/      ← Zod schemas with .strict() validation
-├── views/       ← Presenters with response shaping
-├── agents/      ← MCP tool definitions with full annotations
-├── index.ts     ← ToolRegistry barrel
-└── server.ts    ← Server bootstrap (stdio or SSE)
-```
-
-Every file follows the [MVA Convention](./mva-convention). Every pattern is idiomatic **MCP Fusion**.
+---
 
 ## Install
 
@@ -38,6 +29,222 @@ pnpm add mcp-fusion-openapi-gen
 yarn add mcp-fusion-openapi-gen
 ```
 :::
+
+**Peer dependencies:** `@vinkius-core/mcp-fusion` and `zod`.
+
+---
+
+## What You Get
+
+```
+generated/
+├── models/      ← Zod schemas with .strict() validation
+├── views/       ← Presenters with response shaping
+├── agents/      ← MCP tool definitions with full annotations
+├── index.ts     ← ToolRegistry barrel
+└── server.ts    ← Server bootstrap (stdio or SSE)
+```
+
+Every file follows the [MVA Convention](./mva-convention). Every pattern is idiomatic **MCP Fusion** — Model (Zod), View (Presenter), Agent (Tool handler).
+
+---
+
+## The 4 Engineering Primitives
+
+### 1. Schema Fidelity — OpenAPI to Strict Zod
+
+OpenAPI response schemas are loose JSON Schema objects. If you expose them raw to the LLM, the model invents fields, misses required constraints, and sends malformed payloads.
+
+**What it does:** The `ZodCompiler` walks every OpenAPI `SchemaNode` and emits strict Zod objects. Path and query parameters get `z.coerce` for automatic string-to-type coercion. Response schemas get `.strict()` so the Presenter rejects undeclared fields at runtime.
+
+```typescript
+// models/pet.schema.ts (generated)
+export const PetResponseSchema = z.object({
+    id: z.number().int(),
+    name: z.string(),
+    status: z.enum(['available', 'pending', 'sold']).optional(),
+}).strict();
+```
+
+**The impact:** Every generated schema enforces the same contract the API itself enforces. The LLM cannot hallucinate a `petName` field — Zod rejects it with a per-field correction prompt. Path params like `petId` are automatically coerced from the string the LLM sends to the `number` the API expects.
+
+---
+
+### 2. Annotation Inference — HTTP Semantics to MCP Annotations
+
+The MCP spec defaults `destructiveHint` to `true` — every tool is assumed dangerous unless proven otherwise. If you don't annotate correctly, the LLM client will block or warn on every call, including reads.
+
+**What it does:** The `EndpointMapper` reads the HTTP method of each operation and infers the correct MCP annotation:
+
+| HTTP Method | Annotation |
+|---|---|
+| `GET`, `HEAD`, `OPTIONS` | `readOnly: true` |
+| `DELETE` | `destructive: true` |
+| `PUT` | `idempotent: true` |
+| `POST`, `PATCH` | — (default) |
+
+```typescript
+// agents/pet.tool.ts (generated)
+export const petTools = defineTool<ApiContext>('pet', {
+    annotations: { title: 'Pet' },
+    actions: {
+        get_by_id: {
+            readOnly: true,        // ← inferred from GET
+            description: 'Find pet by ID',
+            returns: PetPresenter, // ← auto-bound
+            params: z.object({
+                petId: z.coerce.number().int().describe('ID of pet'),
+            }),
+            handler: async (ctx, args) => {
+                const res = await fetch(`${ctx.baseUrl}/pet/${args.petId}`);
+                return res.json();
+            },
+        },
+        delete: {
+            destructive: true,     // ← inferred from DELETE
+            params: z.object({ petId: z.coerce.number().int() }),
+            handler: async (ctx, args) => { /* ... */ },
+        },
+    },
+});
+```
+
+**The impact:** Claude Desktop, Cursor, and every MCP client that respects annotations will allow `GET` calls silently and prompt for confirmation on `DELETE` calls. No manual annotation needed — the HTTP method is the source of truth.
+
+---
+
+### 3. Code Generation Pipeline — Parse → Map → Compile → Emit
+
+For production deployments where you need full control over the generated code, the CLI emits a complete MVA project.
+
+**What it does:** Four compilation stages transform the spec into production-ready TypeScript:
+
+```
+OpenAPI 3.x (YAML / JSON)
+        │
+        ▼
+  ┌─────────────┐
+  │ OpenApiParser │  Resolves $ref, extracts groups/actions/params/responses
+  └──────┬──────┘
+         │
+         ▼
+  ┌───────────────┐
+  │ EndpointMapper │  operationId → snake_case, dedup, annotations
+  └──────┬────────┘
+         │
+         ▼
+  ┌─────────────┐
+  │  ZodCompiler │  SchemaNode → Zod code (coercion, formats, constraints)
+  └──────┬──────┘
+         │
+         ▼
+  ┌────────────┐
+  │ CodeEmitter │  Generates MVA structure (models/, views/, agents/)
+  └────────────┘
+```
+
+Each stage is independently importable for programmatic use:
+
+```typescript
+import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from 'mcp-fusion-openapi-gen';
+
+const spec = parseOpenAPI(yamlString);
+const mapped = mapEndpoints(spec);
+
+const config = mergeConfig({
+    features: { presenters: true, tags: true },
+    server: { name: 'my-server', toolExposition: 'grouped' },
+    includeTags: ['pet'],
+});
+
+const files = emitFiles(mapped, config);
+
+for (const file of files) {
+    writeFileSync(`./out/${file.path}`, file.content);
+}
+```
+
+**The impact:** The generated code is fully editable. You can modify handlers, add middleware, attach Presenters, and wire concurrency limits. The generated code is the starting point, not a black box.
+
+---
+
+### 4. Runtime Proxy Mode — Zero Code Generation <Badge type="tip" text="v2.0.0" />
+
+For rapid prototyping or APIs where the spec itself is the contract, `loadOpenAPI()` parses the spec at startup and creates live proxy handlers — no code generation step.
+
+**What it does:** The `HttpHandlerFactory` builds handler functions that interpolate path params, append query params, attach JSON bodies, and proxy the request to the real API. Each handler returns the parsed JSON response directly.
+
+```typescript
+import { loadOpenAPI } from 'mcp-fusion-openapi-gen';
+import { defineTool, ToolRegistry } from '@vinkius-core/mcp-fusion';
+
+const tools = loadOpenAPI(specYaml, {
+    baseUrl: 'https://api.example.com',
+    headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
+});
+
+const registry = new ToolRegistry();
+for (const tool of tools) {
+    registry.register(defineTool(tool.name, {
+        description: tool.description,
+        actions: Object.fromEntries(
+            tool.actions.map(a => [a.name, {
+                description: a.description,
+                readOnly: a.method === 'GET',
+                handler: async (ctx, args) => a.handler(ctx, args),
+            }])
+        ),
+    }));
+}
+```
+
+**The impact:** You point `loadOpenAPI()` at a spec file and get a working MCP server in under 10 lines. No generated files to commit, no build step, no code to maintain. The spec itself is the single source of truth. When the API spec changes, restart the server and the tools update automatically.
+
+---
+
+## Full Production Example
+
+```typescript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+    defineTool, ToolRegistry, createServerAttachment, createPresenter,
+} from '@vinkius-core/mcp-fusion';
+import { loadOpenAPI, defineN8nTool } from 'mcp-fusion-openapi-gen';
+import { readFileSync } from 'node:fs';
+import { z } from 'zod';
+
+// ── Option A: Runtime Proxy Mode ───────────────────
+const specYaml = readFileSync('./petstore.yaml', 'utf-8');
+const tools = loadOpenAPI(specYaml, {
+    baseUrl: process.env.API_BASE_URL!,
+    headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
+});
+
+const registry = new ToolRegistry();
+
+for (const tool of tools) {
+    const builder = defineTool(tool.name, {
+        description: tool.description,
+        actions: Object.fromEntries(
+            tool.actions.map(a => [a.name, {
+                description: a.description,
+                readOnly: a.method === 'GET',
+                destructive: a.method === 'DELETE',
+                handler: async (ctx, args) => a.handler(ctx, args),
+            }])
+        ),
+    });
+    registry.register(builder);
+}
+
+// ── Boot ───────────────────────────────────────────
+const server = new McpServer({ name: 'petstore-mcp', version: '1.0.0' });
+createServerAttachment(server, registry);
+await server.connect(new StdioServerTransport());
+```
+
+---
 
 ## Configuration
 
@@ -91,73 +298,9 @@ npx openapi-gen [options]
 
 CLI flags override config file values.
 
-## Generated code
+---
 
-### Model — Zod schemas
-
-Every OpenAPI response schema compiles to a strict Zod object:
-
-```typescript
-// models/pet.schema.ts
-export const PetResponseSchema = z.object({
-    id: z.number().int(),
-    name: z.string(),
-    status: z.enum(['available', 'pending', 'sold']).optional(),
-}).strict();
-```
-
-Path and query parameters use `z.coerce` for automatic type coercion from strings.
-
-### View — Presenters
-
-Each domain entity gets a Presenter that binds the schema and adds perception rules:
-
-```typescript
-// views/pet.presenter.ts
-import { PetResponseSchema } from '../models/pet.schema.js';
-
-export const PetPresenter = createPresenter('Pet')
-    .schema(PetResponseSchema)
-    .systemRules(['Data originates from the Petstore API.']);
-```
-
-### Agent — Tool definitions
-
-Tools wire everything together. Annotations are inferred from HTTP methods:
-
-```typescript
-// agents/pet.tool.ts
-import { PetPresenter } from '../views/pet.presenter.js';
-
-export const petTools = defineTool<ApiContext>('pet', {
-    annotations: { title: 'Pet' },
-    actions: {
-        get_by_id: {
-            readOnly: true,        // ← inferred from GET
-            description: 'Find pet by ID',
-            returns: PetPresenter, // ← auto-bound
-            params: z.object({
-                petId: z.coerce.number().int().describe('ID of pet'),
-            }),
-            handler: async (ctx, args) => {
-                const res = await fetch(`${ctx.baseUrl}/pet/${args.petId}`);
-                return res.json();
-            },
-        },
-    },
-});
-```
-
-### Automatic annotations
-
-| HTTP Method | Annotation |
-|---|---|
-| `GET`, `HEAD`, `OPTIONS` | `readOnly: true` |
-| `DELETE` | `destructive: true` |
-| `PUT` | `idempotent: true` |
-| `POST`, `PATCH` | — |
-
-### Exposition strategy
+## Exposition Strategy
 
 Control how the LLM sees your tools:
 
@@ -172,7 +315,9 @@ server:
   actionSeparator: '_'
 ```
 
-### Name resolution
+---
+
+## Name Resolution
 
 | operationId | `snake_case` | `camelCase` |
 |---|---|---|
@@ -184,7 +329,9 @@ When `operationId` is missing: `GET /pets` → `list_pets`, `POST /pets` → `cr
 
 Duplicates auto-suffix: `list_pets`, `list_pets_2`, `list_pets_3`.
 
-### Tag filtering
+---
+
+## Tag Filtering
 
 Generate only what you need:
 
@@ -193,7 +340,9 @@ includeTags: [pet, store]     # Only these tags
 excludeTags: [admin, internal] # Everything except these
 ```
 
-### Custom context
+---
+
+## Custom Context
 
 Inject your own typed context:
 
@@ -211,52 +360,50 @@ const petTools = defineTool<AppCtx>('pet', {
 });
 ```
 
-## Programmatic API
+---
 
-```typescript
-import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from 'mcp-fusion-openapi-gen';
+## Configuration Reference
 
-const spec = parseOpenAPI(yamlString);
-const mapped = mapEndpoints(spec);
+### `loadOpenAPI(input, config)`
 
-const config = mergeConfig({
-    features: { presenters: true, tags: true },
-    server: { name: 'my-server', toolExposition: 'grouped' },
-    includeTags: ['pet'],
-});
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `baseUrl` | `string` | — | Base URL for API calls |
+| `headers` | `Record<string, string>` | `{}` | Default headers sent with every request |
+| `fetchFn` | `typeof fetch` | `globalThis.fetch` | Custom fetch function |
 
-const files = emitFiles(mapped, config);
+### `RuntimeTool`
 
-for (const file of files) {
-    writeFileSync(`./out/${file.path}`, file.content);
-}
-```
+| Member | Type | Description |
+|--------|------|-------------|
+| `name` | `string` | Tool name (from OpenAPI tag) |
+| `description` | `string` | Tool description |
+| `actions` | `RuntimeAction[]` | Compiled action definitions |
 
-## Pipeline
+### `RuntimeAction`
 
-```
-OpenAPI 3.x (YAML / JSON)
-        │
-        ▼
-  ┌─────────────┐
-  │ OpenApiParser │  Resolves $ref, extracts groups/actions/params/responses
-  └──────┬──────┘
-         │
-         ▼
-  ┌───────────────┐
-  │ EndpointMapper │  operationId → snake_case, dedup, annotations
-  └──────┬────────┘
-         │
-         ▼
-  ┌─────────────┐
-  │  ZodCompiler │  SchemaNode → Zod code (coercion, formats, constraints)
-  └──────┬──────┘
-         │
-         ▼
-  ┌────────────┐
-  │ CodeEmitter │  Generates MVA structure (models/, views/, agents/)
-  └────────────┘
-```
+| Member | Type | Description |
+|--------|------|-------------|
+| `name` | `string` | Action name (from operationId) |
+| `description` | `string` | OpenAPI summary |
+| `method` | `string` | HTTP method (GET, POST, etc.) |
+| `path` | `string` | URL path template |
+| `handler` | `(ctx, args) => Promise<unknown>` | Pre-wired HTTP proxy handler |
+
+### Programmatic API
+
+| Export | Description |
+|---|---|
+| `parseOpenAPI(input)` | Parse YAML/JSON to `ApiSpec` AST |
+| `mapEndpoints(spec)` | Apply naming, annotations, dedup |
+| `emitFiles(mapped, config)` | Generate TypeScript files |
+| `mergeConfig(partial)` | Merge partial config with defaults |
+| `loadConfig(path?)` | Load config from YAML file |
+| `compileZod(schema)` | Compile a `SchemaNode` to Zod code |
+| `loadOpenAPI(input, config)` | Runtime mode — parse + proxy |
+| `buildHandler(action)` | Build a single HTTP proxy handler |
+
+---
 
 ## Requirements
 

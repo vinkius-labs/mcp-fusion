@@ -44,7 +44,7 @@ yarn add mcp-fusion-n8n
 
 The package connects to n8n's REST API at boot (`GET /api/v1/workflows`) and scans the entire visual infrastructure.
 
-**What it does:** It fetches only active workflows triggered by Webhooks that carry specific release tags (e.g., `includeTags: ['ai-enabled']`). It extracts the webhook URL, the HTTP method, and the workflow ID, compiling everything instantly into `ToolBuilder` instances.
+**What it does:** It fetches only active workflows triggered by Webhooks that carry specific release tags (e.g., `includeTags: ['ai-enabled']`). It extracts the webhook URL, the HTTP method, and the workflow ID, compiling everything into `ToolBuilder` instances.
 
 ```typescript
 const n8n = await createN8nConnector({
@@ -59,7 +59,7 @@ for (const tool of n8n.tools()) {
 }
 ```
 
-**The impact:** The developer doesn't write a single `fetch()`. In 3 lines of code, 400 legacy automations (create Jira tickets, send Slack alerts, read SAP orders) become **native tools for Claude**. And tag filtering ensures the AI never accesses unauthorized internal IT flows — credential rotations, database migrations, admin scripts stay completely invisible.
+**The impact:** The developer doesn't write a single `fetch()`. In a few lines of configuration, existing webhook-based automations (create Jira tickets, send Slack alerts, read SAP orders) become MCP tools accessible to any connected LLM client. And tag filtering ensures the AI never accesses unauthorized internal IT flows — credential rotations, database migrations, admin scripts stay completely invisible.
 
 ---
 
@@ -136,7 +136,7 @@ for (const tool of n8n.tools()) {
 
 ### 4. Surgical Construction — `defineN8nTool()`
 
-For critical routes (e.g., *Reverse a Stripe Invoice*), the magic of auto-discovery is too permissive for a bank or fintech.
+For critical routes (e.g., *Reverse a Stripe Invoice*), auto-discovery is too permissive for a bank or fintech.
 
 **What it does:** The package exports the `defineN8nTool()` macro. The architect points strictly to the exact workflow ID, writes the input Zod schema by hand (strong typing), and attaches a middleware that requires a manager token.
 

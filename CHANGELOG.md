@@ -158,13 +158,13 @@ New `mcp-fusion-openapi-gen` package that generates a complete **MCP Fusion** se
 
 ## [1.8.0] - 2026-02-23
 
-### Runtime Guards — Concurrency Bulkhead & Egress Limiter
+### Runtime Guards — Concurrency Limiter & Egress Guard
 
 **MCP Fusion** now provides two built-in runtime guards that fulfill the MCP specification requirement: *"Servers MUST rate limit tool invocations."* Both guards have **zero overhead** when not configured — no objects created, no branches in the hot path.
 
 ### Added
 
-- **Concurrency Guard (Bulkhead):** Per-tool semaphore with configurable `maxActive` concurrent executions and `maxQueue` backpressure queue. Load shedding rejects excess calls with `toolError('SERVER_BUSY')` — a self-healing error that causes the LLM to reduce its cadence.
+- **Concurrency Guard (Semaphore + Queue):** Per-tool semaphore with configurable `maxActive` concurrent executions and `maxQueue` backpressure queue. Load shedding rejects excess calls with `toolError('SERVER_BUSY')` — a structured error that guides the LLM to reduce its cadence.
   - `ConcurrencyGuard` class in `src/core/execution/ConcurrencyGuard.ts`
   - `.concurrency({ maxActive, maxQueue })` fluent method on `GroupedToolBuilder`
   - `ConcurrencyConfig` type exported from root barrel

@@ -1,4 +1,4 @@
-# The MVA Manifesto
+# The MVA Pattern
 
 <div class="mva-manifesto-header">
 
@@ -9,7 +9,7 @@
 </div>
 
 ::: tip 📚 Deep Dive Available
-This page is the MVA Manifesto — a concise overview of the paradigm. For the complete architectural reference, visit the **[MVA Architecture Section →](/mva/)** with 7 in-depth guides covering theory, formal paradigm comparison, presenter anatomy, perception packages, agentic affordances, context tree-shaking, and cognitive guardrails.
+This page is the MVA overview — a concise introduction to the pattern. For the complete architectural reference, visit the **[MVA Architecture Section →](/mva/)** with 7 in-depth guides covering theory, formal paradigm comparison, presenter anatomy, perception packages, agentic affordances, context tree-shaking, and cognitive guardrails.
 :::
 
 ## Why We Created MVA
@@ -200,7 +200,7 @@ export const InvoicePresenter = createPresenter('Invoice')
 
 ### 6. Agentic Affordances (HATEOAS for AI)
 
-Like REST's HATEOAS principle, `.suggestActions()` tells the agent what it **can do next** based on the current data state. This eliminates action hallucination.
+Like REST's HATEOAS principle, `.suggestActions()` tells the agent what it **can do next** based on the current data state. This reduces action hallucination.
 
 ```typescript
 export const InvoicePresenter = createPresenter('Invoice')

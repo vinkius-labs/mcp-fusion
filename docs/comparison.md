@@ -233,7 +233,7 @@ Without MVA:                          With MVA:
 
 <div class="next-steps">
 
-- [**The MVA Manifesto →**](/mva-pattern) — The full architectural theory
+- [**The MVA Pattern →**](/mva-pattern) — The full architectural theory
 - [**Presenter Deep Dive →**](/presenter) — Schema, rules, UI, affordances
 - [**Cookbook & Examples →**](/examples) — 14 copy-pasteable patterns
 

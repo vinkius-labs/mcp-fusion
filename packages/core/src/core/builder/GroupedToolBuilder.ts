@@ -339,7 +339,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     }
 
     /**
-     * Set concurrency limits for this tool (Bulkhead pattern).
+     * Set concurrency limits for this tool (Semaphore + Queue pattern).
      *
      * Prevents thundering-herd scenarios where the LLM fires N
      * concurrent calls in the same millisecond. Implements a
@@ -747,7 +747,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             return error(`Builder "${this._name}" failed to initialize.`);
         }
 
-        // ── Concurrency Gate (Bulkhead) ──────────────────
+        // ── Concurrency Gate (Semaphore + Queue) ──────────────────
         // Acquire a slot BEFORE entering the pipeline.
         // If acquire() returns null, load shedding kicks in.
         let release: (() => void) | undefined;

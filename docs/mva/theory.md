@@ -2,7 +2,7 @@
 
 <div class="mva-manifesto-header">
 
-> Every software architecture in history was designed for a consumer that can tolerate ambiguity. AI agents cannot. MVA is the first architecture designed for a consumer that **hallucinates when given incomplete context**.
+> Every software architecture in history was designed for a consumer that can tolerate ambiguity. AI agents cannot. MVA is an architecture designed for a consumer that **hallucinates when given incomplete context**.
 
 </div>
 
@@ -140,7 +140,7 @@ The interface must enforce an output contract that prevents internal, sensitive,
 
 ### Requirement 5: Consistent Perception
 
-The same domain entity must be perceived identically regardless of which tool returns it. Consistency eliminates the contradictions that cause downstream reasoning failures.
+The same domain entity must be perceived identically regardless of which tool returns it. Consistency reduces the contradictions that cause downstream reasoning failures.
 
 **In MVA:** The Presenter is a domain-level construct. You define `InvoicePresenter` once. Every tool that returns invoices uses the same Presenter with the same rules, the same UI blocks, and the same affordances.
 
