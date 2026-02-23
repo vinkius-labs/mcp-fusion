@@ -33,6 +33,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Tags**: Capability labels for selective tool exposure per session
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
+- **Tool Exposition**: Compile-time topology compiler — choose flat (one tool per action) or grouped (one tool per builder with discriminator enum) at attach time. Same handlers, different wire format.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
 
 ## Quick Start — MVA with Presenter
@@ -286,6 +287,31 @@ registry.attachToServer(server, { filter: { tags: ['core'] } });      // Only co
 registry.attachToServer(server, { filter: { exclude: ['internal'] } }); // No internal tools
 ```
 
+## Tool Exposition
+
+Two strategies for the same codebase — choose at attach time:
+
+```typescript
+// Flat (default) — each action becomes an independent MCP tool
+// projects → projects_list, projects_create, projects_delete
+registry.attachToServer(server, {
+    toolExposition: 'flat',
+    actionSeparator: '_',
+});
+
+// Grouped — one MCP tool per builder with discriminator enum
+// projects → { action: 'list' | 'create' | 'delete' }
+registry.attachToServer(server, {
+    toolExposition: 'grouped',
+});
+```
+
+**Flat** — precision per action: isolated schemas, per-action MCP annotations, per-tool toggles in clients. Best for small-to-medium APIs and weaker LLMs.
+
+**Grouped** — density at scale: one schema, one description, shared params appear once. Best for large domain APIs (50+ actions) and token-constrained contexts.
+
+MCP annotation semantics: Fusion emits `destructiveHint: false` on non-destructive actions because the MCP spec defaults `destructiveHint` to `true` (assume dangerous). Read-only actions get both `readOnlyHint: true` and `destructiveHint: false`. Destructive actions get `destructiveHint: true`. `readOnlyHint: false` is never emitted (matches spec default).
+
 ## Response Helpers
 
 ```typescript
@@ -407,7 +433,8 @@ handler: async function* (ctx, args) {
 - `ToolBuilder<TContext>` — Interface for custom builders
 - `ActionMetadata` — { key, actionName, groupName, description, destructive, idempotent, readOnly, requiredFields, hasMiddleware, presenterName?, presenterSchemaKeys?, presenterUiBlockTypes?, presenterHasContextualRules? }
 - `ToolFilter` — { tags?: string[], exclude?: string[] }
-- `AttachOptions<TContext>` — { contextFactory?, filter?, debug?, stateSync?, introspection?, serverName? }
+- `AttachOptions<TContext>` — { contextFactory?, filter?, debug?, stateSync?, introspection?, serverName?, toolExposition?, actionSeparator?, tracing? }
+- `ToolExposition` — 'flat' | 'grouped'
 - `IntrospectionConfig<TContext>` — { enabled, uri?, filter? }
 - `ManifestPayload` — { server, mcp_fusion_version, architecture, capabilities: { tools, presenters } }
 - `ManifestTool` — { description, tags, actions, input_schema }

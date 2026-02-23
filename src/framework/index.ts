@@ -30,7 +30,7 @@ export type {
 // ── Registry ─────────────────────────────────────────────
 export { ToolRegistry } from './registry/index.js';
 export type { ToolFilter } from './registry/index.js';
-export type { AttachOptions, DetachFn } from './server/index.js';
+export type { AttachOptions, DetachFn, ToolExposition, ExpositionConfig } from './server/index.js';
 
 // ── Schema (public strategies) ───────────────────────────
 export { generateToonDescription } from './schema/index.js';

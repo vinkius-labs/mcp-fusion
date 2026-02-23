@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-02-23
+
+### 🔀 Tool Exposition Strategies — Flat vs Grouped Topology Compiler
+
+Two first-class exposition strategies for the same codebase: **flat** (one MCP tool per action — precision at action level) and **grouped** (one MCP tool per builder with discriminator enum — density at scale). Choose at attach time with `toolExposition: 'flat' | 'grouped'`. Same handlers, different wire format.
+
+### Added
+
+- **`ExpositionCompiler`:** New compile-time topology compiler that transforms builder action graphs into either flat atomic tools or grouped discriminator tools. Builds an O(1) routing map for flat mode dispatch.
+- **`toolExposition` option in `AttachOptions`:** `'flat'` (default) expands each action into an independent MCP tool with isolated schema and annotations. `'grouped'` preserves the single-tool discriminator pattern.
+- **`actionSeparator` option in `AttachOptions`:** Controls flat tool naming convention (default `'_'`). `projects` + `list` → `projects_list`.
+- **MCP Annotation Refinement (`buildAtomicAnnotations`):** Annotations now follow correct MCP spec semantics:
+  - Read-only actions → `{ readOnlyHint: true, destructiveHint: false }` (derived: read-only is never destructive)
+  - Destructive actions → `{ destructiveHint: true }` (`readOnlyHint` omitted — spec default is `false`)
+  - Normal actions → `{ destructiveHint: false }` (overrides spec default of `true` to prevent unnecessary safety warnings in Claude Desktop/Cursor)
+  - `readOnlyHint: false` is never emitted (matches spec default)
+- **Flat mode description synthesis:** Auto-generated descriptions tagged with `[READ-ONLY]` or `[DESTRUCTIVE]` prefixes, plus origin trail `(builder → action)`.
+- **Flat mode StateSync integration:** Canonical dot-notation keys (`projects.create`) translate to/from flat wire names (`projects_create`) transparently.
+
+### Documentation
+- **New "Tool Exposition" page:** Stripe/Vercel-quality guide covering both strategies as equal peers, real-world SaaS admin example (10-action grouped), token math comparison, MCP annotation semantics callout, O(1) dispatch explanation, and decision guide table.
+- **VitePress sidebar:** Added Tool Exposition under Core Concepts.
+- **API Reference:** Updated `AttachOptions` with `toolExposition` and `actionSeparator` fields, added `ToolExposition` and `ExpositionConfig` type sections.
+- **Routing page:** Cross-reference to Tool Exposition guide.
+- **README:** Tool Exposition row in capability matrix and Learn by Doing guides table.
+- **llms.txt:** Tool Exposition section with both strategies, MCP annotation semantics, and updated `AttachOptions` type.
+
+### Test Suite
+- **48 new tests** across 2 new test files:
+  - `ToolExposition.test.ts` — 21 tests covering flat compilation, grouped passthrough, annotation isolation, hierarchical group expansion, multi-builder merging, separator customization, single-action builders.
+  - `ToolExpositionSadPath.test.ts` — 27 sad-path tests covering builder-with-no-actions, empty separator, name collisions, schema shadowing, empty iterables, incorrect tool naming, mode confusion, detach/re-attach, late registration, custom discriminators, exception handling.
+- **Test count:** 1,342 tests across 60 files, all passing.
+
 ## [1.3.0] - 2026-02-22
 
 ### 🔭 Native OpenTelemetry-Compatible Tracing

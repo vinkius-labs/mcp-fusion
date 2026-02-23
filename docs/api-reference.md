@@ -380,8 +380,32 @@ detach();
 |---|---|---|
 | `filter` | `ToolFilter?` | Tag-based inclusion/exclusion filter. |
 | `contextFactory` | `Function?` | Per-request context factory. Supports async. |
+| `toolExposition` | `ToolExposition?` | `'flat'` (default) or `'grouped'`. Controls how grouped tools appear on the wire. See [Tool Exposition](/tool-exposition). |
+| `actionSeparator` | `string?` | Separator for flat tool names (default: `'_'`). E.g. `'_'` → `projects_list`, `'.'` → `projects.list`. |
 | `debug` | `DebugObserverFn?` | Debug observer — propagated to all builders. See [Observability](/observability). |
 | `stateSync` | `StateSyncConfig?` | Cache-control and causal invalidation. See [State Sync](/state-sync). |
+
+### `ToolExposition`
+
+```typescript
+type ToolExposition = 'flat' | 'grouped';
+```
+
+| Value | Behavior |
+|---|---|
+| `'flat'` | Each action becomes an independent MCP tool with isolated schema and annotations. |
+| `'grouped'` | One MCP tool per builder with discriminator enum — optimized for token efficiency and domain cohesion. |
+
+### `ExpositionConfig`
+
+```typescript
+interface ExpositionConfig {
+    toolExposition?: ToolExposition;  // Default: 'flat'
+    actionSeparator?: string;        // Default: '_'
+}
+```
+
+See the full [Tool Exposition Guide](/tool-exposition) for details.
 
 ---
 

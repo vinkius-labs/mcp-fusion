@@ -120,6 +120,7 @@ export default defineConfig({
           { text: 'Building Tools', link: '/building-tools' },
           { text: 'Presenter (MVA View)', link: '/presenter' },
           { text: 'Routing & Groups', link: '/routing' },
+          { text: 'Tool Exposition', link: '/tool-exposition' },
           { text: 'State & Context', link: '/context' },
           { text: 'Error Handling', link: '/error-handling' },
           { text: 'Result Monad', link: '/result-monad' },

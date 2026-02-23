@@ -143,3 +143,13 @@ The LLM still only sees **ONE MCP Tool** named `platform` containing all routes.
 ::: warning Exclusive Mode
 To ensure internal type safety, you cannot mix `.action()` and `.group()` flatly on the exact same root builder. If a builder triggers `.group()`, it expects exclusively nested namespaces.
 :::
+
+---
+
+## 4. Tool Exposition — Wire Format Control
+
+By default, Fusion now **expands** all grouped actions into independent, flat MCP tools (e.g. `projects_list`, `projects_create`). This gives each action its own schema, annotations, and descriptions — improving privilege isolation and LLM routing accuracy.
+
+To keep grouped behavior, set `toolExposition: 'grouped'` in `attachToServer()`.
+
+📖 **[Read the full Tool Exposition Guide →](/tool-exposition)**

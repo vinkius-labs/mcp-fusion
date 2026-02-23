@@ -74,6 +74,7 @@ export type {
     ActionConfig, MiddlewareFn, GroupConfigurator,
     ToolFilter,
     ToolBuilder, ActionMetadata, AttachOptions, DetachFn,
+    ToolExposition, ExpositionConfig,
     Result, Success, Failure,
     ToolConfig, ActionDef, GroupDef,
     ParamDef, ParamsMap, InferParams,

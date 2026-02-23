@@ -152,7 +152,7 @@ describe('MCP Server Adapter: tools/list', () => {
     it('should return all tools when no filter specified', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callListTools();
 
@@ -165,7 +165,7 @@ describe('MCP Server Adapter: tools/list', () => {
     it('should return filtered tools when tags specified', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server, { filter: { tags: ['public'] } });
+        registry.attachToServer(server, { filter: { tags: ['public'] }, toolExposition: 'grouped' });
 
         const result = await server.callListTools();
 
@@ -176,7 +176,7 @@ describe('MCP Server Adapter: tools/list', () => {
     it('should exclude tools with exclude filter', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server, { filter: { exclude: ['admin'] } });
+        registry.attachToServer(server, { filter: { exclude: ['admin'] }, toolExposition: 'grouped' });
 
         const result = await server.callListTools();
 
@@ -187,7 +187,7 @@ describe('MCP Server Adapter: tools/list', () => {
     it('should return empty array when no tools match filter', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server, { filter: { tags: ['nonexistent'] } });
+        registry.attachToServer(server, { filter: { tags: ['nonexistent'] }, toolExposition: 'grouped' });
 
         const result = await server.callListTools();
 
@@ -197,7 +197,7 @@ describe('MCP Server Adapter: tools/list', () => {
     it('should include full tool definitions with inputSchema and description', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callListTools();
         const usersTool = result.tools.find((t: any) => t.name === 'users');
@@ -214,7 +214,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should route call to correct tool and action', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callTool('users', { action: 'list', page: 3 });
 
@@ -225,7 +225,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should handle multiple tools independently', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const r1 = await server.callTool('users', { action: 'create', name: 'Alice' });
         const r2 = await server.callTool('billing', { action: 'charge', amount: 42 });
@@ -237,7 +237,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should return error for unknown tool', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callTool('hacking_tool', { action: 'exploit' });
 
@@ -250,7 +250,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should handle missing arguments gracefully', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // No action field
         const result = await server.callTool('users', {});
@@ -262,7 +262,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should handle undefined arguments (defaults to empty object)', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callTool('users');
 
@@ -273,7 +273,7 @@ describe('MCP Server Adapter: tools/call', () => {
     it('should validate arguments through Zod', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callTool('billing', {
             action: 'charge',
@@ -304,6 +304,7 @@ describe('MCP Server Adapter: Context Factory', () => {
                 tenantId: extra?.tenantId ?? 'default',
                 requestId: extra?.requestId ?? 'unknown',
             }),
+            toolExposition: 'grouped',
         });
 
         const result = await server.callTool(
@@ -329,6 +330,7 @@ describe('MCP Server Adapter: Context Factory', () => {
         const server = createMockServer();
         registry.attachToServer(server, {
             contextFactory: () => ({ callNum: ++callCount }),
+            toolExposition: 'grouped',
         });
 
         const r1 = await server.callTool('counter', { action: 'get' });
@@ -349,7 +351,7 @@ describe('MCP Server Adapter: Context Factory', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server); // No contextFactory
+        registry.attachToServer(server, { toolExposition: 'grouped' }); // No contextFactory
 
         const result = await server.callTool('simple', { action: 'ping' });
         expect(result.content[0].text).toBe('pong');
@@ -361,7 +363,7 @@ describe('MCP Server Adapter: Detach Function', () => {
         const registry = createTestRegistry();
         const server = createMockServer();
 
-        const detach = registry.attachToServer(server);
+        const detach = registry.attachToServer(server, { toolExposition: 'grouped' });
 
         expect(typeof detach).toBe('function');
     });
@@ -370,7 +372,7 @@ describe('MCP Server Adapter: Detach Function', () => {
         const registry = createTestRegistry();
         const server = createMockServer();
 
-        const detach = registry.attachToServer(server);
+        const detach = registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Before detach — working
         const r1 = await server.callListTools();
@@ -393,11 +395,11 @@ describe('MCP Server Adapter: Detach Function', () => {
         const registry = createTestRegistry();
         const server = createMockServer();
 
-        const detach1 = registry.attachToServer(server);
+        const detach1 = registry.attachToServer(server, { toolExposition: 'grouped' });
         detach1();
 
         // Re-attach
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callListTools();
         expect(result.tools).toHaveLength(2);
@@ -409,7 +411,7 @@ describe('MCP Server Adapter: McpServer Integration', () => {
         const registry = createTestRegistry();
         const mcpServer = createMockMcpServer();
 
-        registry.attachToServer(mcpServer);
+        registry.attachToServer(mcpServer, { toolExposition: 'grouped' });
 
         // Call through the inner server
         const result = await mcpServer.server.callListTools();
@@ -428,7 +430,7 @@ describe('MCP Server Adapter: Edge Cases', () => {
         const registry = new ToolRegistry<void>();
         const server = createMockServer();
 
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const result = await server.callListTools();
         expect(result.tools).toHaveLength(0);
@@ -441,7 +443,7 @@ describe('MCP Server Adapter: Edge Cases', () => {
         const registry = new ToolRegistry<void>();
         const server = createMockServer();
 
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Initially empty
         let result = await server.callListTools();
@@ -462,7 +464,7 @@ describe('MCP Server Adapter: Edge Cases', () => {
     it('should handle concurrent calls correctly', async () => {
         const registry = createTestRegistry();
         const server = createMockServer();
-        registry.attachToServer(server);
+        registry.attachToServer(server, { toolExposition: 'grouped' });
 
         const promises = Array.from({ length: 20 }, (_, i) =>
             server.callTool('users', { action: 'create', name: `user-${i}` })
@@ -489,8 +491,8 @@ describe('MCP Server Adapter: Edge Cases', () => {
         );
 
         const server = createMockServer();
-        registry1.attachToServer(server);
-        registry2.attachToServer(server); // Overwrites
+        registry1.attachToServer(server, { toolExposition: 'grouped' });
+        registry2.attachToServer(server, { toolExposition: 'grouped' }); // Overwrites
 
         const result = await server.callListTools();
         expect(result.tools).toHaveLength(1);

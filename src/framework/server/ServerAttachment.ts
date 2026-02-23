@@ -23,6 +23,8 @@ import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
 import { type StateSyncConfig } from '../state-sync/types.js';
 import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
+import { type ToolExposition } from './ExpositionTypes.js';
+import { compileExposition, type FlatRoute } from './ExpositionCompiler.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -167,6 +169,48 @@ export interface AttachOptions<TContext> {
      * @defaultValue `'mcp-fusion-server'`
      */
     serverName?: string;
+
+    // ── Topology Compiler (Exposition Strategy) ──────────
+
+    /**
+     * Exposition strategy for projecting grouped tools onto the MCP wire format.
+     *
+     * - `'flat'` (default): Each action becomes an independent atomic MCP tool.
+     *   Guarantees privilege isolation, deterministic routing, and granular UI.
+     *   Example: `projects_list`, `projects_create` — two separate buttons in Claude.
+     *
+     * - `'grouped'`: All actions within a builder are merged into a single MCP
+     *   tool with a discriminated-union schema (legacy behavior).
+     *
+     * @default 'flat'
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     toolExposition: 'flat',      // Each action = 1 MCP tool
+     *     actionSeparator: '_',        // projects_list, projects_create
+     * });
+     * ```
+     *
+     * @see {@link ToolExposition} for strategy details
+     */
+    toolExposition?: ToolExposition;
+
+    /**
+     * Delimiter for deterministic naming interpolation in flat mode.
+     * Used to join `{toolName}{separator}{actionKey}`.
+     *
+     * @default '_'
+     *
+     * @example
+     * ```typescript
+     * // '_' → projects_list, projects_create
+     * // '.' → projects.list, projects.create
+     * // '-' → projects-list, projects-create
+     * ```
+     */
+    actionSeparator?: string;
 }
 
 /** Function to detach the registry from the server */
@@ -181,8 +225,8 @@ export interface RegistryDelegate<TContext> {
     enableDebug?(observer: DebugObserverFn): void;
     /** Propagate a tracer to all registered builders (duck-typed) */
     enableTracing?(tracer: FusionTracer): void;
-    /** Get an iterable of all registered builders (for introspection) */
-    getBuilders?(): Iterable<ToolBuilder<TContext>>;
+    /** Get an iterable of all registered builders (for introspection and exposition) */
+    getBuilders(): Iterable<ToolBuilder<TContext>>;
 }
 
 // ── Attachment ───────────────────────────────────────────
@@ -206,7 +250,11 @@ export function attachToServer<TContext>(
     // Resolve the low-level Server instance via ServerResolver strategy
     const resolved = resolveServer(server) as McpServerTyped;
 
-    const { filter, contextFactory, debug, tracing, stateSync, introspection, serverName } = options;
+    const {
+        filter, contextFactory, debug, tracing, stateSync,
+        introspection, serverName,
+        toolExposition = 'flat', actionSeparator = '_',
+    } = options;
 
     // Propagate debug observer to all registered builders
     if (debug && registry.enableDebug) {
@@ -222,21 +270,46 @@ export function attachToServer<TContext>(
     const syncLayer = stateSync ? new StateSyncLayer(stateSync) : undefined;
 
     // Register introspection resource (zero overhead when disabled)
-    if (introspection?.enabled && registry.getBuilders) {
+    if (introspection?.enabled) {
         registerIntrospectionResource(
             resolved,
             introspection,
             serverName ?? 'mcp-fusion-server',
-            { values: () => registry.getBuilders!() },
+            { values: () => registry.getBuilders() },
             contextFactory,
         );
     }
 
+    // ── Topology Compiler: Exposition Strategy ────────────────────
+    // Compilation is lazy (per-request) to support late-registered tools.
+    // In 'flat' mode, each action becomes an independent atomic MCP tool.
+    // In 'grouped' mode, tools pass through unchanged (legacy behavior).
+    const isFlat = toolExposition === 'flat';
+
+    // Helper: recompile on demand (ensures late-registered tools are visible)
+    const recompile = () => compileExposition(
+        registry.getBuilders(),
+        toolExposition,
+        actionSeparator,
+    );
+
     // ── tools/list handler ────────────────────────────────────────
     const listHandler = () => {
-        const tools = filter
-            ? registry.getTools(filter)
-            : registry.getAllTools();
+        let tools: McpTool[];
+
+        if (isFlat) {
+            // Flat mode: re-compile from current registry state
+            const exposition = recompile();
+            tools = filter
+                ? filterFlatTools(exposition.tools, exposition.routingMap, filter)
+                : exposition.tools;
+        } else {
+            // Grouped mode: delegate to registry (legacy behavior)
+            tools = filter
+                ? registry.getTools(filter)
+                : registry.getAllTools();
+        }
+
         return { tools: syncLayer ? syncLayer.decorateTools(tools) : tools };
     };
 
@@ -255,6 +328,28 @@ export function attachToServer<TContext>(
         // Zero overhead when the client does not request progress.
         const progressSink = createProgressSink(extra);
 
+        if (isFlat) {
+            // ── O(1) Dispatch Interceptor for Flat Topology ──────────
+            // Re-compile to pick up any late-registered tools, then look up
+            // the flat route for the incoming tool name.
+            const exposition = recompile();
+            const flatRoute = exposition.routingMap.get(name);
+            if (flatRoute) {
+                const enrichedArgs = { ...args, [flatRoute.discriminator]: flatRoute.actionKey };
+                const result = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink);
+                if (syncLayer) {
+                    // Use the canonical internal key (e.g. "projects.list") for policy matching,
+                    // NOT the protocol-facing flat name (e.g. "projects_list"), since StateSync
+                    // policies use dot-notation globs (e.g. "projects.*").
+                    const builderName = flatRoute.builder.getName();
+                    const canonicalKey = `${builderName}.${flatRoute.actionKey}`;
+                    return syncLayer.decorateResult(canonicalKey, result);
+                }
+                return result;
+            }
+        }
+
+        // Standard dispatch (grouped mode or unrecognized flat tool)
         const result = await registry.routeCall(ctx, name, args, progressSink);
         return syncLayer ? syncLayer.decorateResult(name, result) : result;
     };
@@ -270,6 +365,58 @@ export function attachToServer<TContext>(
             error('Tool handlers have been detached'),
         );
     };
+}
+
+// ── Flat Tool Filtering ──────────────────────────────────
+
+/**
+ * Filter flat tools by tag criteria.
+ *
+ * Maps each flat tool back to its originating builder to check tags,
+ * then applies the standard tag filter logic.
+ */
+function filterFlatTools<TContext>(
+    tools: McpTool[],
+    routeMap: ReadonlyMap<string, FlatRoute<TContext>>,
+    filter: { tags?: string[]; anyTag?: string[]; exclude?: string[] },
+): McpTool[] {
+    const requiredTags = filter.tags && filter.tags.length > 0 ? new Set(filter.tags) : undefined;
+    const anyTags = filter.anyTag && filter.anyTag.length > 0 ? new Set(filter.anyTag) : undefined;
+    const excludeTags = filter.exclude && filter.exclude.length > 0 ? new Set(filter.exclude) : undefined;
+
+    if (!requiredTags && !anyTags && !excludeTags) return tools;
+
+    return tools.filter(tool => {
+        const route = routeMap.get(tool.name);
+        if (!route) return true; // Non-flat tool, include by default
+
+        const builderTags = route.builder.getTags();
+
+        // AND logic: builder must have ALL required tags
+        if (requiredTags) {
+            for (const t of requiredTags) {
+                if (!builderTags.includes(t)) return false;
+            }
+        }
+
+        // OR logic: builder must have at least ONE of these tags
+        if (anyTags) {
+            let hasAny = false;
+            for (const t of builderTags) {
+                if (anyTags.has(t)) { hasAny = true; break; }
+            }
+            if (!hasAny) return false;
+        }
+
+        // Exclude: builder must NOT have ANY of these tags
+        if (excludeTags) {
+            for (const t of builderTags) {
+                if (excludeTags.has(t)) return false;
+            }
+        }
+
+        return true;
+    });
 }
 
 // ── Progress Sink Factory ────────────────────────────────

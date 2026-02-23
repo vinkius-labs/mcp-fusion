@@ -395,6 +395,7 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | **Tag Filtering** | Context gating — control what the LLM sees per session |
 | **Observability** | Debug observers with zero-overhead typed event system |
 | **Introspection API** | Runtime metadata for compliance audits |
+| **Tool Exposition** | `'flat'` or `'grouped'` — decouple authoring topology from wire format |
 | **Freeze-After-Build** | `Object.freeze()` — immutability after registration |
 | **Duck-Typed Server** | Works with `Server` and `McpServer` — zero coupling |
 
@@ -415,6 +416,7 @@ After `buildToolDefinition()`, the builder is permanently frozen. `Object.freeze
 | 📈 **[Scaling](docs/scaling.md)** | Tag filtering, TOON, hierarchical groups at scale |
 | 🧠 **[State Sync](docs/state-sync.md)** | Prevent temporal blindness with cache signals |
 | 🔭 **[Observability](docs/observability.md)** | Zero-overhead debug observers with typed event system |
+| 🔀 **[Tool Exposition](docs/tool-exposition.md)** | Flat vs grouped wire strategies — per-action isolation |
 | 📖 **[API Reference](docs/api-reference.md)** | Complete typings and method reference |
 
 ---

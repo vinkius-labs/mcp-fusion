@@ -865,6 +865,25 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     /** Get all registered action keys (e.g. `["list", "create"]` or `["users.list", "users.ban"]`). */
     getActionNames(): string[] { return this._actions.map(a => a.key); }
 
+    // ── AST Reflection (Exposition Compiler) ─────────────
+
+    /** Get the discriminator field name (e.g. `"action"`). Used by the Exposition Compiler. */
+    getDiscriminator(): string { return this._discriminator; }
+
+    /**
+     * Get all registered internal actions.
+     * Used by the Exposition Compiler for atomic tool expansion.
+     * @returns Read-only array of internal action definitions
+     */
+    getActions(): readonly InternalAction<TContext>[] { return this._actions; }
+
+    /**
+     * Get the common schema shared across all actions.
+     * Used by the Exposition Compiler for schema purification.
+     * @returns The common Zod schema, or undefined if not set
+     */
+    getCommonSchema(): ZodObject<ZodRawShape> | undefined { return this._commonSchema; }
+
     /**
      * Preview the exact MCP protocol payload that the LLM will receive.
      *
