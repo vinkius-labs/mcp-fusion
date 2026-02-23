@@ -1,6 +1,6 @@
 # Building Tools
 
-MCP Fusion provides **two complementary APIs** for defining tools. Choose the one that fits your use case — both produce identical MCP tool definitions and can coexist in the same registry.
+**MCP Fusion** provides **two complementary APIs** for defining tools. Choose the one that fits your use case — both produce identical MCP tool definitions and can coexist in the same registry.
 
 ---
 
@@ -221,10 +221,12 @@ handler: async (ctx, args) => {
 ```
 
 The LLM receives a structured error with recovery hints:
-```text
-[ProjectNotFound] Project 'xyz' does not exist.
-💡 Suggestion: Call projects.list to see available projects.
-📋 Try: projects.list
+```xml
+<tool_error code="ProjectNotFound">
+<message>Project 'xyz' does not exist.</message>
+<recovery>Call projects.list to see available projects.</recovery>
+<available_actions>projects.list</available_actions>
+</tool_error>
 ```
 
 ---

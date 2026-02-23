@@ -132,7 +132,7 @@ export type ValidateActionDef<TAction> = TAction extends { handler: (...args: un
     ? [R] extends [ExpectedHandlerReturnType]
         ? TAction
         : Omit<TAction, 'handler'> & {
-              handler: "❌ Erro TypeScript: O handler deve retornar um ToolResponse. Utilize return success(data) ou return error(msg).";
+              handler: "❌ Type Error: handler must return ToolResponse. Use return success(data) or return error(msg).";
           }
     : TAction;
 

@@ -1,6 +1,6 @@
 # Observability
 
-MCP Fusion provides a built-in debug observability system that emits structured events at each stage of the execution pipeline. When disabled (the default), there is **zero runtime overhead** — no conditionals, no performance impact.
+**MCP Fusion** provides a built-in debug observability system that emits structured events at each stage of the execution pipeline. When disabled (the default), there is **zero runtime overhead** — no conditionals, no performance impact.
 
 ---
 

@@ -211,7 +211,7 @@ describe('Security: Error Message Information Leakage', () => {
         // Should describe the field errors but not Zod class names
         expect(result.content[0].text).not.toContain('ZodError');
         expect(result.content[0].text).not.toContain('ZodIssue');
-        expect(result.content[0].text).toContain('VALIDATION FAILED');
+        expect(result.content[0].text).toContain('validation_error');
     });
 
     it('unknown action error should list available actions (intentional for LLM)', async () => {
@@ -1001,6 +1001,6 @@ describe('Security: JSON Special Values', () => {
             action: 'x'.repeat(100000), // 100KB action name
         });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('UNKNOWN ACTION');
+        expect(result.content[0].text).toContain('UNKNOWN_ACTION');
     });
 });

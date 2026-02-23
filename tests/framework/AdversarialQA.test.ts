@@ -824,7 +824,7 @@ describe('QA: ToolRegistry Contract', () => {
 
         const result = await registry.routeCall(undefined as any, 'ghost', { action: 'a' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown tool');
+        expect(result.content[0].text).toContain('UNKNOWN_TOOL');
         expect(result.content[0].text).toContain('only_one');
     });
 
@@ -876,14 +876,15 @@ describe('QA: ResponseHelper Contract', () => {
 
     it('error() should produce valid MCP error response', () => {
         const r = error('bad');
-        expect(r.content).toEqual([{ type: 'text', text: 'bad' }]);
         expect(r.isError).toBe(true);
+        expect(r.content[0].text).toContain('<tool_error>');
+        expect(r.content[0].text).toContain('<message>bad</message>');
     });
 
     it('required() should produce validation error with field name', () => {
         const r = required('email');
         expect(r.content[0].text).toContain('email');
-        expect(r.content[0].text).toContain('required');
+        expect(r.content[0].text).toContain('missing');
         expect(r.isError).toBe(true);
     });
 

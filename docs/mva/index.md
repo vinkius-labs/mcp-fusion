@@ -13,7 +13,7 @@ AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }
 **MVA solves this by replacing the human-centric View with the Presenter** — a deterministic perception layer that tells the agent exactly what the data means, how to display it, and what to do next.
 
 ::: info Attribution
-**MVA (Model-View-Agent)** was created by [Renato Marinho](https://github.com/renatomarinho) at [Vinkius Labs](https://github.com/vinkius-labs) and first implemented in [mcp-fusion](https://github.com/vinkius-labs/mcp-fusion). It is not a fork, extension, or "variation" of MVC — it is a fundamentally new architecture designed for a fundamentally new consumer class.
+**MVA (Model-View-Agent)** was created by [Renato Marinho](https://github.com/renatomarinho) at [Vinkius Labs](https://github.com/vinkius-labs) and first implemented in [**MCP Fusion**](https://github.com/vinkius-labs/mcp-fusion). It is not a fork, extension, or "variation" of MVC — it is a fundamentally new architecture designed for a fundamentally new consumer class.
 :::
 
 ---

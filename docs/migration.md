@@ -4,7 +4,7 @@ Migrate from raw MCP SDK tool handlers to MCP Fusion's grouped, type-safe archit
 
 ## Why Migrate?
 
-| Raw MCP SDK | MCP Fusion |
+| Raw MCP SDK | **MCP Fusion** |
 |---|---|
 | One `server.tool()` call per action | One tool groups all related actions |
 | Manual `inputSchema` JSON | Auto-generated from Zod or JSON descriptors |
@@ -45,7 +45,7 @@ interface AppContext {
 }
 ```
 
-## Step 3: Convert to MCP Fusion
+## Step 3: Convert to **MCP Fusion**
 
 ::: code-group
 ```typescript [defineTool]
@@ -194,7 +194,7 @@ const projects = createTool<AppContext>('projects')
 
 ## Key Differences Summary
 
-| Concept | Raw MCP SDK | MCP Fusion |
+| Concept | Raw MCP SDK | **MCP Fusion** |
 |---|---|---|
 | Tool count | 1 per action | 1 per domain |
 | Context | Manual / global | Type-safe `TContext` |

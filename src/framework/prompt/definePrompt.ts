@@ -21,6 +21,7 @@ import {
     type PromptParamsMap,
     type PromptParamDef,
     type InferPromptArgs,
+    type LoopbackContext,
 } from './PromptTypes.js';
 import { type MiddlewareFn } from '../types.js';
 import { convertParamsToZod, type ParamsMap } from '../builder/ParamDescriptors.js';
@@ -81,7 +82,7 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
     private readonly _tags: string[];
     private readonly _middlewares: readonly MiddlewareFn<TContext>[];
     private readonly _schema: ZodObject<ZodRawShape> | undefined;
-    private readonly _handler: (ctx: TContext, args: Record<string, unknown>) => Promise<PromptResult>;
+    private readonly _handler: (ctx: TContext & LoopbackContext, args: Record<string, unknown>) => Promise<PromptResult>;
 
     constructor(
         name: string,
@@ -92,7 +93,7 @@ export class PromptBuilderImpl<TContext = void> implements PromptBuilder<TContex
             tags?: string[];
             middleware?: MiddlewareFn<TContext>[];
             schema?: ZodObject<ZodRawShape>;
-            handler: (ctx: TContext, args: Record<string, unknown>) => Promise<PromptResult>;
+            handler: (ctx: TContext & LoopbackContext, args: Record<string, unknown>) => Promise<PromptResult>;
         },
     ) {
         this._name = name;

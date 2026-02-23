@@ -52,7 +52,7 @@ describe('Result Monad', () => {
             const result = fail(error('Something went wrong'));
             expect(result.ok).toBe(false);
             expect(result.response.isError).toBe(true);
-            expect(result.response.content[0].text).toBe('Something went wrong');
+            expect(result.response.content[0].text).toContain('Something went wrong');
         });
 
         it('should work with required() helper', () => {
@@ -83,7 +83,7 @@ describe('Result Monad', () => {
             const result = parsePositiveInt('abc');
             expect(result.ok).toBe(false);
             if (!result.ok) {
-                expect(result.response.content[0].text).toBe('Not a number');
+                expect(result.response.content[0].text).toContain('Not a number');
             }
         });
 
@@ -91,7 +91,7 @@ describe('Result Monad', () => {
             const result = parsePositiveInt('-5');
             expect(result.ok).toBe(false);
             if (!result.ok) {
-                expect(result.response.content[0].text).toBe('Must be positive');
+                expect(result.response.content[0].text).toContain('Must be positive');
             }
         });
     });
@@ -127,7 +127,7 @@ describe('Result Monad', () => {
             const r1 = step1('abc');
             expect(r1.ok).toBe(false);
             if (!r1.ok) {
-                expect(r1.response.content[0].text).toBe('Invalid input');
+                expect(r1.response.content[0].text).toContain('Invalid input');
             }
         });
 
@@ -138,7 +138,7 @@ describe('Result Monad', () => {
             const r2 = step2(r1.value);
             expect(r2.ok).toBe(false);
             if (!r2.ok) {
-                expect(r2.response.content[0].text).toBe('Too large');
+                expect(r2.response.content[0].text).toContain('Too large');
             }
         });
     });

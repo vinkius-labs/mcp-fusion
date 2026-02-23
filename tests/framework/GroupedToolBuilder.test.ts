@@ -200,7 +200,7 @@ describe('GroupedToolBuilder — Defense Chain', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('VALIDATION FAILED');
+        expect(result.content[0].text).toContain('validation_error');
         expect(result.content[0].text).toContain('title');
     });
 
@@ -261,7 +261,7 @@ describe('GroupedToolBuilder — Defense Chain', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('UNKNOWN ACTION');
+        expect(result.content[0].text).toContain('UNKNOWN_ACTION');
         expect(result.content[0].text).toContain('delete');
         expect(result.content[0].text).toContain('list, create');
     });
@@ -444,7 +444,7 @@ describe('GroupedToolBuilder — Middleware', () => {
         const result = await builder.execute(undefined as any, { action: 'list' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('unauthorized');
+        expect(result.content[0].text).toContain('unauthorized');
     });
 
     it('should pass validated args to middleware (not raw args)', async () => {
@@ -480,7 +480,7 @@ describe('GroupedToolBuilder — Middleware', () => {
         const result = await builder.execute(undefined as any, { action: 'crash' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('[test/crash] boom');
+        expect(result.content[0].text).toContain('[test/crash] boom');
     });
 });
 
@@ -725,7 +725,7 @@ describe('Scenario — IoT Sensor Controller', () => {
         const result = await builder.execute(undefined as any, { action: 'reboot' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('[sensor_ctl/reboot] DEVICE_OFFLINE');
+        expect(result.content[0].text).toContain('[sensor_ctl/reboot] DEVICE_OFFLINE');
     });
 });
 

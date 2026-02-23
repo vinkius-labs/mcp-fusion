@@ -168,7 +168,7 @@ describe('response.withRules()', () => {
         expect(JSON.parse(result.content[0].text)).toEqual({ amount: 4500 });
 
         // Block 2: Rules
-        expect(result.content[1].text).toContain('[DOMAIN RULES]');
+        expect(result.content[1].text).toContain('domain_rules');
         expect(result.content[1].text).toContain('CENTS');
         expect(result.content[1].text).toContain('$ symbol');
     });

@@ -1,6 +1,6 @@
 # FusionClient
 
-MCP Fusion provides a **tRPC-style type-safe client** for calling MCP tools with full autocomplete and compile-time argument validation. Define your router type once on the server, and every client call is fully typed — wrong action names or missing arguments are caught at build time.
+**MCP Fusion** provides a **tRPC-style type-safe client** for calling MCP tools with full autocomplete and compile-time argument validation. Define your router type once on the server, and every client call is fully typed — wrong action names or missing arguments are caught at build time.
 
 ---
 

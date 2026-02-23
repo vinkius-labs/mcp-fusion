@@ -20,6 +20,186 @@ import {
     type BooleanParamDef,
     type EnumParamDef,
 } from '../builder/ParamDescriptors.js';
+import { type ToolResponse } from '../response.js';
+
+// ── Internal Loopback Dispatcher ─────────────────────────
+
+/**
+ * Result of an internal Tool invocation from within a Prompt handler.
+ *
+ * Returned by `ctx.invokeTool()`. Provides the Presenter-rendered text
+ * and error status without exposing MCP wire format internals.
+ *
+ * @example
+ * ```typescript
+ * const result = await ctx.invokeTool('billing.list_invoices', { date: '2026-01' });
+ * if (result.isError) {
+ *     // Handle gracefully — result.text contains the error message
+ * }
+ * // result.text contains the full Presenter-rendered output
+ * ```
+ */
+export interface ToolInvocationResult {
+    /** The full Presenter-rendered text output of the Tool */
+    readonly text: string;
+    /** Whether the Tool returned an error (`isError: true` in ToolResponse) */
+    readonly isError: boolean;
+    /** The original ToolResponse for advanced use cases */
+    readonly raw: ToolResponse;
+}
+
+/**
+ * Context extension injected by ServerAttachment when a PromptRegistry is attached.
+ *
+ * Enables **Internal Loopback Dispatch** — Prompt handlers can invoke Tools
+ * in-memory without an LLM round-trip. The Tool's full pipeline runs:
+ * middleware → validation → handler → Presenter. RBAC is enforced.
+ *
+ * **Design**: The Prompt acts as a server-side macro, aggregating data from
+ * multiple Tools into a single prompt. The dev codes the extraction logic
+ * once in the Tool, and the Prompt reuses the rendered result.
+ *
+ * @example
+ * ```typescript
+ * handler: async (ctx, args) => {
+ *     const invoices = await ctx.invokeTool('billing.list_invoices', { date: args.date });
+ *     const tickets  = await ctx.invokeTool('jira.get_assigned', { user_id: ctx.user.id });
+ *
+ *     return {
+ *         messages: [
+ *             PromptMessage.system('Plan my day based on this context:'),
+ *             PromptMessage.user(`### Invoices\n${invoices.text}\n\n### Tickets\n${tickets.text}`),
+ *         ],
+ *     };
+ * }
+ * ```
+ */
+export interface LoopbackContext {
+    /**
+     * Invoke a Tool internally, in-memory.
+     *
+     * Runs the Tool's full pipeline (middleware → validate → handler → Presenter)
+     * with the **same context** as the current Prompt request. RBAC is enforced.
+     *
+     * @param name - Tool name in canonical dot-notation (e.g. `'billing.list_invoices'`)
+     * @param args - Arguments passed to the Tool handler (default: `{}`)
+     * @returns The rendered Tool output
+     */
+    invokeTool(name: string, args?: Record<string, unknown>): Promise<ToolInvocationResult>;
+}
+
+// ── Prompt Interceptors ──────────────────────────────────
+
+/**
+ * Read-only metadata about the prompt being executed.
+ *
+ * Passed to interceptor callbacks so they can conditionally inject
+ * context based on the prompt's identity, tags, or description.
+ */
+export interface PromptMeta {
+    /** The prompt's registered name */
+    readonly name: string;
+    /** The prompt description (if provided) */
+    readonly description?: string;
+    /** The prompt's capability tags */
+    readonly tags: readonly string[];
+}
+
+/**
+ * Mutable builder-pattern facade for Prompt Interceptors.
+ *
+ * Interceptors use this to inject messages into the prompt result
+ * without touching the developer's handler code. Multiple interceptors
+ * compose cleanly — prepends stack in registration order (first registered
+ * ends up at the very top), appends stack in registration order.
+ *
+ * @example
+ * ```typescript
+ * registry.useInterceptor(async (ctx, builder, meta) => {
+ *     builder.prependSystem(
+ *         `[COMPLIANCE] Tenant: ${ctx.tenant.id} | User: ${ctx.user.role}`
+ *     );
+ *     builder.appendUser('--- End of automated context ---');
+ * });
+ * ```
+ */
+export interface InterceptorBuilder {
+    /** Prepend a system message at the TOP of the prompt messages */
+    prependSystem(text: string): void;
+    /** Prepend a user message at the TOP of the prompt messages */
+    prependUser(text: string): void;
+    /** Append a system message at the END of the prompt messages */
+    appendSystem(text: string): void;
+    /** Append a user message at the END of the prompt messages */
+    appendUser(text: string): void;
+    /** Append an assistant message at the END (for seeded responses) */
+    appendAssistant(text: string): void;
+
+    /**
+     * Prepend structured context with XML semantic boundary (MX-optimized).
+     *
+     * Auto-wraps the data in `<{tag}_context>` XML tags, giving the LLM
+     * a clear semantic boundary. Best for compliance, tenant, and RBAC context.
+     *
+     * @param tag - Semantic tag name (e.g. 'compliance', 'tenant', 'rbac')
+     * @param data - Key-value pairs to inject
+     *
+     * @example
+     * ```typescript
+     * builder.prependContext('compliance', {
+     *     role: ctx.user.role,
+     *     tenant: ctx.tenant.id,
+     * });
+     * // LLM receives:
+     * // <compliance_context>
+     * //   role: admin
+     * //   tenant: acme-corp
+     * // </compliance_context>
+     * ```
+     */
+    prependContext(tag: string, data: Record<string, string | number | boolean>): void;
+
+    /**
+     * Append structured context with XML semantic boundary (MX-optimized).
+     *
+     * Same as {@link prependContext} but appended at the END of messages.
+     *
+     * @param tag - Semantic tag name
+     * @param data - Key-value pairs to inject
+     */
+    appendContext(tag: string, data: Record<string, string | number | boolean>): void;
+}
+
+/**
+ * Prompt Interceptor callback signature.
+ *
+ * Interceptors run AFTER the handler produces its result and BEFORE
+ * the result is returned to the MCP client. They can inject compliance
+ * headers, tenant context, RBAC constraints, or any global context
+ * that should wrap every prompt — without modifying individual handlers.
+ *
+ * The enterprise answer to "every prompt must include tenant context":
+ * write it once, enforce it everywhere.
+ *
+ * @typeParam TContext - Application context type
+ *
+ * @example
+ * ```typescript
+ * // Register once — applies to ALL 50 prompts in the company:
+ * promptRegistry.useInterceptor(async (ctx, builder, meta) => {
+ *     builder.prependSystem(
+ *         `[ENTERPRISE COMPLIANCE LAYER]\n` +
+ *         `User Role: ${ctx.user.role} (Tenant ID: ${ctx.tenant.id})\n` +
+ *         `Server Time: ${new Date().toISOString()}`
+ *     );
+ * });
+ * ```
+ */
+export type PromptInterceptorFn<TContext> = (
+    ctx: TContext,
+    builder: InterceptorBuilder,
+    meta: PromptMeta,
+) => void | Promise<void>;
 
 // ── PromptMessage Content Types (MCP ContentBlock) ───────
 
@@ -276,6 +456,9 @@ export interface PromptConfig<TContext, TArgs extends Record<string, unknown> = 
      *
      * Receives validated, typed, coerced args and returns a `PromptResult`.
      * This is where server-side data fetching and Presenter calls happen.
+     *
+     * **DX**: `ctx` is typed as `TContext & LoopbackContext` — `invokeTool()`
+     * appears in autocomplete without any manual cast.
      */
-    handler: (ctx: TContext, args: TArgs) => Promise<PromptResult>;
+    handler: (ctx: TContext & LoopbackContext, args: TArgs) => Promise<PromptResult>;
 }

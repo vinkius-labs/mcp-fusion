@@ -1,6 +1,6 @@
 # Testing Guide
 
-MCP Fusion tools are designed for testability. Every builder can be tested directly without an MCP server.
+**MCP Fusion** tools are designed for testability. Every builder can be tested directly without an MCP server.
 
 ## Direct Execution (No Server Required)
 

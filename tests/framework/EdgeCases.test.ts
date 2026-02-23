@@ -182,7 +182,7 @@ describe('GroupedToolBuilder — Group-Level Middleware', () => {
         const result = await builder.execute(undefined, { action: 'admin.delete' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0]?.text).toBe('forbidden');
+        expect(result.content[0]?.text).toContain('forbidden');
     });
 
     it('should support multiple group middlewares in order', async () => {
@@ -322,7 +322,7 @@ describe('GroupedToolBuilder — Error Paths', () => {
         const result = await builder.execute(undefined, { action: 'crash' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0]?.text).toBe('[test/crash] 42');
+        expect(result.content[0]?.text).toContain('[test/crash] 42');
     });
 
     it('should handle handler throwing undefined', async () => {
@@ -336,7 +336,7 @@ describe('GroupedToolBuilder — Error Paths', () => {
         const result = await builder.execute(undefined, { action: 'crash' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0]?.text).toBe('[test/crash] undefined');
+        expect(result.content[0]?.text).toContain('[test/crash] undefined');
     });
 
     it('should handle middleware throwing errors', async () => {

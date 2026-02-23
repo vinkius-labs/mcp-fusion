@@ -1,6 +1,6 @@
 # Scaling
 
-This document perfectly explains the technical mechanisms that allow MCP Fusion to support thousands of internal API endpoints without causing LLM hallucination or exceeding model token limits. Every claim maps to actual native framework behavior.
+This document perfectly explains the technical mechanisms that allow **MCP Fusion** to support thousands of internal API endpoints without causing LLM hallucination or exceeding model token limits. Every claim maps to actual native framework behavior.
 
 ---
 
@@ -19,7 +19,7 @@ When the number of exposed tools grows, three failures cascade:
 2. **Semantic Collision:** Tools with similar names confuse the routing. The LLM confuses `crm_contacts_create` with `crm_companies_create`.
 3. **Parameter Confusion:** With many tools exposing overlapping field names (like `id` or `status`), the LLM cross-contaminates arguments and hallucinates payloads.
 
-MCP Fusion addresses each of these failures natively.
+**MCP Fusion** addresses each of these failures natively.
 
 ---
 

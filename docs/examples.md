@@ -1,6 +1,6 @@
 # Cookbook & Examples
 
-Real-world, copy-pasteable patterns for every MCP Fusion feature. Each example is self-contained — pick the one closest to your use case and adapt.
+Real-world, copy-pasteable patterns for every **MCP Fusion** feature. Each example is self-contained — pick the one closest to your use case and adapt.
 
 ---
 
@@ -242,10 +242,12 @@ const billing = defineTool<AppContext>('billing', {
 ```
 
 ::: tip What the AI sees on error
-```
-[InvoiceNotFound] Invoice "INV-999" does not exist.
-💡 Suggestion: Call billing.list_invoices first to find valid IDs.
-📋 Try: billing.list_invoices
+```xml
+<tool_error code="InvoiceNotFound">
+<message>Invoice "INV-999" does not exist.</message>
+<recovery>Call billing.list_invoices first to find valid IDs.</recovery>
+<available_actions>billing.list_invoices</available_actions>
+</tool_error>
 ```
 This guides the AI to self-correct on the next call — no hallucination, no retry loops.
 :::

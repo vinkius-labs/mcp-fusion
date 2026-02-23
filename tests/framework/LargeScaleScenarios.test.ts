@@ -327,7 +327,7 @@ describe('Large-Scale Scenarios — Routing & Execution', () => {
 
         expect(result.isError).toBe(true);
         const text = (result.content[0] as { text: string }).text;
-        expect(text).toContain('Unknown tool');
+        expect(text).toContain('UNKNOWN_TOOL');
     });
 
     it('should return error for unknown action within valid tool', async () => {
@@ -777,7 +777,7 @@ describe('Enterprise Chaos — Handler Explosions', () => {
 
         const result = await builder.execute(undefined as any, { action: 'fail' });
         expect(result.isError).toBe(true);
-        expect((result.content[0] as { text: string }).text).toBe('[string_throw/fail] RATE_LIMIT_EXCEEDED');
+        expect((result.content[0] as { text: string }).text).toContain('[string_throw/fail] RATE_LIMIT_EXCEEDED');
     });
 
     it('should handle throwing an object (non-Error throw)', async () => {

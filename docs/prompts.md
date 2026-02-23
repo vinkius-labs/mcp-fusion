@@ -343,13 +343,12 @@ This is not heuristic coercion. The engine reads the **developer's declared sche
 
 If coerced arguments fail Zod validation, the engine returns a coaching error message:
 
-```
-⚠️ PROMPT ARGUMENT VALIDATION FAILED:
-
-  • limit — Number must be less than or equal to 100
-  • month — Invalid enum value. Expected 'january' | 'february' | ... | 'december', received 'foo'
-
-💡 Check the prompt definition for valid argument types and values.
+```xml
+<validation_error>
+<field name="limit">Number must be less than or equal to 100</field>
+<field name="month">Invalid enum value. Expected 'january' | 'february' | ... | 'december', received 'foo'</field>
+<recovery>Check the prompt definition for valid argument types and values.</recovery>
+</validation_error>
 ```
 
 ---
@@ -546,7 +545,7 @@ const OnboardingPrompt = definePrompt<AppContext>('onboarding', {
 
 ## MVA-Driven Prompts — `fromView()` <Badge type="tip" text="NEW" />
 
-The most powerful DX feature in mcp-fusion: **reuse your entire Presenter layer inside Prompts** — zero text assembly, zero duplication.
+The most powerful DX feature in **MCP Fusion**: **reuse your entire Presenter layer inside Prompts** — zero text assembly, zero duplication.
 
 ### The Problem
 

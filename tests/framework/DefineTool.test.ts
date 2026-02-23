@@ -508,8 +508,8 @@ describe('toolError()', () => {
     it('should create structured error with code and message', () => {
         const result = toolError('NotFound', { message: 'Item not found' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('[NotFound]');
-        expect(result.content[0].text).toContain('Item not found');
+        expect(result.content[0].text).toContain('code="NotFound"');
+        expect(result.content[0].text).toContain('<message>Item not found</message>');
     });
 
     it('should include suggestion when provided', () => {
@@ -517,7 +517,7 @@ describe('toolError()', () => {
             message: 'Project not found',
             suggestion: 'Call projects.list first',
         });
-        expect(result.content[0].text).toContain('💡 Suggestion: Call projects.list first');
+        expect(result.content[0].text).toContain('<recovery>Call projects.list first</recovery>');
     });
 
     it('should include available actions when provided', () => {
@@ -525,7 +525,7 @@ describe('toolError()', () => {
             message: 'Not found',
             availableActions: ['projects.list', 'projects.search'],
         });
-        expect(result.content[0].text).toContain('📋 Try: projects.list, projects.search');
+        expect(result.content[0].text).toContain('<available_actions>projects.list, projects.search</available_actions>');
     });
 
     it('should format full self-healing response', () => {
@@ -536,9 +536,10 @@ describe('toolError()', () => {
         });
 
         const text = result.content[0].text;
-        expect(text).toContain("[ProjectNotFound] Project 'xyz' does not exist.");
-        expect(text).toContain('💡 Suggestion:');
-        expect(text).toContain('📋 Try: projects.list');
+        expect(text).toContain('code="ProjectNotFound"');
+        expect(text).toContain('<message>Project \'xyz\' does not exist.</message>');
+        expect(text).toContain('<recovery>');
+        expect(text).toContain('<available_actions>projects.list</available_actions>');
         expect(result.isError).toBe(true);
     });
 
@@ -546,7 +547,8 @@ describe('toolError()', () => {
         const result = toolError('RateLimited', {
             message: 'Too many requests',
         });
-        expect(result.content[0].text).toBe('[RateLimited] Too many requests');
+        expect(result.content[0].text).toContain('<tool_error code="RateLimited">');
+        expect(result.content[0].text).toContain('<message>Too many requests</message>');
         expect(result.isError).toBe(true);
     });
 });

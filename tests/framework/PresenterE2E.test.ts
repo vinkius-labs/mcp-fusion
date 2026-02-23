@@ -87,7 +87,7 @@ describe('E2E: Presenter Pipeline — Single Item', () => {
         expect(result.content[1].text).toContain('4500'); // 450000/100
 
         // Block 3: Rules
-        const rulesBlock = result.content.find(c => c.text.includes('[DOMAIN RULES]'));
+        const rulesBlock = result.content.find(c => c.text.includes('domain_rules'));
         expect(rulesBlock).toBeDefined();
         expect(rulesBlock!.text).toContain('CENTS');
         expect(rulesBlock!.text).toContain('$XX,XXX.00');

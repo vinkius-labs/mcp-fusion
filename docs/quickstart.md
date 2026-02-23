@@ -1,6 +1,6 @@
 # Quickstart
 
-Let's build your very first MCP Fusion server in less than 5 minutes. We will create a simple "Calculator" tool that an AI can use to add or subtract numbers.
+Let's build your very first **MCP Fusion** server in less than 5 minutes. We will create a simple "Calculator" tool that an AI can use to add or subtract numbers.
 
 ---
 
@@ -24,7 +24,7 @@ yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 ## 2. Write the Server
 
-Create an `index.ts` file. MCP Fusion offers **two APIs** — choose the one that fits your team:
+Create an `index.ts` file. **MCP Fusion** offers **two APIs** — choose the one that fits your team:
 
 ::: code-group
 ```typescript [defineTool — No Zod]

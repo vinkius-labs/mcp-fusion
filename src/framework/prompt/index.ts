@@ -13,6 +13,11 @@ export type {
     PromptParamsMap,
     PromptBuilder,
     PromptConfig,
+    ToolInvocationResult,
+    LoopbackContext,
+    PromptInterceptorFn,
+    InterceptorBuilder,
+    PromptMeta,
 } from './PromptTypes.js';
 
 // ── Factories ────────────────────────────────────────────

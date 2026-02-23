@@ -130,12 +130,11 @@ Without `.strict()`, these extra fields:
 
 Every action's Zod input schema is built with `.strict()` at the framework level via the `ToolDefinitionCompiler`. When the agent sends hallucinated fields, the validation produces a detailed correction prompt:
 
-```text
-⚠️ VALIDATION FAILED — ACTION 'BILLING.CREATE'
-  • customer_email — Unrecognized keys. You sent: 'customer_email'. Remove or correct unrecognized fields: 'customer_email'. Check for typos.
-  • priority — Unrecognized keys. You sent: 'priority'. Remove or correct unrecognized fields: 'priority'. Check for typos.
-  • internal_notes — Unrecognized keys. You sent: 'internal_notes'. Remove or correct unrecognized fields: 'internal_notes'. Check for typos.
-💡 Fix the fields above and call the tool again. Do not explain the error.
+```xml
+<validation_error action="billing/create">
+<field name="(root)">Unrecognized key(s) in object: 'customer_email', 'priority', 'internal_notes'. Remove or correct unrecognized fields: 'customer_email', 'priority', 'internal_notes'. Check for typos.</field>
+<recovery>Fix the fields above and call the tool again. Do not explain the error.</recovery>
+</validation_error>
 ```
 
 The agent learns which fields are valid and self-corrects on the next attempt. This is qualitatively different from a generic "Validation failed" error that provides no guidance.
@@ -179,7 +178,7 @@ Each failed retry is a full round-trip: input tokens + output tokens + latency +
 
 ### The Solution: `toolError()` with Recovery Guidance
 
-mcp-fusion provides `toolError()` — a structured error builder that includes recovery hints, suggested actions, and corrective arguments:
+**MCP Fusion** provides `toolError()` — a structured error builder that includes recovery hints, suggested actions, and corrective arguments:
 
 ```typescript
 import { toolError, success } from '@vinkius-core/mcp-fusion';
@@ -201,10 +200,12 @@ handler: async (ctx, args) => {
 
 The agent receives:
 
-```text
-[NOT_FOUND] Invoice 'INV-999' does not exist.
-💡 Suggestion: Call billing.list first to get valid invoice IDs.
-📋 Try: billing.list
+```xml
+<tool_error code="NOT_FOUND">
+<message>Invoice 'INV-999' does not exist.</message>
+<recovery>Call billing.list first to get valid invoice IDs.</recovery>
+<available_actions>billing.list</available_actions>
+</tool_error>
 ```
 
 The agent self-corrects: *"The invoice doesn't exist. Let me list all invoices to find the right ID."*
@@ -213,11 +214,12 @@ The agent self-corrects: *"The invoice doesn't exist. Let me list all invoices t
 
 For validation errors (from `.strict()` and Zod), the `ValidationErrorFormatter` automatically produces detailed coaching prompts:
 
-```text
-⚠️ VALIDATION FAILED — ACTION 'PROJECTS.CREATE'
-  • name — Required. You sent: (missing). Expected type: string.
-  • budget — Expected number, received string. You sent: 'fifty thousand'. Expected type: number.
-💡 Fix the fields above and call the tool again. Do not explain the error.
+```xml
+<validation_error action="projects/create">
+<field name="name">Required. You sent: (missing). Expected type: string.</field>
+<field name="budget">Expected number, received string. You sent: 'fifty thousand'. Expected type: number.</field>
+<recovery>Fix the fields above and call the tool again. Do not explain the error.</recovery>
+</validation_error>
 ```
 
 This is not just an error — it's an **instruction manual for self-repair**. The agent knows:

@@ -91,7 +91,7 @@ The agent invents a parameter → retry (re-pays 12,000 tokens).
 The agent guesses wrong about the data → user corrects → re-pays again.
 ```
 
-### After: mcp-fusion with MVA
+### After: **MCP Fusion** with MVA
 
 Same 50 operations. The LLM calls `tools/list`:
 
@@ -140,7 +140,7 @@ No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-
 
 <div class="equation-header">
 
-> **The equation behind every design decision in mcp-fusion:**
+> **The equation behind every design decision in **MCP Fusion**:**
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -160,7 +160,7 @@ No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-
 
 We believe cost and hallucination are not separate problems — they are **two symptoms of the same root cause**: too many tokens flowing through the LLM context window, and too many requests being made because the agent didn't get what it needed the first time.
 
-Every design decision in mcp-fusion is guided by this principle. This page documents the mechanisms we've implemented so far to attack both sides of the equation.
+Every design decision in **MCP Fusion** is guided by this principle. This page documents the mechanisms we've implemented so far to attack both sides of the equation.
 
 ---
 
@@ -504,7 +504,7 @@ registry.attachToServer(server, {
 
 Reducing tokens is only half of the equation. The other half is about **signal quality** — making sure every token that *does* reach the LLM carries maximum information density. We believe this is what makes the agent smarter: not just fewer tokens, but the *right* tokens at the *right* time.
 
-mcp-fusion structures context at two layers. Everything described below is implemented in real code.
+**MCP Fusion** structures context at two layers. Everything described below is implemented in real code.
 
 ### Layer 1: Tool Definition (what the LLM sees in `tools/list`)
 
@@ -650,7 +650,7 @@ These mechanisms are designed to reinforce each other:
 
 Consider the AI agent from the Before & After section — 50 operations across users, projects, billing, tasks, and reports:
 
-| Metric | Raw MCP Server | With mcp-fusion |
+| Metric | Raw MCP Server | With **MCP Fusion** |
 |---|---|---|
 | Tools in `tools/list` | 50 | 5 (grouped) |
 | Prompt schema tokens | ~10,000 | ~1,670 |
@@ -668,7 +668,7 @@ The exact savings depend on the workload, model, and use case. Our design goal i
 
 ## Token Budget Awareness
 
-We believe developers should be able to measure their token footprint before deployment. mcp-fusion includes a preview tool for this:
+We believe developers should be able to measure their token footprint before deployment. **MCP Fusion** includes a preview tool for this:
 
 ```typescript
 // From: src/framework/builder/GroupedToolBuilder.ts
@@ -693,7 +693,7 @@ This lets you see exactly what the LLM receives and estimate the token cost — 
 
 ## Summary
 
-Every mechanism in mcp-fusion is guided by one equation:
+Every mechanism in **MCP Fusion** is guided by one equation:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐

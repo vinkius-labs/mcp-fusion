@@ -1,6 +1,6 @@
 # Result Monad
 
-MCP Fusion exports a lightweight `Result<T>` type that follows the **Railway-Oriented Programming** pattern used in Rust, Haskell, and F#. Instead of scattering `try/catch` blocks or returning raw response objects, express success/failure as a discriminated union and compose operations into clean pipelines.
+**MCP Fusion** exports a lightweight `Result<T>` type that follows the **Railway-Oriented Programming** pattern used in Rust, Haskell, and F#. Instead of scattering `try/catch` blocks or returning raw response objects, express success/failure as a discriminated union and compose operations into clean pipelines.
 
 ---
 

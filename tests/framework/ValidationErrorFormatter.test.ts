@@ -26,12 +26,11 @@ describe('ValidationErrorFormatter — Unit Tests', () => {
             { age: 'twenty' },
         );
 
-        expect(msg).toContain('⚠️ VALIDATION FAILED');
-        expect(msg).toContain('USERS/CREATE');
+        expect(msg).toContain('<validation_error action="users/create">');
         expect(msg).toContain('age');
         expect(msg).toContain("You sent: 'twenty'");
         expect(msg).toContain('Expected type: number');
-        expect(msg).toContain('💡 Fix the fields above');
+        expect(msg).toContain('<recovery>Fix the fields above');
     });
 
     it('should format email validation errors with guidance', () => {
@@ -124,7 +123,7 @@ describe('ValidationErrorFormatter — Unit Tests', () => {
 
         expect(msg).toContain('count');
         expect(msg).toContain('You sent: 200');
-        expect(msg).toContain('<= 100');
+        expect(msg).toContain('&lt;= 100');
     });
 
     it('should format too_small (string minLength)', () => {
@@ -323,11 +322,10 @@ describe('ValidationErrorFormatter — Integration via GroupedToolBuilder', () =
         const errorText = result.content[0].text;
 
         // New format: actionable, not raw
-        expect(errorText).toContain('⚠️ VALIDATION FAILED');
-        expect(errorText).toContain('TEST/CREATE');
+        expect(errorText).toContain('<validation_error action="test/create">');
         expect(errorText).toContain('title');
         expect(errorText).toContain('count');
-        expect(errorText).toContain('💡 Fix the fields above');
+        expect(errorText).toContain('<recovery>Fix the fields above');
     });
 
     it('should show sent values for enum violations via pipeline', async () => {
@@ -405,7 +403,7 @@ describe('ValidationErrorFormatter — Integration via GroupedToolBuilder', () =
 
         expect(result.isError).toBe(true);
         const errorText = result.content[0].text;
-        expect(errorText).toContain('PLATFORM/USERS.CREATE');
+        expect(errorText).toContain('action="platform/users.create"');
         expect(errorText).toContain('email');
         expect(errorText).toContain("You sent: 'bad-email'");
         expect(errorText).toContain('role');
@@ -442,6 +440,6 @@ describe('ValidationErrorFormatter — Integration via GroupedToolBuilder', () =
         });
         expect(r2.isError).toBe(true);
         expect(r2.content[0].text).toContain('You sent: 99');
-        expect(r2.content[0].text).toContain('<= 10');
+        expect(r2.content[0].text).toContain('&lt;= 10');
     });
 });

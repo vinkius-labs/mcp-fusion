@@ -6,7 +6,7 @@ How your tools are authored and how they appear on the MCP wire are two separate
 
 ## Two Strategies for Two Problems
 
-MCP Fusion provides two exposition strategies, each optimized for a different class of problem.
+**MCP Fusion** provides two exposition strategies, each optimized for a different class of problem.
 
 ### Flat — Precision at the Action Level
 

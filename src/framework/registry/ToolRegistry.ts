@@ -29,7 +29,7 @@
  * @module
  */
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import { type ToolResponse, error } from '../response.js';
+import { type ToolResponse, toolError } from '../response.js';
 import { type ToolBuilder } from '../types.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { type FusionTracer, SpanStatusCode } from '../observability/Tracing.js';
@@ -202,7 +202,6 @@ export class ToolRegistry<TContext = void> {
     ): Promise<ToolResponse> {
         const builder = this._builders.get(name);
         if (!builder) {
-            const available = Array.from(this._builders.keys()).join(', ');
             if (this._tracer) {
                 const span = this._tracer.startSpan(`mcp.tool.${name}`, {
                     attributes: { 'mcp.system': 'fusion', 'mcp.tool': name, 'mcp.error_type': 'unknown_tool' },
@@ -213,7 +212,11 @@ export class ToolRegistry<TContext = void> {
             if (this._debug) {
                 this._debug({ type: 'error', tool: name, action: '?', error: `Unknown tool: "${name}"`, step: 'route', timestamp: Date.now() });
             }
-            return error(`Unknown tool: "${name}". Available tools: ${available}`);
+            return toolError('UNKNOWN_TOOL', {
+                message: `Tool "${name}" does not exist.`,
+                suggestion: 'Check the available tools and call a valid one.',
+                availableActions: Array.from(this._builders.keys()),
+            });
         }
         return builder.execute(ctx, args, progressSink);
     }

@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>⚡️ mcp-fusion</h1>
+  <h1>⚡️ **MCP Fusion**</h1>
   <p><b>The MVA (Model-View-Agent) framework for the Model Context Protocol.</b></p>
   <p>Structured perception for AI agents — validated data, domain rules, UI blocks, and action affordances in every response.</p>
   
@@ -21,7 +21,7 @@ npm install @vinkius-core/mcp-fusion zod
 
 ## Overview
 
-mcp-fusion introduces the **MVA (Model-View-Agent)** pattern — a Presenter layer between your data and the AI agent. Instead of passing raw JSON through `JSON.stringify()`, every response is a **structured perception package**: validated data, domain rules, rendered charts, action affordances, and cognitive guardrails.
+**MCP Fusion** introduces the **MVA (Model-View-Agent)** pattern — a Presenter layer between your data and the AI agent. Instead of passing raw JSON through `JSON.stringify()`, every response is a **structured perception package**: validated data, domain rules, rendered charts, action affordances, and cognitive guardrails.
 
 ```text
 Model (Zod Schema) → View (Presenter) → Agent (LLM)
@@ -258,10 +258,12 @@ return toolError('ProjectNotFound', {
 });
 ```
 
-```text
-[ProjectNotFound] Project 'xyz' does not exist.
-💡 Suggestion: Call projects.list first to get valid IDs.
-📋 Try: projects.list
+```xml
+<tool_error code="ProjectNotFound">
+<message>Project 'xyz' does not exist.</message>
+<recovery>Call projects.list first to get valid IDs.</recovery>
+<available_actions>projects.list</available_actions>
+</tool_error>
 ```
 
 ---

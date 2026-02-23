@@ -1,6 +1,6 @@
 # Middleware
 
-Middleware conceptually intercepts every action call before or after your route handler resolves. MCP Fusion supports three specific middleware scopes, pre-compiles chains entirely at build time, and perfectly composes them deeply right-to-left.
+Middleware conceptually intercepts every action call before or after your route handler resolves. **MCP Fusion** supports three specific middleware scopes, pre-compiles chains entirely at build time, and perfectly composes them deeply right-to-left.
 
 ---
 
@@ -85,7 +85,7 @@ const tool = defineTool<AppContext>('platform', {
 
 ### 3. Per-Action Middleware
 
-Because group-scoped middleware applies natively to all actions inside the structural group, the most granular unit in MCP Fusion is the Group. If you strictly need per-action middleware, create a single-action focused group namespace.
+Because group-scoped middleware applies natively to all actions inside the structural group, the most granular unit in **MCP Fusion** is the Group. If you strictly need per-action middleware, create a single-action focused group namespace.
 
 ---
 

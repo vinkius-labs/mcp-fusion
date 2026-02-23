@@ -75,7 +75,7 @@ describe('Context-Aware Presenters', () => {
             { id: 'U1', name: 'Alice', email: 'a@b.com', department: 'eng' },
             adminCtx,
         ).build();
-        const adminRules = adminResult.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const adminRules = adminResult.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(adminRules).not.toContain('Mask user email');
         expect(adminRules).toContain('Format dates using en-US');
     });
@@ -94,7 +94,7 @@ describe('Context-Aware Presenters', () => {
             { id: 'U1', name: 'Bob', email: 'b@b.com', department: 'sales' },
             viewerCtx,
         ).build();
-        const viewerRules = viewerResult.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const viewerRules = viewerResult.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(viewerRules).toContain('Mask user email');
     });
 
@@ -143,7 +143,7 @@ describe('Context-Aware Presenters', () => {
             .systemRules(['Static rule 1', 'Static rule 2']);
 
         const result = presenter.make('hello').build();
-        const rules = result.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const rules = result.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(rules).toContain('Static rule 1');
         expect(rules).toContain('Static rule 2');
     });
@@ -262,7 +262,7 @@ describe('Agentic Affordances (suggestActions)', () => {
             id: 'INV-1', amount_cents: 45000, status: 'pending',
         }).build();
 
-        const hintBlock = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hintBlock = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hintBlock).toContain('billing.pay');
         expect(hintBlock).toContain('Offer immediate payment');
         expect(hintBlock).toContain('billing.send_reminder');
@@ -283,7 +283,7 @@ describe('Agentic Affordances (suggestActions)', () => {
         }).build();
 
         const texts = result.content.map(c => c.text);
-        expect(texts.some(t => t.includes('[SYSTEM HINT]'))).toBe(false);
+        expect(texts.some(t => t.includes('action_suggestions'))).toBe(false);
     });
 
     it('should pass context to suggestActions callback', () => {

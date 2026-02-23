@@ -1,6 +1,6 @@
 # Advanced Configuration
 
-Beyond simple actions and Zod schemas, MCP Fusion exports powerful native configuration methods that allow you to precisely control how Language Models perceive and interact with your tools at a deep architectural level.
+Beyond simple actions and Zod schemas, **MCP Fusion** exports powerful native configuration methods that allow you to precisely control how Language Models perceive and interact with your tools at a deep architectural level.
 
 ---
 

@@ -419,6 +419,26 @@ export function attachToServer<TContext>(
                 ? await contextFactory(extra)
                 : (undefined as TContext);
 
+            // ── Internal Loopback Dispatcher ──────────────────────
+            // Inject invokeTool() so Prompt handlers can call Tools in-memory.
+            // Runs the Tool's full pipeline (middleware → validate → handler → Presenter)
+            // with the same ctx. RBAC is enforced.
+            (ctx as Record<string, unknown>).invokeTool = async (
+                toolName: string,
+                toolArgs: Record<string, unknown> = {},
+            ) => {
+                const response = await registry.routeCall(ctx, toolName, toolArgs);
+                const text = response.content
+                    .filter((c: { type: string }): c is { type: 'text'; text: string } => c.type === 'text')
+                    .map((c: { type: 'text'; text: string }) => c.text)
+                    .join('\n');
+                return {
+                    text,
+                    isError: response.isError ?? false,
+                    raw: response,
+                };
+            };
+
             return prompts.routeGet(ctx, name, args);
         };
 

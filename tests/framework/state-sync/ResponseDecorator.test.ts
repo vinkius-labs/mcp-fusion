@@ -17,7 +17,7 @@ describe('ResponseDecorator', () => {
 
         expect(decorated.content).toHaveLength(2);
         expect(decorated.content[0]!.text).toBe(
-            '[System: Cache invalidated for sprints.* — caused by sprints.update]',
+            '<cache_invalidation cause="sprints.update" domains="sprints.*" />',
         );
         expect(decorated.content[1]!.text).toBe('{"ok": true}');
     });
@@ -27,7 +27,7 @@ describe('ResponseDecorator', () => {
         const decorated = decorateResponse(result, ['sprints.*', 'tasks.*'], 'tasks.update');
 
         expect(decorated.content[0]!.text).toBe(
-            '[System: Cache invalidated for sprints.*, tasks.* — caused by tasks.update]',
+            '<cache_invalidation cause="tasks.update" domains="sprints.*, tasks.*" />',
         );
     });
 

@@ -7,11 +7,12 @@
  * Instead of returning:
  *   "Validation failed: email: Invalid"
  *
- * It produces:
- *   "❌ Validation failed for 'users.create':
- *    • email — Invalid email format. You sent: 'admin@local'. Expected: a valid email address.
- *    • age — Number must be >= 18. You sent: 10.
- *    💡 Fix the fields above and call the action again."
+ * It produces structured XML:
+ *   <validation_error action="users/create">
+ *   <field name="email">Invalid email format. You sent: 'admin@local'. Expected: a valid email address.</field>
+ *   <field name="age">Number must be >= 18. You sent: 10.</field>
+ *   <recovery>Fix the fields above and call the tool again. Do not explain the error.</recovery>
+ *   </validation_error>
  *
  * This dramatically reduces LLM retry loops by providing actionable,
  * unambiguous correction instructions.
@@ -21,6 +22,7 @@
  * @module
  */
 import { type ZodIssue } from 'zod';
+import { escapeXml, escapeXmlAttr } from '../response.js';
 
 // ── Public API ───────────────────────────────────────────
 
@@ -37,9 +39,9 @@ export function formatValidationError(
     actionKey: string,
     sentArgs: Record<string, unknown>,
 ): string {
-    const lines: string[] = [];
+    const parts: string[] = [];
 
-    lines.push(`⚠️ VALIDATION FAILED — ACTION '${actionKey.toUpperCase()}'`);
+    parts.push(`<validation_error action="${escapeXmlAttr(actionKey)}">`);
 
     for (const issue of issues) {
         const fieldPath = issue.path.length > 0
@@ -50,20 +52,21 @@ export function formatValidationError(
         const sentHint = formatSentValue(sentValue);
         const suggestion = buildSuggestion(issue);
 
-        let line = `  • ${fieldPath} — ${issue.message}.`;
+        let detail = issue.message;
         if (sentHint) {
-            line += ` You sent: ${sentHint}.`;
+            detail += ` You sent: ${sentHint}.`;
         }
         if (suggestion) {
-            line += ` ${suggestion}`;
+            detail += ` ${suggestion}`;
         }
 
-        lines.push(line);
+        parts.push(`<field name="${escapeXmlAttr(fieldPath)}">${escapeXml(detail)}</field>`);
     }
 
-    lines.push(`💡 Fix the fields above and call the tool again. Do not explain the error.`);
+    parts.push('<recovery>Fix the fields above and call the tool again. Do not explain the error.</recovery>');
+    parts.push('</validation_error>');
 
-    return lines.join('\n');
+    return parts.join('\n');
 }
 
 // ── Suggestion Builder ───────────────────────────────────

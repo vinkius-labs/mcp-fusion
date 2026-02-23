@@ -1,6 +1,6 @@
 # API Reference
 
-A highly dense reference manual for every public class, function, type, and interface exported by the MCP Fusion framework.
+A highly dense reference manual for every public class, function, type, and interface exported by the **MCP Fusion** framework.
 
 ---
 
@@ -21,29 +21,36 @@ return success({ id: '1', title: 'My task', status: 'open' });
 
 ### `error(message)`
 
-Instantly yields an error response strictly flagged with `isError: true`. The language model recognizes this flag.
+Returns an error response wrapped in a `<tool_error>` XML envelope with `isError: true`.
 
 ```typescript
 import { error } from '@vinkius-core/mcp-fusion';
 
 return error('Task not found');
-return error('Forbidden: admin role required');
+// Output:
+// <tool_error>
+// <message>Task not found</message>
+// </tool_error>
 ```
 
 ### `required(field)`
 
-A fast shorthand for throwing a cleanly formatted missing required field text string back to the LLM context.
+Returns a missing-field error with an error code and recovery instruction.
 
 ```typescript
 import { required } from '@vinkius-core/mcp-fusion';
 
-// Emits { content: [{ type: "text", text: "Error: project_id required" }], isError: true }
-return required('project_id');  
+return required('project_id');
+// Output:
+// <tool_error code="MISSING_REQUIRED_FIELD">
+// <message>Required field "project_id" is missing.</message>
+// <recovery>Provide the "project_id" parameter and retry.</recovery>
+// </tool_error>
 ```
 
 ### `toolError(code, options)`
 
-Creates a structured error response with recovery instructions for LLM agents. Includes an error code, a detailed message, and optional suggestions and available actions.
+Creates a self-healing error response with structured recovery instructions for LLM agents.
 
 ```typescript
 import { toolError } from '@vinkius-core/mcp-fusion';
@@ -53,11 +60,12 @@ return toolError('ProjectNotFound', {
     suggestion: 'Call projects.list to see available IDs.',
     availableActions: ['projects.list'],
 });
-
 // Output:
-// [ProjectNotFound] Project 'xyz' does not exist.
-// 💡 Suggestion: Call projects.list to see available IDs.
-// 📋 Try: projects.list
+// <tool_error code="ProjectNotFound">
+// <message>Project 'xyz' does not exist.</message>
+// <recovery>Call projects.list to see available IDs.</recovery>
+// <available_actions>projects.list</available_actions>
+// </tool_error>
 ```
 
 **Options:**
@@ -65,8 +73,8 @@ return toolError('ProjectNotFound', {
 | Field | Type | Description |
 |---|---|---|
 | `message` | `string` | Required. Human-readable error message. |
-| `suggestion` | `string?` | Optional. Recovery hint for the LLM. |
-| `availableActions` | `string[]?` | Optional. List of valid actions to try. |
+| `suggestion` | `string?` | Optional. Maps to `<recovery>` in the XML output. |
+| `availableActions` | `string[]?` | Optional. Maps to `<available_actions>` in the XML output. |
 
 ### `toonSuccess(data)`
 

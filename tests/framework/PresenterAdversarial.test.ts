@@ -327,7 +327,7 @@ describe('suggestActions adversarial', () => {
             .suggestActions(() => []);
 
         const result = presenter.make('data').build();
-        expect(result.content.some(c => c.text.includes('[SYSTEM HINT]'))).toBe(false);
+        expect(result.content.some(c => c.text.includes('action_suggestions'))).toBe(false);
     });
 
     it('should handle suggestActions with many suggestions', () => {
@@ -340,7 +340,7 @@ describe('suggestActions adversarial', () => {
             );
 
         const result = presenter.make('data').build();
-        const hint = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hint = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hint).toContain('tool_0');
         expect(hint).toContain('tool_49');
     });
@@ -352,7 +352,7 @@ describe('suggestActions adversarial', () => {
             ]);
 
         const result = presenter.make('data').build();
-        const hint = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hint = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hint).toContain('ns.tool<T>');
         expect(hint).toContain('"quotes"');
     });
@@ -418,7 +418,7 @@ describe('Double-apply configuration', () => {
             .systemRules(['Second']); // overwrites
 
         const result = presenter.make('data').build();
-        const rules = result.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const rules = result.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(rules).toContain('Second');
         // Depending on implementation, may contain both or last-wins
     });
@@ -488,7 +488,7 @@ describe('ResponseBuilder adversarial', () => {
     it('should handle systemRules with empty array', () => {
         const result = response('data').systemRules([]).build();
         // Empty rules should NOT produce a rules block
-        expect(result.content.some(c => c.text.includes('[DOMAIN RULES]'))).toBe(false);
+        expect(result.content.some(c => c.text.includes('domain_rules'))).toBe(false);
     });
 
     it('should handle uiBlock with empty content', () => {
@@ -501,7 +501,7 @@ describe('ResponseBuilder adversarial', () => {
             .systemHint([{ tool: 'only.one', reason: 'Solo' }])
             .build();
 
-        const hint = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hint = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hint).toContain('only.one');
     });
 
@@ -511,7 +511,7 @@ describe('ResponseBuilder adversarial', () => {
             .systemHint([{ tool: 'b', reason: 'second' }])
             .build();
 
-        const hint = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hint = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hint).toContain('a');
         expect(hint).toContain('b');
     });

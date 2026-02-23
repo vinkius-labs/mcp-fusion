@@ -20,17 +20,18 @@ describe('ResponseHelper', () => {
     describe('error()', () => {
         it('should return correct format with isError true', () => {
             const result = error('something went wrong');
-            expect(result).toEqual({
-                content: [{ type: 'text', text: 'something went wrong' }],
-                isError: true,
-            });
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('<tool_error>');
+            expect(result.content[0].text).toContain('<message>something went wrong</message>');
+            expect(result.content[0].text).toContain('</tool_error>');
         });
     });
 
     describe('required()', () => {
         it('should format field name in error message', () => {
             const result = required('title');
-            expect(result.content[0].text).toBe('Error: title required');
+            expect(result.content[0].text).toContain('<tool_error code="MISSING_REQUIRED_FIELD">');
+            expect(result.content[0].text).toContain('"title"');
             expect(result.isError).toBe(true);
         });
     });

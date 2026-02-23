@@ -86,7 +86,7 @@ describe('E2E: defineTool → Registry → routeCall', () => {
         // Unknown tool
         const noTool = await registry.routeCall(createCtx(), 'nope', { action: 'x' });
         expect(noTool.isError).toBe(true);
-        expect(noTool.content[0].text).toContain('Unknown tool');
+        expect(noTool.content[0].text).toContain('UNKNOWN_TOOL');
     });
 
     it('should validate shared params are required in all actions', async () => {
@@ -272,7 +272,7 @@ describe('E2E: Middleware pipeline', () => {
 
         const result = await registry.routeCall(undefined, 'blocked', { action: 'run' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('Blocked by middleware');
+        expect(result.content[0].text).toContain('<tool_error>');
         expect(handlerCalled).toBe(false);
     });
 });
@@ -358,9 +358,9 @@ describe('E2E: Self-healing errors', () => {
 
         const fail = await registry.routeCall(undefined, 'lookup', { action: 'get', id: 'nonexistent' });
         expect(fail.isError).toBe(true);
-        expect(fail.content[0].text).toContain('[NotFound]');
-        expect(fail.content[0].text).toContain('💡 Suggestion');
-        expect(fail.content[0].text).toContain('📋 Try: lookup.list');
+        expect(fail.content[0].text).toContain('code="NotFound"');
+        expect(fail.content[0].text).toContain('<recovery>');
+        expect(fail.content[0].text).toContain('<available_actions>lookup.list</available_actions>');
     });
 });
 
@@ -467,8 +467,8 @@ describe('E2E: FusionClient → ToolRegistry', () => {
         const client = createFusionClient(transport);
         const result = await client.execute('guarded.get', { id: 'x' } as any);
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('[NotFound]');
-        expect(result.content[0].text).toContain('📋 Try: guarded.list');
+        expect(result.content[0].text).toContain('code="NotFound"');
+        expect(result.content[0].text).toContain('<available_actions>guarded.list</available_actions>');
     });
 });
 
@@ -743,6 +743,6 @@ describe('E2E: Registry error boundaries', () => {
 
         const result = await registry.routeCall(undefined, 'temp', { action: 'x' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown tool');
+        expect(result.content[0].text).toContain('UNKNOWN_TOOL');
     });
 });

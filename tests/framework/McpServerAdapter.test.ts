@@ -242,7 +242,7 @@ describe('MCP Server Adapter: tools/call', () => {
         const result = await server.callTool('hacking_tool', { action: 'exploit' });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown tool');
+        expect(result.content[0].text).toContain('UNKNOWN_TOOL');
         expect(result.content[0].text).toContain('users');
         expect(result.content[0].text).toContain('billing');
     });
@@ -281,7 +281,7 @@ describe('MCP Server Adapter: tools/call', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('VALIDATION FAILED');
+        expect(result.content[0].text).toContain('validation_error');
     });
 });
 

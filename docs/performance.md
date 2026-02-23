@@ -1,12 +1,12 @@
 # Performance
 
-MCP Fusion was designed from the ground up with performance as a first-class concern. This page documents every optimization technique actually implemented in the framework — no theoretical claims, only what exists in the codebase.
+**MCP Fusion** was designed from the ground up with performance as a first-class concern. This page documents every optimization technique actually implemented in the framework — no theoretical claims, only what exists in the codebase.
 
 ---
 
 ## Philosophy: Zero-Cost Abstractions
 
-MCP Fusion follows a core principle: **features that are not enabled have zero runtime cost.**
+**MCP Fusion** follows a core principle: **features that are not enabled have zero runtime cost.**
 
 Debug observers, State Sync, middleware, Presenters — when not configured, they produce no conditionals, no object allocations, and no function calls in the hot path. The framework pays only for what you use.
 
@@ -16,7 +16,7 @@ Debug observers, State Sync, middleware, Presenters — when not configured, the
 
 ### Middleware Chain Compilation
 
-Traditional middleware frameworks resolve and compose middleware chains **on every request** — N function lookups per call. MCP Fusion eliminates this entirely.
+Traditional middleware frameworks resolve and compose middleware chains **on every request** — N function lookups per call. **MCP Fusion** eliminates this entirely.
 
 When `buildToolDefinition()` is called (or lazily on first `execute()`), the `MiddlewareCompiler` wraps middlewares right-to-left around each handler **once**, producing a single ready-to-call function per action:
 
@@ -122,7 +122,7 @@ buildToolDefinition(): McpTool {
 
 ## 3. Zero-Overhead Observability
 
-The debug observer pattern in MCP Fusion is designed so that **when disabled, the hot path has zero conditionals**:
+The debug observer pattern in **MCP Fusion** is designed so that **when disabled, the hot path has zero conditionals**:
 
 ```typescript
 // From: src/framework/builder/GroupedToolBuilder.ts — execute()
@@ -451,7 +451,7 @@ Critical performance modules are implemented as pure functions with **no state a
 
 ## 13. Minimal Dependency Footprint
 
-MCP Fusion ships with only **2 runtime dependencies**:
+**MCP Fusion** ships with only **2 runtime dependencies**:
 
 ```json
 {

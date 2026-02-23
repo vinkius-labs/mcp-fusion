@@ -10,7 +10,7 @@
  * Pipeline: ensureBuilt → parseDiscriminator → resolveAction → validateArgs → runChain
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { type ToolResponse, error } from '../response.js';
+import { type ToolResponse, error, escapeXml } from '../response.js';
 import { formatValidationError } from './ValidationErrorFormatter.js';
 import { type Result, succeed, fail } from '../result.js';
 import { type InternalAction } from '../types.js';
@@ -43,13 +43,17 @@ export function parseDiscriminator<TContext>(
     execCtx: ExecutionContext<TContext>,
     args: Record<string, unknown>,
 ): Result<string> {
-    const value = args[execCtx.discriminator] as string | undefined;
+    const raw = args[execCtx.discriminator];
+    const value = typeof raw === 'string' ? raw : undefined;
     if (!value) {
-        return fail(error(
-            `❌ ROUTING ERROR: The required field '${execCtx.discriminator}' is missing.\n` +
-            `You must specify which action to perform. Available: [${execCtx.actionKeysString}].\n` +
-            `💡 Add the '${execCtx.discriminator}' field to your JSON and call the tool again.`
-        ));
+        const text = [
+            `<tool_error code="MISSING_DISCRIMINATOR">`,
+            `<message>The required field "${escapeXml(execCtx.discriminator)}" is missing.</message>`,
+            `<available_actions>${escapeXml(execCtx.actionKeysString)}</available_actions>`,
+            `<recovery>Add the "${escapeXml(execCtx.discriminator)}" field as a string and call the tool again.</recovery>`,
+            `</tool_error>`,
+        ].join('\n');
+        return fail({ content: [{ type: 'text', text }], isError: true });
     }
     return succeed(value);
 }
@@ -61,11 +65,14 @@ export function resolveAction<TContext>(
 ): Result<ResolvedAction<TContext>> {
     const action = execCtx.actionMap.get(discriminatorValue);
     if (!action) {
-        return fail(error(
-            `❌ UNKNOWN ACTION: The ${execCtx.discriminator} '${discriminatorValue}' does not exist.\n` +
-            `Available actions: [${execCtx.actionKeysString}].\n` +
-            `💡 Choose a valid action from the list above and call the tool again.`
-        ));
+        const text = [
+            `<tool_error code="UNKNOWN_ACTION">`,
+            `<message>The ${escapeXml(execCtx.discriminator)} "${escapeXml(discriminatorValue)}" does not exist.</message>`,
+            `<available_actions>${escapeXml(execCtx.actionKeysString)}</available_actions>`,
+            `<recovery>Choose a valid action from available_actions and call the tool again.</recovery>`,
+            `</tool_error>`,
+        ].join('\n');
+        return fail({ content: [{ type: 'text', text }], isError: true });
     }
     return succeed({ action, discriminatorValue });
 }
@@ -88,12 +95,13 @@ export function validateArgs<TContext>(
     const result = validationSchema.safeParse(argsWithoutDiscriminator);
 
     if (!result.success) {
-        const message = formatValidationError(
+        const text = formatValidationError(
             result.error.issues,
             `${execCtx.toolName}/${resolved.discriminatorValue}`,
             argsWithoutDiscriminator,
         );
-        return fail(error(message));
+        // formatValidationError already produces complete XML — bypass error() to avoid double-wrapping
+        return fail({ content: [{ type: 'text', text }], isError: true });
     }
 
     // Mutate directly — zero-copy re-injection of discriminator

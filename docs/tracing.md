@@ -1,6 +1,6 @@
 # Tracing
 
-MCP Fusion provides native **OpenTelemetry-compatible tracing** for AI-native MCP servers. Every tool call produces one span with rich semantic attributes — zero dependencies, zero overhead when disabled.
+**MCP Fusion** provides native **OpenTelemetry-compatible tracing** for AI-native MCP servers. Every tool call produces one span with rich semantic attributes — zero dependencies, zero overhead when disabled.
 
 ::: tip One-line setup
 ```typescript
@@ -16,7 +16,7 @@ AI agents fail differently than humans. A human clicks the wrong button once. An
 
 Traditional APM treats every error equally: `SpanStatusCode.ERROR` → PagerDuty → dev wakes up at 3 AM. In production AI systems, this creates **alert fatigue**. The team ignores alerts, and when the database actually crashes, nobody notices.
 
-MCP Fusion solves this with **semantic error classification**: AI mistakes and infrastructure failures produce different span signals, so your monitoring can distinguish between "the AI sent wrong params" and "the database is down."
+**MCP Fusion** solves this with **semantic error classification**: AI mistakes and infrastructure failures produce different span signals, so your monitoring can distinguish between "the AI sent wrong params" and "the database is down."
 
 ---
 
@@ -62,7 +62,7 @@ registry.attachToServer(server, {
 
 ## Error Classification
 
-MCP Fusion classifies every span into one of **six outcomes**. This is the most important design decision in the tracing system.
+**MCP Fusion** classifies every span into one of **six outcomes**. This is the most important design decision in the tracing system.
 
 ### The Classification Matrix
 
@@ -186,7 +186,7 @@ Events use optional chaining (`addEvent?.()`), so tracers that don't implement `
 
 ## FusionTracer Interface
 
-MCP Fusion uses **structural subtyping** — no `implements` keyword, no `import @opentelemetry/api` required. Any object that matches the shape works:
+**MCP Fusion** uses **structural subtyping** — no `implements` keyword, no `import @opentelemetry/api` required. Any object that matches the shape works:
 
 ```typescript
 interface FusionTracer {
@@ -217,7 +217,7 @@ const tracer = trace.getTracer('mcp-fusion');
 
 ## SpanStatusCode Constants
 
-MCP Fusion exports OTel-compatible constants:
+**MCP Fusion** exports OTel-compatible constants:
 
 ```typescript
 import { SpanStatusCode } from '@vinkius-core/mcp-fusion';
@@ -246,7 +246,7 @@ The warning is **symmetric** — it fires regardless of which is enabled first.
 
 ## Graceful Error Handling
 
-When a handler throws, MCP Fusion **does not crash the server**. The exception is caught, the span is marked with `SpanStatusCode.ERROR` + `recordException()`, and a graceful error response is returned to the MCP client:
+When a handler throws, **MCP Fusion** **does not crash the server**. The exception is caught, the span is marked with `SpanStatusCode.ERROR` + `recordException()`, and a graceful error response is returned to the MCP client:
 
 ```
 Handler throws → catch block:
@@ -285,7 +285,7 @@ The `finally` block guarantees:
 
 ## Context Propagation
 
-Since MCP Fusion doesn't depend on `@opentelemetry/api`, it cannot inject span context into the OpenTelemetry context. Auto-instrumented downstream calls (Prisma, HTTP, Redis) will appear as **sibling spans**, not children.
+Since **MCP Fusion** doesn't depend on `@opentelemetry/api`, it cannot inject span context into the OpenTelemetry context. Auto-instrumented downstream calls (Prisma, HTTP, Redis) will appear as **sibling spans**, not children.
 
 This is an intentional trade-off for zero runtime dependencies.
 
@@ -353,7 +353,7 @@ Spans appear in Jaeger, Datadog, New Relic, Grafana Tempo, or any OTLP-compatibl
 
 ## Zero Overhead Guarantee
 
-When no tracer is set, MCP Fusion takes the **fast path** — a completely separate code path with zero tracing logic:
+When no tracer is set, **MCP Fusion** takes the **fast path** — a completely separate code path with zero tracing logic:
 
 - No `startSpan()` calls
 - No `setAttribute()` calls

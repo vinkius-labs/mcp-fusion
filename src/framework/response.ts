@@ -29,6 +29,43 @@
 import { encode, type EncodeOptions } from '@toon-format/toon';
 
 // ============================================================================
+// XML Safety
+// ============================================================================
+
+/**
+ * Escape XML structural characters for element content.
+ *
+ * Only `&` and `<` are mandatory escapes in XML element content.
+ * `>` is preserved for LLM readability (e.g. `>= 1`, `Must be > 0`).
+ * Single and double quotes are also preserved since they have no
+ * special meaning outside attribute values.
+ *
+ * @internal
+ */
+export function escapeXml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;');
+}
+
+/**
+ * Escape XML special characters for use inside attribute values.
+ *
+ * Attribute values are delimited by `"` or `'` and must also
+ * escape `<`, `>`, and `&`. All 5 XML special characters are handled.
+ *
+ * @internal
+ */
+export function escapeXmlAttr(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -121,7 +158,10 @@ export function success(data: string | object): ToolResponse {
  * @see {@link success} for success responses
  */
 export function error(message: string): ToolResponse {
-    return { content: [{ type: "text", text: message }], isError: true };
+    return {
+        content: [{ type: "text", text: `<tool_error>\n<message>${escapeXml(message)}</message>\n</tool_error>` }],
+        isError: true,
+    };
 }
 
 /**
@@ -144,7 +184,14 @@ export function error(message: string): ToolResponse {
  * @see {@link error} for general error responses
  */
 export function required(field: string): ToolResponse {
-    return { content: [{ type: "text", text: `Error: ${field} required` }], isError: true };
+    const f = escapeXml(field);
+    return {
+        content: [{
+            type: "text",
+            text: `<tool_error code="MISSING_REQUIRED_FIELD">\n<message>Required field "${f}" is missing.</message>\n<recovery>Provide the "${f}" parameter and retry.</recovery>\n</tool_error>`,
+        }],
+        isError: true,
+    };
 }
 
 /**
@@ -239,15 +286,17 @@ export interface ToolErrorOptions {
  * @see {@link required} for missing field errors
  */
 export function toolError(code: string, options: ToolErrorOptions): ToolResponse {
-    const lines: string[] = [`[${code}] ${options.message}`];
+    const parts: string[] = [`<tool_error code="${escapeXmlAttr(code)}">`, `<message>${escapeXml(options.message)}</message>`];
 
     if (options.suggestion) {
-        lines.push('', `💡 Suggestion: ${options.suggestion}`);
+        parts.push(`<recovery>${escapeXml(options.suggestion)}</recovery>`);
     }
 
     if ((options.availableActions?.length ?? 0) > 0) {
-        lines.push('', `📋 Try: ${options.availableActions!.join(', ')}`);
+        parts.push(`<available_actions>${options.availableActions!.map(escapeXml).join(', ')}</available_actions>`);
     }
 
-    return { content: [{ type: "text", text: lines.join('\n') }], isError: true };
+    parts.push('</tool_error>');
+
+    return { content: [{ type: "text", text: parts.join('\n') }], isError: true };
 }

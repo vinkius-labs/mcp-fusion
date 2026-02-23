@@ -291,7 +291,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         // Junior types wrong name: "task_list" instead of "tasks_list"
         const result = await server.callTool('task_list', {});
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown tool');
+        expect(result.content[0].text).toContain('UNKNOWN_TOOL');
     });
 
     it('should return error when flat tool called with wrong action (typo in name)', async () => {

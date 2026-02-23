@@ -33,7 +33,13 @@
  *
  * @module
  */
-import { type PromptBuilder, type PromptResult } from '../prompt/PromptTypes.js';
+import {
+    type PromptBuilder,
+    type PromptResult,
+    type PromptInterceptorFn,
+    type PromptMeta,
+    type PromptMessagePayload,
+} from '../prompt/PromptTypes.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -66,10 +72,25 @@ export interface PromptFilter {
  */
 export type PromptNotificationSink = () => void;
 
+// ── MX Helpers ───────────────────────────────────────────
+
+/**
+ * Format key-value data into an XML semantic block.
+ *
+ * @internal Used by the interceptor builder's `prependContext`/`appendContext`.
+ */
+function formatContext(tag: string, data: Record<string, string | number | boolean>): string {
+    const entries = Object.entries(data)
+        .map(([key, value]) => `  ${key}: ${value}`)
+        .join('\n');
+    return `<${tag}_context>\n${entries}\n</${tag}_context>`;
+}
+
 // ── Registry ─────────────────────────────────────────────
 
 export class PromptRegistry<TContext = void> {
     private readonly _builders = new Map<string, PromptBuilder<TContext>>();
+    private readonly _interceptors: PromptInterceptorFn<TContext>[] = [];
     private _notificationSink?: PromptNotificationSink;
     private _notifyDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -98,6 +119,36 @@ export class PromptRegistry<TContext = void> {
         for (const builder of builders) {
             this.register(builder);
         }
+    }
+
+    /**
+     * Register a global Prompt Interceptor.
+     *
+     * Interceptors run AFTER the handler produces its `PromptResult` and BEFORE
+     * the result is returned to the MCP client. They can prepend/append messages
+     * to inject compliance headers, tenant context, RBAC constraints, or any
+     * global state that should wrap every prompt.
+     *
+     * **Enterprise use case**: The CISO requires every LLM interaction to include
+     * tenant isolation rules. Register one interceptor — it applies to all 50 prompts.
+     *
+     * Multiple interceptors are supported. They execute in registration order.
+     *
+     * @param interceptor - Callback receiving (ctx, builder, promptMeta)
+     *
+     * @example
+     * ```typescript
+     * promptRegistry.useInterceptor(async (ctx, builder, meta) => {
+     *     builder.prependSystem(
+     *         `[ENTERPRISE COMPLIANCE LAYER]\n` +
+     *         `User Role: ${ctx.user.role} (Tenant ID: ${ctx.tenant.id})\n` +
+     *         `Server Time: ${new Date().toISOString()}`
+     *     );
+     * });
+     * ```
+     */
+    useInterceptor(interceptor: PromptInterceptorFn<TContext>): void {
+        this._interceptors.push(interceptor);
     }
 
     /**
@@ -193,7 +244,62 @@ export class PromptRegistry<TContext = void> {
                 }],
             };
         }
-        return builder.execute(ctx, args);
+
+        const result = await builder.execute(ctx, args);
+
+        // ── Prompt Interceptors ──────────────────────────
+        // Zero overhead when no interceptors registered.
+        if (this._interceptors.length === 0) return result;
+
+        // Build PromptMeta from the builder's compiled definition
+        const def = builder.buildPromptDefinition();
+        const meta: PromptMeta = {
+            name: def.name,
+            description: def.description,
+            tags: builder.getTags(),
+        };
+
+        // Create mutable builder facade
+        const prepended: PromptMessagePayload[] = [];
+        const appended: PromptMessagePayload[] = [];
+
+        const interceptorBuilder = {
+            prependSystem(text: string) {
+                prepended.push({ role: 'user', content: { type: 'text', text } });
+            },
+            prependUser(text: string) {
+                prepended.push({ role: 'user', content: { type: 'text', text } });
+            },
+            appendSystem(text: string) {
+                appended.push({ role: 'user', content: { type: 'text', text } });
+            },
+            appendUser(text: string) {
+                appended.push({ role: 'user', content: { type: 'text', text } });
+            },
+            appendAssistant(text: string) {
+                appended.push({ role: 'assistant', content: { type: 'text', text } });
+            },
+            prependContext(tag: string, data: Record<string, string | number | boolean>) {
+                prepended.push({ role: 'user', content: { type: 'text', text: formatContext(tag, data) } });
+            },
+            appendContext(tag: string, data: Record<string, string | number | boolean>) {
+                appended.push({ role: 'user', content: { type: 'text', text: formatContext(tag, data) } });
+            },
+        };
+
+        // Execute interceptors in registration order
+        for (const interceptor of this._interceptors) {
+            await interceptor(ctx, interceptorBuilder, meta);
+        }
+
+        // Short-circuit: no messages added → return original
+        if (prepended.length === 0 && appended.length === 0) return result;
+
+        // Merge: prepend + original + append
+        return {
+            ...result,
+            messages: [...prepended, ...result.messages, ...appended],
+        };
     }
 
     // ── Lifecycle Sync ───────────────────────────────────

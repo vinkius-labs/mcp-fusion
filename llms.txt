@@ -243,6 +243,8 @@ return toolError('INVALID_DATE_RANGE', {
 });
 ```
 
+All error XML output is automatically escaped to prevent injection. Pipeline errors use structured codes: `MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`, `UNKNOWN_TOOL`, `MISSING_REQUIRED_FIELD`.
+
 ## State Sync
 
 ```typescript
@@ -477,7 +479,7 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 - `.tracing(tracer)` on builders — per-tool tracing
 - `ToolRegistry.enableTracing(tracer)` — propagate to all builders
 - `AttachOptions.tracing` — pass tracer to `attachToServer()` for full server tracing
-- **Error classification**: AI errors (`validation_failed`, `missing_discriminator`, `unknown_action`, `handler_returned_error`) → `SpanStatusCode.UNSET` (no PagerDuty). System errors (handler `throw`) → `SpanStatusCode.ERROR` (triggers alerts).
+- **Error classification**: AI errors (`validation_failed`, `missing_discriminator`, `unknown_action`, `unknown_tool`, `handler_returned_error`) → `SpanStatusCode.UNSET` (no PagerDuty). System errors (handler `throw`) → `SpanStatusCode.ERROR` (triggers alerts).
 - **Enterprise attributes**: `mcp.system`, `mcp.tool`, `mcp.action`, `mcp.durationMs`, `mcp.isError`, `mcp.error_type`, `mcp.tags`, `mcp.description`, `mcp.response_size`
 - **Span events**: `mcp.route`, `mcp.validate` (with `mcp.valid`, `mcp.durationMs`), `mcp.middleware` (with `mcp.chainLength`)
 - Zero overhead when no tracer is set — separate fast path

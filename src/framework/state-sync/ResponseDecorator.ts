@@ -40,7 +40,7 @@ export function decorateResponse(
     return {
         ...result,
         content: [
-            { type: 'text' as const, text: `[System: Cache invalidated for ${domains} — caused by ${causedBy}]` },
+            { type: 'text' as const, text: `<cache_invalidation cause="${causedBy}" domains="${domains}" />` },
             ...result.content,
         ],
     };

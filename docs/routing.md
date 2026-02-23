@@ -6,7 +6,7 @@ If you expose 100 individual flat tools to an LLM, two negative things happen:
 1. **Context Bloat:** You eat thousands of tokens of context space just sending instructions about the tools.
 2. **Semantic Hallucination:** The AI gets confused between `user_preferences_update` and `system_preferences_update`.
 
-MCP Fusion solves this through **Grouped Routing** and **Discriminators**.
+**MCP Fusion** solves this through **Grouped Routing** and **Discriminators**.
 
 ---
 

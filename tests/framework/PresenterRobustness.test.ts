@@ -140,7 +140,7 @@ describe('Empty Data Edge Cases', () => {
 
         const result = presenter.make([]).build();
         const texts = result.content.map(c => c.text);
-        expect(texts.some(t => t.includes('[SYSTEM HINT]'))).toBe(false);
+        expect(texts.some(t => t.includes('action_suggestions'))).toBe(false);
     });
 });
 
@@ -154,7 +154,7 @@ describe('Null Filtering', () => {
             .systemRules(() => [null, 'Valid rule', null, null]);
 
         const result = presenter.make('data').build();
-        const rules = result.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const rules = result.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(rules).toContain('Valid rule');
         expect(rules.split('\n').filter(l => l.startsWith('-'))).toHaveLength(1);
     });
@@ -165,7 +165,7 @@ describe('Null Filtering', () => {
 
         const result = presenter.make('data').build();
         // data + 1 UI block (nulls filtered)
-        const uiBlocks = result.content.filter(c => c.text.includes('[SYSTEM]'));
+        const uiBlocks = result.content.filter(c => c.text.includes('ui_passthrough'));
         expect(uiBlocks).toHaveLength(1);
     });
 
@@ -174,7 +174,7 @@ describe('Null Filtering', () => {
             .collectionUiBlocks(() => [null, ui.markdown('Summary'), null, null]);
 
         const result = presenter.make(['a', 'b']).build();
-        const uiBlocks = result.content.filter(c => c.text.includes('[SYSTEM]'));
+        const uiBlocks = result.content.filter(c => c.text.includes('ui_passthrough'));
         expect(uiBlocks).toHaveLength(1);
     });
 
@@ -183,7 +183,7 @@ describe('Null Filtering', () => {
             .systemRules(() => [null, null, null]);
 
         const result = presenter.make('data').build();
-        expect(result.content.some(c => c.text.includes('[DOMAIN RULES]'))).toBe(false);
+        expect(result.content.some(c => c.text.includes('domain_rules'))).toBe(false);
     });
 
     it('should produce no UI when all blocks are null', () => {
@@ -191,7 +191,7 @@ describe('Null Filtering', () => {
             .uiBlocks(() => [null, null]);
 
         const result = presenter.make('data').build();
-        expect(result.content.filter(c => c.text.includes('[SYSTEM]'))).toHaveLength(0);
+        expect(result.content.filter(c => c.text.includes('ui_passthrough'))).toHaveLength(0);
     });
 });
 
@@ -207,7 +207,7 @@ describe('Dynamic Rules Without Context', () => {
             ]);
 
         const result = presenter.make('data').build();
-        const rules = result.content.find(c => c.text.includes('[DOMAIN RULES]'))?.text ?? '';
+        const rules = result.content.find(c => c.text.includes('domain_rules'))?.text ?? '';
         expect(rules).toContain('No context provided');
     });
 
@@ -271,7 +271,7 @@ describe('agentLimit Boundaries', () => {
 
         const result = presenter.make(makeItems(5)).build();
         // Find the truncation and collection blocks
-        const systemBlocks = result.content.filter(c => c.text.includes('[SYSTEM]'));
+        const systemBlocks = result.content.filter(c => c.text.includes('ui_passthrough'));
         // First UI block should be truncation warning
         expect(systemBlocks[0]!.text).toContain('hidden');
         expect(systemBlocks[1]!.text).toContain('Collection view');
@@ -298,7 +298,7 @@ describe('suggestActions on Collections', () => {
             { id: 'A', value: 100 },
             { id: 'B', value: 9999 },
         ]).build();
-        expect(r1.content.some(c => c.text.includes('[SYSTEM HINT]'))).toBe(false);
+        expect(r1.content.some(c => c.text.includes('action_suggestions'))).toBe(false);
     });
 });
 
@@ -419,7 +419,7 @@ describe('uiBlocks vs collectionUiBlocks', () => {
 // =====================================================================
 
 describe('ResponseBuilder — systemHint()', () => {
-    it('should generate [SYSTEM HINT] block with action suggestions', () => {
+    it('should generate action_suggestions block with action suggestions', () => {
         const result = response('data')
             .systemHint([
                 { tool: 'billing.pay', reason: 'Offer payment' },
@@ -427,16 +427,16 @@ describe('ResponseBuilder — systemHint()', () => {
             ])
             .build();
 
-        const hintBlock = result.content.find(c => c.text.includes('[SYSTEM HINT]'))?.text ?? '';
+        const hintBlock = result.content.find(c => c.text.includes('action_suggestions'))?.text ?? '';
         expect(hintBlock).toContain('billing.pay');
         expect(hintBlock).toContain('Offer payment');
         expect(hintBlock).toContain('billing.remind');
-        expect(hintBlock).toContain('→'); // arrow prefix
+        expect(hintBlock).toContain('- '); // dash prefix
     });
 
     it('should not generate block for empty suggestions', () => {
         const result = response('data').systemHint([]).build();
-        expect(result.content.some(c => c.text.includes('[SYSTEM HINT]'))).toBe(false);
+        expect(result.content.some(c => c.text.includes('action_suggestions'))).toBe(false);
     });
 
     it('should place suggestions after rules in block order', () => {
@@ -445,8 +445,8 @@ describe('ResponseBuilder — systemHint()', () => {
             .systemHint([{ tool: 'test', reason: 'Test' }])
             .build();
 
-        const rulesIdx = result.content.findIndex(c => c.text.includes('[DOMAIN RULES]'));
-        const hintIdx = result.content.findIndex(c => c.text.includes('[SYSTEM HINT]'));
+        const rulesIdx = result.content.findIndex(c => c.text.includes('domain_rules'));
+        const hintIdx = result.content.findIndex(c => c.text.includes('action_suggestions'));
         expect(rulesIdx).toBeLessThan(hintIdx);
     });
 });
@@ -476,9 +476,9 @@ describe('ResponseBuilder — rawBlock()', () => {
             .llmHint('Hint text')
             .build();
 
-        const uiIdx = result.content.findIndex(c => c.text.includes('[SYSTEM]'));
+        const uiIdx = result.content.findIndex(c => c.text.includes('ui_passthrough'));
         const rawIdx = result.content.findIndex(c => c.text === 'Raw content');
-        const hintIdx = result.content.findIndex(c => c.text.includes('💡'));
+        const hintIdx = result.content.findIndex(c => c.text.includes('llm_directives'));
 
         expect(uiIdx).toBeLessThan(rawIdx);
         expect(rawIdx).toBeLessThan(hintIdx);
@@ -504,15 +504,15 @@ describe('ResponseBuilder — Full Block Order', () => {
         // 1. Data
         expect(JSON.parse(result.content[0]!.text)).toEqual({ id: '123' });
         // 2. UI
-        expect(result.content[1]!.text).toContain('[SYSTEM]');
+        expect(result.content[1]!.text).toContain('ui_passthrough');
         // 3. Raw
         expect(result.content[2]!.text).toBe('From child presenter');
         // 4. Hints
-        expect(result.content[3]!.text).toContain('💡');
+        expect(result.content[3]!.text).toContain('llm_directives');
         // 5. Rules
-        expect(result.content[4]!.text).toContain('[DOMAIN RULES]');
+        expect(result.content[4]!.text).toContain('domain_rules');
         // 6. Suggestions
-        expect(result.content[5]!.text).toContain('[SYSTEM HINT]');
+        expect(result.content[5]!.text).toContain('action_suggestions');
     });
 });
 

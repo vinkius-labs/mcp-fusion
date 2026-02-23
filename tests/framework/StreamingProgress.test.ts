@@ -202,7 +202,7 @@ describe('Streaming Progress (generator handlers)', () => {
 
         const result = await tool.execute(undefined, { action: 'check' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('Validation failed');
+        expect(result.content[0].text).toContain('Validation failed');
     });
 
     it('should work with regular (non-generator) handlers unchanged', async () => {
@@ -284,7 +284,7 @@ describe('Streaming Progress with Middleware', () => {
 
         const fail = await tool.execute({}, { action: 'deploy' });
         expect(fail.isError).toBe(true);
-        expect(fail.content[0].text).toBe('Unauthorized');
+        expect(fail.content[0].text).toContain('Unauthorized');
 
         const ok = await tool.execute({ token: 'valid' }, { action: 'deploy' });
         expect(ok.content[0].text).toBe('deployed');

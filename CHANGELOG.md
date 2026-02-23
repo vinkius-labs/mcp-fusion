@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.6.1] - 2026-02-23
+
+### 🛡️ XML Security & Error Protocol Hardening
+
+Comprehensive security audit of the XML error protocol. Prevents XML injection, hardens type safety, and upgrades the registry-level error to the structured `toolError()` protocol.
+
+### Security
+
+- **XML injection prevention:** Introduced `escapeXml()` (element content — escapes `&` and `<`) and `escapeXmlAttr()` (attribute values — escapes all 5 XML special characters). Applied across `response.ts`, `ExecutionPipeline.ts`, `ValidationErrorFormatter.ts`, and `PromptExecutionPipeline.ts`.
+- **Dual escaping strategy:** Element content preserves `>` for LLM readability (`>= 1`, `Must be > 0`). Attribute values use strict escaping.
+
+### Fixed
+
+- **Type safety in `parseDiscriminator`:** Replaced unsafe `as string` cast with runtime `typeof` check. Non-string discriminator values (numbers, booleans, objects) now return `MISSING_DISCRIMINATOR` instead of causing `TypeError: str.replace is not a function`.
+- **Structured `UNKNOWN_TOOL` error:** `ToolRegistry.routeCall()` now returns `toolError('UNKNOWN_TOOL', ...)` with structured XML (code, message, available tools, recovery hint) instead of a freeform `error()` string. Consistent with pipeline-level errors (`MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`).
+
+### Documentation
+
+- **error-handling.md:** Added `UNKNOWN_TOOL` to the Unified XML Protocol table. Added XML Security tip callout.
+- **llms.txt:** Added XML security note with pipeline error codes. Added `unknown_tool` to tracing error classification.
+
+### DX
+
+- **English error messages:** Translated remaining Portuguese error message in `defineTool.ts` to English.
+
+### Test Suite
+
+- **1,389 tests** across 417 suites, all passing.
+
 ## [1.6.0] - 2026-02-23
 
 ### 🔗 MVA-Driven Prompts — `PromptMessage.fromView()`

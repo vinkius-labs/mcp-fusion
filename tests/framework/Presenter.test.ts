@@ -94,7 +94,7 @@ describe('Presenter', () => {
 
             // Data block + Rules block = 2 blocks
             expect(result.content.length).toBe(2);
-            expect(result.content[1].text).toContain('[DOMAIN RULES]');
+            expect(result.content[1].text).toContain('domain_rules');
             expect(result.content[1].text).toContain('Divide by 100');
             expect(result.content[1].text).toContain('$XX,XXX.00');
         });

@@ -18,6 +18,7 @@
 import { type ZodObject, type ZodRawShape, type ZodTypeAny } from 'zod';
 import { type PromptResult } from './PromptTypes.js';
 import { type MiddlewareFn } from '../types.js';
+import { escapeXml, escapeXmlAttr } from '../response.js';
 
 // ── Flat Schema Guard ────────────────────────────────────
 
@@ -139,13 +140,14 @@ export function coercePromptArgs(
  * (or the user via the MCP client) to correct the input.
  */
 function formatPromptValidationError(issues: { path: (string | number)[]; message: string }[]): string {
-    const lines = ['⚠️ PROMPT ARGUMENT VALIDATION FAILED:', ''];
+    const parts: string[] = ['<validation_error>'];
     for (const issue of issues) {
         const field = issue.path.join('.') || '(root)';
-        lines.push(`  • ${field} — ${issue.message}`);
+        parts.push(`<field name="${escapeXmlAttr(field)}">${escapeXml(issue.message)}</field>`);
     }
-    lines.push('', '💡 Check the prompt definition for valid argument types and values.');
-    return lines.join('\n');
+    parts.push('<recovery>Check the prompt definition for valid argument types and values.</recovery>');
+    parts.push('</validation_error>');
+    return parts.join('\n');
 }
 
 // ── Middleware Compiler ──────────────────────────────────

@@ -72,7 +72,7 @@ describe('Generator yield — ProgressSink verification', () => {
 
         const result = await tool.execute(undefined, { action: 'fail' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toBe('Instant failure');
+        expect(result.content[0].text).toContain('Instant failure');
     });
 
     it('should handle generator that throws after yields', async () => {
@@ -114,7 +114,7 @@ describe('defineTool — JSON params produce real Zod validation', () => {
             action: 'run', name: 'ab',
         });
         expect(r1.isError).toBe(true);
-        expect(r1.content[0].text).toContain('VALIDATION FAILED');
+        expect(r1.content[0].text).toContain('validation_error');
 
         // Too long
         const r2 = await registry.routeCall(undefined, 'str_bounds', {
@@ -352,7 +352,7 @@ describe('defineTool — JSON params produce real Zod validation', () => {
             action: 'run', count: 'not-a-number',
         });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('VALIDATION FAILED');
+        expect(result.content[0].text).toContain('validation_error');
     });
 
     it('should validate boolean type', async () => {

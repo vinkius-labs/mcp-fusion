@@ -1,6 +1,6 @@
 # Introspection
 
-The framework provides runtime access to internal action metadata. This exposes exactly how MCP Fusion registers tools, enabling you to build compliance audits, admin dashboards, middleware validation checks, programmatic documentation generation, and strict test coverage reports natively.
+The framework provides runtime access to internal action metadata. This exposes exactly how **MCP Fusion** registers tools, enabling you to build compliance audits, admin dashboards, middleware validation checks, programmatic documentation generation, and strict test coverage reports natively.
 
 ---
 

@@ -58,7 +58,7 @@ describe('ToolRegistry', () => {
 
         const result = await registry.routeCall(undefined as any, 'nonexistent', { action: 'list' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('Unknown tool');
+        expect(result.content[0].text).toContain('UNKNOWN_TOOL');
         expect(result.content[0].text).toContain('task');
     });
 

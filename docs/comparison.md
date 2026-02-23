@@ -4,7 +4,7 @@ Every MCP server today follows the same pattern: raw JSON output, manual routing
 
 ## The Quick Comparison
 
-| Aspect | Without MVA | With MVA (mcp-fusion) |
+| Aspect | Without MVA | With MVA (**MCP Fusion**) |
 |---|---|---|
 | **Tool count** | 50 individual tools registered. LLM sees ALL of them. Token explosion. | **Action consolidation** — 5,000+ operations behind ONE tool via `module.action` discriminator. 10x fewer tokens. |
 | **Response format** | Raw `JSON.stringify()` — the AI parses and guesses | **Structured perception package** — validated data + rules + UI + affordances |

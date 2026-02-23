@@ -53,7 +53,7 @@ describe('ResponseBuilder', () => {
             expect(result.content).toHaveLength(2);
             expect(result.content[0].text).toBe('data');
             expect(result.content[1].text).toContain('```echarts');
-            expect(result.content[1].text).toContain('[SYSTEM]');
+            expect(result.content[1].text).toContain('ui_passthrough');
             expect(result.content[1].text).toContain('echarts');
         });
 
@@ -76,7 +76,7 @@ describe('ResponseBuilder', () => {
                 .build();
 
             expect(result.content).toHaveLength(2);
-            expect(result.content[1].text).toContain('💡');
+            expect(result.content[1].text).toContain('llm_directives');
             expect(result.content[1].text).toContain('Divide amounts by 100');
         });
 
@@ -93,13 +93,13 @@ describe('ResponseBuilder', () => {
     });
 
     describe('.systemRules() — domain rules', () => {
-        it('should append rules as a [DOMAIN RULES] content block', () => {
+        it('should append rules as a domain_rules content block', () => {
             const result = response('data')
                 .systemRules(['Use emojis: ✅ Paid', 'Format: $XX,XXX.00'])
                 .build();
 
             expect(result.content).toHaveLength(2);
-            expect(result.content[1].text).toContain('[DOMAIN RULES]');
+            expect(result.content[1].text).toContain('domain_rules');
             expect(result.content[1].text).toContain('Use emojis: ✅ Paid');
             expect(result.content[1].text).toContain('Format: $XX,XXX.00');
         });
@@ -120,13 +120,13 @@ describe('ResponseBuilder', () => {
 
             // Block 2: UI
             expect(result.content[1].text).toContain('echarts');
-            expect(result.content[1].text).toContain('[SYSTEM]');
+            expect(result.content[1].text).toContain('ui_passthrough');
 
             // Block 3: Hints
-            expect(result.content[2].text).toContain('💡');
+            expect(result.content[2].text).toContain('llm_directives');
 
             // Block 4: Rules
-            expect(result.content[3].text).toContain('[DOMAIN RULES]');
+            expect(result.content[3].text).toContain('domain_rules');
         });
     });
 

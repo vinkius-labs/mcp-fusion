@@ -96,7 +96,7 @@ describe('postProcessResult() — Priority 2: ResponseBuilder', () => {
         const builder = response('builder wins').systemRules(['rule']);
         const result = postProcessResult(builder, presenter);
         expect(result.content[0]!.text).toBe('builder wins');
-        expect(result.content[1]!.text).toContain('[DOMAIN RULES]');
+        expect(result.content[1]!.text).toContain('domain_rules');
     });
 
     it('should auto-build with all layers (UI, hints, rules)', () => {

@@ -51,8 +51,8 @@ describe('StateSyncLayer', () => {
             const decorated = layer.decorateResult('sprints.update', result);
 
             expect(decorated.content).toHaveLength(2);
-            expect(decorated.content[0]!.text).toContain('Cache invalidated for sprints.*');
-            expect(decorated.content[0]!.text).toContain('caused by sprints.update');
+            expect(decorated.content[0]!.text).toContain('domains="sprints.*"');
+            expect(decorated.content[0]!.text).toContain('cause="sprints.update"');
         });
 
         it('does NOT prepend signal on failed mutation', () => {
@@ -75,8 +75,8 @@ describe('StateSyncLayer', () => {
             const result = makeResult('{}');
             const decorated = layer.decorateResult('tasks.update', result);
 
-            expect(decorated.content[0]!.text).toContain('tasks.*, sprints.*');
-            expect(decorated.content[0]!.text).toContain('caused by tasks.update');
+            expect(decorated.content[0]!.text).toContain('domains="tasks.*, sprints.*"');
+            expect(decorated.content[0]!.text).toContain('cause="tasks.update"');
         });
     });
 

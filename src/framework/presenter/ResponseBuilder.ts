@@ -297,11 +297,11 @@ export class ResponseBuilder {
         // Block 1: Data
         content.push({ type: 'text', text: this._data });
 
-        // Block 2: UI Blocks (one content entry per block)
+        // Block 2: UI Blocks — XML semantic boundary for pass-through rendering
         for (const block of this._uiBlocks) {
             content.push({
                 type: 'text',
-                text: `${block.content}\n[SYSTEM]: Pass this ${block.type} block directly to the user interface.`,
+                text: `<ui_passthrough type="${block.type}">\n${block.content}\n</ui_passthrough>`,
             });
         }
 
@@ -310,25 +310,27 @@ export class ResponseBuilder {
             content.push({ type: 'text', text: raw });
         }
 
-        // Block 4: LLM Hints
+        // Block 4: LLM Directives — XML semantic boundary
         if (this._hints.length > 0) {
-            const hintsText = this._hints
-                .map(h => `💡 ${h}`)
-                .join('\n');
+            const hintsText = '<llm_directives>\n' +
+                this._hints.map(h => `- ${h}`).join('\n') +
+                '\n</llm_directives>';
             content.push({ type: 'text', text: hintsText });
         }
 
-        // Block 5: System Rules
+        // Block 5: Domain Rules — XML semantic boundary
         if (this._rules.length > 0) {
-            const rulesText = '[DOMAIN RULES]:\n' +
-                this._rules.map(r => `- ${r}`).join('\n');
+            const rulesText = '<domain_rules>\n' +
+                this._rules.map(r => `- ${r}`).join('\n') +
+                '\n</domain_rules>';
             content.push({ type: 'text', text: rulesText });
         }
 
-        // Block 6: Action Suggestions (HATEOAS)
+        // Block 6: Action Suggestions (HATEOAS) — XML semantic boundary
         if (this._suggestions.length > 0) {
-            const suggestionsText = '[SYSTEM HINT]: Based on the current state, recommended next tools:\n' +
-                this._suggestions.map(s => `  → ${s.tool}: ${s.reason}`).join('\n');
+            const suggestionsText = '<action_suggestions>\n' +
+                this._suggestions.map(s => `- ${s.tool}: ${s.reason}`).join('\n') +
+                '\n</action_suggestions>';
             content.push({ type: 'text', text: suggestionsText });
         }
 

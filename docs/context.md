@@ -2,7 +2,7 @@
 
 In realistic applications, your tool execution handlers need access to external states: database clients, active HTTP sessions, active user contexts, or logging architectures.
 
-You should not rely on global variables for this. MCP Fusion handles this elegantly via a generic `TContext` typing injection constraint.
+You should not rely on global variables for this. **MCP Fusion** handles this elegantly via a generic `TContext` typing injection constraint.
 
 ## 1. Type your Context Context
 

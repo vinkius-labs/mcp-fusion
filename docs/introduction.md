@@ -30,7 +30,7 @@ The AI industry is building agents on top of patterns designed for humans. MVC s
 
 ---
 
-## What mcp-fusion Solves
+## What **MCP Fusion** Solves
 
 ### 1. Context Window Saturation
 Standard MCP servers expose individual tools for every operation. 50 tools = 50 JSON schemas burning precious tokens. The LLM's memory degrades and routing accuracy collapses.
@@ -112,7 +112,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 
 ## Who Is This For?
 
-**For engineers building AI-powered products.** If your backend serves data to LLM agents — through any MCP-compatible runtime (Claude, GPT, Gemini, or open-weight models) — mcp-fusion gives you the architecture to do it at scale without hallucination.
+**For engineers building AI-powered products.** If your backend serves data to LLM agents — through any MCP-compatible runtime (Claude, GPT, Gemini, or open-weight models) — **MCP Fusion** gives you the architecture to do it at scale without hallucination.
 
 **For teams scaling beyond prototypes.** When your MCP server grows from 5 tools to 500 actions, mcp-fusion's routing, middleware, and Presenter system keep the codebase clean and the agent accurate.
 

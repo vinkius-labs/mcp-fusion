@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Stop Writing MCP Servers Like It's 2024."
   text: ""
-  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. mcp-fusion introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer so AI agents perceive, understand, and act on your data like trained engineers, not guessing machines."
+  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. **MCP Fusion** introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer so AI agents perceive, understand, and act on your data like trained engineers, not guessing machines."
   actions:
     - theme: brand
       text: The MVA Manifesto →
@@ -27,7 +27,7 @@ hero:
 <p class="ms-sub">That's how every MCP server works today.</p>
 </div>
 <div class="ms-right">
-<p class="ms-body">mcp-fusion introduces MVA (Model-View-Agent) — a completely new way to build MCP servers where every response is a structured perception package: validated data, domain rules, server-rendered charts, and explicit next-action hints. The AI doesn't guess. It knows.</p>
+<p class="ms-body">**MCP Fusion** introduces MVA (Model-View-Agent) — a completely new way to build MCP servers where every response is a structured perception package: validated data, domain rules, server-rendered charts, and explicit next-action hints. The AI doesn't guess. It knows.</p>
 <div class="ms-metrics">
 <div class="ms-metric">
 <div class="ms-metric-label">CAPABILITIES</div>
@@ -98,13 +98,13 @@ const billing = defineTool<AppContext>('billing', {
 <div class="ms-compare-header">
 <div class="ms-label">WHAT CHANGES</div>
 <h2 class="ms-headline">Without MVA vs With MVA</h2>
-<p class="ms-sub">Every line is a capability that exists in mcp-fusion today. Not a roadmap. Not a promise.</p>
+<p class="ms-sub">Every line is a capability that exists in **MCP Fusion** today. Not a roadmap. Not a promise.</p>
 </div>
 <div class="ms-compare-table">
 <div class="ms-compare-row ms-compare-head">
 <div class="ms-compare-aspect"></div>
 <div class="ms-compare-before">Without MVA</div>
-<div class="ms-compare-after">With MVA (mcp-fusion)</div>
+<div class="ms-compare-after">With MVA (**MCP Fusion**)</div>
 </div>
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Tool count</div>
