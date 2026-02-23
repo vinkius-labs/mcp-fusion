@@ -225,6 +225,35 @@ return builder.build();
 
 ---
 
+## Using Presenters in Prompts <Badge type="tip" text="NEW" />
+
+Presenters aren't just for Tools. Use `PromptMessage.fromView()` to inject a Presenter's full output — data, rules, UI blocks, and affordances — directly into a Prompt handler:
+
+```typescript
+import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const AuditPrompt = definePrompt<AppContext>('audit', {
+    args: { invoiceId: 'string' } as const,
+    handler: async (ctx, { invoiceId }) => {
+        const invoice = await ctx.db.getInvoice(invoiceId);
+
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Financial Auditor.'),
+                ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+                PromptMessage.user('Begin the audit for this invoice.'),
+            ],
+        };
+    },
+});
+```
+
+The Presenter's `systemRules()`, `uiBlocks()`, and `suggestActions()` are decomposed into XML-tagged prompt messages — **zero duplication** between your Tool and Prompt handlers.
+
+::: tip Learn More
+See [MVA-Driven Prompts — `fromView()`](/prompts#mva-driven-prompts-—-fromview) in the Prompt Engine docs for the full decomposition architecture and composability patterns.
+:::
+
 ## UI Block Helpers
 
 The `ui` namespace provides factory functions for all supported block types:
@@ -286,5 +315,6 @@ This prevents accidental mutation bugs in shared modules. `.make()` itself can b
 
 - [MVA Pattern →](/mva-pattern) — The architectural paradigm behind Presenters
 - [Building Tools →](/building-tools) — Define tools with the `returns` field
+- [Prompt Engine →](/prompts) — Use Presenters inside Prompts with `fromView()`
 - [Middleware →](/middleware) — Context derivation for RBAC in Presenters
 - [Architecture →](/architecture) — How the execution pipeline processes Presenters

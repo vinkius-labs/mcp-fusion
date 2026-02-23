@@ -129,6 +129,10 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Prompt Engine', link: '/prompts' },
+          { text: 'MVA-Driven Prompts (fromView)', link: '/prompts#mva-driven-prompts-—-fromview' },
+          { text: 'PromptRegistry & Routing', link: '/prompts#promptregistry-—-registration-routing' },
+          { text: 'Schema-Informed Coercion', link: '/prompts#schema-informed-coercion' },
+          { text: 'Server Integration', link: '/prompts#server-integration' },
         ]
       },
 
@@ -180,6 +184,17 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'API Reference', link: '/api-reference' },
+          { text: 'Response Helpers', link: '/api-reference#response-helpers' },
+          { text: 'Tool Builders', link: '/api-reference#tool-builders' },
+          { text: 'Middleware', link: '/api-reference#middleware' },
+          { text: 'Streaming Progress', link: '/api-reference#streaming-progress' },
+          { text: 'Result Monad', link: '/api-reference#result-monad' },
+          { text: 'FusionClient', link: '/api-reference#fusionclient' },
+          { text: 'ToolRegistry', link: '/api-reference#toolregistry' },
+          { text: 'Observability', link: '/api-reference#observability' },
+          { text: 'State Sync', link: '/api-reference#state-sync' },
+          { text: 'Prompt Engine', link: '/api-reference#prompt-engine' },
+          { text: 'Domain Models', link: '/api-reference#domain-model-classes' },
         ]
       },
     ],

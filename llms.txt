@@ -339,6 +339,52 @@ handler: async function* (ctx, args) {
 // Wire format: { method: 'notifications/progress', params: { progressToken, progress: 25, total: 100, message: 'Loading data...' } }
 ```
 
+## Prompt Engine
+
+Server-side hydrated prompt templates with schema-informed coercion and lifecycle sync. The `definePrompt()` factory enforces a **flat schema constraint** — prompt arguments must be primitives (string, number, boolean, enum) because MCP clients render them as forms.
+
+```typescript
+import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const SummarizePrompt = definePrompt<AppContext>('summarize', {
+    title: 'Summarize Document',
+    description: 'Generate a summary of a document.',
+    args: {
+        docId: 'string',
+        length: { enum: ['short', 'medium', 'long'] as const },
+    } as const,
+    handler: async (ctx, { docId, length }) => {
+        const doc = await ctx.db.documents.get(docId);
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Technical Writer.'),
+                PromptMessage.user(`Summarize this document (${length}):\n\n${doc.content}`),
+            ],
+        };
+    },
+});
+```
+
+## MVA-Driven Prompts — fromView()
+
+Bridge your Presenter layer into Prompts with zero duplication. `PromptMessage.fromView()` decomposes a `ResponseBuilder` into XML-tagged prompt messages (`<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`) optimized for frontier LLMs. Domain rules, UI blocks, and action suggestions from the Presenter are automatically extracted — single source of truth.
+
+```typescript
+const AuditPrompt = definePrompt<AppContext>('audit', {
+    args: { invoiceId: 'string' } as const,
+    handler: async (ctx, { invoiceId }) => {
+        const invoice = await ctx.db.getInvoice(invoiceId);
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Financial Auditor.'),
+                ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+                PromptMessage.user('Begin the audit.'),
+            ],
+        };
+    },
+});
+```
+
 ## Important Rules
 
 1. `.action()` and `.group()` are MUTUALLY EXCLUSIVE on the same builder
@@ -401,6 +447,17 @@ handler: async function* (ctx, args) {
 - `isProgressEvent(value)` → type guard
 - `ProgressSink` — callback type `(event: ProgressEvent) => void` — auto-wired by `attachToServer()`, or pass manually to `execute()` / `routeCall()` for testing
 
+### Prompt Engine
+- `definePrompt<TContext>(name, config)` → PromptBuilder — JSON-first or Zod schema for args, flat primitives only
+- `PromptMessage.system(text)` → PromptMessagePayload (system instruction as MCP user role)
+- `PromptMessage.user(text)` → PromptMessagePayload
+- `PromptMessage.assistant(text)` → PromptMessagePayload (multi-turn seeding)
+- `PromptMessage.image(role, data, mimeType)` → PromptMessagePayload
+- `PromptMessage.audio(role, data, mimeType)` → PromptMessagePayload
+- `PromptMessage.resource(role, uri, options?)` → PromptMessagePayload
+- `PromptMessage.fromView(builder)` → PromptMessagePayload[] — decomposes ResponseBuilder into XML-tagged messages (<domain_rules>, <dataset>, <visual_context>, <system_guidance>)
+- `PromptRegistry<TContext>` — .register(), .registerAll(), .getAllPrompts(), .getPrompts(filter), .routeGet(), .notifyChanged(), .has(), .clear(), .size
+
 ### Result Monad
 - `succeed<T>(value)` → Success<T>
 - `fail(response)` → Failure
@@ -440,6 +497,11 @@ handler: async function* (ctx, args) {
 - `ManifestTool` — { description, tags, actions, input_schema }
 - `ManifestAction` — { description, destructive, idempotent, readOnly, required_fields, returns_presenter }
 - `ManifestPresenter` — { schema_keys, ui_blocks_supported, has_contextual_rules }
+- `PromptResult` — { description?: string, messages: PromptMessagePayload[] }
+- `PromptMessagePayload` — { role: 'user' | 'assistant', content: PromptContentBlock }
+- `PromptContentBlock` — PromptTextContent | PromptImageContent | PromptAudioContent | PromptResourceContent
+- `PromptBuilder<TContext>` — DIP interface: .name, .getDefinition(), .handleGet(), .tags
+- `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, handler }
 
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)

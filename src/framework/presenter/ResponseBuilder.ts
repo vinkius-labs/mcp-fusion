@@ -224,6 +224,61 @@ export class ResponseBuilder {
         return this;
     }
 
+    // ── Introspection (for cross-module composition) ─────
+
+    /**
+     * Get the serialized data payload.
+     *
+     * Returns the JSON-stringified (or raw string) data
+     * that was passed to the constructor.
+     *
+     * @returns The data string
+     *
+     * @remarks Used by {@link PromptMessage.fromView} to decompose
+     * a Presenter view into prompt messages without calling `.build()`.
+     */
+    getData(): string {
+        return this._data;
+    }
+
+    /**
+     * Get the accumulated domain rules.
+     *
+     * @returns Read-only array of rule strings
+     */
+    getRules(): readonly string[] {
+        return this._rules;
+    }
+
+    /**
+     * Get the accumulated UI blocks.
+     *
+     * @returns Read-only array of UI blocks
+     */
+    getUiBlocks(): readonly UiBlock[] {
+        return this._uiBlocks;
+    }
+
+    /**
+     * Get the accumulated LLM hints.
+     *
+     * @returns Read-only array of hint strings
+     */
+    getHints(): readonly string[] {
+        return this._hints;
+    }
+
+    /**
+     * Get the accumulated action suggestions.
+     *
+     * @returns Read-only array of action suggestions
+     */
+    getSuggestions(): readonly ActionSuggestion[] {
+        return this._suggestions;
+    }
+
+    // ── Compilation ──────────────────────────────────────
+
     /**
      * Compile all layers into a multi-block MCP `ToolResponse`.
      *

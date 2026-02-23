@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.6.0] - 2026-02-23
+
+### 🔗 MVA-Driven Prompts — `PromptMessage.fromView()`
+
+Bridge the Presenter layer into the Prompt Engine with zero duplication. `PromptMessage.fromView()` decomposes a `ResponseBuilder` into XML-tagged prompt messages (`<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`) — same source of truth as the Tool response.
+
+### Added
+
+- **`PromptMessage.fromView(builder)`:** Static method that decomposes a `ResponseBuilder` into `PromptMessagePayload[]`. Extracts rules, validated data, UI blocks, hints, and action suggestions into semantically separated XML-tagged blocks optimized for frontier LLMs.
+- **`ResponseBuilder` introspection getters:** `getData()`, `getRules()`, `getUiBlocks()`, `getHints()`, `getSuggestions()` — read-only access to internal layers without calling `.build()`.
+
+### Documentation
+
+- **`prompts.md`:** New H2 section "MVA-Driven Prompts — `fromView()`" with Before/After comparison, decomposition architecture diagram, XML tag table, composability example.
+- **`presenter.md`:** New section "Using Presenters in Prompts" with cross-reference to Prompt Engine docs. Added Prompt Engine link to Next Steps.
+- **`api-reference.md`:** New Prompt Engine section with `definePrompt`, `PromptMessage` (all methods), `PromptMessage.fromView()` decomposition table, `PromptRegistry` methods, and Prompt types.
+- **VitePress sidebar:** Prompts section expanded from 1 to 5 items. Reference section expanded from 1 to 12 anchor-linked entries.
+- **README.md:** Complete rewrite — engineering-focused documentation matching Prisma/tRPC style. Every section: 1-line technical description + code + output.
+- **llms.txt:** Prompt Engine and MVA-Driven Prompts sections with examples. Public API expanded with 11 Prompt entries and 5 Prompt types.
+
+### Test Suite
+
+- **14 new tests** in `PromptMessageFromView.test.ts` covering rules decomposition, data extraction (JSON fencing), UI blocks, hints, suggestions, full composition, Presenter integration, and edge cases.
+- **Test count:** 1,356 tests across 61 files, all passing.
+
+## [1.5.0] - 2026-02-23
+
+### 💬 Prompt Engine — 100% MCP Spec Compliance
+
+Full implementation of MCP `prompts/list` and `prompts/get` handlers with `definePrompt()`, `PromptMessage`, `PromptRegistry`, schema-informed coercion, middleware, tag-based filtering, and lifecycle sync (`notifications/prompts/list_changed`).
+
+### Added
+
+- **`definePrompt(name, config)`:** JSON-first prompt builder with flat schema constraint (primitives only — string, number, boolean, enum).
+- **`PromptMessage`:** Factory methods — `.system()`, `.user()`, `.assistant()`, `.image()`, `.audio()`, `.resource()`.
+- **`PromptRegistry<TContext>`:** Registration, tag-based RBAC filtering, `routeGet()` handler routing, `notifyChanged()` lifecycle sync, `attachToServer()`.
+- **Schema-informed coercion:** Automatic string → number/boolean conversion based on declared schema types.
+- **Flat schema constraint enforcement:** Nested objects/arrays rejected at definition time with actionable errors.
+- **Middleware support:** Same `defineMiddleware()` chain as Tools — auth, RBAC, context derivation.
 
 ## [1.4.0] - 2026-02-23
 

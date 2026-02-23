@@ -542,9 +542,98 @@ const OnboardingPrompt = definePrompt<AppContext>('onboarding', {
 });
 ```
 
-### Compliance Audit with Presenter
+---
+
+## MVA-Driven Prompts — `fromView()` <Badge type="tip" text="NEW" />
+
+The most powerful DX feature in mcp-fusion: **reuse your entire Presenter layer inside Prompts** — zero text assembly, zero duplication.
+
+### The Problem
+
+Without `fromView()`, Prompt handlers duplicate everything the Presenter already knows:
 
 ```typescript
+// ❌ BEFORE: Manual assembly — rules are DUPLICATED from the Presenter
+handler: async (ctx, { period, threshold }) => {
+    const flagged = await ctx.db.transactions.getRecent(period);
+    const view = InvoicePresenter.make(flagged, ctx).build();
+
+    return {
+        messages: [
+            PromptMessage.system(
+                'You are a Compliance Officer.\n' +
+                'RULES:\n' +                                      // ← DUPLICATED!
+                '- All amounts are in CENTS.\n' +                 // ← Already in Presenter
+                '- Flag transactions without documentation.\n'   // ← Already in Presenter
+            ),
+            PromptMessage.user(
+                `Review transactions:\n\n` +
+                view.content.map(c => c.text).join('\n')          // ← Leaky abstraction
+            ),
+        ],
+    };
+}
+```
+
+### The Solution
+
+```typescript
+// ✅ AFTER: Zero-text assembly — Presenter IS the source of truth
+handler: async (ctx, { period, threshold }) => {
+    const flagged = await ctx.db.transactions.getRecent(period);
+
+    return {
+        messages: [
+            PromptMessage.system('You are a Compliance Officer.'),
+            ...PromptMessage.fromView(InvoicePresenter.make(flagged, ctx)),
+            PromptMessage.user(`Review ${flagged.length} flagged transactions.`),
+        ],
+    };
+}
+```
+
+::: info Single Source of Truth
+If a Presenter's `systemRules()` change, both the Tool response **and** the Prompt update automatically — zero duplication, zero drift.
+:::
+
+### How Decomposition Works
+
+`fromView()` reads the `ResponseBuilder`'s internal layers and decomposes them into XML-tagged prompt messages optimized for frontier LLMs (Claude, GPT-4, Gemini):
+
+```text
+Presenter.make(data, ctx) → ResponseBuilder
+    ↓
+PromptMessage.fromView(builder)
+    ↓
+    ┌──────────────────────────────────────────────────────┐
+    │ 1. <domain_rules>     → system message              │
+    │    Presenter's systemRules(), RBAC-filtered          │
+    ├──────────────────────────────────────────────────────┤
+    │ 2. <dataset>          → user message                 │
+    │    Validated JSON in ```json``` fence                │
+    │    <visual_context>   → same user message            │
+    │    UI blocks (ECharts, Mermaid, tables)              │
+    ├──────────────────────────────────────────────────────┤
+    │ 3. <system_guidance>  → system message               │
+    │    LLM hints + HATEOAS action suggestions            │
+    └──────────────────────────────────────────────────────┘
+```
+
+| Layer | XML Tag | MCP Role | Source |
+|---|---|---|---|
+| Domain Rules | `<domain_rules>` | system | `Presenter.systemRules()` |
+| Data | `<dataset>` | user | Validated + filtered JSON |
+| Visuals | `<visual_context>` | user | `Presenter.uiBlocks()` |
+| Affordances | `<system_guidance>` | system | `suggestActions()` + `llmHint()` |
+
+::: tip Why XML Tags?
+Frontier models (especially Claude 3.5+) are strongly optimized for reading XML-tagged blocks. The semantic tags (`<domain_rules>`, `<dataset>`, `<system_guidance>`) prevent **context leakage** — the LLM never confuses rules with data, or data with hints.
+:::
+
+### Full Example
+
+```typescript
+import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
 import { InvoicePresenter } from './presenters/InvoicePresenter';
 
 const CompliancePrompt = definePrompt<AppContext>('compliance_check', {
@@ -559,27 +648,32 @@ const CompliancePrompt = definePrompt<AppContext>('compliance_check', {
         const transactions = await ctx.db.transactions.getRecent(period);
         const flagged = transactions.filter(t => t.amount > threshold);
 
-        // Reuse your Presenter for consistent data formatting
-        const view = InvoicePresenter.make(flagged, ctx).build();
-
         return {
             messages: [
-                PromptMessage.system(
-                    'You are a Compliance Officer.\n' +
-                    'RULES:\n' +
-                    '- All amounts are in CENTS — divide by 100 for display.\n' +
-                    '- Flag any transaction without proper documentation.\n' +
-                    '- Cite regulation numbers for each finding.'
-                ),
+                PromptMessage.system('You are a Compliance Officer.'),
+                ...PromptMessage.fromView(InvoicePresenter.make(flagged, ctx)),
                 PromptMessage.user(
                     `Review ${flagged.length} flagged transactions ` +
-                    `(threshold: $${(threshold / 100).toFixed(2)}):\n\n` +
-                    view.content.map(c => c.text).join('\n')
+                    `(threshold: $${(threshold / 100).toFixed(2)}).`
                 ),
             ],
         };
     },
 });
+```
+
+### Composability
+
+`fromView()` returns a plain `PromptMessagePayload[]` — it composes naturally with all other `PromptMessage` methods:
+
+```typescript
+messages: [
+    PromptMessage.system('You are a design reviewer.'),
+    PromptMessage.image('user', screenshotBase64, 'image/png'),    // ← image
+    ...PromptMessage.fromView(ProjectPresenter.make(project, ctx)), // ← Presenter
+    PromptMessage.resource('user', 'file:///specs/design.md'),      // ← resource
+    PromptMessage.user('Review the design against the spec.'),
+]
 ```
 
 ### Dynamic Prompt Registration
@@ -629,6 +723,7 @@ featureFlags.on('beta-audit.enabled', () => {
 | `.image(role, data, mimeType)` | `(Role, string, string) => PromptMessagePayload` | Base64 image |
 | `.audio(role, data, mimeType)` | `(Role, string, string) => PromptMessagePayload` | Base64 audio |
 | `.resource(role, uri, options?)` | `(Role, string, Options?) => PromptMessagePayload` | Embedded resource |
+| `.fromView(builder)` | `(ResponseBuilder) => PromptMessagePayload[]` | Decompose a Presenter view into XML-tagged prompt messages |
 
 ### `PromptRegistry<TContext>`
 

@@ -524,6 +524,117 @@ matchGlob('**',         'anything.at.all');   // true
 
 ---
 
+## Prompt Engine
+
+Server-side hydrated prompt templates with schema-informed coercion, middleware, and lifecycle sync. See the full [Prompt Engine Guide](/prompts) for patterns and examples.
+
+### `definePrompt(name, config)`
+
+Factory for creating type-safe, validated prompt builders:
+
+```typescript
+import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const SummarizePrompt = definePrompt<AppContext>('summarize', {
+    title: 'Summarize Document',
+    args: { docId: 'string', length: { enum: ['short', 'long'] as const } } as const,
+    handler: async (ctx, { docId, length }) => ({
+        messages: [
+            PromptMessage.system('You are a Technical Writer.'),
+            PromptMessage.user(`Summarize document ${docId} (${length}).`),
+        ],
+    }),
+});
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | `string` | Unique prompt identifier (slash command name) |
+| `config.title` | `string?` | Human-readable display title |
+| `config.description` | `string?` | Human-readable description |
+| `config.args` | `PromptParamsMap \| ZodObject?` | Argument definitions (**flat primitives only**) |
+| `config.tags` | `string[]?` | Capability tags for RBAC filtering |
+| `config.middleware` | `MiddlewareFn[]?` | Middleware chain |
+| `config.handler` | `(ctx, args) => Promise<PromptResult>` | Hydration handler |
+| **Returns** | `PromptBuilder<TContext>` | Ready for `PromptRegistry.register()` |
+
+::: warning Flat Schema Constraint
+Prompt arguments must be flat primitives (string, number, boolean, enum). MCP clients render them as visual forms — complex structures cannot be represented. Fetch complex data server-side inside the handler.
+:::
+
+### `PromptMessage`
+
+Factory methods for creating MCP-compliant prompt messages:
+
+| Method | Signature | Description |
+|---|---|---|
+| `.system(text)` | `(string) => PromptMessagePayload` | System instruction (encoded as `user` role per MCP spec) |
+| `.user(text)` | `(string) => PromptMessagePayload` | User message |
+| `.assistant(text)` | `(string) => PromptMessagePayload` | Seed assistant response (multi-turn) |
+| `.image(role, data, mimeType)` | `(Role, string, string) => PromptMessagePayload` | Base64 image |
+| `.audio(role, data, mimeType)` | `(Role, string, string) => PromptMessagePayload` | Base64 audio |
+| `.resource(role, uri, options?)` | `(Role, string, Options?) => PromptMessagePayload` | Embedded resource |
+| `.fromView(builder)` | `(ResponseBuilder) => PromptMessagePayload[]` | **MVA-Driven Prompts** — decompose a Presenter view |
+
+### `PromptMessage.fromView(builder)` <Badge type="tip" text="NEW" />
+
+Decomposes a `ResponseBuilder` (from `Presenter.make()` or `response()`) into XML-tagged prompt messages optimized for frontier LLMs:
+
+```typescript
+messages: [
+    PromptMessage.system('You are a Compliance Officer.'),
+    ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+    PromptMessage.user('Begin the audit.'),
+]
+```
+
+**Decomposition layers:**
+
+| Order | XML Tag | MCP Role | Source |
+|---|---|---|---|
+| 1 | `<domain_rules>` | system | `Presenter.systemRules()` |
+| 2 | `<dataset>` | user | Validated JSON in code fence |
+| 3 | `<visual_context>` | user | UI blocks (ECharts, Mermaid, etc.) |
+| 4 | `<system_guidance>` | system | LLM hints + HATEOAS action suggestions |
+
+### `PromptRegistry<TContext>`
+
+Centralized registry for prompt builders with tag filtering and lifecycle sync:
+
+```typescript
+import { PromptRegistry } from '@vinkius-core/mcp-fusion';
+
+const prompts = new PromptRegistry<AppContext>();
+prompts.register(SummarizePrompt);
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `.register(builder)` | `void` | Register a single prompt builder |
+| `.registerAll(...builders)` | `void` | Register multiple prompt builders |
+| `.getAllPrompts()` | `PromptDefinition[]` | Get all prompt definitions for `prompts/list` |
+| `.getPrompts(filter)` | `PromptDefinition[]` | Get filtered prompt definitions |
+| `.routeGet(ctx, name, args)` | `Promise<PromptResult>` | Route a `prompts/get` request |
+| `.notifyChanged()` | `void` | Notify clients of catalog changes (debounced) |
+| `.has(name)` | `boolean` | Check if a prompt is registered |
+| `.clear()` | `void` | Remove all registered prompts |
+| `.size` | `number` | Number of registered prompts |
+
+### Prompt Types
+
+| Type | Description |
+|---|---|
+| `PromptResult` | `{ description?: string, messages: PromptMessagePayload[] }` |
+| `PromptMessagePayload` | `{ role: 'user' \| 'assistant', content: PromptContentBlock }` |
+| `PromptContentBlock` | `PromptTextContent \| PromptImageContent \| PromptAudioContent \| PromptResourceContent` |
+| `PromptBuilder<T>` | DIP interface: `.name`, `.getDefinition()`, `.handleGet()`, `.tags` |
+| `PromptConfig<T>` | Configuration for `definePrompt()` |
+| `PromptParamDef` | Union of flat primitive descriptors |
+| `PromptParamsMap` | `Record<string, PromptParamDef>` |
+| `PromptFilter` | `{ tags?, anyTag?, exclude? }` |
+
+---
+
 ## Domain Model Classes
 
 All underlying structural classes use public fields for highly dense, performant direct property access.
