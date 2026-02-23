@@ -39,11 +39,11 @@ Each guardrail is designed to be **zero-configuration by default, explicit when 
 
 A single `list_all` query can return thousands of records. At ~500 tokens per record, the math is brutal:
 
-| Records | Tokens | GPT-5.2 Input Cost | Context Impact |
-|---|---|---|---|
-| 100 | ~50,000 | ~$0.09 | Manageable |
-| 1,000 | ~500,000 | ~$0.88 | Degraded accuracy |
-| 10,000 | ~5,000,000 | ~$8.75 | Context overflow |
+| Records | Tokens | Context Impact |
+|---|---|---|
+| 100 | ~50,000 | Manageable |
+| 1,000 | ~500,000 | Degraded accuracy |
+| 10,000 | ~5,000,000 | Context overflow |
 
 Beyond cost, large responses degrade accuracy. LLMs lose coherence when the context window fills — they skip information, misinterpret patterns, and produce inconsistent outputs.
 
@@ -319,7 +319,7 @@ By the third call, the agent has learned: which fields are valid, how to filter 
 
 | Without Guardrails | With Guardrails |
 |---|---|
-| 10,000 rows → ~$8.75 per call | 50 rows → ~$0.04 per call |
+| 10,000 rows → ~5M tokens per call | 50 rows → ~25K tokens per call (200× reduction) |
 | Hallucinated params → 2-3 retries | Strict validation → 0-1 retries |
 | Generic errors → blind retries | Coaching prompts → directed recovery |
 | 5-step task → ~15 actual calls | 5-step task → ~6 actual calls |

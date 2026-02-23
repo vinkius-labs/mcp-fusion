@@ -27,7 +27,7 @@ Grouped exposition presents all actions behind a **single MCP tool** with a disc
 - You're exposing a large, cohesive domain (50+ actions behind one tool)
 - Token budget is tight — one schema instead of N schemas in the context window
 - Shared parameters (`workspace_id`, `session_id`) dominate your API surface
-- You're targeting strong LLMs (GPT-4, Claude 3.5+) that handle discriminator enums natively
+- You're targeting frontier LLMs that handle discriminator enums natively
 - Your actions are tightly related and benefit from domain cohesion
 
 ---
@@ -309,13 +309,13 @@ When switching strategies, LLM clients see different tool names. In flat mode th
 |---|---|---|
 | Simple CRUD API (3–5 actions) | `'flat'` | Clear single-purpose tools, zero ambiguity |
 | Per-action RBAC / privilege isolation | `'flat'` | MCP clients can toggle individual tools |
-| Weaker LLMs (Qwen, Llama, Phi) | `'flat'` | Avoids enum disambiguation complexity |
+| Smaller or open-weight models | `'flat'` | Avoids enum disambiguation complexity |
 | Fine-grained State Sync invalidation | `'flat'` | Per-action cache policies |
 | MCP clients with per-tool UI toggles | `'flat'` | Granular control in Claude Desktop, Cursor |
 | Large domain API (20+ actions, shared params) | `'grouped'` | One schema, massive token savings |
 | Enterprise platform wrapper (100+ endpoints) | `'grouped'` | Domain cohesion, shared context |
 | Token-constrained contexts (small models) | `'grouped'` | Minimal `tools/list` payload |
-| Strong LLMs (GPT-4, Claude 3.5+, Gemini) | Either | Both strategies work well |
+| Frontier models (GPT, Claude, Gemini series) | Either | Both strategies work well |
 
 ---
 

@@ -40,11 +40,11 @@ This creates three compounding problems:
 Every LLM call pays for the full system prompt. Even a simple `tasks.list` bears the token cost of invoice formatting rules, sprint velocity formulas, and budget conventions. At scale:
 
 ```text
-2,000 tokens (system prompt) × $1.75/1M tokens (GPT-5.2 input)
-= $0.0035 per call — just for irrelevant rules.
+2,000 tokens (system prompt) sent on every call
+= wasted input tokens on every request — regardless of relevance.
 
 At 100,000 calls/day:
-= $350/day in wasted tokens — just from the system prompt.
+= 200,000,000 wasted tokens/day — just from the system prompt.
 ```
 
 ### Problem 2: Misapplication
@@ -203,7 +203,7 @@ Per 10-turn conversation:
   Wasted: ~0 tokens per conversation.
 ```
 
-**Savings per conversation: ~18,000 tokens.** At 10,000 conversations/day with GPT-5.2 pricing ($1.75/1M input tokens): **~$315/day saved** on system prompt alone.
+**Savings per conversation: ~18,000 tokens.** At 10,000 conversations/day, that's **~180M fewer input tokens/day** — on system prompt alone.
 
 But the savings extend beyond token cost. Fewer irrelevant rules means:
 

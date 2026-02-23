@@ -399,10 +399,10 @@ if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
 
 **Impact on token costs:**
 
-| Scenario | Rows | Tokens | Cost (GPT-5.2) |
-|----------|------|--------|----------------|
-| No guardrail | 10,000 | ~5,000,000 | ~$8.75 |
-| `.agentLimit(50)` | 50 | ~25,000 | ~$0.04 |
+| Scenario | Rows | Tokens | Reduction |
+|----------|------|--------|-----------|
+| No guardrail | 10,000 | ~5,000,000 | — |
+| `.agentLimit(50)` | 50 | ~25,000 | **200x** |
 
 Truncation happens **before Zod validation**, so the schema only processes the capped set — saving CPU on large datasets.
 
@@ -484,7 +484,7 @@ While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` d
 //   💡 Fix the fields above and call the action again.
 ```
 
-Each retry is a full LLM round-trip (~$0.01-0.10 depending on context size). Self-healing errors make the LLM succeed on the **second attempt** instead of cycling through 3-5 retries, saving 60-80% of error-path costs.
+Each retry is a full LLM round-trip (input + output tokens billed again). Self-healing errors make the LLM succeed on the **second attempt** instead of cycling through 3-5 retries, saving 60-80% of error-path token usage.
 
 ---
 

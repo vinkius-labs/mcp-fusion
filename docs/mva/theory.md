@@ -193,7 +193,7 @@ With these requirements established, MVA formalizes three architectural layers:
 │   Package and acts deterministically based on the context provided.      │
 │   It does not guess. It does not hallucinate. It perceives.              │
 │                                                                          │
-│   Implementation: Claude, GPT, Gemini, Llama, or any MCP runtime        │
+│   Implementation: Any MCP-compatible LLM (Claude, GPT, Gemini series)    │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```

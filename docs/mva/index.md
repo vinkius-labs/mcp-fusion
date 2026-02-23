@@ -29,7 +29,7 @@ AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }
 │  │    MODEL      │     │      VIEW        │     │     AGENT       │  │
 │  │              │ ──→ │    (Presenter)    │ ──→ │                 │  │
 │  │  Zod Schema   │     │                  │     │  Claude, GPT,   │  │
-│  │  Validates    │     │  Domain Rules    │     │  Gemini, Llama  │  │
+│  │  Validates    │     │  Domain Rules    │     │  Any MCP-       │  │
 │  │  Filters      │     │  UI Blocks       │     │                 │  │
 │  │  Rejects      │     │  Affordances     │     │  Autonomous     │  │
 │  │  unknown      │     │  Guardrails      │     │  consumer that  │  │
@@ -47,7 +47,7 @@ AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }
 |---|---|---|
 | **Model** | Defines the shape and constraints of domain data. Acts as a security boundary when using `.strict()` — only declared fields pass through. | `z.object({ ... }).strict()` |
 | **View (Presenter)** | Transforms raw data into a **Structured Perception Package** — data + rules + UI blocks + affordances + guardrails. Domain-level, not tool-level. | `createPresenter()` |
-| **Agent** | The autonomous consumer. Receives the perception package and acts deterministically based on the structured context it was given. | Claude, GPT, Gemini, or any MCP-compatible LLM |
+| **Agent** | The autonomous consumer. Receives the perception package and acts deterministically based on the structured context it was given. | Any MCP-compatible LLM (Claude, GPT, Gemini series, or open-weight models) |
 
 ---
 

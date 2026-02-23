@@ -134,7 +134,7 @@ case 'list_users':
         }]
     };
 
-// Result: $8.75 per API call (GPT-5.2). Context overflow. Degraded accuracy.
+// Result: ~5,000,000 tokens per call. Context overflow. Degraded accuracy.
 ```
 
 ```typescript [With MVA]
@@ -149,7 +149,7 @@ const UserPresenter = createPresenter('User')
     ]);
 
 // Result: 50 users shown. Agent guided to use filters.
-// Cost: ~$0.04 per call (GPT-5.2). Context protected.
+// Cost: ~25,000 tokens per call (200x reduction). Context protected.
 ```
 
 :::

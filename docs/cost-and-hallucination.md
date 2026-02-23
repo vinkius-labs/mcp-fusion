@@ -379,12 +379,12 @@ const TaskPresenter = createPresenter('Task')
     );
 ```
 
-**Estimated cost impact (GPT-5.2, input @ $1.75/1M tokens):**
+**Token impact comparison:**
 
-| Scenario | Rows | Tokens | Estimated Cost |
-|---|---|---|---|
-| No guardrail | 10,000 | ~5,000,000 | ~$8.75 |
-| `.agentLimit(50)` | 50 | ~25,000 | ~$0.04 |
+| Scenario | Rows | Tokens |
+|---|---|---|
+| No guardrail | 10,000 | ~5,000,000 |
+| `.agentLimit(50)` | 50 | ~25,000 |
 
 Beyond cost, the truncated response stays within the context window, which should help prevent the hallucination cascade that can occur when context overflows.
 
