@@ -66,9 +66,17 @@ describe('CursorCodec', () => {
             const cursor = await codec.encode({ after: 'data' });
             
             const parts = cursor.split('.');
-            // Modify one char of the encrypted payload
-            const modifiedPayload = parts[1].substring(0, parts[1].length - 1) + 'x';
-            parts[1] = modifiedPayload;
+            // Decode the encrypted payload to raw bytes, flip a byte in the middle, re-encode
+            const raw = parts[1]!;
+            const padded = raw.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(padded);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            // Flip a byte near the middle of the ciphertext (not in padding territory)
+            bytes[Math.floor(bytes.length / 2)] ^= 0xFF;
+            let flipped = '';
+            for (let i = 0; i < bytes.length; i++) flipped += String.fromCharCode(bytes[i]!);
+            parts[1] = btoa(flipped).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
             
             expect(await codec.decode(parts.join('.'))).toBeUndefined();
         });
