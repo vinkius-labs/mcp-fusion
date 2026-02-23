@@ -44,13 +44,21 @@ interface McpServerTyped {
 
 /**
  * Duck-typed interface for the MCP SDK `extra` object passed to request handlers.
- * We only extract the fields needed for progress notification wiring.
+ * We extract fields needed for progress notification wiring and cancellation propagation.
  */
 interface McpRequestExtra {
     /** Metadata from the original JSON-RPC request (contains progressToken) */
     _meta?: { progressToken?: string | number };
     /** Send a notification back to the client within the current request scope */
     sendNotification: (notification: unknown) => Promise<void>;
+    /**
+     * Abort signal from the MCP SDK protocol layer.
+     *
+     * Fired when the client sends `notifications/cancelled` or the connection drops.
+     * The framework propagates this signal through the entire execution pipeline
+     * so that handlers can abort long-running operations (fetch, DB queries, etc.).
+     */
+    signal?: AbortSignal;
 }
 
 /** Options for attaching to an MCP Server */
@@ -252,7 +260,7 @@ export type DetachFn = () => void;
 export interface RegistryDelegate<TContext> {
     getAllTools(): McpTool[];
     getTools(filter: { tags?: string[]; anyTag?: string[]; exclude?: string[] }): McpTool[];
-    routeCall(ctx: TContext, name: string, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse>;
+    routeCall(ctx: TContext, name: string, args: Record<string, unknown>, progressSink?: ProgressSink, signal?: AbortSignal): Promise<ToolResponse>;
     /** Propagate a debug observer to all registered builders (duck-typed) */
     enableDebug?(observer: DebugObserverFn): void;
     /** Propagate a tracer to all registered builders (duck-typed) */
@@ -341,19 +349,20 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             : (undefined as TContext);
 
         const progressSink = createProgressSink(extra);
+        const signal = extractSignal(extra);
 
         if (hCtx.isFlat) {
             const exposition = hCtx.recompile();
             const flatRoute = exposition.routingMap.get(name);
             if (flatRoute) {
                 const enrichedArgs = { ...args, [flatRoute.discriminator]: flatRoute.actionKey };
-                const result = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink);
+                const result = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink, signal);
                 return decorateIfSync(hCtx.syncLayer, flatRoute, result);
             }
         }
 
         // Standard dispatch (grouped mode or unrecognized flat tool)
-        const result = await hCtx.registry.routeCall(ctx, name, args, progressSink);
+        const result = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
         return hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
     };
 }
@@ -401,7 +410,7 @@ function registerPromptHandlers<TContext>(
         return { prompts: allPrompts };
     });
 
-    // prompts/get — with loopback dispatcher
+    // prompts/get — with loopback dispatcher and signal propagation
     resolved.setRequestHandler(GetPromptRequestSchema, async (
         request: { params: { name: string; arguments?: Record<string, string> } },
         extra: unknown,
@@ -410,8 +419,9 @@ function registerPromptHandlers<TContext>(
         const ctx = contextFactory
             ? await contextFactory(extra)
             : (undefined as TContext);
+        const signal = extractSignal(extra);
 
-        injectLoopbackDispatcher(ctx, registry);
+        injectLoopbackDispatcher(ctx, registry, signal);
         return prompts.routeGet(ctx, name, args);
     });
 }
@@ -419,16 +429,18 @@ function registerPromptHandlers<TContext>(
 /**
  * Inject `invokeTool()` into the context so prompt handlers can call
  * tools in-memory. Runs the Tool's full pipeline with RBAC enforced.
+ * Propagates the cancellation signal from the parent request.
  */
 function injectLoopbackDispatcher<TContext>(
     ctx: TContext,
     registry: RegistryDelegate<TContext>,
+    signal?: AbortSignal,
 ): void {
     (ctx as Record<string, unknown>)['invokeTool'] = async (
         toolName: string,
         toolArgs: Record<string, unknown> = {},
     ) => {
-        const response = await registry.routeCall(ctx, toolName, toolArgs);
+        const response = await registry.routeCall(ctx, toolName, toolArgs, undefined, signal);
         const text = response.content
             .filter((c: { type: string }): c is { type: 'text'; text: string } => c.type === 'text')
             .map((c: { type: 'text'; text: string }) => c.text)
@@ -624,4 +636,23 @@ function createProgressSink(extra: unknown): ProgressSink | undefined {
             },
         });
     };
+}
+
+// ── Signal Extraction ────────────────────────────────────
+
+/**
+ * Extract the AbortSignal from the MCP SDK `extra` object.
+ *
+ * The SDK fires this signal when the client sends `notifications/cancelled`
+ * or when the transport connection drops. By extracting and propagating it,
+ * the framework enables cooperative cancellation at every pipeline layer.
+ *
+ * Returns `undefined` when not available — zero overhead.
+ *
+ * @param extra - The MCP request handler's extra argument (duck-typed)
+ * @returns The AbortSignal or undefined
+ */
+function extractSignal(extra: unknown): AbortSignal | undefined {
+    if (!isMcpExtra(extra)) return undefined;
+    return extra.signal;
 }

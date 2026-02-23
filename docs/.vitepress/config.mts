@@ -169,6 +169,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'State Sync', link: '/state-sync' },
+          { text: 'Cancellation', link: '/cancellation' },
           { text: 'Observability', link: '/observability' },
           { text: 'Tracing', link: '/tracing' },
           { text: 'Introspection', link: '/introspection' },

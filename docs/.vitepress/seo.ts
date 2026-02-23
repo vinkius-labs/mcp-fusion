@@ -440,6 +440,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'Does the Dynamic Manifest reflect late-registered tools?', a: 'Yes. The manifest is compiled fresh on every resources/read request by iterating registry.getBuilders(). Tools registered after attachToServer() automatically appear in subsequent manifest reads — no restart required.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // CANCELLATION PROPAGATION
+  // ═══════════════════════════════════════════════════════
+  'cancellation.md': {
+    title: 'Cancellation Propagation — Cooperative AbortSignal for MCP Tools',
+    description: 'MCP Fusion intercepts AbortSignal from the MCP SDK and propagates it through the entire execution pipeline — middleware, handlers, and generators. Zero zombie operations when users cancel.',
+    faqs: [
+      { q: 'How does mcp-fusion handle cancellation?', a: 'mcp-fusion extracts the AbortSignal from the MCP SDK\'s request handler extra object and propagates it through the entire execution pipeline. When a user clicks "Stop" in the MCP client, the signal is fired and the framework aborts the handler chain before execution, aborts generators on each yield iteration, and returns an immediate error response with "Request cancelled."' },
+      { q: 'What is cooperative cancellation in mcp-fusion?', a: 'Cooperative cancellation means the framework provides the AbortSignal and checks it at key pipeline stages (before handler execution, between generator yields), but the actual cancellation of I/O operations (fetch, database queries) requires the handler to pass ctx.signal to those operations. Use fetch(url, { signal: ctx.signal }) and similar patterns.' },
+      { q: 'How do I access the AbortSignal in my handlers?', a: 'The MCP SDK passes the signal in the extra object to your contextFactory. Extract it: contextFactory: (extra) => ({ signal: (extra as { signal?: AbortSignal }).signal, db: prisma }). Then use ctx.signal in handlers to pass to fetch(), Prisma transactions, or any operation that accepts AbortSignal.' },
+      { q: 'Does cancellation work with generator handlers?', a: 'Yes. Generator handlers get automatic cancellation. The framework checks signal.aborted before each yield iteration in the drainGenerator() function. If the signal is aborted, gen.return() is called to trigger finally{} cleanup, and an error response is returned immediately — preventing zombie generators from continuing.' },
+      { q: 'Is there performance overhead when no signal is present?', a: 'Zero overhead. When the extra object has no signal (or is not an MCP request), extractSignal() returns undefined. The pipeline uses optional chaining (signal?.aborted) which evaluates to undefined and skips all cancellation logic. No branches, no allocations, no timing calls.' },
+      { q: 'How does cancellation prevent resource leaks?', a: 'When the user cancels: (1) the SDK fires AbortSignal, (2) mcp-fusion checks signal.aborted before the handler chain starts, (3) generator yields check the signal between iterations, (4) handlers that pass ctx.signal to fetch/DB connections get those connections terminated by the runtime. This prevents CPU waste, dangling database connections, and zombie HTTP requests.' },
+      { q: 'How do I test cancellation in my tools?', a: 'Use AbortController in tests: const controller = new AbortController(); controller.abort(); const result = await tool.execute(ctx, args, undefined, controller.signal); expect(result.isError).toBe(true). The signal is the 4th parameter of execute(). For mid-execution cancellation, call controller.abort() inside a setTimeout.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

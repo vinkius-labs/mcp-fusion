@@ -641,6 +641,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @param progressSink - Optional callback for streaming progress notifications.
      *   When attached via `attachToServer()`, this is automatically wired to
      *   MCP `notifications/progress`. When omitted, progress events are silently consumed.
+     * @param signal - Optional AbortSignal from the MCP SDK protocol layer.
+     *   Fired when the client sends `notifications/cancelled` or the connection drops.
+     *   The framework checks this signal before handler execution and during
+     *   generator iteration, aborting zombie operations immediately.
      * @returns The handler's {@link ToolResponse}
      *
      * @example
@@ -652,7 +656,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * });
      * ```
      */
-    async execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse> {
+    async execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink, signal?: AbortSignal): Promise<ToolResponse> {
         if (!this._executionContext) {
             this.buildToolDefinition();
         }
@@ -665,7 +669,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         if (this._tracer) {
             const hooks = this._buildTracedHooks();
             try {
-                return await this._executePipeline(execCtx, ctx, args, progressSink, hooks);
+                return await this._executePipeline(execCtx, ctx, args, progressSink, hooks, signal);
             } catch (err) {
                 // System failure caught here — hooks already recorded it on the span
                 const message = err instanceof Error ? err.message : String(err);
@@ -677,11 +681,11 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
         // Debug path: hooks with event emission
         if (this._debug) {
-            return this._executePipeline(execCtx, ctx, args, progressSink, this._buildDebugHooks());
+            return this._executePipeline(execCtx, ctx, args, progressSink, this._buildDebugHooks(), signal);
         }
 
         // Fast path: zero overhead (no hooks)
-        return this._executePipeline(execCtx, ctx, args, progressSink);
+        return this._executePipeline(execCtx, ctx, args, progressSink, undefined, signal);
     }
 
     // ── Execution Paths (private) ────────────────────────
@@ -699,6 +703,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         args: Record<string, unknown>,
         progressSink?: ProgressSink,
         hooks?: PipelineHooks,
+        signal?: AbortSignal,
     ): Promise<ToolResponse> {
         // Step 1: Route
         const disc = parseDiscriminator(execCtx, args);
@@ -739,7 +744,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         try {
             const response = await runChain(
                 execCtx, resolved.value, ctx, validated.value,
-                progressSink, hooks?.rethrow,
+                progressSink, hooks?.rethrow, signal,
             );
             hooks?.onExecuteOk?.(actionName, response);
             return hooks?.wrapResponse?.(response) ?? response;

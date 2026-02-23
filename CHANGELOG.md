@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-02-23
+
+### 🚫 Cancellation Propagation — Cooperative AbortSignal for MCP Tools
+
+**MCP Fusion** now intercepts the `AbortSignal` from the MCP SDK and propagates it through the **entire execution pipeline** — middleware, handlers, and generators. When a user clicks "Stop" or the transport drops, all in-flight operations terminate immediately. Zero zombie processes. Zero resource leaks.
+
+### Added
+
+- **`extractSignal(extra)` in `ServerAttachment`:** Safely extracts `AbortSignal` from the MCP SDK's `RequestHandlerExtra` object. Returns `undefined` when not present (zero overhead).
+- **`McpRequestExtra.signal`:** Extended interface to include `signal?: AbortSignal` from the SDK protocol layer.
+- **`runChain()` cancellation gate:** Checks `signal.aborted` before invoking the pre-compiled middleware chain. Pre-cancelled requests return `error('Request cancelled.')` without executing any handler code.
+- **`drainGenerator()` cancellation check:** Checks `signal.aborted` before each `yield` iteration. Aborted generators trigger `gen.return()` for `finally{}` cleanup, preventing zombie generators from continuing.
+- **Signal propagation through the full pipeline:**
+  - `RegistryDelegate.routeCall(ctx, name, args, sink, signal)`
+  - `ToolBuilder.execute(ctx, args, sink, signal)`
+  - `ToolRegistry.routeCall(ctx, name, args, sink, signal)`
+  - `GroupedToolBuilder.execute(ctx, args, sink, signal)`
+  - `_executePipeline(execCtx, ctx, args, sink, hooks, signal)`
+  - `runChain(execCtx, resolved, ctx, args, sink, rethrow, signal)`
+  - `drainGenerator(gen, sink, signal)`
+- **`contextFactory` passthrough:** Developers can extract `extra.signal` in `contextFactory` and expose it as `ctx.signal` for use in `fetch()`, Prisma, and other I/O operations.
+- **Loopback dispatcher propagation:** Prompts calling tools via `dispatchToolCall()` forward the signal to `registry.routeCall()`.
+- **Flat exposition support:** Signal propagated in both grouped and flat exposition modes.
+
+### Documentation
+
+- **New "Cancellation" page (`docs/cancellation.md`):** Architecture diagram, Quick Start guide, generator cancellation, testing patterns, best practices (pass `ctx.signal` to I/O), and compatibility matrix.
+- **VitePress sidebar:** Added Cancellation under Production section.
+- **SEO:** 7 new FAQs for the Cancellation page with FAQPage + TechArticle JSON-LD structured data.
+
+### Test Suite
+
+- **9 new tests** in `CancellationPropagation.test.ts`:
+  - Signal via contextFactory (1 test)
+  - Pre-execution abort — handler never called (1 test)
+  - Zero overhead — no signal present (1 test)
+  - Generator abort — mid-iteration cancellation (1 test)
+  - Generator abort — pre-aborted signal (1 test)
+  - Flat exposition mode — signal propagated (1 test)
+  - Direct builder execute — 4th parameter (2 tests)
+  - Middleware chain — signal during middleware (1 test)
+- **Test count:** 1,501 tests across 69 files, all passing.
+
 ## [1.6.2] - 2026-02-23
 
 ### 🧪 End-to-End Integration Test Suite

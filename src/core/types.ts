@@ -60,7 +60,7 @@ export interface ToolBuilder<TContext = void> {
     buildToolDefinition(): McpTool;
 
     /** Execute a tool call with the given context and arguments */
-    execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink): Promise<ToolResponse>;
+    execute(ctx: TContext, args: Record<string, unknown>, progressSink?: ProgressSink, signal?: AbortSignal): Promise<ToolResponse>;
 
     /**
      * Preview the exact MCP prompt payload that the LLM will receive.

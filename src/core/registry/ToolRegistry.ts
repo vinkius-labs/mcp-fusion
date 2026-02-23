@@ -199,6 +199,7 @@ export class ToolRegistry<TContext = void> {
         name: string,
         args: Record<string, unknown>,
         progressSink?: ProgressSink,
+        signal?: AbortSignal,
     ): Promise<ToolResponse> {
         const builder = this._builders.get(name);
         if (!builder) {
@@ -218,7 +219,7 @@ export class ToolRegistry<TContext = void> {
                 availableActions: Array.from(this._builders.keys()),
             });
         }
-        return builder.execute(ctx, args, progressSink);
+        return builder.execute(ctx, args, progressSink, signal);
     }
 
     /**

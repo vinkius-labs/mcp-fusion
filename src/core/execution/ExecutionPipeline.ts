@@ -117,6 +117,9 @@ export function validateArgs<TContext>(
  *   instead of being caught and converted to error responses. Used by the
  *   traced execution path so that `_executeTraced` can classify system errors
  *   (`SpanStatusCode.ERROR` + `recordException`). Default: `false`.
+ * @param signal - Optional AbortSignal for cooperative cancellation.
+ *   Checked before handler execution. If already aborted, returns an
+ *   immediate error response without invoking the handler chain.
  */
 export async function runChain<TContext>(
     execCtx: ExecutionContext<TContext>,
@@ -125,10 +128,16 @@ export async function runChain<TContext>(
     args: Record<string, unknown>,
     progressSink?: ProgressSink,
     rethrow = false,
+    signal?: AbortSignal,
 ): Promise<ToolResponse> {
     const chain = execCtx.compiledChain.get(resolved.action.key);
     if (!chain) {
         return error(`No compiled chain for action "${resolved.action.key}".`);
+    }
+
+    // Cancellation gate: abort before starting the handler chain
+    if (signal?.aborted) {
+        return error(`[${execCtx.toolName}/${resolved.discriminatorValue}] Request cancelled.`);
     }
 
     try {
@@ -136,7 +145,7 @@ export async function runChain<TContext>(
 
         // If the middleware chain returned a generator result envelope, drain it
         if (isGeneratorResultEnvelope(result)) {
-            const drained = await drainGenerator(result.generator, progressSink);
+            const drained = await drainGenerator(result.generator, progressSink, signal);
             return postProcessResult(drained, resolved.action.returns, ctx);
         }
 
@@ -177,15 +186,29 @@ function isGeneratorResultEnvelope(value: unknown): value is GeneratorResultEnve
 /**
  * Drain an async generator, forwarding ProgressEvents to the sink
  * and returning the final ToolResponse.
+ *
+ * Checks the AbortSignal before each iteration. If cancelled, the
+ * generator is returned (cleanup runs) and an error response is returned.
+ * This prevents zombie generators from continuing to execute after
+ * the user cancels the request.
+ *
  * @internal
  */
 async function drainGenerator(
     gen: AsyncGenerator<unknown, ToolResponse, undefined>,
     progressSink?: ProgressSink,
+    signal?: AbortSignal,
 ): Promise<ToolResponse> {
     let result = await gen.next();
 
     while (!result.done) {
+        // Cancellation check: abort generator if signal fired
+        if (signal?.aborted) {
+            // Return the generator to trigger finally {} cleanup
+            await gen.return(error('Request cancelled.'));
+            return error('Request cancelled.');
+        }
+
         if (progressSink && isProgressEvent(result.value)) {
             progressSink(result.value);
         }
