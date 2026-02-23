@@ -5,7 +5,7 @@ export default tseslint.config(
     eslint.configs.recommended,
     ...tseslint.configs.recommended,
     {
-        files: ['src/**/*.ts', 'tests/**/*.ts'],
+        files: ['packages/*/src/**/*.ts', 'packages/*/tests/**/*.ts'],
         languageOptions: {
             parserOptions: {
                 projectService: true,
@@ -52,6 +52,6 @@ export default tseslint.config(
         },
     },
     {
-        ignores: ['dist/', 'node_modules/', '*.config.*'],
+        ignores: ['**/dist/', '**/node_modules/', '*.config.*'],
     },
 );

@@ -26,19 +26,20 @@ let _resolvedCrypto: Crypto | undefined;
 async function getCrypto(): Promise<Crypto> {
     if (_resolvedCrypto) return _resolvedCrypto;
 
+    // globalThis.crypto.subtle is available in Node >= 19, Deno, Bun, CF Workers
     if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
         _resolvedCrypto = globalThis.crypto;
         return _resolvedCrypto;
     }
 
-    // Node.js fallback — webcrypto has been stable since Node 16
-    // Use string indirection to avoid TypeScript module resolution (no @types/node)
+    // Node.js 16-18 fallback — webcrypto available via node:crypto module
+    // Variable indirection prevents TypeScript from resolving the module statically (no @types/node)
     try {
-        const moduleName = 'node:crypto';
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const nodeCryptoModule: any = await (Function('m', 'return import(m)')(moduleName));
-        if (nodeCryptoModule?.webcrypto) {
-            _resolvedCrypto = nodeCryptoModule.webcrypto as Crypto;
+        const mod = 'node:' + 'crypto';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const nodeCrypto = (await import(mod) as any).webcrypto;
+        if (nodeCrypto?.subtle) {
+            _resolvedCrypto = nodeCrypto as Crypto;
             return _resolvedCrypto;
         }
     } catch { /* not in Node */ }

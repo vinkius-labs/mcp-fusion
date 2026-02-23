@@ -21,7 +21,7 @@ Traditional middleware frameworks resolve and compose middleware chains **on eve
 When `buildToolDefinition()` is called (or lazily on first `execute()`), the `MiddlewareCompiler` wraps middlewares right-to-left around each handler **once**, producing a single ready-to-call function per action:
 
 ```typescript
-// From: src/core/execution/MiddlewareCompiler.ts
+// From: packages/core/src/core/execution/MiddlewareCompiler.ts
 export function compileMiddlewareChains<TContext>(
     actions: readonly InternalAction<TContext>[],
     middlewares: readonly MiddlewareFn<TContext>[],
@@ -56,7 +56,7 @@ export function compileMiddlewareChains<TContext>(
 Zod schemas are merged and cached **once at build time** in the `ToolDefinitionCompiler`, not recomputed per request:
 
 ```typescript
-// From: src/core/builder/ToolDefinitionCompiler.ts
+// From: packages/core/src/core/builder/ToolDefinitionCompiler.ts
 const validationSchemaCache = new Map<string, ZodObject<ZodRawShape> | null>();
 for (const action of input.actions) {
     validationSchemaCache.set(
@@ -73,7 +73,7 @@ Each action's merged schema (`commonSchema.merge(actionSchema).strict()`) is com
 Action resolution uses a `Map<string, InternalAction>` built at compile time:
 
 ```typescript
-// From: src/core/builder/ToolDefinitionCompiler.ts
+// From: packages/core/src/core/builder/ToolDefinitionCompiler.ts
 const actionMap = new Map(input.actions.map(a => [a.key, a]));
 ```
 
@@ -84,7 +84,7 @@ When the LLM sends `{ action: "users.list" }`, the pipeline resolves the handler
 Error messages listing available actions (e.g., `"Available: list, create, delete"`) are computed once at build time as a pre-joined string:
 
 ```typescript
-// From: src/core/builder/ToolDefinitionCompiler.ts
+// From: packages/core/src/core/builder/ToolDefinitionCompiler.ts
 const actionKeysString = input.actions.map(a => a.key).join(', ');
 ```
 
@@ -97,7 +97,7 @@ No `Array.join()` on every error path.
 After `buildToolDefinition()`, the entire builder state is permanently frozen:
 
 ```typescript
-// From: src/core/builder/GroupedToolBuilder.ts
+// From: packages/core/src/core/builder/GroupedToolBuilder.ts
 buildToolDefinition(): McpTool {
     if (this._cachedTool) return this._cachedTool;
     
@@ -125,7 +125,7 @@ buildToolDefinition(): McpTool {
 The debug observer pattern in **MCP Fusion** is designed so that **when disabled, the hot path has zero conditionals**:
 
 ```typescript
-// From: src/core/builder/GroupedToolBuilder.ts — execute()
+// From: packages/core/src/core/builder/GroupedToolBuilder.ts — execute()
 
 // Fast path: no debug observer → zero overhead
 if (!this._debug) {
@@ -161,7 +161,7 @@ debug({ type: 'execute', tool: this._name, action: actionName,
 The `ExecutionPipeline` uses the `Result<T>` monad for **zero-exception error handling**:
 
 ```typescript
-// From: src/core/result.ts
+// From: packages/core/src/core/result.ts
 export function succeed<T>(value: T): Success<T> {
     return { ok: true, value };
 }
@@ -193,7 +193,7 @@ This is measurably faster than exception-based error handling for expected failu
 After Zod validates args, the discriminator is re-injected via **direct mutation** instead of object spread:
 
 ```typescript
-// From: src/core/execution/ExecutionPipeline.ts — validateArgs()
+// From: packages/core/src/core/execution/ExecutionPipeline.ts — validateArgs()
 
 // Remove discriminator before validation
 const { [execCtx.discriminator]: _, ...argsWithoutDiscriminator } = args;
@@ -216,7 +216,7 @@ Instead of creating a new object with `{ ...result.data, action: value }`, the f
 The `PolicyEngine` caches resolved policies per tool name. Glob pattern matching only happens **once per unique tool name**:
 
 ```typescript
-// From: src/state-sync/PolicyEngine.ts
+// From: packages/core/src/state-sync/PolicyEngine.ts
 resolve(toolName: string): ResolvedPolicy | null {
     const cached = this._cache.get(toolName);
     if (cached !== undefined) return cached;
@@ -240,7 +240,7 @@ The cache is bounded to `MAX_CACHE_SIZE = 2048` entries to prevent unbounded mem
 Multiple tool names matching the same policy **share a single frozen object reference**:
 
 ```typescript
-// From: src/state-sync/PolicyEngine.ts — constructor
+// From: packages/core/src/state-sync/PolicyEngine.ts — constructor
 // Pre-compute a frozen ResolvedPolicy for each policy entry.
 // N tool names matching the same policy share one object.
 this._resolvedByIndex = Object.freeze(
@@ -260,7 +260,7 @@ No repeated object construction or property copying for the same policy.
 `StateSyncLayer` caches decorated `McpTool` objects per tool name. The regex + string concatenation + object spread only runs **once per unique tool name**, not per `tools/list` request:
 
 ```typescript
-// From: src/state-sync/StateSyncLayer.ts
+// From: packages/core/src/state-sync/StateSyncLayer.ts
 private _decorateToolCached(tool: McpTool): McpTool {
     const cached = this._decoratedToolCache.get(tool.name);
     if (cached) return cached;
@@ -280,7 +280,7 @@ Since `tools/list` is the **hottest path** (runs at the start of every LLM conve
 The `GlobMatcher` for State Sync policies uses iterative matching with **bounded backtracking** to prevent exponential blowup on adversarial patterns:
 
 ```typescript
-// From: src/state-sync/GlobMatcher.ts
+// From: packages/core/src/state-sync/GlobMatcher.ts
 const MAX_ITERATIONS = 1024;
 
 function matchIterative(pattern: string[], name: string[]): boolean {
@@ -302,7 +302,7 @@ function matchIterative(pattern: string[], name: string[]): boolean {
 The `ToolFilterEngine` pre-converts filter arrays to `Set` objects for O(1) tag membership tests, and uses single-pass iteration to avoid intermediate array allocations:
 
 ```typescript
-// From: src/core/registry/ToolFilterEngine.ts
+// From: packages/core/src/core/registry/ToolFilterEngine.ts
 export function filterTools<TContext>(
     builders: Iterable<ToolBuilder<TContext>>,
     filter: ToolFilter,
@@ -339,7 +339,7 @@ Early `break` on first match/exclusion avoids unnecessary iterations.
 `.toonDescription()` encodes action metadata using TOON (Token-Oriented Object Notation) pipe-delimited format, reducing description token count by **30-50%** compared to markdown:
 
 ```typescript
-// From: src/core/schema/ToonDescriptionGenerator.ts
+// From: packages/core/src/core/schema/ToonDescriptionGenerator.ts
 function encodeFlatActions<TContext>(actions): string {
     const rows = actions.map(a => buildActionRow(a.key, a));
     return encode(rows, { delimiter: '|' });
@@ -373,7 +373,7 @@ Column headers appear once. Values are pipe-delimited. **Zero JSON key repetitio
 `toonSuccess()` compresses list/tabular response data by **~40%** vs `JSON.stringify()`:
 
 ```typescript
-// From: src/core/response.ts
+// From: packages/core/src/core/response.ts
 export function toonSuccess(data: unknown, options?: EncodeOptions): ToolResponse {
     const text = encode(data, { delimiter: '|' });
     return { content: [{ type: "text", text }] };
@@ -389,7 +389,7 @@ For a 100-row user list, this saves thousands of tokens per response, translatin
 The Presenter's `.agentLimit()` truncates large collections **before serialization**, preventing context overflow:
 
 ```typescript
-// From: src/presenter/Presenter.ts — make()
+// From: packages/core/src/presenter/Presenter.ts — make()
 if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
     const omitted = data.length - this._agentLimit.max;
     data = data.slice(0, this._agentLimit.max);
@@ -413,7 +413,7 @@ Truncation happens **before Zod validation**, so the schema only processes the c
 Every action's validation schema is compiled with `.strict()`:
 
 ```typescript
-// From: src/core/builder/ToolDefinitionCompiler.ts
+// From: packages/core/src/core/builder/ToolDefinitionCompiler.ts
 function buildValidationSchema(action, commonSchema) {
     const merged = base && specific ? base.merge(specific) : (base ?? specific);
     return merged.strict();
@@ -475,7 +475,7 @@ Critical performance modules are implemented as pure functions with **no state a
 While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` dramatically reduce **total system cost** by eliminating unnecessary LLM retries:
 
 ```typescript
-// From: src/core/execution/ValidationErrorFormatter.ts
+// From: packages/core/src/core/execution/ValidationErrorFormatter.ts
 // Instead of: "Validation failed: email: Invalid"
 // Produces:
 // ❌ Validation failed for 'users.create':

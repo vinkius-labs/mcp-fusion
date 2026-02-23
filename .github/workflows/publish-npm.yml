@@ -27,14 +27,20 @@ jobs:
               run: npm ci
 
             - name: Build
-              run: npm run build
+              run: npm run build -ws
 
             - name: Run tests
               run: npm test
               env:
                   CI: true
 
-            - name: Publish to npm
-              run: npm publish --provenance --access public
+            - name: Publish core package
+              run: npm publish -w packages/core --provenance --access public
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+            - name: Publish testing package
+              run: npm publish -w packages/testing --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              continue-on-error: true

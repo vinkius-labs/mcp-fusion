@@ -6,8 +6,6 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "rootDir": "./src",
-        "outDir": "./dist",
 
         // ── Strict Mode (all flags) ──
         "strict": true,
@@ -24,6 +22,5 @@
         "resolveJsonModule": true,
         "skipLibCheck": true
     },
-    "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]
 }

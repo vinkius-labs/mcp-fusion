@@ -94,26 +94,35 @@ npm run build
 
 ## Project Structure
 
+This project is a **monorepo** using npm workspaces:
+
 ```
-src/
-├── core/                # Builder, Registry, Execution, Middleware, Schema
-├── client/              # tRPC-style FusionClient
-├── observability/       # Debug Observer, OpenTelemetry Tracing
-├── presenter/           # MVA (Model-View-Agent) View Layer
-├── prompt/              # Prompt Engine
-├── server/              # MCP Server Attachment
-├── exposition/          # Flat/Grouped Topology Compiler
-├── state-sync/          # Epistemic Cache-Control (LLM Temporal Blindness)
-├── introspection/       # Dynamic Manifest Resource
-├── domain/              # Domain model classes
-├── converters/          # Bidirectional type converters
-└── index.ts             # Root barrel export
-tests/
-├── core/                # Core engine tests (including security)
-├── state-sync/          # State sync tests
-└── *.test.ts            # Domain model tests
-docs/
-└── *.md                 # Documentation (VitePress)
+mcp-fusion/                          ← Framework root (private, not published)
+├── packages/
+│   ├── core/                        ← @vinkius-core/mcp-fusion (published)
+│   │   ├── src/
+│   │   │   ├── core/                # Builder, Registry, Execution, Middleware, Schema
+│   │   │   ├── client/              # tRPC-style FusionClient
+│   │   │   ├── observability/       # Debug Observer, OpenTelemetry Tracing
+│   │   │   ├── presenter/           # MVA (Model-View-Agent) View Layer
+│   │   │   ├── prompt/              # Prompt Engine
+│   │   │   ├── server/              # MCP Server Attachment
+│   │   │   ├── exposition/          # Flat/Grouped Topology Compiler
+│   │   │   ├── state-sync/          # Epistemic Cache-Control
+│   │   │   ├── introspection/       # Dynamic Manifest Resource
+│   │   │   ├── domain/              # Domain model classes
+│   │   │   ├── converters/          # Bidirectional type converters
+│   │   │   └── index.ts             # Root barrel export
+│   │   ├── tests/                   # All framework tests
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── testing/                     ← @vinkius-core/mcp-fusion-testing (published)
+│       ├── src/
+│       ├── package.json
+│       └── tsconfig.json
+├── docs/                            # Documentation (VitePress)
+├── package.json                     # Workspace root
+└── tsconfig.base.json               # Shared TypeScript config
 ```
 
 ## Questions?

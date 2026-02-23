@@ -330,7 +330,7 @@ it('should return isError=true for validation failures', async () => {
 ```
 
 ::: tip Complete Reference
-See [`tests/integration/FullStack.test.ts`](https://github.com/VinkiusLabs/mcp-fusion/blob/main/tests/integration/FullStack.test.ts) for a production-grade integration test suite with **37 tests** covering all modules — Builder, Registry, Server, Presenter, Middleware, Debug, Tracing, StateSync, PromptRegistry, and Flat Exposition — with both happy and sad paths.
+See [`packages/core/tests/integration/FullStack.test.ts`](https://github.com/VinkiusLabs/mcp-fusion/blob/main/packages/core/tests/integration/FullStack.test.ts) for a production-grade integration test suite with **37 tests** covering all modules — Builder, Registry, Server, Presenter, Middleware, Debug, Tracing, StateSync, PromptRegistry, and Flat Exposition — with both happy and sad paths.
 :::
 
 ## Best Practices

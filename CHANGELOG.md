@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-23
+
+### 🏗️ Monorepo Refactor — Multi-Package Architecture
+
+**MCP Fusion** is now a monorepo with npm workspaces. The core framework lives in `packages/core/` and a new `packages/testing/` workspace provides testing utilities. This aligns with industry standards (tRPC, Vitest, Prisma) for package management and distribution.
+
+### BREAKING
+
+- **Project structure:** `src/` → `packages/core/src/`, `tests/` → `packages/core/tests/`. The npm package name and public API remain **unchanged** — `@vinkius-core/mcp-fusion` still exports the same modules.
+- **Root `package.json`:** Now `private: true` with `"workspaces": ["packages/*"]`. The root is no longer the publishable package.
+- **`tsconfig.json` → `tsconfig.base.json`:** Shared TypeScript configuration is now at the root level. Each package extends it via `"extends": "../../tsconfig.base.json"`.
+
+### Added
+
+- **`packages/core/`:** Contains the full framework source (`src/`), tests (`tests/`), and its own `package.json` with `@vinkius-core/mcp-fusion` as the publishable name.
+- **`packages/testing/`:** New `@vinkius-core/mcp-fusion-testing` package (skeleton). Will contain mock servers, test clients, and assertion helpers.
+- **Per-package CI:** `ci.yml` updated to `npm run build -ws` and `npm test -w packages/core`.
+- **Per-package publish:** `publish-npm.yml` now publishes each workspace package independently.
+
+### Fixed
+
+- **`CursorCodec` Web Crypto API resolution:** Replaced `Function('m', 'return import(m)')` hack with variable-based indirection (`const mod = 'node:' + 'crypto'`) that works correctly in Vitest's module transformer while still avoiding TypeScript's static module resolution (no `@types/node` dependency).
+
+### Documentation
+
+- **`CONTRIBUTING.md`:** Project Structure updated to reflect the monorepo layout.
+- **`docs/testing.md`:** Updated FullStack.test.ts link to new path.
+- **`docs/performance.md`:** Updated 18 internal source references.
+- **`docs/cost-and-hallucination.md`:** Updated 14 internal source references.
+
+### Test Suite
+
+- **1,573 tests** across 70 files, all passing.
+
 ## [1.11.0] - 2026-02-23
 
 ### 📄 Stateless Cursor Pagination for Prompts
