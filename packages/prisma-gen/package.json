@@ -1,0 +1,66 @@
+{
+    "name": "mcp-fusion-prisma-gen",
+    "version": "1.0.0",
+    "description": "Prisma Generator for MCP Fusion. Reads schema annotations (@fusion.hide, @fusion.describe, @fusion.tenantKey) and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "vinkius-prisma-gen": "./dist/generator.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "prisma",
+        "generator",
+        "mcp-fusion",
+        "zod",
+        "mva",
+        "presenter",
+        "ai",
+        "llm",
+        "tenant-isolation",
+        "code-generator"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/prisma-gen"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://vinkius-labs.github.io/mcp-fusion/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@prisma/generator-helper": "^6.0.0"
+    },
+    "peerDependencies": {
+        "@vinkius-core/mcp-fusion": "^2.0.0",
+        "zod": "^3.25.1 || ^4.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.0"
+    },
+    "license": "Apache-2.0"
+}

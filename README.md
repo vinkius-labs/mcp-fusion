@@ -371,6 +371,7 @@ handler: async function* (ctx, args) {
 | Package | Description |
 |---|---|
 | [`mcp-fusion-openapi-gen`](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
+| [`mcp-fusion-prisma-gen`](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
 | [`mcp-fusion-n8n`](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
 
 ## Documentation
@@ -391,6 +392,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency limits, egress guards, mutation serialization |
 | [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) | Debug observers, tracing |
 | [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
+| [Prisma Generator](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Generate Presenters and ToolBuilders from `schema.prisma` annotations |
 | [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
 | [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
 | [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |

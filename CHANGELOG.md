@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-02-23
+
+### 🗄️ Prisma Generator — Schema Annotations to Hardened MCP Tools
+
+New `mcp-fusion-prisma-gen` package. Reads `schema.prisma` annotations (`@fusion.hide`, `@fusion.describe`, `@fusion.tenantKey`) and emits typed Presenters and ToolBuilders during `npx prisma generate`.
+
+### Added
+
+- **`packages/prisma-gen/`:** New `mcp-fusion-prisma-gen` generator package:
+  - `AnnotationParser` — Extracts `@fusion.hide`, `@fusion.describe("...")`, `@fusion.tenantKey` from Prisma DMMF `documentation` field
+  - `PresenterEmitter` — Generates Zod `.strict()` response schemas with hidden fields physically excluded (Egress Firewall)
+  - `ToolEmitter` — Generates 5 CRUD actions (`find_many`, `find_unique`, `create`, `update`, `delete`) with:
+    - Asymmetric schemas (ResponseSchema ≠ CreateSchema ≠ UpdateSchema)
+    - `PrismaFusionContext` type injection (shift-left security)
+    - Tenant isolation in every query `WHERE` clause via `@fusion.tenantKey`
+    - OOM pagination guard (`take` max 50, min 1, default 20)
+    - MCP annotations (`readOnly`, `destructive`)
+  - `NamingHelpers` — `toSnakeCase`, `toPascalCase`, `pluralize`
+  - `generator.ts` — Prisma `generatorHandler()` entry point with barrel index generation
+  - Shared `types.ts` for `GeneratedFile` interface (single source of truth)
+- **Code quality fixes:** Removed duplicate `GeneratedFile` declarations, dead imports, dead variables, and fixed barrel `PrismaFusionContext` duplicate export across multi-model schemas
+
+### Documentation
+
+- **`docs/prisma-gen.md`:** Full VitePress documentation page — 3 Engineering Primitives, schema annotations, configuration reference, production example
+- **`packages/prisma-gen/README.md`:** Package README with primitive breakdown and usage examples
+- **`README.md`:** Added `mcp-fusion-prisma-gen` to Packages table and Documentation guides
+- **`.vitepress/config.mts`:** Prisma Generator sidebar entry (already configured)
+
+### Test Suite
+
+- **100 new tests** across 3 files:
+  - `AnnotationParser.test.ts` (23 tests) — multi-line DMMF, special characters, multiple annotations
+  - `PresenterEmitter.test.ts` (29 tests) — egress firewall, relation filtering, scalar type mapping, `.describe()` injection
+  - `ToolEmitter.test.ts` (48 tests) — tenant isolation, schema asymmetry, OOM guards, MCP annotations, integer ID models
+
 ## [2.2.0] - 2026-02-23
 
 ### 🔌 n8n Connector — Turn Workflows into MCP Tools
