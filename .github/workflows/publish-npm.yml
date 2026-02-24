@@ -1,70 +1,70 @@
 name: Publish to npm
 
 on:
-    release:
-        types: [published]
+  release:
+    types: [published]
 
 permissions:
-    contents: read
-    id-token: write
+  contents: read
+  id-token: write
 
 jobs:
-    publish:
-        name: Publish
-        runs-on: ubuntu-latest
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Use Node.js 20
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: npm
-                  registry-url: https://registry.npmjs.org
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Build
-              run: npm run build -ws
+      - name: Build
+        run: npm run build -ws
 
-            - name: Run tests
-              run: npm test
-              env:
-                  CI: true
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
 
-            - name: Publish core package
-              run: npm publish -w packages/core --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish core package
+        run: npm publish -w packages/core --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-            - name: Publish testing package
-              run: npm publish -w packages/testing --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              continue-on-error: true
+      - name: Publish testing package
+        run: npm publish -w packages/testing --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
-            - name: Publish openapi-gen package
-              run: npm publish -w packages/openapi --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              continue-on-error: true
+      - name: Publish openapi-gen package
+        run: npm publish -w packages/openapi --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
-            - name: Publish prisma-gen package
-              run: npm publish -w packages/prisma-gen --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              continue-on-error: true
+      - name: Publish prisma-gen package
+        run: npm publish -w packages/prisma-gen --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
-            - name: Publish n8n connector package
-              run: npm publish -w packages/n8n --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              continue-on-error: true
+      - name: Publish n8n connector package
+        run: npm publish -w packages/n8n --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
-            - name: Publish oauth package
-              run: npm publish -w packages/oauth --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              continue-on-error: true
+      - name: Publish oauth package
+        run: npm publish -w packages/oauth --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
