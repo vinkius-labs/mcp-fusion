@@ -1,0 +1,51 @@
+{
+    "name": "create-mcp-fusion",
+    "version": "1.0.0",
+    "description": "Create a new MCP Fusion agent project with the MVA architecture. Interactive CLI wizard with scaffolding, testing setup, and Claude Desktop auto-install.",
+    "type": "module",
+    "main": "dist/index.js",
+    "bin": {
+        "create-mcp-fusion": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "mcp-fusion",
+        "create",
+        "scaffold",
+        "cli",
+        "ai",
+        "llm",
+        "mva",
+        "agent",
+        "wizard"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/create-mcp-fusion"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://vinkius-labs.github.io/mcp-fusion/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@clack/prompts": "^0.10.0",
+        "picocolors": "^1.1.1"
+    },
+    "license": "Apache-2.0"
+}
