@@ -1,7 +1,7 @@
 {
-    "name": "@vinkius-core/mcp-fusion-testing",
+    "name": "@vinkius-core/testing",
     "version": "1.0.0",
-    "description": "Testing utilities for MCP Fusion — mock servers, test clients, and assertion helpers for MCP tool development.",
+    "description": "In-memory MVA lifecycle emulator for MCP Fusion. Runs the full pipeline (Zod Input → Middlewares → Handler → Egress Firewall) without network transport. Returns structured MvaTestResult objects — zero coupling to Jest/Vitest.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -13,8 +13,20 @@
     },
     "scripts": {
         "build": "tsc",
+        "test": "vitest run",
         "prepublishOnly": "npm run build"
     },
+    "keywords": [
+        "mcp",
+        "mcp-fusion",
+        "testing",
+        "mva",
+        "emulator",
+        "ai",
+        "llm",
+        "soc2",
+        "compliance"
+    ],
     "author": "Vinkius Labs",
     "repository": {
         "type": "git",
@@ -36,7 +48,8 @@
         "access": "public"
     },
     "peerDependencies": {
-        "@vinkius-core/mcp-fusion": "^2.0.0"
+        "@vinkius-core/mcp-fusion": "^2.0.0",
+        "zod": "^3.25.1 || ^4.0.0"
     },
     "license": "Apache-2.0"
 }

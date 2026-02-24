@@ -137,3 +137,9 @@ export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
 export type {
     CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
 } from './state-sync/index.js';
+
+// ── Testing (In-Memory MVA Backdoor) ─────────────────────
+/** @category Testing */
+export { MVA_META_SYMBOL } from './testing/MvaMetaSymbol.js';
+/** @category Testing */
+export type { MvaMeta } from './testing/MvaMetaSymbol.js';

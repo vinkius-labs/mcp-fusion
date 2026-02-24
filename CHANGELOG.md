@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-02-24
+
+### 🧪 Testing — Deterministic AI Governance Auditing
+
+New `@vinkius-core/testing` package. The first and only framework capable of mathematically auditing AI Data Governance (SOC2) in a CI/CD pipeline — zero tokens, zero servers, deterministic.
+
+### Added
+
+- **`packages/testing/`:** New `@vinkius-core/testing` package:
+  - `FusionTester` — In-memory MVA lifecycle emulator, runs the real pipeline (Zod → Middleware → Handler → Presenter → Egress Firewall) entirely in RAM
+  - `createFusionTester(registry, options)` — Factory function for ergonomic test setup
+  - `MvaTestResult` — Structured response decomposition with `data`, `systemRules`, `uiBlocks`, `isError`, `rawResponse` fields
+  - `callAction(toolName, actionName, args?, overrideContext?)` — Execute any tool action with optional per-test context overrides
+  - Symbol Backdoor (`MVA_META_SYMBOL`) — Extracts structured MVA layers from ToolResponse without XML parsing; invisible to `JSON.stringify`
+  - Async `contextFactory` support for JWT/database resolution
+  - Context isolation — overrides are shallow-merged per call, never mutated
+  - 42 integration tests covering: Egress Firewall, System Rules, UI Blocks, Middleware Guards, OOM Guard, Error Handling, Raw Response, Agent Limit, Concurrent Calls, Sequential Reuse
+  - Runner-agnostic — works with Vitest, Jest, Mocha, or Node's native `node:test`
+
+### Documentation
+
+- **15 testing documentation pages:** Deterministic AI Governance (landing), Quick Start, Command-Line Runner, Fixtures, Assertions, Test Doubles, Egress Firewall, System Rules, UI Blocks, Middleware Guards, OOM Guard, Error Handling, Raw Response, CI/CD Integration (with SOC2 automated audit examples), Convention
+- **15 SEO entries** with FAQPage JSON-LD for all testing pages
+- Updated `llms.txt` with FusionTester API, types, and usage examples
+- Updated `README.md` with Testing section, capabilities table entry, and package reference
+
 ## [2.3.0] - 2026-02-23
 
 ### 🗄️ Prisma Generator — Schema Annotations to Hardened MCP Tools

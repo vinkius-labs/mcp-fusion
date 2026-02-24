@@ -1,10 +1,10 @@
 /**
- * @vinkius-core/mcp-fusion-testing
+ * @vinkius-core/testing — Barrel Export
  *
- * Testing utilities for MCP Fusion.
- * Provides mock servers, test clients, and assertion helpers
- * for developing and testing MCP tools.
+ * Public API for the in-memory MVA lifecycle emulator.
+ *
+ * @module
  */
 
-// Testing utilities will be added here in future releases.
-export {};
+export { FusionTester, createFusionTester } from './FusionTester.js';
+export type { TesterOptions, MvaTestResult } from './types.js';

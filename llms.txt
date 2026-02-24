@@ -583,6 +583,38 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `PromptBuilder<TContext>` — DIP interface: .name, .getDefinition(), .handleGet(), .tags
 - `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, hydrationTimeout?, handler }
 
+### Testing (from '@vinkius-core/testing')
+- `createFusionTester<TContext>(registry, options)` → FusionTester — in-memory MVA lifecycle emulator
+- `FusionTester<TContext>` — .callAction(toolName, actionName, args?, overrideContext?) → Promise<MvaTestResult>
+- `TesterOptions<TContext>` — { contextFactory: () => TContext | Promise<TContext> }
+- `MvaTestResult<TData>` — { data: TData, systemRules: readonly string[], uiBlocks: readonly unknown[], isError: boolean, rawResponse: unknown }
+
+The FusionTester runs the REAL execution pipeline in RAM (Zod → Middleware → Handler → Presenter → Egress Firewall). Zero tokens consumed. Zero servers. Deterministic — same input → same output on every CI run. Uses the Symbol Backdoor (MVA_META_SYMBOL) to extract structured MVA layers from ToolResponse without XML parsing.
+
+```typescript
+import { createFusionTester } from '@vinkius-core/testing';
+
+const tester = createFusionTester(registry, {
+    contextFactory: () => ({ prisma: mockPrisma, tenantId: 't_42', role: 'ADMIN' }),
+});
+
+// Egress Firewall — PII physically absent
+const result = await tester.callAction('db_user', 'find_many', { take: 5 });
+expect(result.data[0]).not.toHaveProperty('passwordHash');  // SOC2 CC6.1
+expect(result.systemRules).toContain('Email addresses are PII.');
+
+// Middleware — GUEST blocked
+const denied = await tester.callAction('db_user', 'find_many', { take: 5 }, { role: 'GUEST' });
+expect(denied.isError).toBe(true);  // SOC2 CC6.3
+
+// OOM Guard — Zod rejects
+const oom = await tester.callAction('db_user', 'find_many', { take: 99999 });
+expect(oom.isError).toBe(true);
+
+// Symbol Invisibility — transport never sees metadata
+expect(JSON.stringify(result.rawResponse)).not.toContain('passwordHash');
+```
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups

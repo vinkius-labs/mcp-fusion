@@ -31,6 +31,7 @@
  */
 import { type ToolResponse } from '../core/response.js';
 import { type UiBlock } from './ui.js';
+import { MVA_META_SYMBOL } from '../testing/MvaMetaSymbol.js';
 
 /** A suggested next action for HATEOAS-style agent guidance */
 export interface ActionSuggestion {
@@ -334,7 +335,20 @@ export class ResponseBuilder {
             content.push({ type: 'text', text: suggestionsText });
         }
 
-        return { content };
+        const response: ToolResponse = { content };
+
+        // ── MVA Meta Backdoor (Testing) ──────────────────
+        // Attach structured MVA layers via Symbol — invisible to
+        // JSON.stringify (MCP transport), readable by FusionTester.
+        let parsedData: unknown;
+        try { parsedData = JSON.parse(this._data); } catch { parsedData = this._data; }
+        (response as unknown as Record<symbol, unknown>)[MVA_META_SYMBOL] = {
+            data: parsedData,
+            systemRules: this._rules,
+            uiBlocks: this._uiBlocks,
+        };
+
+        return response;
     }
 }
 

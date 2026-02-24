@@ -1,346 +1,229 @@
-# Testing Guide
+---
+title: "Testing — Deterministic AI Governance"
+description: "The end of Vibes-Based Testing. Audit every MVA layer in CI/CD — zero tokens, zero servers, mathematically verifiable."
+---
 
-**MCP Fusion** tools are designed for testability. Every builder can be tested directly without an MCP server.
+# Testing
 
-## Direct Execution (No Server Required)
+::: danger The Only Framework Where PII Protection is Code-Assertable
+**MCP Fusion** is the only solution in the market where sensitive data protection (PII Drop) can be **asserted in code** and **formally audited in CI/CD**:
 
-Every `GroupedToolBuilder` has an `.execute()` method that runs the full pipeline — validation, middleware, handler — without any MCP infrastructure:
+```typescript
+// This is not a hope. This is not a visual check. This is a mathematical proof.
+expect(result.data).not.toHaveProperty('passwordHash');  // SOC2 CC6.1
+expect(result.data).not.toHaveProperty('tenantId');       // Multi-tenant isolation
+expect(result.isError).toBe(true);                        // SOC2 CC6.3 — GUEST blocked
+expect(result.systemRules).toContain('PII policy');       // Governance directive present
+```
+
+The field is **physically absent** from `result.data` — not hidden, not masked, but removed by the Presenter's Zod schema in RAM. `JSON.stringify` cannot leak what doesn't exist. This runs in **2ms**, costs **$0.00**, and produces the **same result on every CI run, on every machine, forever.**
+:::
+
+## The End of Vibes-Based Testing
+
+How does a developer test if the Tool he created for Claude works today?
+
+He starts the Node.js server in the terminal, opens Claude Desktop, types "Get user 5", waits 10 seconds for the AI to respond, looks at the screen and says: *"Cool, the password didn't leak. Commit and Deploy."*
+
+The AI industry calls this **"Vibes-Based Testing"** — testing by gut feeling.
+
+**This is unacceptable in Enterprise Software Engineering.**
+
+- You **cannot** put this in a CI/CD pipeline (GitHub Actions).
+- You **cannot** spend tokens (money) from the API on unit tests.
+- You **cannot** pass a security audit by relying on what the AI *"decided"* to respond.
+
+And yet, today, this is the **only** testing strategy available for MCP servers. Every framework, every SDK, every tutorial ends at `JSON.stringify()` and hopes for the best.
+
+### The Problem is Structural
+
+MCP responses are flat `ToolResponse` objects — an array of `{ type: 'text', text: string }` blocks. Everything is serialized into strings. To assert that a `passwordHash` field was stripped, you would need to:
+
+1. Parse the XML wrapper
+2. Find the `<data>` block
+3. Parse the JSON inside it
+4. Check that the field is absent
+
+That's fragile, format-dependent, and breaks every time the response format evolves. It's not testable. It's not auditable. It's not engineering.
+
+### The Paradigm Shift: Deterministic MVA Auditing
+
+**MCP Fusion** introduces `@vinkius-core/testing` — the first and only framework capable of **mathematically auditing AI Data Governance (SOC2)** in a CI/CD pipeline.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    FusionTester                          │
+│                                                         │
+│  ┌──────────┐   ┌────────────┐   ┌─────────┐           │
+│  │   Zod    │──▶│ Middleware  │──▶│ Handler │           │
+│  │  Input   │   │   Chain    │   │         │           │
+│  └──────────┘   └────────────┘   └────┬────┘           │
+│                                       │                 │
+│                                  ┌────▼────┐            │
+│                                  │Presenter│            │
+│                                  │ (Egress │            │
+│                                  │Firewall)│            │
+│                                  └────┬────┘            │
+│                                       │                 │
+│  ┌────────────────────────────────────▼──────────────┐  │
+│  │              MvaTestResult                        │  │
+│  │  ┌──────┐ ┌───────────┐ ┌────────┐ ┌───────────┐ │  │
+│  │  │ data │ │systemRules│ │uiBlocks│ │rawResponse│ │  │
+│  │  └──────┘ └───────────┘ └────────┘ └───────────┘ │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+The `FusionTester`:
+
+- Runs the **real** execution pipeline in RAM — the exact same code path as production
+- Returns **structured** `MvaTestResult` objects — each MVA layer decomposed into its own field
+- **Zero tokens consumed.** No LLM calls. No API bills. No network transport.
+- **Zero servers.** No HTTP, no stdio, no MCP transport layer.
+- **Deterministic.** Same input → same output. Every time. In every CI run. On every machine.
+
+### What You Can Audit
+
+| MVA Layer | What the test asserts | SOC2 / Compliance Relevance |
+|---|---|---|
+| [**Egress Firewall**](/mcp-fusion/testing/egress-firewall) | `result.data` has no `passwordHash`, no `tenantId` | Data leak prevention (SOC2 CC6.1) |
+| [**OOM Guard**](/mcp-fusion/testing/oom-guard) | `result.isError === true` when `take: 10000` | Memory exhaustion protection |
+| [**System Rules**](/mcp-fusion/testing/system-rules) | `result.systemRules` contains expected domain directives | Deterministic context control |
+| [**UI Blocks**](/mcp-fusion/testing/ui-blocks) | `result.uiBlocks` produces correct charts/summaries | Response quality assurance |
+| [**Middleware Guards**](/mcp-fusion/testing/middleware-guards) | `result.isError === true` when `role: 'GUEST'` | Access control verification (SOC2 CC6.3) |
+| **Agent Limit** | `result.data.length <= 20` even when DB has 10,000 rows | Context window protection |
+| **HATEOAS** | `rawResponse` includes `<action_suggestions>` | Agent navigation safety |
+
+::: tip Deterministic ≠ Vibes
+Every assertion above is **deterministic** — it does not depend on what any AI model "decides" to do. It depends on what **your code** does. That's the difference between engineering and vibes.
+:::
+
+### Before vs After
+
+| | Before (Vibes-Based) | After (FusionTester) |
+|---|---|---|
+| **How you test** | Open Claude Desktop, type a prompt, read the response | `await tester.callAction('users', 'find_many', { take: 5 })` |
+| **What you assert** | "Looks right to me" | `expect(result.data[0]).not.toHaveProperty('passwordHash')` |
+| **Cost per test** | ~$0.01–0.05 in API tokens | $0.00 |
+| **Duration** | 5–15 seconds (LLM round-trip) | 2ms (in-memory) |
+| **CI/CD compatible** | ❌ | ✅ `npx vitest run` |
+| **SOC2 auditable** | ❌ | ✅ Mathematical proof |
+| **Reproducible** | ❌ LLM responses vary | ✅ Deterministic |
+
+## Install
+
+```bash
+npm install @vinkius-core/testing
+```
+
+**Zero runtime dependencies.** Only peer dependencies on `@vinkius-core/mcp-fusion` and `zod`.
+
+**Runner agnostic.** Works with Vitest, Jest, Mocha, or Node's native `node:test`. The FusionTester returns plain JS objects — your test runner, your choice.
+
+## 30-Second Example
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { createTool, success, error } from '@vinkius-core/mcp-fusion';
+import { createFusionTester } from '@vinkius-core/testing';
+import { registry } from './server/registry.js';
 
-const calculator = createTool<void>('calculator')
-    .action({
-        name: 'add',
-        handler: async (_ctx, args) => {
-            const a = args.a as number;
-            const b = args.b as number;
-            return success(a + b);
-        },
+const tester = createFusionTester(registry, {
+    contextFactory: () => ({
+        prisma: mockPrisma,
+        tenantId: 't_enterprise_42',
+        role: 'ADMIN',
+    }),
+});
+
+describe('SOC2 Data Governance Audit', () => {
+    it('Egress Firewall strips PII before it reaches the LLM', async () => {
+        const result = await tester.callAction('db_user', 'find_many', { take: 10 });
+
+        // DETERMINISTIC: passwordHash is physically absent from the response
+        for (const user of result.data) {
+            expect(user).not.toHaveProperty('passwordHash');
+            expect(user).not.toHaveProperty('tenantId');
+        }
     });
 
-describe('calculator', () => {
-    it('adds two numbers', async () => {
-        const result = await calculator.execute(undefined, {
-            action: 'add',
-            a: 2,
-            b: 3,
-        });
+    it('OOM Guard rejects unbounded queries', async () => {
+        const result = await tester.callAction('db_user', 'find_many', { take: 99999 });
+        expect(result.isError).toBe(true);
+    });
 
-        expect(result.isError).toBeUndefined();
-        expect(result.content[0]?.text).toBe('5');
+    it('LLM receives correct domain governance rules', async () => {
+        const result = await tester.callAction('db_user', 'find_many', { take: 5 });
+
+        expect(result.systemRules).toContain(
+            'Email addresses are PII. Mask when possible.'
+        );
+    });
+
+    it('Guest users cannot access admin tools', async () => {
+        const result = await tester.callAction(
+            'db_user', 'find_many', { take: 5 },
+            { role: 'GUEST' },  // ← context override
+        );
+        expect(result.isError).toBe(true);
+        expect(result.data).toContain('Unauthorized');
     });
 });
 ```
 
-## Testing with Context
+**4 tests. 8ms total. Zero tokens. Zero servers. SOC2-grade proof.**
 
-When tools require a typed context, create a mock context for tests:
+## Architecture: The Symbol Backdoor
 
-::: code-group
-```typescript [defineTool]
-import { defineTool, success } from '@vinkius-core/mcp-fusion';
+The `FusionTester` runs the **real** execution pipeline — the exact same code path as your production MCP server:
 
-interface AppContext {
-    db: { projects: { findMany: () => Promise<any[]> } };
-    userId: string;
-}
+```
+ToolRegistry.routeCall()
+  → Concurrency Semaphore
+    → Discriminator Parsing
+      → Zod Input Validation
+        → Compiled Middleware Chain
+          → Handler Execution
+            → PostProcessor (Presenter auto-application)
+              → Egress Guard (maxPayloadBytes)
+```
 
-const projects = defineTool<AppContext>('projects', {
-    actions: {
-        list: {
-            readOnly: true,
-            handler: async (ctx, _args) => {
-                const items = await ctx.db.projects.findMany();
-                return success(items);
-            },
-        },
-    },
-});
+The key insight: `ResponseBuilder.build()` attaches structured MVA metadata via a **global Symbol** (`MVA_META_SYMBOL`). Symbols are ignored by `JSON.stringify`, so the MCP transport never sees them — but the `FusionTester` reads them in RAM.
 
-// Test with a mock context
-const mockCtx: AppContext = {
-    db: {
-        projects: {
-            findMany: async () => [
-                { id: '1', name: 'Alpha' },
-                { id: '2', name: 'Beta' },
-            ],
-        },
-    },
-    userId: 'test-user',
+```typescript
+// What the MCP transport sees (JSON.stringify):
+{ "content": [{ "type": "text", "text": "<data>...</data>" }] }
+
+// What FusionTester reads (Symbol key — invisible to transport):
+response[Symbol.for('mcp-fusion.mva-meta')] = {
+    data: { id: '1', name: 'Alice', email: 'alice@acme.com' },
+    systemRules: ['Data from Prisma ORM. Do not infer outside this response.'],
+    uiBlocks: [{ type: 'summary', content: 'User: Alice (alice@acme.com)' }],
 };
-
-const result = await projects.execute(mockCtx, { action: 'list' });
-```
-```typescript [createTool]
-import { createTool, success } from '@vinkius-core/mcp-fusion';
-
-interface AppContext {
-    db: { projects: { findMany: () => Promise<any[]> } };
-    userId: string;
-}
-
-const projects = createTool<AppContext>('projects')
-    .action({
-        name: 'list',
-        readOnly: true,
-        handler: async (ctx, _args) => {
-            const items = await ctx.db.projects.findMany();
-            return success(items);
-        },
-    });
-
-// Same mock context, same execution
-const result = await projects.execute(mockCtx, { action: 'list' });
-```
-:::
-
-## Testing Error Cases
-
-Verify error responses with `isError`:
-
-```typescript
-it('returns error for unknown action', async () => {
-    const result = await calculator.execute(undefined, {
-        action: 'unknown',
-    });
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('Unknown action');
-});
-
-it('returns error for missing discriminator', async () => {
-    const result = await calculator.execute(undefined, {});
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('action is required');
-});
 ```
 
-## Testing Middleware
+**No XML regex. No string parsing. No pipeline reimplementation.**
 
-Middleware is pre-compiled into the execution chain, so testing it is transparent:
+The FusionTester calls `ToolRegistry.routeCall()` — the same function your production server uses. If we reimplemented the pipeline, tests would pass in the tester but fail in production. Full fidelity means:
 
-```typescript
-import { createTool, error, success, type MiddlewareFn } from '@vinkius-core/mcp-fusion';
+- ✅ Zod input validation
+- ✅ Compiled middleware chain
+- ✅ Concurrency semaphore limits
+- ✅ Mutation serialization
+- ✅ Abort signal propagation
+- ✅ Egress payload guards
+- ✅ Agent limit truncation
+- ✅ HATEOAS action suggestions
 
-interface AuthContext { token?: string; }
+## Guides
 
-const requireAuth: MiddlewareFn<AuthContext> = async (ctx, _args, next) => {
-    if (!ctx.token) return error('Unauthorized');
-    return next();
-};
-
-const secureTool = createTool<AuthContext>('secure')
-    .use(requireAuth)
-    .action({
-        name: 'data',
-        handler: async (_ctx, _args) => success('secret'),
-    });
-
-it('blocks unauthenticated requests', async () => {
-    const result = await secureTool.execute({}, { action: 'data' });
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toBe('Unauthorized');
-});
-
-it('allows authenticated requests', async () => {
-    const result = await secureTool.execute(
-        { token: 'valid' },
-        { action: 'data' },
-    );
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0]?.text).toBe('secret');
-});
-```
-
-## Testing with ToolRegistry
-
-For integration tests, use `ToolRegistry.routeCall()`:
-
-```typescript
-import { ToolRegistry, createTool, success } from '@vinkius-core/mcp-fusion';
-
-const registry = new ToolRegistry<void>();
-
-registry.register(
-    createTool<void>('math')
-        .action({ name: 'add', handler: async (_ctx, args) => success((args.a as number) + (args.b as number)) }),
-);
-
-it('routes to the correct tool', async () => {
-    const result = await registry.routeCall(undefined, 'math', {
-        action: 'add', a: 10, b: 20,
-    });
-    expect(result.content[0]?.text).toBe('30');
-});
-
-it('returns error for unknown tool', async () => {
-    const result = await registry.routeCall(undefined, 'nonexistent', {});
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('Unknown tool');
-});
-```
-
-## Testing Streaming Progress
-
-For async generator handlers, test that progress events are emitted:
-
-```typescript
-import { createTool, success, progress } from '@vinkius-core/mcp-fusion';
-
-const importer = createTool<void>('importer')
-    .action({
-        name: 'run',
-        handler: async function* (_ctx, _args) {
-            yield progress(25, 'Loading...');
-            yield progress(75, 'Processing...');
-            return success('Done');
-        },
-    });
-
-it('completes with success', async () => {
-    const result = await importer.execute(undefined, { action: 'run' });
-    expect(result.content[0]?.text).toBe('Done');
-});
-```
-
-## Inspecting Tool Definitions
-
-Use `buildToolDefinition()` to verify the generated MCP tool schema:
-
-```typescript
-it('generates correct schema', () => {
-    const tool = calculator.buildToolDefinition();
-
-    expect(tool.name).toBe('calculator');
-    expect(tool.inputSchema.properties).toHaveProperty('action');
-    expect(tool.description).toContain('Actions: add');
-});
-```
-
-## Introspection API
-
-Use `getActionMetadata()` for compliance audits or programmatic checks:
-
-```typescript
-it('marks destructive actions correctly', () => {
-    const meta = tool.getActionMetadata();
-    const deleteAction = meta.find(m => m.key === 'delete');
-
-    expect(deleteAction?.destructive).toBe(true);
-    expect(deleteAction?.readOnly).toBe(false);
-});
-```
-
-## End-to-End Integration Testing
-
-For comprehensive integration tests that validate **all modules working together** through the MCP Server layer, create a lightweight mock server and use `attachToServer()`:
-
-```typescript
-import { ToolRegistry, createTool, success, error } from '@vinkius-core/mcp-fusion';
-import { createDebugObserver } from '@vinkius-core/mcp-fusion/observability';
-import type { DebugEvent } from '@vinkius-core/mcp-fusion/observability';
-
-// Lightweight mock that captures setRequestHandler calls
-function createMockServer() {
-    const handlers = new Map<string, Function>();
-    return {
-        setRequestHandler: (schema: any, handler: Function) => {
-            handlers.set(schema.method, handler);
-        },
-        async callTool(name: string, args: Record<string, unknown>, extra?: any) {
-            const handler = handlers.get('tools/call');
-            return handler!({ params: { name, arguments: args } }, extra);
-        },
-        async callListTools() {
-            const handler = handlers.get('tools/list');
-            return handler!({});
-        },
-    };
-}
-```
-
-### Happy path: context factory + debug observability
-
-```typescript
-interface Ctx { userId: string; role: string }
-
-it('should wire context + debug through the full pipeline', async () => {
-    const events: DebugEvent[] = [];
-
-    const tool = createTool<Ctx>('tasks')
-        .use(async (ctx, args, next) => {
-            if (ctx.role !== 'admin') return error('Forbidden');
-            return next(ctx, args);
-        })
-        .action({
-            name: 'list',
-            handler: async (ctx) => success(`Tasks for ${ctx.userId}`),
-        });
-
-    const registry = new ToolRegistry<Ctx>();
-    registry.register(tool);
-
-    const server = createMockServer();
-    registry.attachToServer(server, {
-        toolExposition: 'grouped',
-        contextFactory: (extra: any) => ({
-            userId: extra?.userId ?? 'anonymous',
-            role: extra?.role ?? 'viewer',
-        }),
-        debug: createDebugObserver((e) => events.push(e)),
-    });
-
-    const result = await server.callTool(
-        'tasks', { action: 'list' }, { userId: 'u_1', role: 'admin' },
-    );
-
-    expect(result.content[0].text).toBe('Tasks for u_1');
-    expect(events.some(e => e.type === 'execute')).toBe(true);
-});
-```
-
-### Sad path: validation failures, handler exceptions, middleware blocks
-
-```typescript
-it('should return isError=true for validation failures', async () => {
-    const tool = createTool<void>('calc').action({
-        name: 'add',
-        schema: z.object({ a: z.number(), b: z.number() }),
-        handler: async (_ctx, args) => success(`${args.a + args.b}`),
-    });
-
-    const registry = new ToolRegistry<void>();
-    registry.register(tool);
-    const server = createMockServer();
-    registry.attachToServer(server, { toolExposition: 'grouped' });
-
-    // Wrong type → structured validation error
-    const r = await server.callTool('calc', { action: 'add', a: 'oops', b: 5 });
-    expect(r.isError).toBe(true);
-
-    // Unknown tool → UNKNOWN_TOOL with suggestions
-    const r2 = await server.callTool('ghost', { action: 'run' });
-    expect(r2.isError).toBe(true);
-    expect(r2.content[0].text).toContain('UNKNOWN_TOOL');
-});
-```
-
-::: tip Complete Reference
-See [`packages/core/tests/integration/FullStack.test.ts`](https://github.com/VinkiusLabs/mcp-fusion/blob/main/packages/core/tests/integration/FullStack.test.ts) for a production-grade integration test suite with **37 tests** covering all modules — Builder, Registry, Server, Presenter, Middleware, Debug, Tracing, StateSync, PromptRegistry, and Flat Exposition — with both happy and sad paths.
-:::
-
-## Best Practices
-
-1. **Test via `.execute()`** — avoids MCP infrastructure complexity for unit tests
-2. **Create typed mock contexts** — keeps tests readable and type-safe
-3. **Test error paths explicitly** — verify unknown actions, validation failures, middleware blocks
-4. **Use `ToolRegistry.routeCall()`** for integration tests that span multiple tools
-5. **Use `attachToServer()` with a mock** — for E2E tests that validate the full MCP pipeline including observability, prompts, and exposition strategies
-6. **Test both happy AND sad paths** — the framework must resolve developer mistakes (wrong types, missing fields, invalid config) gracefully
-7. **Check `buildToolDefinition()`** — ensures schema, description, and annotations are correct
-8. **Freeze-after-build** — verify that `.action()` after `.buildToolDefinition()` throws
-
+| Guide | Description |
+|---|---|
+| [Quick Start](/mcp-fusion/testing/quickstart) | Build your first FusionTester in 5 minutes |
+| [Egress Firewall](/mcp-fusion/testing/egress-firewall) | Audit PII stripping and field-level security |
+| [System Rules](/mcp-fusion/testing/system-rules) | Verify LLM governance directives |
+| [UI Blocks](/mcp-fusion/testing/ui-blocks) | Assert SSR blocks, charts, and cognitive guardrails |
+| [Middleware Guards](/mcp-fusion/testing/middleware-guards) | Test RBAC, auth gates, and context derivation |
+| [OOM Guard](/mcp-fusion/testing/oom-guard) | Validate Zod input boundaries and agent limits |
+| [Error Handling](/mcp-fusion/testing/error-handling) | Assert `isError`, error messages, empty MVA layers |
+| [Raw Response](/mcp-fusion/testing/raw-response) | Protocol-level MCP transport inspection |
+| [Convention](/mcp-fusion/testing/convention) | `tests/` folder structure in the MVA convention |

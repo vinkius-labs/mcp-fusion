@@ -1,16 +1,22 @@
 # MVA Convention
 
-The **MVA Convention** defines how **MCP Fusion** organizes generated code into three architectural layers.
+The **MVA Convention** defines how **MCP Fusion** organizes generated code into three architectural layers, plus a **testing layer** for pipeline verification.
 
 ## Structure
 
 ```text
-generated/
+src/
 ├── models/         ← M — Zod schemas
 ├── views/          ← V — Presenters
 ├── agents/         ← A — MCP tool definitions
 ├── index.ts        ← Registry barrel
 └── server.ts       ← Server bootstrap
+tests/
+├── firewall/       ← Egress Firewall assertions
+├── guards/         ← Middleware & OOM Guard tests
+├── rules/          ← System Rules verification
+├── blocks/         ← UI Blocks & truncation tests
+└── setup.ts        ← Shared FusionTester instance
 ```
 
 ## Layers
@@ -74,13 +80,47 @@ export const petTools = defineTool<ApiContext>('pet', {
 - Handlers return raw data — the Presenter handles everything else
 - Imports from `views/` only
 
+### Tests (`tests/`)
+
+Pipeline verification. Uses `@vinkius-core/testing` to audit each MVA layer independently.
+
+```typescript
+// tests/setup.ts
+import { createFusionTester } from '@vinkius-core/testing';
+import { registry } from '../src/index.js';
+
+export const tester = createFusionTester(registry, {
+    contextFactory: () => ({
+        prisma: mockPrisma,
+        tenantId: 't_test',
+        role: 'ADMIN',
+    }),
+});
+```
+
+```typescript
+// tests/firewall/pet.firewall.test.ts
+import { tester } from '../setup.js';
+
+it('strips internal fields from Pet response', async () => {
+    const result = await tester.callAction('pet', 'get_by_id', { petId: 1 });
+    expect(result.data).not.toHaveProperty('internalFlags');
+});
+```
+
+- Four subdirectories: `firewall/`, `guards/`, `rules/`, `blocks/`
+- One shared `setup.ts` with the `FusionTester` instance
+- Imports from `agents/` (via the registry barrel) only
+
 ## Dependency Flow
 
 ```text
 models/  →  views/  →  agents/  →  index.ts  →  server.ts
+                                       ↓
+                                    tests/
 ```
 
-No layer imports from a layer below it. Models never import Presenters. Views never import Tools.
+No layer imports from a layer below it. Models never import Presenters. Views never import Tools. Tests import only the registry barrel.
 
 ## File Naming
 
@@ -89,6 +129,10 @@ No layer imports from a layer below it. Models never import Presenters. Views ne
 | Model | `models/` | `.schema.ts` | `z.object()` |
 | View | `views/` | `.presenter.ts` | `createPresenter()` |
 | Agent | `agents/` | `.tool.ts` | `defineTool()` |
+| Test — Firewall | `tests/firewall/` | `.firewall.test.ts` | `tester.callAction()` |
+| Test — Guards | `tests/guards/` | `.guard.test.ts` | `tester.callAction()` |
+| Test — Rules | `tests/rules/` | `.rules.test.ts` | `tester.callAction()` |
+| Test — Blocks | `tests/blocks/` | `.blocks.test.ts` | `tester.callAction()` |
 
 ## Header Annotations
 
@@ -98,4 +142,6 @@ Every generated file identifies its layer:
 // MVA Layer: Model (data boundary)
 // MVA Layer: View (perception layer)
 // MCP Tool: delivery layer for the Agent
+// MVA Test: pipeline verification
 ```
+

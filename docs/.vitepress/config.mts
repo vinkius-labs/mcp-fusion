@@ -101,7 +101,7 @@ export default defineConfig({
       // ── MVA Architecture ───────────────────────────────
       {
         text: 'MVA Architecture',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'The MVA Manifesto', link: '/mva-pattern' },
           { text: 'MVA At a Glance', link: '/mva/' },
@@ -115,7 +115,7 @@ export default defineConfig({
       // ── MCP Primitives ─────────────────────────────────
       {
         text: 'Tools',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'Building Tools', link: '/building-tools' },
           { text: 'Routing & Groups', link: '/routing' },
@@ -126,7 +126,7 @@ export default defineConfig({
       },
       {
         text: 'Prompts',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'Prompt Engine', link: '/prompts' },
           { text: 'MVA-Driven Prompts (fromView)', link: '/prompts#mva-driven-prompts-—-fromview' },
@@ -139,7 +139,7 @@ export default defineConfig({
       // ── Presenter (MVA View) ───────────────────────────
       {
         text: 'Presenter',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'Presenter (MVA View)', link: '/presenter' },
           { text: 'Anatomy of the Presenter', link: '/mva/presenter-anatomy' },
@@ -154,7 +154,7 @@ export default defineConfig({
       // ── Framework ──────────────────────────────────────
       {
         text: 'Framework',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'State & Context', link: '/context' },
           { text: 'Middleware', link: '/middleware' },
@@ -167,7 +167,7 @@ export default defineConfig({
       // ── Production ─────────────────────────────────────
       {
         text: 'Production',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'State Sync', link: '/state-sync' },
           { text: 'Cancellation', link: '/cancellation' },
@@ -177,25 +177,48 @@ export default defineConfig({
           { text: 'Introspection', link: '/introspection' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Performance', link: '/performance' },
-          { text: 'Testing', link: '/testing' },
+        ]
+      },
+
+      // ── Testing ──────────────────────────────────────────
+      {
+        text: 'Testing',
+        collapsed: true,
+        items: [
+          { text: 'Deterministic AI Governance', link: '/testing' },
+          { text: 'Quick Start', link: '/testing/quickstart' },
+          { text: 'Command-Line Runner', link: '/testing/command-line' },
+          { text: 'Fixtures', link: '/testing/fixtures' },
+          { text: 'Assertions', link: '/testing/assertions' },
+          { text: 'Test Doubles', link: '/testing/test-doubles' },
+          { text: 'Egress Firewall', link: '/testing/egress-firewall' },
+          { text: 'System Rules', link: '/testing/system-rules' },
+          { text: 'UI Blocks', link: '/testing/ui-blocks' },
+          { text: 'Middleware Guards', link: '/testing/middleware-guards' },
+          { text: 'OOM Guard', link: '/testing/oom-guard' },
+          { text: 'Error Handling', link: '/testing/error-handling' },
+          { text: 'Raw Response', link: '/testing/raw-response' },
+          { text: 'CI/CD Integration', link: '/testing/ci-cd' },
+          { text: 'Convention', link: '/testing/convention' },
         ]
       },
 
       // ── Packages ────────────────────────────────────────
       {
         text: 'Packages',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'OpenAPI Generator', link: '/openapi-gen' },
           { text: 'Prisma Generator', link: '/prisma-gen' },
           { text: 'n8n Connector', link: '/n8n-connector' },
+          { text: 'Testing Package', link: '/testing' },
         ]
       },
 
       // ── Reference ──────────────────────────────────────
       {
         text: 'Reference',
-        collapsed: false,
+        collapsed: true,
         items: [
           { text: 'API Reference', link: '/api-reference' },
           { text: 'Response Helpers', link: '/api-reference#response-helpers' },

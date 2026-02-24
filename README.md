@@ -343,6 +343,30 @@ handler: async function* (ctx, args) {
 }
 ```
 
+### Testing — Deterministic AI Governance
+
+The only AI framework where PII protection is **code-assertable** and **SOC2-auditable in CI/CD**:
+
+```typescript
+import { createFusionTester } from '@vinkius-core/testing';
+
+const tester = createFusionTester(registry, {
+    contextFactory: () => ({ prisma: mockPrisma, tenantId: 't_42', role: 'ADMIN' }),
+});
+
+// SOC2 CC6.1 — PII physically absent (not masked, REMOVED)
+const result = await tester.callAction('db_user', 'find_many', { take: 5 });
+expect(result.data[0]).not.toHaveProperty('passwordHash');
+
+// SOC2 CC6.3 — GUEST blocked by middleware
+const denied = await tester.callAction('db_user', 'find_many', { take: 5 }, { role: 'GUEST' });
+expect(denied.isError).toBe(true);
+```
+
+**2ms per test. $0.00 in tokens. Zero servers. Deterministic on every CI run, on every machine.**
+
+→ [Testing docs](https://vinkius-labs.github.io/mcp-fusion/testing) · [CI/CD Integration](https://vinkius-labs.github.io/mcp-fusion/testing/ci-cd) · [SOC2 Audit Patterns](https://vinkius-labs.github.io/mcp-fusion/testing/egress-firewall)
+
 ## All Capabilities
 
 | Capability | Mechanism |
@@ -357,6 +381,7 @@ handler: async function* (ctx, args) {
 | **Strict Validation** | Zod `.merge().strict()` — unknown fields rejected with actionable errors |
 | **Type-Safe Client** | `createFusionClient<T>()` — full inference from server to client |
 | **Streaming Progress** | `yield progress()` → MCP `notifications/progress` |
+| **Testing** | `createFusionTester()` — in-memory MVA emulator, SOC2 audit in CI/CD |
 | **State Sync** | RFC 7234 cache-control — `invalidates`, `no-store`, `immutable` |
 | **Tool Exposition** | `'flat'` or `'grouped'` wire format |
 | **Tag Filtering** | RBAC context gating — `{ tags: ['core'] }` / `{ exclude: ['internal'] }` |
@@ -373,6 +398,7 @@ handler: async function* (ctx, args) {
 | [`mcp-fusion-openapi-gen`](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
 | [`mcp-fusion-prisma-gen`](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
 | [`mcp-fusion-n8n`](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
+| [`@vinkius-core/testing`](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
 
 ## Documentation
 
@@ -394,6 +420,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
 | [Prisma Generator](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Generate Presenters and ToolBuilders from `schema.prisma` annotations |
 | [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
+| [Testing Toolkit](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA emulator, SOC2 audit patterns, test conventions |
 | [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
 | [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |
 

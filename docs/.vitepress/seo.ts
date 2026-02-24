@@ -378,18 +378,153 @@ const pages: Record<string, PageSEO> = {
     ],
   },
 
-  // ═══════════════════════════════════════════════════════
-  // TESTING
-  // ═══════════════════════════════════════════════════════
   'testing.md': {
-    title: 'Testing — Testing mcp-fusion Tools',
-    description: 'How to test mcp-fusion tools with execute(), mock contexts, and the upcoming createTestClient(). Unit tests, integration tests, and snapshot testing.',
+    title: 'Testing — Deterministic AI Governance Auditing',
+    description: 'The end of Vibes-Based Testing. FusionTester audits every MVA layer in CI/CD — zero tokens, zero servers, mathematically verifiable. SOC2 compliance for AI pipelines.',
     faqs: [
-      { q: 'How do I test mcp-fusion tools?', a: 'Use builder.execute(mockContext, { action: "list" }) to call tools directly in tests. Provide a mock context with test database/services. Returns a ToolResponse to assert on. No MCP server needed for unit tests.' },
-      { q: 'Can I snapshot test tool responses?', a: 'Yes. execute() returns a deterministic ToolResponse. Use snapshot testing to catch unintended changes in response format, system rules, or suggested actions. Especially useful for Presenter outputs.' },
-      { q: 'How do I test Presenter output?', a: 'Call tool.execute(ctx, { action: "get", id: "123" }). Check the response text for system rules, UI blocks, and suggested actions. Snapshot tests catch regressions in perception packages.' },
-      { q: 'How do I test middleware in mcp-fusion?', a: 'Test in isolation: const result = await middleware(mockCtx, mockArgs, () => success("ok")). Verify it passes through (calls next()) or short-circuits (returns error) based on context conditions.' },
-      { q: 'Do I need a running MCP server for tests?', a: 'No. builder.execute() runs the full pipeline — validation, middleware, handler, Presenter — entirely in-memory. Tests are fast, deterministic, and CI-friendly.' },
+      { q: 'What is Vibes-Based Testing in AI?', a: 'Vibes-Based Testing is when a developer starts a Node.js server, opens Claude Desktop, types a prompt, waits for the AI to respond, and visually checks the output. This is subjective, non-repeatable, and impossible to put in a CI/CD pipeline. MCP Fusion eliminates this with the FusionTester — deterministic, in-memory pipeline auditing with zero tokens consumed.' },
+      { q: 'What is the FusionTester in MCP Fusion?', a: 'FusionTester is the testing framework for MCP Fusion. It runs the real MVA execution pipeline (Zod Validation → Middleware → Handler → Presenter → Egress Firewall) entirely in memory. It returns structured MvaTestResult objects with decomposed data, systemRules, uiBlocks, isError, and rawResponse fields — each assertable independently.' },
+      { q: 'How does FusionTester achieve zero token cost?', a: 'FusionTester calls ToolRegistry.routeCall() directly in RAM — the same code path as production but without any MCP transport, server, or LLM API call. Tests execute in ~2ms each with zero API tokens consumed. No OPENAI_API_KEY or ANTHROPIC_API_KEY required in CI.' },
+      { q: 'How does FusionTester prove SOC2 compliance?', a: 'FusionTester provides mathematically verifiable assertions: result.data physically lacks passwordHash (SOC2 CC6.1), result.isError is true when role is GUEST (SOC2 CC6.3), result.systemRules contains expected governance directives. These are deterministic — same input produces same output in every CI run.' },
+      { q: 'What is the Symbol Backdoor in FusionTester?', a: 'ResponseBuilder.build() attaches structured MVA metadata (data, systemRules, uiBlocks) to the ToolResponse via a global Symbol (MVA_META_SYMBOL). Symbols are ignored by JSON.stringify, so the MCP transport never sees them. FusionTester reads them in memory for structured assertions — no XML parsing, no string regex.' },
+      { q: 'Can FusionTester run in GitHub Actions CI/CD?', a: 'Yes. FusionTester has zero external dependencies — no LLM API, no database, no server. Run npx vitest run in any CI/CD pipeline (GitHub Actions, GitLab CI, Azure Pipelines). Tests complete in milliseconds with zero flakiness from API outages or model variance.' },
+    ],
+  },
+
+  'testing/quickstart.md': {
+    title: 'Testing Quick Start — First Test in 5 Minutes',
+    description: 'Build your first FusionTester in 5 minutes. Step-by-step from install to first passing SOC2 governance assertion with zero servers and zero tokens.',
+    faqs: [
+      { q: 'How do I install the MCP Fusion testing package?', a: 'npm install @vinkius-core/testing. Zero runtime dependencies. Only peer dependencies on @vinkius-core/mcp-fusion and zod. Works with any test runner: Vitest, Jest, Mocha, or Node\'s native node:test.' },
+      { q: 'How do I create a FusionTester?', a: 'Use createFusionTester(registry, { contextFactory: () => ({ prisma: mockPrisma, tenantId: "t_42", role: "ADMIN" }) }). The contextFactory produces mock context for every test call. It supports async factories for JWT resolution or database lookups.' },
+      { q: 'How do I call a tool action in tests?', a: 'await tester.callAction("db_user", "find_many", { take: 5 }). Returns an MvaTestResult with data, systemRules, uiBlocks, isError, and rawResponse. The FusionTester injects the action discriminator automatically.' },
+      { q: 'How do I override context per test?', a: 'Pass a fourth argument: await tester.callAction("db_user", "find_many", { take: 5 }, { role: "GUEST" }). Shallow-merged with contextFactory output. Does not mutate the original context.' },
+    ],
+  },
+
+  'testing/command-line.md': {
+    title: 'Command-Line Runner — CLI Reference for FusionTester',
+    description: 'Run, filter, watch, and report MCP Fusion governance tests. Complete CLI reference for Vitest, Jest, and Node\'s native test runner.',
+    faqs: [
+      { q: 'How do I run all FusionTester tests?', a: 'npx vitest run. For verbose output: npx vitest run --reporter=verbose. For specific directories: npx vitest run tests/firewall/ (Egress Firewall only) or npx vitest run tests/guards/ (Middleware Guards only).' },
+      { q: 'How do I filter tests by name?', a: 'npx vitest run -t "passwordHash" runs only tests containing "passwordHash". Combine with directory: npx vitest run tests/firewall/ -t "strip" for precise targeting.' },
+      { q: 'How do I generate coverage reports?', a: 'npx vitest run --coverage. For specific reporters: npx vitest run --coverage --coverage.reporter=text --coverage.reporter=html. Coverage maps directly to your MVA source files.' },
+      { q: 'How do I use watch mode?', a: 'npx vitest watch re-runs affected tests when source files change. npx vitest watch tests/firewall/ watches only firewall tests. Essential during Presenter development.' },
+    ],
+  },
+
+  'testing/fixtures.md': {
+    title: 'Fixtures — Test Setup & Context for FusionTester',
+    description: 'Shared context via setup.ts, per-test overrides, async factories, context isolation, and multiple tester instances for MCP Fusion governance testing.',
+    faqs: [
+      { q: 'What is the setup.ts pattern in FusionTester?', a: 'Create tests/setup.ts with a shared FusionTester instance using createFusionTester(). All test files import { tester } from "../setup.js". Centralizes mock data and context configuration.' },
+      { q: 'How does context isolation work in FusionTester?', a: 'Context overrides via callAction\'s 4th argument are shallow-merged per call and never persist. call({ role: "GUEST" }) does not affect the next call. The original context object is never mutated.' },
+      { q: 'Can I have multiple FusionTester instances?', a: 'Yes. Create adminTester with role ADMIN and guestTester with role GUEST for fundamentally different configurations. Use overrideContext for per-test variations within the same instance.' },
+    ],
+  },
+
+  'testing/assertions.md': {
+    title: 'Assertions Reference — Every MvaTestResult Pattern',
+    description: 'Complete assertion reference for FusionTester: data field absence/presence, systemRules content, uiBlocks verification, isError checks, rawResponse inspection, and composite SOC2 audit patterns.',
+    faqs: [
+      { q: 'How do I assert PII was stripped from data?', a: 'expect(result.data).not.toHaveProperty("passwordHash"). The field is physically absent from the result.data object — not hidden, not masked, but removed by the Presenter\'s Zod schema.' },
+      { q: 'How do I assert correct system rules?', a: 'expect(result.systemRules).toContain("Email addresses are PII."). For rule absence: expect(result.systemRules).not.toContain("Order totals include tax."). For count: expect(result.systemRules).toHaveLength(3).' },
+      { q: 'How do I write a composite SOC2 audit assertion?', a: 'Assert multiple layers in one test: check result.isError is false, verify PII fields are absent from result.data, confirm governance rules in result.systemRules, and verify JSON.stringify(result.rawResponse) contains no sensitive data.' },
+    ],
+  },
+
+  'testing/test-doubles.md': {
+    title: 'Test Doubles — Mocking Context for FusionTester',
+    description: 'Mock Prisma, HTTP clients, cache layers, and external services. Use Vitest spies to verify database interactions. Error-throwing and conditional mocks.',
+    faqs: [
+      { q: 'What gets mocked in FusionTester tests?', a: 'Only the context. FusionTester runs the real pipeline (Zod, middleware, handler, Presenter). You mock the dependencies your handlers call: prisma, HTTP clients, cache layers, and external services.' },
+      { q: 'How do I use Vitest spies with FusionTester?', a: 'const findManyFn = vi.fn(async () => [...]). Pass in contextFactory. After calling tester.callAction(), assert: expect(findManyFn).toHaveBeenCalledOnce(). Verify that invalid inputs never reach the database: expect(findManyFn).not.toHaveBeenCalled().' },
+      { q: 'How do I test database error handling?', a: 'Create a mock that throws: user: { findMany: async () => { throw new Error("Connection refused") } }. Create a separate FusionTester with this mock. Assert result.isError is true — proving graceful degradation.' },
+    ],
+  },
+
+  'testing/egress-firewall.md': {
+    title: 'Egress Firewall Testing — SOC2 CC6.1 PII Stripping',
+    description: 'Prove mathematically that passwordHash, tenantId, and internal fields never reach the LLM. Deterministic Egress Firewall auditing for SOC2 compliance.',
+    faqs: [
+      { q: 'How does the Egress Firewall work in MCP Fusion?', a: 'The Presenter\'s Zod schema acts as a physical barrier. Fields not declared in the schema are stripped in RAM — they never exist in the response. JSON.stringify cannot leak what doesn\'t exist.' },
+      { q: 'How do I test PII stripping?', a: 'const result = await tester.callAction("db_user", "find_many", { take: 5 }). For each user in result.data: expect(user).not.toHaveProperty("passwordHash"). The field is physically absent, not masked.' },
+      { q: 'How does this map to SOC2 compliance?', a: 'SOC2 CC6.1 (Logical Access): passwordHash absent. CC6.7 (Output Controls): only declared schema fields exist. CC7.2 (Monitoring): deterministic, reproducible in CI/CD. All provable via FusionTester assertions.' },
+    ],
+  },
+
+  'testing/system-rules.md': {
+    title: 'System Rules Testing — LLM Governance Directives',
+    description: 'Verify that the LLM receives deterministic domain rules. Test static rules, contextual rules, manual builder rules, and Context Tree-Shaking.',
+    faqs: [
+      { q: 'What are System Rules in MCP Fusion?', a: 'System Rules are JIT (Just-In-Time) domain directives injected by the Presenter into the LLM context. They replace bloated global system prompts with per-response, per-entity governance. The LLM only receives rules relevant to the data it\'s currently looking at.' },
+      { q: 'How do I test contextual (dynamic) rules?', a: 'Contextual rules are functions receiving data and context. Test with different context overrides: callAction("analytics", "list", { limit: 5 }, { role: "ADMIN" }) should include "User is ADMIN. Show full details." while { role: "VIEWER" } should exclude it.' },
+      { q: 'What is Context Tree-Shaking?', a: 'The principle that User rules should NOT appear in Order responses and vice versa. Test by asserting: expect(orderResult.systemRules).not.toContain("Email addresses are PII."). Proves the LLM only sees relevant governance.' },
+    ],
+  },
+
+  'testing/ui-blocks.md': {
+    title: 'UI Blocks Testing — SSR Components & Truncation',
+    description: 'Assert per-item blocks, collection blocks, agent limit truncation warnings, and empty blocks for raw tools.',
+    faqs: [
+      { q: 'What are UI Blocks in MCP Fusion?', a: 'UI Blocks are server-side rendered components generated by the Presenter for the client: charts, summaries, markdown tables, and truncation warnings. They govern the client experience — what the user sees.' },
+      { q: 'How do I test agent limit truncation?', a: 'When the handler returns more items than agentLimit allows, assert: result.data.length should equal the limit, and result.uiBlocks should contain a truncation warning with "Truncated" or "hidden".' },
+    ],
+  },
+
+  'testing/middleware-guards.md': {
+    title: 'Middleware Guards Testing — RBAC & Access Control',
+    description: 'Test role-based access control, multi-tenant isolation, context isolation between tests, and middleware coverage across all actions.',
+    faqs: [
+      { q: 'How do I test RBAC with FusionTester?', a: 'Use context overrides: callAction("db_user", "find_many", { take: 5 }, { role: "GUEST" }). Assert result.isError is true and result.data contains "Unauthorized". For ADMIN: result.isError should be false.' },
+      { q: 'How do I test middleware coverage across all actions?', a: 'Loop through all actions: for (const action of ["find_many", "create", "update", "delete"]) { const result = await tester.callAction("db_user", action, {}, { role: "GUEST" }); expect(result.isError).toBe(true); }' },
+    ],
+  },
+
+  'testing/oom-guard.md': {
+    title: 'OOM Guard Testing — Input Boundaries & Agent Limits',
+    description: 'Validate Zod input boundaries (min, max, type safety), email validation, and agent limit truncation to prevent memory exhaustion and context overflow.',
+    faqs: [
+      { q: 'How do I test Zod input boundaries?', a: 'Assert rejection for out-of-bounds input: callAction("db_user", "find_many", { take: 10000 }) → isError true. For boundary acceptance: take: 1 and take: 50 should both return isError false.' },
+      { q: 'How do I test type safety?', a: 'Assert rejection for wrong types: take: 3.14 (non-integer), take: "fifty" (string instead of number), and {} (missing required fields) should all return isError true — Zod rejects before the handler runs.' },
+    ],
+  },
+
+  'testing/error-handling.md': {
+    title: 'Error Handling Testing — Pipeline Failures & Recovery',
+    description: 'Assert isError for unknown tools/actions, handler errors, empty MVA layers on error, error message content, and error vs exception distinction.',
+    faqs: [
+      { q: 'What is the difference between error and exception in FusionTester?', a: 'isError: true means the pipeline handled the error gracefully and returned a structured MvaTestResult. An unhandled exception would throw — the FusionTester converts most exceptions into isError results.' },
+      { q: 'How do I verify empty MVA layers on error?', a: 'When isError is true, assert: result.systemRules should equal [] and result.uiBlocks should equal []. This proves no partial data leaks on error paths.' },
+    ],
+  },
+
+  'testing/raw-response.md': {
+    title: 'Raw Response Testing — MCP Protocol Inspection',
+    description: 'Protocol-level MCP transport inspection. Verify content block structure, Symbol invisibility, XML formatting, and concurrent response isolation.',
+    faqs: [
+      { q: 'How do I verify Symbol invisibility?', a: 'JSON.stringify(result.rawResponse) should NOT contain "mva-meta", "systemRules", or "passwordHash". But (result.rawResponse as any)[MVA_META_SYMBOL] should be defined. This proves the Symbol Backdoor works correctly.' },
+      { q: 'How do I inspect MCP content blocks?', a: 'Cast rawResponse to { content: Array<{ type: string; text: string }> }. Assert content[0].type is "text". Check for "<data>" and "<system_rules>" blocks in content text.' },
+    ],
+  },
+
+  'testing/ci-cd.md': {
+    title: 'CI/CD Integration — Governance in Every Pull Request',
+    description: 'GitHub Actions, GitLab CI, Azure DevOps, and pre-commit hooks. Separate CI jobs per SOC2 control. Zero tokens, zero API keys, zero flakiness.',
+    faqs: [
+      { q: 'How do I add FusionTester to GitHub Actions?', a: 'Add a workflow with: actions/checkout, actions/setup-node (node 20), npm ci, npx vitest run --reporter=verbose. No API keys needed. No external services. Tests run in ~500ms total.' },
+      { q: 'Can I have separate CI jobs per SOC2 control?', a: 'Yes. Create separate jobs for tests/firewall/ (CC6.1), tests/guards/ (CC6.3), tests/rules/ (Context Governance), and tests/blocks/ (Response Quality). Each shows as a separate check mark on the PR.' },
+      { q: 'How do I block PRs that break governance?', a: 'In GitHub Settings → Branch protection, require the governance audit status checks to pass before merging. No PR can merge if PII leaks or auth gates are broken.' },
+    ],
+  },
+
+  'testing/convention.md': {
+    title: 'Testing Convention — Folder Structure & File Naming',
+    description: 'The tests/ layer in the MVA convention. Folder structure by governance concern, file naming patterns, shared setup.ts, and SOC2 mapping per directory.',
+    faqs: [
+      { q: 'How should I organize FusionTester test files?', a: 'Four directories by governance concern: tests/firewall/ (Egress assertions), tests/guards/ (Middleware & OOM), tests/rules/ (System Rules), tests/blocks/ (UI Blocks). Plus tests/setup.ts for the shared FusionTester instance.' },
+      { q: 'What file naming convention should I follow?', a: 'Use entity.concern.test.ts: user.firewall.test.ts, order.guard.test.ts, user.rules.test.ts, analytics.blocks.test.ts. One entity per file, one concern per directory.' },
+      { q: 'How does the convention map to SOC2 controls?', a: 'tests/firewall/ → CC6.1 (Logical Access), tests/guards/ → CC6.3 (Access Control), tests/rules/ → CC7.1 (System Operations), tests/blocks/ → CC8.1 (Change Management). Auditors find relevant tests instantly.' },
     ],
   },
 
