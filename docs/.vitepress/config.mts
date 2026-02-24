@@ -212,6 +212,7 @@ export default defineConfig({
           { text: 'Prisma Generator', link: '/prisma-gen' },
           { text: 'n8n Connector', link: '/n8n-connector' },
           { text: 'Testing Package', link: '/testing' },
+          { text: 'OAuth', link: '/oauth' },
         ]
       },
 

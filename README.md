@@ -399,6 +399,7 @@ expect(denied.isError).toBe(true);
 | [`mcp-fusion-prisma-gen`](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
 | [`mcp-fusion-n8n`](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
 | [`@vinkius-core/testing`](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
+| [`@vinkius-core/mcp-fusion-oauth`](https://vinkius-labs.github.io/mcp-fusion/oauth) | OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Drop-in `createAuthTool()` with Device Flow, secure token storage, and `requireAuth()` middleware — provider agnostic. |
 
 ## Documentation
 
@@ -421,6 +422,7 @@ Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vi
 | [Prisma Generator](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Generate Presenters and ToolBuilders from `schema.prisma` annotations |
 | [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
 | [Testing Toolkit](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA emulator, SOC2 audit patterns, test conventions |
+| [OAuth](https://vinkius-labs.github.io/mcp-fusion/oauth) | Device Flow authentication for MCP servers |
 | [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
 | [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |
 

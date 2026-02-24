@@ -610,6 +610,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'What is the Intent Mutex?', a: 'The Intent Mutex is an automatic anti-race condition guard. When an LLM hallucinates and fires identical destructive calls simultaneously (e.g. double-deleting a user), the framework serializes them into a strict FIFO queue to guarantee transactional isolation. It activates automatically on any action marked with destructive: true.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // OAUTH — DEVICE AUTHORIZATION FLOW
+  // ═══════════════════════════════════════════════════════
+  'oauth.md': {
+    title: 'OAuth — Device Authorization Grant (RFC 8628) for MCP Servers',
+    description: 'Drop-in OAuth 2.0 Device Flow authentication for MCP servers built with mcp-fusion. Includes createAuthTool(), secure token storage, and requireAuth() middleware.',
+    faqs: [
+      { q: 'What is @vinkius-core/mcp-fusion-oauth?', a: '@vinkius-core/mcp-fusion-oauth is a companion package for mcp-fusion that implements OAuth 2.0 Device Authorization Grant (RFC 8628). It provides a pre-built auth tool with login/complete/status/logout actions, a requireAuth() middleware guard, a DeviceAuthenticator for the Device Flow handshake, and a TokenManager for secure file-based token storage.' },
+      { q: 'What is the Device Authorization Grant (RFC 8628)?', a: 'RFC 8628 defines a flow for devices with limited input (CLI tools, MCP servers). The server requests a device code + verification URL, the user opens the URL in a browser and authorizes, and the server polls until authorization completes. No redirect URIs or browser embedding needed — ideal for AI tools and terminal environments.' },
+      { q: 'How does createAuthTool() work?', a: 'createAuthTool() returns a GroupedToolBuilder with 4 actions: "login" initiates Device Flow and returns a verification URL, "complete" polls until the user authorizes, "status" checks current authentication, and "logout" clears the token. It handles the full lifecycle including the onAuthenticated and getUser callbacks.' },
+      { q: 'How does token storage work in mcp-fusion-oauth?', a: 'TokenManager stores tokens in ~/.{configDir}/token.json with restricted file permissions (0o600). It checks environment variables first (envVar priority), falls back to file storage. Pending device codes are stored separately with TTL-based expiration, surviving process restarts during the authorization flow.' },
+      { q: 'How does requireAuth() middleware work?', a: 'requireAuth() is a mcp-fusion middleware factory that extracts a token using a configurable extractToken function. If no token is found, it returns a structured toolError with code AUTH_REQUIRED, a recovery hint telling the LLM to run the auth tool, and a recovery action. This enables self-healing — the LLM can automatically authenticate and retry.' },
+      { q: 'Is mcp-fusion-oauth provider agnostic?', a: 'Yes. It works with any OAuth 2.0 server that supports the Device Authorization Grant. You configure the authorizationEndpoint and tokenEndpoint for your provider. It has been tested with GitScrum, GitHub, Google, and custom OAuth servers.' },
+      { q: 'Can I use DeviceAuthenticator and TokenManager without mcp-fusion?', a: 'Yes. Both classes are standalone and have no dependency on mcp-fusion internals. You can use DeviceAuthenticator for the Device Flow handshake and TokenManager for token persistence in any Node.js application. Only createAuthTool() and requireAuth() depend on mcp-fusion.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

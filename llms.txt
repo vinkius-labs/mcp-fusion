@@ -615,6 +615,40 @@ expect(oom.isError).toBe(true);
 expect(JSON.stringify(result.rawResponse)).not.toContain('passwordHash');
 ```
 
+### OAuth — Device Authorization Grant (from '@vinkius-core/mcp-fusion-oauth')
+
+OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Provider agnostic.
+
+- `DeviceAuthenticator` — RFC 8628 Device Flow handshake
+  - `.requestDeviceCode(request)` → DeviceCodeResponse (device_code, user_code, verification_uri, verification_uri_complete, expires_in, interval)
+  - `.pollForToken(codeResponse, signal?)` → TokenResponse (polls with slow_down respect + AbortSignal support)
+  - `.attemptTokenExchange(request)` → TokenResponse (single exchange attempt for manual polling)
+- `TokenManager` — Secure file-based token storage (0o600 permissions, env-var priority)
+  - `.getToken()` → string | null (env var > file)
+  - `.getTokenSource()` → 'environment' | 'file' | null
+  - `.saveToken(token)` → void (saves to ~/.{configDir}/token.json)
+  - `.clearToken()` → void
+  - `.savePendingDeviceCode(code, ttl)` → void (survives process restarts)
+  - `.getPendingDeviceCode()` → DeviceCodeResponse | null (auto-expired)
+- `createAuthTool<TContext>(config)` → GroupedToolBuilder with 4 actions: login, complete, status, logout
+  - config: { clientId, authorizationEndpoint, tokenEndpoint, headers?, tokenManager, onAuthenticated, onLogout?, getUser? }
+- `requireAuth(options?)` → MiddlewareFn — rejects unauthenticated requests with toolError('AUTH_REQUIRED') + recovery hints
+  - options: { extractToken: (ctx) => string | null, recoveryHint?, recoveryAction? }
+- Types: DeviceAuthenticatorConfig, DeviceCodeRequest, DeviceCodeResponse, TokenRequest, TokenResponse, DeviceFlowError, TokenManagerConfig, StoredToken, TokenSource, AuthToolConfig, AuthContext, RequireAuthOptions
+
+```typescript
+import { createAuthTool, requireAuth } from '@vinkius-core/mcp-fusion-oauth';
+
+const auth = createAuthTool({
+    clientId: 'your-client-id',
+    authorizationEndpoint: 'https://api.example.com/oauth/device/code',
+    tokenEndpoint: 'https://api.example.com/oauth/device/token',
+    tokenManager: { configDir: '.myapp', envVar: 'MY_APP_TOKEN' },
+    onAuthenticated: (token, ctx) => ctx.setToken(token),
+    getUser: async (ctx) => ctx.getMe(),
+});
+```
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups
