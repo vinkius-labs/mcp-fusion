@@ -51,6 +51,12 @@ jobs:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               continue-on-error: true
 
+            - name: Publish prisma-gen package
+              run: npm publish -w packages/prisma-gen --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              continue-on-error: true
+
             - name: Publish n8n connector package
               run: npm publish -w packages/n8n --provenance --access public
               env:

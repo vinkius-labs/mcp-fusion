@@ -86,11 +86,11 @@ The `FusionTester`:
 
 | MVA Layer | What the test asserts | SOC2 / Compliance Relevance |
 |---|---|---|
-| [**Egress Firewall**](/mcp-fusion/testing/egress-firewall) | `result.data` has no `passwordHash`, no `tenantId` | Data leak prevention (SOC2 CC6.1) |
-| [**OOM Guard**](/mcp-fusion/testing/oom-guard) | `result.isError === true` when `take: 10000` | Memory exhaustion protection |
-| [**System Rules**](/mcp-fusion/testing/system-rules) | `result.systemRules` contains expected domain directives | Deterministic context control |
-| [**UI Blocks**](/mcp-fusion/testing/ui-blocks) | `result.uiBlocks` produces correct charts/summaries | Response quality assurance |
-| [**Middleware Guards**](/mcp-fusion/testing/middleware-guards) | `result.isError === true` when `role: 'GUEST'` | Access control verification (SOC2 CC6.3) |
+| [**Egress Firewall**](/testing/egress-firewall) | `result.data` has no `passwordHash`, no `tenantId` | Data leak prevention (SOC2 CC6.1) |
+| [**OOM Guard**](/testing/oom-guard) | `result.isError === true` when `take: 10000` | Memory exhaustion protection |
+| [**System Rules**](/testing/system-rules) | `result.systemRules` contains expected domain directives | Deterministic context control |
+| [**UI Blocks**](/testing/ui-blocks) | `result.uiBlocks` produces correct charts/summaries | Response quality assurance |
+| [**Middleware Guards**](/testing/middleware-guards) | `result.isError === true` when `role: 'GUEST'` | Access control verification (SOC2 CC6.3) |
 | **Agent Limit** | `result.data.length <= 20` even when DB has 10,000 rows | Context window protection |
 | **HATEOAS** | `rawResponse` includes `<action_suggestions>` | Agent navigation safety |
 
@@ -218,12 +218,12 @@ The FusionTester calls `ToolRegistry.routeCall()` — the same function your pro
 
 | Guide | Description |
 |---|---|
-| [Quick Start](/mcp-fusion/testing/quickstart) | Build your first FusionTester in 5 minutes |
-| [Egress Firewall](/mcp-fusion/testing/egress-firewall) | Audit PII stripping and field-level security |
-| [System Rules](/mcp-fusion/testing/system-rules) | Verify LLM governance directives |
-| [UI Blocks](/mcp-fusion/testing/ui-blocks) | Assert SSR blocks, charts, and cognitive guardrails |
-| [Middleware Guards](/mcp-fusion/testing/middleware-guards) | Test RBAC, auth gates, and context derivation |
-| [OOM Guard](/mcp-fusion/testing/oom-guard) | Validate Zod input boundaries and agent limits |
-| [Error Handling](/mcp-fusion/testing/error-handling) | Assert `isError`, error messages, empty MVA layers |
-| [Raw Response](/mcp-fusion/testing/raw-response) | Protocol-level MCP transport inspection |
-| [Convention](/mcp-fusion/testing/convention) | `tests/` folder structure in the MVA convention |
+| [Quick Start](/testing/quickstart) | Build your first FusionTester in 5 minutes |
+| [Egress Firewall](/testing/egress-firewall) | Audit PII stripping and field-level security |
+| [System Rules](/testing/system-rules) | Verify LLM governance directives |
+| [UI Blocks](/testing/ui-blocks) | Assert SSR blocks, charts, and cognitive guardrails |
+| [Middleware Guards](/testing/middleware-guards) | Test RBAC, auth gates, and context derivation |
+| [OOM Guard](/testing/oom-guard) | Validate Zod input boundaries and agent limits |
+| [Error Handling](/testing/error-handling) | Assert `isError`, error messages, empty MVA layers |
+| [Raw Response](/testing/raw-response) | Protocol-level MCP transport inspection |
+| [Convention](/testing/convention) | `tests/` folder structure in the MVA convention |

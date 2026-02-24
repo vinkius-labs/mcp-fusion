@@ -481,11 +481,11 @@ npx vitest run tests/blocks/
 
 | Guide | What you'll learn |
 |---|---|
-| [Egress Firewall](/mcp-fusion/testing/egress-firewall) | Assert PII stripping for SOC2 compliance |
-| [System Rules](/mcp-fusion/testing/system-rules) | Verify LLM governance directives |
-| [Middleware Guards](/mcp-fusion/testing/middleware-guards) | Test RBAC and auth gates |
-| [OOM Guard](/mcp-fusion/testing/oom-guard) | Validate input boundaries and agent limits |
-| [UI Blocks](/mcp-fusion/testing/ui-blocks) | Assert SSR blocks and truncation warnings |
-| [Error Handling](/mcp-fusion/testing/error-handling) | Test all error paths |
-| [Raw Response](/mcp-fusion/testing/raw-response) | Protocol-level MCP inspection |
-| [Convention](/mcp-fusion/testing/convention) | `tests/` folder structure |
+| [Egress Firewall](/testing/egress-firewall) | Assert PII stripping for SOC2 compliance |
+| [System Rules](/testing/system-rules) | Verify LLM governance directives |
+| [Middleware Guards](/testing/middleware-guards) | Test RBAC and auth gates |
+| [OOM Guard](/testing/oom-guard) | Validate input boundaries and agent limits |
+| [UI Blocks](/testing/ui-blocks) | Assert SSR blocks and truncation warnings |
+| [Error Handling](/testing/error-handling) | Test all error paths |
+| [Raw Response](/testing/raw-response) | Protocol-level MCP inspection |
+| [Convention](/testing/convention) | `tests/` folder structure |
