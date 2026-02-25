@@ -48,3 +48,20 @@ export type { EgressConfig } from './execution/index.js';
 // ── Middleware (context derivation) ──────────────────────
 export { defineMiddleware, resolveMiddleware } from './middleware/index.js';
 export type { MiddlewareDefinition, MergeContext, InferContextOut } from './middleware/index.js';
+
+// ── Fusion Initializer (tRPC-style) ─────────────────────
+export { initFusion } from './initFusion.js';
+export type { FusionInstance, FusionToolConfig } from './initFusion.js';
+
+// ── Functional Core ──────────────────────────────────────
+export { createGroup } from './createGroup.js';
+export type { GroupConfig, GroupAction, CompiledGroup } from './createGroup.js';
+
+// ── Standard Schema ──────────────────────────────────────
+export {
+    toStandardValidator, fromZodSchema, isStandardSchema, autoValidator,
+} from './StandardSchema.js';
+export type {
+    StandardSchemaV1, StandardSchemaIssue, InferStandardOutput,
+    FusionValidator, ValidationResult,
+} from './StandardSchema.js';

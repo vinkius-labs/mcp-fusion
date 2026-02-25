@@ -46,7 +46,24 @@ Limits the number of simultaneous executions per tool. Implements a semaphore wi
 
 ### Quick Start
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Concurrency is configured at the builder level:
+const billing = f.defineTool('billing', {})
+    .concurrency({ maxActive: 5, maxQueue: 20 })
+    .action({
+        name: 'process_invoice',
+        handler: async (ctx, args) => {
+            const result = await ctx.stripe.charges.create(args);
+            return success(result);
+        },
+    });
+```
+```typescript [createTool]
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 
 const billing = createTool<AppContext>('billing')
@@ -59,6 +76,7 @@ const billing = createTool<AppContext>('billing')
         },
     });
 ```
+:::
 
 ### How It Works
 

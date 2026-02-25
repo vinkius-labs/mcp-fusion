@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-02-25
+
+### 🚀 DX Overhaul — Zero-Friction APIs, Functional Core, Standard Schema
+
+Complete developer experience overhaul: 8 new APIs designed to eliminate boilerplate, enable instant autocomplete, and make the framework feel as effortless as tRPC or Hono.
+
+### Added
+
+- **`initFusion<TContext>()`** — tRPC-style context initialization. Define the context type once, every `f.tool()`, `f.presenter()`, `f.prompt()`, `f.middleware()`, `f.registry()` inherits it automatically. Zero generic repetition.
+  - `f.tool({ name, input, handler })` — handler receives `{ input, ctx }` destructured (tRPC v11 pattern). `'domain.action'` naming auto-splits into tool name + action.
+  - `f.presenter(config)` — delegates to `definePresenter()` with context typing
+  - `f.prompt(name, config)` — context-typed prompt factory
+  - `f.middleware(deriveFn)` — context derivation factory
+  - `f.defineTool(name, config)` — full `ToolConfig` power with context typing
+  - `f.registry()` — pre-typed `ToolRegistry` factory
+  - Auto-wraps non-`ToolResponse` handler returns via `success()`
+
+- **`definePresenter(config)`** — Declarative object-config API replacing fluent builder chains. Schema-driven type inference — zero generic noise, instant Ctrl+Space autocomplete.
+  - `PresenterConfig<T>` — `{ name, schema, rules, ui, collectionUi, agentLimit, suggestActions, embeds, autoRules }`
+  - `autoRules` (default: `true`) — auto-extracts Zod `.describe()` annotations and merges them with explicit rules
+  - `extractZodDescriptions(schema)` — walks Zod AST, unwraps optional/nullable/default/branded wrappers, returns `"field: description"` strings
+  - Produces standard `Presenter<T>` — interchangeable with `createPresenter()` anywhere
+
+- **`autoDiscover(registry, dir, options?)`** — File-based routing. Scans a directory tree and auto-registers tool builders.
+  - Resolution: `default` export → named `tool` export → any exported ToolBuilder
+  - Options: `pattern` (regex filter), `recursive` (default: `true`), `loader` (`'esm'` | `'cjs'`), custom `resolve` function
+  - Excludes `.test.`, `.spec.`, and `.d.ts` files automatically
+
+- **`createDevServer(config)`** — HMR development server. File changes reload tools without restarting the LLM client.
+  - `DevServerConfig` — `{ dir, extensions, debounce, setup, onReload, server }`
+  - Sends `notifications/tools/list_changed` to MCP client on reload
+  - ESM cache-busting via URL timestamp query parameter
+  - CJS cache invalidation via `require.cache` cleanup
+  - 300ms default debounce to prevent rapid-fire reloads
+
+- **`createGroup(config)`** — Functional closure-based tool groups. Pre-composed middleware at creation time (O(1) dispatch), `Object.freeze()` by default.
+  - `GroupConfig<TContext>` — `{ name, description, tags, middleware, actions }`
+  - `CompiledGroup<TContext>` — `.execute(ctx, action, args)`, `.getAction(name)`, `.actionNames`
+  - Middleware: right-to-left composition via `reduceRight`, per-action + global merge
+  - Zod `.strict().parse()` validation per action
+
+- **Standard Schema v1 Abstraction Layer** — Decouple from Zod, support any validator implementing the Standard Schema spec.
+  - `StandardSchemaV1<TInput, TOutput>` interface
+  - `FusionValidator<T>` — `.validate(value)`, `.vendor`, `.schema`
+  - `toStandardValidator(schema)` — wrap Standard Schema v1 (Valibot, ArkType, etc.)
+  - `fromZodSchema(schema)` — wrap Zod via `.safeParse()`
+  - `autoValidator(schema)` — auto-detect schema type (Standard Schema → Zod → error)
+  - `isStandardSchema(value)` — duck-type guard
+  - `ValidationResult<T>`, `InferStandardOutput<T>`, `StandardSchemaIssue` types
+
+- **Subpath Exports** — 10 tree-shakeable entry points:
+  - `@vinkius-core/mcp-fusion` (full), `/client`, `/ui`, `/presenter`, `/prompt`, `/state-sync`, `/observability`, `/dev`, `/schema`, `/testing`
+
+### Documentation
+
+- **Presenter elevated to hero position** — README Quick Start now shows: `initFusion()` → `definePresenter()` → `f.tool({ returns: Presenter })` → `f.prompt({ fromView })` → Server bootstrap. The Presenter is THE first feature section with both APIs (`definePresenter()` + `createPresenter()`) and a full capabilities table (Egress Firewall, JIT Rules, Server-Rendered UI, Cognitive Guardrails, Action Affordances, Relational Composition, Prompt Bridge).
+- **No-Zod JSON Descriptors shown everywhere** — All Quick Start examples, tool examples, and prompt examples use JSON param descriptors (`'string'`, `{ type: 'number', min: 0 }`, `{ enum: [...] as const }`) as the recommended API. Zod shown as the alternative tab.
+- **Prompt Engine given equal DX treatment** — `f.prompt()` shown alongside `f.tool()` in every Quick Start. `PromptMessage.fromView()` bridge to Presenter shown prominently.
+- **Comprehensive documentation rewrite** — 20+ doc files updated with `f.tool()` / `f.prompt()` tabs, No-Zod examples, Presenter integration. New `docs/dx-guide.md` covers all 8 new features.
+- **README.md full rewrite** — New Quick Start (5 steps: init → Presenter → tools → prompts → server), Presenter hero section, expanded capabilities table, JSON Param Descriptor reference, Zod marked as optional.
+- **llms.txt rewrite** — Presenter-first Quick Start, expanded Presenter API section with definePresenter + createPresenter + layers table, Prompt Engine with No-Zod examples and fromView bridge.
+- New `docs/dx-guide.md` — comprehensive DX guide covering all 8 new features with migration table
+- Updated `llms.txt` — new public API entries (Context Initialization, Declarative Presenter, Functional Groups, File-Based Routing, Dev Server, Standard Schema, Subpath Exports)
+
+### Test Suite
+
+- **67 new tests** across 7 test files:
+  - `DefinePresenter.test.ts` (8 tests) — object config, auto-rules, Zod `.describe()` extraction, `collectionUi`, error cases
+  - `ZodDescriptionExtractor.test.ts` (12 tests) — field extraction, optional/nullable/default unwrapping, nested objects, enums, edge cases
+  - `InitFusion.test.ts` (11 tests) — `f.tool()` handler, `f.presenter()`, `f.prompt()`, `f.middleware()`, `f.registry()`, auto-wrap
+  - `CreateGroup.test.ts` (10 tests) — dispatch, validation, middleware composition, frozen output, unknown action error
+  - `StandardSchema.test.ts` (11 tests) — `toStandardValidator`, `fromZodSchema`, `autoValidator`, `isStandardSchema`, error mapping
+  - `AutoDiscover.test.ts` (7 tests) — export types, type guard functions
+  - `DevServer.test.ts` (7 tests) — config validation, module cache invalidation, cache-bust URL
+- All **2159 tests** passing across 101 test files — zero regressions
+
 ## [2.6.0] - 2026-02-25
 
 ### 🛡️ Self-Healing HATEOAS · State Sync Observability · Client Middleware

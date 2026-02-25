@@ -53,6 +53,25 @@ registry.attachToServer(server, {
 Given this tool definition:
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<void>();
+
+const listProjects = f.tool({
+    name: 'projects.list',
+    input: z.object({ workspace_id: z.string() }),
+    handler: async ({ input, ctx }) => listProjects(input),
+});
+const createProject = f.tool({
+    name: 'projects.create',
+    input: z.object({ workspace_id: z.string(), name: z.string() }),
+    handler: async ({ input, ctx }) => createProj(input),
+});
+const deleteProject = f.tool({
+    name: 'projects.delete',
+    input: z.object({ workspace_id: z.string(), id: z.string() }),
+    handler: async ({ input, ctx }) => deleteProj(input),
+});
+```
 ```typescript [defineTool]
 const projects = defineTool<void>('projects', {
     description: 'Manage workspace projects',

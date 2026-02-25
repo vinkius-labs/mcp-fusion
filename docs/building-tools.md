@@ -1,26 +1,155 @@
 # Building Tools
 
-**MCP Fusion** provides **two complementary APIs** for defining tools. Choose the one that fits your use case — both produce identical MCP tool definitions and can coexist in the same registry.
+**MCP Fusion** provides **four complementary APIs** for defining tools. Choose the one that fits your use case — all produce identical MCP tool definitions and can coexist in the same registry.
 
 ---
 
 ## API Comparison
 
-| Feature | `defineTool()` | `createTool()` |
-|---|---|---|
-| **Syntax** | Declarative config object | Fluent builder chain |
-| **Params** | Plain strings, JSON descriptors | Full Zod schemas |
-| **Zod needed?** | No (auto-converts to Zod) | Yes |
-| **Shared params** | `shared` field | `.commonSchema()` |
-| **Groups** | `groups` field | `.group()` |
-| **MVA Presenter** | `returns: Presenter` | `returns: Presenter` |
-| **Annotations** | `annotations: {...}` | `.annotations({...})` |
-| **TOON** | `toonDescription: true` | `.toonDescription()` |
-| **Best for** | Rapid prototyping, simple params | Complex validation, transforms |
+| Feature | `f.tool()` ✨ | `createGroup()` | `defineTool()` | `createTool()` |
+|---|---|---|---|---|
+| **Style** | tRPC-style `{ input, ctx }` | Functional closure | Declarative config | Fluent builder |
+| **Generics** | None — inherited from `initFusion` | None — passed to factory | `<Context>` on every call | `<Context>` on every call |
+| **Params** | Any Standard Schema | Any Standard Schema | Plain strings / JSON | Full Zod |
+| **Middleware** | Via `f.middleware()` on registry | Pre-composed at build | `middleware` array | `.middleware()` chain |
+| **Auto `success()`** | Yes — plain return auto-wraps | No | No | No |
+| **Best for** | New projects, teams | Standalone modules | Quick prototyping | Complex Zod transforms |
 
 ---
 
-## Option A: `defineTool()` — JSON-First
+## Recommended: `f.tool()` <Badge type="tip" text="NEW v2.7" />
+
+The tRPC-style API. Initialize once with `initFusion()`, then build tools with zero generics and `{ input, ctx }` destructured handlers.
+
+```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+// 1. Define context type ONCE
+const f = initFusion<{ db: Database; user: User }>();
+
+// 2. Define tools — zero generics, auto success() wrapping
+const listTasks = f.tool({
+    name: 'tasks.list',
+    description: 'Lists all tasks',
+    input: z.object({
+        status: z.enum(['open', 'closed']).optional(),
+    }),
+    handler: async ({ input, ctx }) => {
+        const tasks = await ctx.db.tasks.findMany({ status: input.status });
+        return tasks; // ← auto-wrapped in success() 
+    },
+});
+
+const createTask = f.tool({
+    name: 'tasks.create',
+    description: 'Creates a new task',
+    input: z.object({
+        title: z.string().min(1).max(200),
+        priority: z.enum(['low', 'medium', 'high']).optional(),
+    }),
+    handler: async ({ input, ctx }) => {
+        const task = await ctx.db.tasks.create(input);
+        return { status: 'created', id: task.id };
+    },
+});
+
+// 3. Register all tools
+const registry = f.registry();
+registry.register(listTasks);
+registry.register(createTask);
+```
+
+### Key features of `f.tool()`:
+
+1. **Zero generics** — context type flows from `initFusion<AppContext>()` to every tool
+2. **`{ input, ctx }` handler** — destructured, fully typed, no positional args
+3. **Auto `success()` wrapping** — return plain data and it's automatically wrapped in `success()`
+4. **Auto name splitting** — `'tasks.create'` automatically creates domain `tasks` + action `create`
+5. **Standard Schema support** — use Zod, Valibot, ArkType, or any Standard Schema v1 validator
+
+### MVA Integration with Presenter
+
+```typescript
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Gets an invoice by ID',
+    input: z.object({ id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique(input.id);
+        // Raw data → Presenter validates, attaches rules, renders UI
+    },
+});
+```
+
+### Server Setup
+
+```typescript
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+const server = new Server(
+    { name: 'my-api', version: '1.0.0' },
+    { capabilities: { tools: {} } }
+);
+registry.attachToServer(server);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+---
+
+## `createGroup()` — Functional Closures <Badge type="tip" text="NEW v2.7" />
+
+Build standalone tool modules with pre-composed middleware and O(1) dispatch. Ideal for NPM packages or independent modules.
+
+```typescript
+import { createGroup, success } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const billingGroup = createGroup<AppContext>({
+    name: 'billing',
+    description: 'Billing operations',
+    middleware: [authMiddleware, rateLimitMiddleware],
+    tools: [
+        {
+            name: 'get_invoice',
+            description: 'Gets an invoice by ID',
+            input: z.object({ id: z.string() }),
+            handler: async ({ input, ctx }) => {
+                return success(await ctx.db.invoices.find(input.id));
+            },
+        },
+        {
+            name: 'pay',
+            description: 'Processes payment for an invoice',
+            input: z.object({ invoice_id: z.string(), amount: z.number() }),
+            handler: async ({ input, ctx }) => {
+                await ctx.billing.charge(input.invoice_id, input.amount);
+                return success({ paid: true });
+            },
+        },
+    ],
+});
+
+// Register the entire group at once
+registry.register(billingGroup);
+```
+
+### Key features of `createGroup()`:
+
+- **Pre-composed middleware** — middleware chain is composed once at build time via `reduceRight`, not on every request
+- **O(1) dispatch** — tools are stored in a `Map<string, handler>` for constant-time lookup
+- **Frozen by default** — the group is `Object.freeze()`'d after construction
+- **Standalone** — no `initFusion()` needed; great for library authors
+
+---
+
+## Option B: `defineTool()` — JSON-First
 
 The simplest way to define tools. No Zod imports required.
 
@@ -131,7 +260,7 @@ Instead of the usual multi-line recursive generic explosion.
 
 ---
 
-## Option B: `createTool()` — Builder Pattern (Full Zod)
+## Option C: `createTool()` — Builder Pattern (Full Zod)
 
 The builder pattern gives you full access to Zod's `.regex()`, `.refine()`, `.transform()`, and advanced validation:
 
@@ -267,6 +396,23 @@ When no `progressToken` is present (the client didn't opt in), progress events a
 Attach a [Presenter](/presenter) to any action with the `returns` field. When set, your handler returns **raw data** instead of `ToolResponse`. The framework pipes it through the Presenter automatically.
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const f = initFusion<AppContext>();
+
+const getInvoice = f.tool({
+    name: 'billing.get',
+    description: 'Gets an invoice by ID',
+    input: z.object({ id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
+        // Raw data → Presenter validates, attaches rules, renders UI
+    },
+});
+```
 ```typescript [defineTool]
 import { defineTool } from '@vinkius-core/mcp-fusion';
 import { InvoicePresenter } from './presenters/InvoicePresenter';
@@ -279,7 +425,6 @@ const billing = defineTool<AppContext>('billing', {
             returns: InvoicePresenter,
             handler: async (ctx, args) => {
                 return await ctx.db.invoices.findUnique({ where: { id: args.id } });
-                // Raw data → Presenter validates, attaches rules, renders UI
             },
         },
     },
@@ -334,6 +479,7 @@ return response(stats)
 
 ## Next Steps
 
+- [DX Guide →](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
 - [Presenter (MVA View) →](/presenter) — Domain-level Presenters for consistent agent perception
 - [Context & Dependency Injection →](/context)
 - [Middleware & Context Derivation →](/middleware)

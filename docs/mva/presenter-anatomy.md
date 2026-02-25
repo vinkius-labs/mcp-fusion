@@ -10,6 +10,10 @@ In MVA, every other layer exists to serve the Presenter. The Model validates dat
 
 This page documents the Presenter's internal anatomy — its six responsibilities, its lifecycle, its composition model, and the patterns that emerge from its use at scale.
 
+::: tip New in v2.7
+The recommended API is `definePresenter({ ... })` — a declarative object-config alternative to the fluent `createPresenter()` builder. Both APIs produce identical `Presenter` instances. See [Presenter Guide](/presenter) for side-by-side comparison.
+:::
+
 ---
 
 ## The Six Responsibilities
@@ -59,8 +63,10 @@ The schema defines the shape of data the agent sees. When you use Zod's `.strict
 The Presenter validates with whatever Zod schema you provide. If you want strict field filtering, you must call `.strict()` on your schema explicitly. The framework auto-applies `.strict()` on **input** validation (tool parameters), but the Presenter's output schema is yours to define.
 :::
 
-```typescript
-import { createPresenter } from '@vinkius-core/mcp-fusion';
+::: code-group
+
+```typescript [Recommended (v2.7+)]
+import { definePresenter } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 const invoiceSchema = z.object({
@@ -73,9 +79,28 @@ const invoiceSchema = z.object({
     // → rejected IF using .strict()
 }).strict(); // ← explicit .strict() for output security
 
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+});
+```
+
+```typescript [Classic builder]
+import { createPresenter } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const invoiceSchema = z.object({
+    id: z.string(),
+    amount_cents: z.number(),
+    status: z.enum(['paid', 'pending', 'overdue']),
+    client_name: z.string(),
+}).strict();
+
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema);
 ```
+
+:::
 
 When the handler returns data with undeclared fields:
 

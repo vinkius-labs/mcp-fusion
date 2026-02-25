@@ -66,37 +66,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 ```typescript [With MVA]
 // ✅ mcp-fusion — the Presenter handles perception
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(z.object({
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
         id: z.string(),
-        amount_cents: z.number(),
+        amount_cents: z.number().describe('Amount in cents — divide by 100 for display'),
         status: z.enum(['paid', 'pending', 'overdue']),
         // internal_margin and customer_ssn are NOT in the schema
         // → rejected with actionable error naming each invalid field.
-    }))
-    .systemRules([
+    }),
+    autoRules: true, // ← extracts .describe() annotations as system rules
+    systemRules: [
         'CRITICAL: amount_cents is in CENTS. Divide by 100 for display.',
         'Always show currency as USD.',
-    ])
-    .uiBlocks((inv) => [
+    ],
+    uiBlocks: (inv) => [
         ui.echarts({
             series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }]
         }),
-    ])
-    .suggestActions((inv) =>
+    ],
+    suggestActions: (inv) =>
         inv.status === 'pending'
             ? [{ tool: 'billing.pay', reason: 'Invoice is pending — process payment' }]
-            : [{ tool: 'billing.archive', reason: 'Invoice is settled — archive it' }]
-    );
+            : [{ tool: 'billing.archive', reason: 'Invoice is settled — archive it' }],
+});
 
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get_invoice: {
-            returns: InvoicePresenter, // ← One line. That's it.
-            params: { id: 'string' },
-            handler: async (ctx, args) => ctx.db.invoices.findUnique(args.id),
-        },
-    },
+const f = initFusion<AppContext>();
+
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    input: z.object({ id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => ctx.db.invoices.findUnique(input.id),
 });
 
 // What the AI receives:
@@ -139,14 +140,17 @@ case 'list_users':
 
 ```typescript [With MVA]
 // ✅ Cognitive guardrails protect the context window
-const UserPresenter = createPresenter('User')
-    .schema(z.object({ id: z.string(), name: z.string(), role: z.string() }))
-    .agentLimit(50, {
-        warningMessage: 'Showing {shown} of {total}. Use filters to narrow results.',
-    })
-    .suggestActions(() => [
+const UserPresenter = definePresenter({
+    name: 'User',
+    schema: z.object({ id: z.string(), name: z.string(), role: z.string() }),
+    agentLimit: {
+        max: 50,
+        onTruncate: (n) => ui.summary(`Showing 50 of ${n}. Use filters to narrow results.`),
+    },
+    suggestActions: () => [
         { tool: 'users.search', reason: 'Search by name or role for specific users' },
-    ]);
+    ],
+});
 
 // Result: 50 users shown. Agent guided to use filters.
 // Cost: ~25,000 tokens per call (200x reduction). Context protected.

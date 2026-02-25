@@ -224,16 +224,13 @@ Operations are grouped behind a single tool with a discriminator enum. The schem
 ```typescript
 // Instead of 6 individual tools (~1,200 tokens in the prompt),
 // one grouped tool covers the same operations (~350 tokens)
-const projects = defineTool<AppContext>('projects', {
-    actions: {
-        list:    { readOnly: true, handler: ... },
-        get:     { readOnly: true, params: { id: 'string' }, handler: ... },
-        create:  { params: { name: 'string' }, handler: ... },
-        update:  { params: { id: 'string', name: 'string' }, handler: ... },
-        archive: { destructive: true, params: { id: 'string' }, handler: ... },
-        delete:  { destructive: true, params: { id: 'string' }, handler: ... },
-    },
-});
+const f = initFusion<AppContext>();
+
+// With f.tool(), names auto-split on '.' → domain grouping
+const list = f.tool({ name: 'projects.list', input: z.object({}), handler: async ({ ctx }) => ctx.db.projects.findMany() });
+const get = f.tool({ name: 'projects.get', input: z.object({ id: z.string() }), handler: async ({ input, ctx }) => ctx.db.projects.findUnique(input.id) });
+const create = f.tool({ name: 'projects.create', input: z.object({ name: z.string() }), handler: async ({ input, ctx }) => ctx.db.projects.create(input) });
+// ...archive, delete follow the same pattern
 ```
 
 Under the hood, `SchemaGenerator.ts` compiles all actions into **one** `inputSchema` with a discriminator enum, and `applyAnnotations()` adds per-field context — telling the LLM which fields are needed for which action:
@@ -372,11 +369,15 @@ if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
 Usage:
 
 ```typescript
-const TaskPresenter = createPresenter('Task')
-    .schema(taskSchema)
-    .agentLimit(50, (omitted) =>
-        ui.summary(`⚠️ Showing 50 of ${50 + omitted}. Use filters to narrow results.`)
-    );
+const TaskPresenter = definePresenter({
+    name: 'Task',
+    schema: taskSchema,
+    agentLimit: {
+        max: 50,
+        onTruncate: (omitted) =>
+            ui.summary(`⚠️ Showing 50 of ${50 + omitted}. Use filters to narrow results.`),
+    },
+});
 ```
 
 **Token impact comparison:**
@@ -720,5 +721,5 @@ We're not claiming perfection — we're sharing the design principles and mechan
 
 - [The MVA Pattern →](/mva-pattern) — The architectural pattern behind these mechanisms
 - [Performance →](/performance) — Runtime optimizations and benchmarks
-- [Building Tools →](/building-tools) — Implement with `defineTool()` and `createTool()`
-- [Presenter →](/presenter) — Configure guardrails, rules, and affordances
+- [Building Tools →](/building-tools) — Implement with `f.tool()`, `defineTool()`, or `createTool()`
+- [Presenter →](/presenter) — Configure guardrails with `definePresenter()`

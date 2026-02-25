@@ -78,14 +78,30 @@ LLM calls tool → ToolRegistry routes → GroupedToolBuilder validates
                                     perception package
 ```
 
-### Two Complementary APIs
+### Four Tool APIs <Badge type="tip" text="v2.7" />
 
 | API | Syntax | Zod Required? | Best For |
 |---|---|---|---|
+| `f.tool()` | tRPC-style `{ input, ctx }` handler | Any Standard Schema | **Recommended** — zero generics, type-safe |
 | `defineTool()` | Declarative config object | No | Rapid prototyping, simple params |
-| `createTool()` | Fluent builder chain | Yes | Complex validation, transforms |
+| `createTool()` | Fluent builder chain | Yes (Zod) | Complex validation, transforms |
+| `createGroup()` | Functional closure with pre-composed middleware | Any Standard Schema | Standalone tool modules |
 
-Both produce identical MCP tool definitions and coexist freely in the same registry.
+All four produce identical MCP tool definitions and coexist freely in the same registry.
+
+```typescript
+// v2.7 Recommended — initFusion() + f.tool()
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+const myTool = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Gets an invoice by ID',
+    input: z.object({ id: z.string() }),
+    handler: async ({ input, ctx }) => await ctx.db.invoices.find(input.id),
+});
+```
 
 ---
 
@@ -93,10 +109,16 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 
 | Capability | Layer |
 |---|---|
+| **Context Init (`initFusion`)** | Define context type once; every f.tool/f.presenter/f.registry inherits it |
 | **Grouped Tool Routing** | Action consolidation with discriminator enum |
+| **File-Based Routing (`autoDiscover`)** | Scan directories, auto-register tools — filesystem as routing table |
+| **HMR Dev Server (`createDevServer`)** | Hot-reload tools on file change without restarting LLM client |
 | **Presenter (MVA View)** | Domain rules, UI blocks, affordances, composition |
+| **Declarative Presenter (`definePresenter`)** | Object-config API with auto-extracted Zod descriptions |
+| **Functional Groups (`createGroup`)** | Closure-based tool groups with pre-composed middleware |
+| **Standard Schema** | Decouple from Zod — support Valibot, ArkType, TypeBox |
 | **Zod Validation & `.strict()`** | Security boundary against hallucinated params |
-| **Context Derivation** | tRPC-style `defineMiddleware()` with type inference |
+| **Context Derivation** | tRPC-style `defineMiddleware()` / `f.middleware()` with type inference |
 | **Hierarchical Groups** | Namespace 5,000+ actions with `module.action` keys |
 | **Self-Healing Errors** | `toolError()` with recovery hints for autonomous agents |
 | **Streaming Progress** | Generator handlers yield `progress()` events |
@@ -105,6 +127,7 @@ Both produce identical MCP tool definitions and coexist freely in the same regis
 | **Observability** | Zero-overhead debug observers with typed event system |
 | **TOON Compression** | Token-optimized descriptions and responses |
 | **Freeze-After-Build** | Immutability guarantees for production safety |
+| **Subpath Exports** | 10 granular entry points for minimal bundle size |
 
 ---
 
@@ -138,9 +161,9 @@ yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 <div class="next-steps">
 
-- [**The MVA Pattern →**](/mva-pattern) — Learn the MVA architectural pattern
+- [**DX Guide →**](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
 - [**Quickstart →**](/quickstart) — Build your first tool in 5 minutes
 - [**Presenter →**](/presenter) — The agent-centric View layer
-- [**Building Tools →**](/building-tools) — `defineTool()` and `createTool()` in depth
+- [**Building Tools →**](/building-tools) — `f.tool()`, `defineTool()`, and `createTool()` in depth
 
 </div>

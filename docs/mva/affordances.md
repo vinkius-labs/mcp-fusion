@@ -51,7 +51,37 @@ The principle is identical: **the server tells the client what's possible.** But
 
 ### Basic Usage
 
-```typescript
+::: code-group
+
+```typescript [Recommended (v2.7+)]
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    suggestActions: (invoice) => {
+        if (invoice.status === 'pending') {
+            return [
+                { tool: 'billing.pay', reason: 'Process immediate payment' },
+                { tool: 'billing.send_reminder', reason: 'Send payment reminder to client' },
+            ];
+        }
+        if (invoice.status === 'overdue') {
+            return [
+                { tool: 'billing.escalate', reason: 'Escalate to collections' },
+                { tool: 'billing.send_final_notice', reason: 'Send final payment notice' },
+            ];
+        }
+        if (invoice.status === 'paid') {
+            return [
+                { tool: 'billing.archive', reason: 'Archive completed invoice' },
+                { tool: 'reports.generate_receipt', reason: 'Generate payment receipt' },
+            ];
+        }
+        return [];
+    },
+});
+```
+
+```typescript [Classic builder]
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
     .suggestActions((invoice) => {
@@ -76,6 +106,8 @@ const InvoicePresenter = createPresenter('Invoice')
         return [];
     });
 ```
+
+:::
 
 The agent receives one of these blocks depending on the invoice's state:
 

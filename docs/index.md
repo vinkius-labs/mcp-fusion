@@ -54,35 +54,37 @@ hero:
 <div class="ms-code-box">
 
 ```typescript
-import { createPresenter, ui, defineTool } from '@vinkius-core/mcp-fusion';
+import { initFusion, definePresenter, ui } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// 1. Define the Presenter — the MVA View Layer
-export const InvoicePresenter = createPresenter('Invoice')
-    .schema(z.object({
+// 1. Initialize Fusion — define context type ONCE
+const f = initFusion<AppContext>();
+
+// 2. Define the Presenter — the MVA View Layer
+export const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
         id: z.string(),
-        amount_cents: z.number(),
+        amount_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
         status: z.enum(['paid', 'pending', 'overdue']),
-    }))
-    .systemRules(['CRITICAL: amount_cents is in CENTS. Divide by 100.'])
-    .uiBlocks((inv) => [
+    }),
+    autoRules: true, // ← auto-extracts .describe() as system rules
+    uiBlocks: (inv) => [
         ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
-    ])
-    .suggestActions((inv) =>
+    ],
+    suggestActions: (inv) =>
         inv.status === 'pending'
             ? [{ tool: 'billing.pay', reason: 'Process payment' }]
-            : []
-    );
+            : [],
+});
 
-// 2. Attach to any tool — handler returns raw data
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get_invoice: {
-            returns: InvoicePresenter,
-            params: { id: 'string' },
-            handler: async (ctx, args) => await ctx.db.invoices.findUnique(args.id),
-        },
-    },
+// 3. Attach to any tool — handler returns raw data
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Gets an invoice by ID',
+    input: { id: 'string' },              // ← No Zod needed for input!
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => await ctx.db.invoices.findUnique(input.id),
 });
 ```
 
@@ -187,14 +189,16 @@ const billing = defineTool<AppContext>('billing', {
 <p class="ms-problem-solution"><strong>The mechanism:</strong> The Zod <code>.schema()</code> on every Presenter physically strips undeclared fields in server RAM via <code>Zod.parse()</code>. Sensitive data is destroyed before serialization — not by developer discipline, but by the framework itself. Combined with <code>.strict()</code> on inputs, this creates a bidirectional data boundary on every tool.</p>
 
 ```typescript
-const UserPresenter = createPresenter('User')
-    .schema(z.object({
+const UserPresenter = definePresenter({
+    name: 'User',
+    schema: z.object({
         id: z.string(),
         name: z.string(),
         email: z.string(),
         // password_hash, tenant_id, internal_flags
         // → physically absent from output. Not filtered. GONE.
-    }));
+    }),
+});
 ```
 
 <a href="/mcp-fusion/presenter" class="ms-card-link">SEE HOW IT WORKS →</a>
@@ -208,19 +212,23 @@ const UserPresenter = createPresenter('User')
 
 ```typescript
 // Invoice rules — sent ONLY when invoice data is returned
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-    .systemRules((invoice, ctx) => [
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    systemRules: (invoice, ctx) => [
         'CRITICAL: amount_cents is in CENTS. Divide by 100.',
         ctx?.user?.role !== 'admin'
             ? 'RESTRICTED: Mask exact totals for non-admin users.'
             : null,
-    ]);
+    ],
+});
 
 // Task rules — sent ONLY when task data is returned
-const TaskPresenter = createPresenter('Task')
-    .schema(taskSchema)
-    .systemRules(['Use emojis: 🔄 In Progress, ✅ Done, ❌ Blocked']);
+const TaskPresenter = definePresenter({
+    name: 'Task',
+    schema: taskSchema,
+    systemRules: ['Use emojis: 🔄 In Progress, ✅ Done, ❌ Blocked'],
+});
 ```
 
 <a href="/mcp-fusion/mva/context-tree-shaking" class="ms-card-link">SEE HOW IT WORKS →</a>
@@ -233,9 +241,10 @@ const TaskPresenter = createPresenter('Task')
 <p class="ms-problem-solution"><strong>The mechanism:</strong> The agent is demoted to its correct role — a messenger. Complex chart configs, Mermaid diagrams, and Markdown tables are compiled server-side in Node.js (100% deterministic) via <code>.uiBlocks()</code>. The AI receives a <code>[SYSTEM]</code> pass-through directive and forwards the block unchanged. Visual hallucination drops to zero.</p>
 
 ```typescript
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-    .uiBlocks((invoice) => [
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    uiBlocks: (invoice) => [
         ui.echarts({
             series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
         }),
@@ -243,7 +252,8 @@ const InvoicePresenter = createPresenter('Invoice')
             ['Field', 'Value'],
             [['Status', invoice.status], ['Amount', `$${invoice.amount_cents / 100}`]],
         ),
-    ]);
+    ],
+});
 // The LLM passes the chart config through. It never generates it.
 ```
 
@@ -285,47 +295,59 @@ const InvoicePresenter = createPresenter('Invoice')
 <div class="ms-card">
 <div class="ms-card-number">01 // MVA</div>
 <h3 class="ms-card-title">Presenter Engine</h3>
-<p class="ms-card-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Define once, reuse everywhere.</p>
+<p class="ms-card-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Use definePresenter() or createPresenter() — both freeze-after-build.</p>
 <a href="/presenter" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">02 // ROUTING</div>
+<div class="ms-card-number">02 // DX</div>
+<h3 class="ms-card-title">Context Init (initFusion)</h3>
+<p class="ms-card-desc">tRPC-style f = initFusion&lt;AppContext&gt;(). Define your context type ONCE — every f.tool(), f.presenter(), f.registry() inherits it. Zero generics.</p>
+<a href="/dx-guide" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">03 // ROUTING</div>
 <h3 class="ms-card-title">Action Consolidation</h3>
-<p class="ms-card-desc">Nest 5,000+ operations into grouped namespaces. The LLM sees ONE tool, not fifty. Token usage drops by 10x.</p>
+<p class="ms-card-desc">Nest 5,000+ operations into grouped namespaces. File-based routing with autoDiscover() scans directories automatically.</p>
 <a href="/routing" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">03 // SECURITY</div>
+<div class="ms-card-number">04 // SECURITY</div>
 <h3 class="ms-card-title">Context Derivation</h3>
-<p class="ms-card-desc">defineMiddleware() derives and injects typed data into context. Zod .strict() protects handlers from hallucinated params.</p>
+<p class="ms-card-desc">f.middleware() / defineMiddleware() derives and injects typed data into context. Zod .strict() protects handlers from hallucinated params.</p>
 <a href="/middleware" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">04 // RESILIENCE</div>
+<div class="ms-card-number">05 // RESILIENCE</div>
 <h3 class="ms-card-title">Self-Healing Errors</h3>
 <p class="ms-card-desc">toolError() provides structured recovery hints with suggested actions. Agents self-correct without human intervention.</p>
 <a href="/building-tools" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">05 // AFFORDANCE</div>
+<div class="ms-card-number">06 // AFFORDANCE</div>
 <h3 class="ms-card-title">Agentic HATEOAS</h3>
 <p class="ms-card-desc">.suggestActions() tells agents what to do next based on data state. Reduces action hallucination through explicit affordances.</p>
 <a href="/mva-pattern" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">06 // GUARDRAILS</div>
+<div class="ms-card-number">07 // DEV</div>
+<h3 class="ms-card-title">HMR Dev Server</h3>
+<p class="ms-card-desc">createDevServer() watches tool files and hot-reloads on change without restarting the LLM client. Sends notifications/tools/list_changed automatically.</p>
+<a href="/dx-guide#hmr-dev-server-createdevserver" class="ms-card-link">EXPLORE →</a>
+</div>
+<div class="ms-card">
+<div class="ms-card-number">08 // GUARDRAILS</div>
 <h3 class="ms-card-title">Cognitive Limits</h3>
 <p class="ms-card-desc">.agentLimit() truncates large datasets and teaches agents to use filters. Prevents context DDoS and manages API costs.</p>
 <a href="/presenter" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">07 // STATE</div>
+<div class="ms-card-number">09 // STATE</div>
 <h3 class="ms-card-title">Temporal Awareness</h3>
 <p class="ms-card-desc">RFC 7234-inspired cache-control signals prevent LLM Temporal Blindness. Cross-domain causal invalidation after mutations.</p>
 <a href="/state-sync" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
-<div class="ms-card-number">08 // CLIENT</div>
+<div class="ms-card-number">10 // CLIENT</div>
 <h3 class="ms-card-title">Type-Safe Client</h3>
 <p class="ms-card-desc">createFusionClient() provides end-to-end type safety from server to client. Wrong action name? TypeScript catches it at build time.</p>
 <a href="/fusion-client" class="ms-card-link">EXPLORE →</a>

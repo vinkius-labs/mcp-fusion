@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety — so AI agents perceive and act on your data deterministically.",
     "type": "module",
     "main": "dist/index.js",
@@ -13,6 +13,38 @@
         "./client": {
             "import": "./dist/client/index.js",
             "types": "./dist/client/index.d.ts"
+        },
+        "./ui": {
+            "import": "./dist/presenter/ui.js",
+            "types": "./dist/presenter/ui.d.ts"
+        },
+        "./presenter": {
+            "import": "./dist/presenter/index.js",
+            "types": "./dist/presenter/index.d.ts"
+        },
+        "./prompt": {
+            "import": "./dist/prompt/index.js",
+            "types": "./dist/prompt/index.d.ts"
+        },
+        "./state-sync": {
+            "import": "./dist/state-sync/index.js",
+            "types": "./dist/state-sync/index.d.ts"
+        },
+        "./observability": {
+            "import": "./dist/observability/index.js",
+            "types": "./dist/observability/index.d.ts"
+        },
+        "./dev": {
+            "import": "./dist/server/DevServer.js",
+            "types": "./dist/server/DevServer.d.ts"
+        },
+        "./schema": {
+            "import": "./dist/core/StandardSchema.js",
+            "types": "./dist/core/StandardSchema.d.ts"
+        },
+        "./testing": {
+            "import": "./dist/testing/MvaMetaSymbol.js",
+            "types": "./dist/testing/MvaMetaSymbol.d.ts"
         }
     },
     "scripts": {
@@ -70,6 +102,11 @@
     "peerDependencies": {
         "@modelcontextprotocol/sdk": "^1.12.1",
         "zod": "^3.25.1 || ^4.0.0"
+    },
+    "peerDependenciesMeta": {
+        "zod": {
+            "optional": true
+        }
     },
     "license": "Apache-2.0"
 }

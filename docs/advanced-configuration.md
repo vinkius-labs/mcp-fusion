@@ -11,6 +11,14 @@ By default, Fusion generates visually descriptive, Markdown-based workflow descr
 When exposing a massive API surface to an LLM, enable TOON compression.
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+// TOON is configured at the builder level:
+const admin = f.defineTool('admin', {})
+    .toonDescription()
+    .action({ name: 'provision_user', handler: myHandler });
+```
 ```typescript [defineTool]
 const admin = defineTool('admin', {
     toonDescription: true,  // Engages the TOON compiler engine
@@ -41,6 +49,13 @@ In high-scale architectures, you should not expose every tool to the LLM on ever
 Fusion provides a native tags parameter to classify tools internally:
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+// Tags are configured at the builder level:
+const github = f.defineTool('github', {}).tags('public', 'dev', 'repo');
+const billing = f.defineTool('billing', {}).tags('internal', 'payments');
+```
 ```typescript [defineTool]
 const github = defineTool('github', { tags: ['public', 'dev', 'repo'], actions: { /* ... */ } });
 const billing = defineTool('billing', { tags: ['internal', 'payments'], actions: { /* ... */ } });
@@ -73,6 +88,14 @@ When combining multiple operations into a single endpoint via Namespaces, the de
 You can seamlessly override this string to fit strictly specific domain workflows:
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+// Discriminator is configured at the builder level:
+const storage = f.defineTool('storage', {})
+    .discriminator('operation')
+    .action({ name: 'upload', handler: myUploadHandler });
+```
 ```typescript [defineTool]
 const storage = defineTool('storage', {
     discriminator: 'operation',
@@ -100,6 +123,13 @@ Model Context Protocol offers native UI hints via [Annotations](https://modelcon
 While Fusion automatically detects and flags standard mutations (via `readOnly` or `destructive` arguments inside your actions), you can forcibly inject arbitrary MCP Annotations across an entire Tool boundary seamlessly:
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+// Annotations are configured at the builder level:
+const database = f.defineTool('database', {})
+    .annotations({ readOnlyHint: true, openWorldHint: true });
+```
 ```typescript [defineTool]
 const database = defineTool('database', {
     annotations: {

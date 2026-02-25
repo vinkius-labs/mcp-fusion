@@ -24,12 +24,14 @@ System Rules are the governance contract between your application and the AI mod
 Static rules are defined as string arrays in the Presenter:
 
 ```typescript
-const UserPresenter = createPresenter<UserDTO>('User')
-    .schema(UserSchema)
-    .systemRules([
+const UserPresenter = definePresenter({
+    name: 'User',
+    schema: UserSchema,
+    systemRules: [
         'All data is from Prisma ORM. Do not infer data outside this response.',
         'Email addresses are PII. Mask when possible.',
-    ]);
+    ],
+});
 ```
 
 Test them:

@@ -9,6 +9,153 @@ Real-world, copy-pasteable patterns for every **MCP Fusion** feature. Each examp
 The most common pattern. A single tool with list, get, create, update, and delete actions.
 
 ::: code-group
+```typescript [f.tool() — No Zod 🚀]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+interface AppContext {
+    db: Database;
+}
+
+const f = initFusion<AppContext>();
+
+const listProjects = f.tool({
+    name: 'projects.list',
+    description: 'List all projects in a workspace',
+    input: {
+        workspace_id: 'string',
+        status: { enum: ['active', 'archived', 'all'] as const, optional: true },
+        limit: { type: 'number', min: 1, max: 100, optional: true },
+    },
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.projects.findMany({
+            where: {
+                workspaceId: input.workspace_id,
+                ...(input.status && input.status !== 'all' && { status: input.status }),
+            },
+            take: input.limit ?? 20,
+        });
+    },
+});
+
+const getProject = f.tool({
+    name: 'projects.get',
+    description: 'Get a single project by ID',
+    input: { workspace_id: 'string', id: 'string' },
+    handler: async ({ input, ctx }) => {
+        const project = await ctx.db.projects.findUnique({
+            where: { id: input.id, workspaceId: input.workspace_id },
+        });
+        if (!project) throw new Error(`Project "${input.id}" not found`);
+        return project;
+    },
+});
+
+const createProject = f.tool({
+    name: 'projects.create',
+    description: 'Create a new project',
+    input: {
+        workspace_id: 'string',
+        name: { type: 'string', min: 1, max: 200 },
+        description: { type: 'string', optional: true },
+    },
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.projects.create({ data: input });
+    },
+});
+
+const deleteProject = f.tool({
+    name: 'projects.delete',
+    description: 'Delete a project permanently',
+    input: { workspace_id: 'string', id: 'string' },
+    handler: async ({ input, ctx }) => {
+        await ctx.db.projects.delete({
+            where: { id: input.id, workspaceId: input.workspace_id },
+        });
+        return `Project "${input.id}" deleted`;
+    },
+});
+
+// Register all
+const registry = f.registry();
+registry.register(listProjects);
+registry.register(getProject);
+registry.register(createProject);
+registry.register(deleteProject);
+```
+```typescript [f.tool() — Zod]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+interface AppContext {
+    db: Database;
+}
+
+const f = initFusion<AppContext>();
+
+const listProjects = f.tool({
+    name: 'projects.list',
+    description: 'List all projects in a workspace',
+    input: z.object({
+        workspace_id: z.string(),
+        status: z.enum(['active', 'archived', 'all']).optional(),
+        limit: z.number().min(1).max(100).optional(),
+    }),
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.projects.findMany({
+            where: {
+                workspaceId: input.workspace_id,
+                ...(input.status && input.status !== 'all' && { status: input.status }),
+            },
+            take: input.limit ?? 20,
+        });
+    },
+});
+
+const getProject = f.tool({
+    name: 'projects.get',
+    description: 'Get a single project by ID',
+    input: z.object({ workspace_id: z.string(), id: z.string() }),
+    handler: async ({ input, ctx }) => {
+        const project = await ctx.db.projects.findUnique({
+            where: { id: input.id, workspaceId: input.workspace_id },
+        });
+        if (!project) throw new Error(`Project "${input.id}" not found`);
+        return project;
+    },
+});
+
+const createProject = f.tool({
+    name: 'projects.create',
+    description: 'Create a new project',
+    input: z.object({
+        workspace_id: z.string(),
+        name: z.string().min(1).max(200),
+        description: z.string().optional(),
+    }),
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.projects.create({ data: input });
+    },
+});
+
+const deleteProject = f.tool({
+    name: 'projects.delete',
+    description: 'Delete a project permanently',
+    input: z.object({ workspace_id: z.string(), id: z.string() }),
+    handler: async ({ input, ctx }) => {
+        await ctx.db.projects.delete({
+            where: { id: input.id, workspaceId: input.workspace_id },
+        });
+        return `Project "${input.id}" deleted`;
+    },
+});
+
+// Register all
+const registry = f.registry();
+registry.register(listProjects);
+registry.register(getProject);
+registry.register(createProject);
+registry.register(deleteProject);
+```
 ```typescript [defineTool — No Zod]
 import { defineTool, success, error, required } from '@vinkius-core/mcp-fusion';
 
@@ -258,7 +405,77 @@ This guides the AI to self-correct on the next call — no hallucination, no ret
 
 Complete Presenter with schema validation, domain rules, UI blocks, cognitive guardrails, and HATEOAS suggestions.
 
-```typescript
+::: code-group
+```typescript [definePresenter — Recommended ✨]
+import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const invoiceSchema = z.object({
+    id: z.string(),
+    client_name: z.string(),
+    amount_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
+    status: z.enum(['paid', 'pending', 'overdue']).describe('Use emojis: ✅ paid, ⏳ pending, 🔴 overdue'),
+    due_date: z.string().describe('Display in human-readable format: "Jan 15, 2025"'),
+    items: z.array(z.object({
+        description: z.string(),
+        amount_cents: z.number(),
+    })),
+});
+
+export const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    autoRules: true, // ← auto-extracts .describe() as system rules
+    systemRules: ['Use currency format: $XX,XXX.00'],
+
+    uiBlocks: (invoice) => [
+        ui.echarts({
+            series: [{
+                type: 'gauge',
+                data: [{ value: invoice.amount_cents / 100, name: invoice.status }],
+                max: Math.ceil(invoice.amount_cents / 100 * 1.5),
+            }],
+        }),
+    ],
+
+    collectionUi: (invoices) => [
+        ui.echarts({
+            xAxis: { type: 'category', data: invoices.map(i => i.id) },
+            yAxis: { type: 'value' },
+            series: [{ type: 'bar', data: invoices.map(i => i.amount_cents / 100) }],
+        }),
+        ui.summary(
+            `${invoices.length} invoices. ` +
+            `Total: $${(invoices.reduce((s, i) => s + i.amount_cents, 0) / 100).toLocaleString()}`
+        ),
+    ],
+
+    agentLimit: {
+        max: 50,
+        onTruncate: (omitted) => ui.summary(
+            `⚠️ Dataset truncated. 50 shown, ${omitted} hidden. ` +
+            `Use status or date_range filters to narrow results.`
+        ),
+    },
+
+    suggestActions: (invoice) => {
+        if (invoice.status === 'pending') {
+            return [
+                { tool: 'billing.charge', reason: 'Process payment' },
+                { tool: 'billing.send_reminder', reason: 'Send payment reminder email' },
+            ];
+        }
+        if (invoice.status === 'overdue') {
+            return [
+                { tool: 'billing.escalate', reason: 'Escalate to collections' },
+                { tool: 'billing.charge', reason: 'Attempt late payment' },
+            ];
+        }
+        return [];
+    },
+});
+```
+```typescript [createPresenter — Classic Builder]
 import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
@@ -343,10 +560,80 @@ export const InvoicePresenter = createPresenter('Invoice')
         return [];   // No suggestions for paid invoices
     });
 ```
+:::
 
 ### Using the Presenter in a Tool
 
-```typescript
+::: code-group
+```typescript [f.tool() — No Zod 🚀]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const f = initFusion<AppContext>();
+
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Gets an invoice by ID',
+    input: { invoice_id: 'string' },
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({
+            where: { id: input.invoice_id },
+            include: { items: true },
+        });
+    },
+});
+
+const listInvoices = f.tool({
+    name: 'billing.list_invoices',
+    description: 'Lists invoices with optional status filter',
+    input: {
+        status: { enum: ['paid', 'pending', 'overdue'] as const, optional: true },
+    },
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findMany({
+            where: input.status ? { status: input.status } : {},
+            include: { items: true },
+        });
+    },
+});
+```
+```typescript [f.tool() — Zod]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const f = initFusion<AppContext>();
+
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Gets an invoice by ID',
+    input: z.object({ invoice_id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({
+            where: { id: input.invoice_id },
+            include: { items: true },
+        });
+    },
+});
+
+const listInvoices = f.tool({
+    name: 'billing.list_invoices',
+    description: 'Lists invoices with optional status filter',
+    input: z.object({
+        status: z.enum(['paid', 'pending', 'overdue']).optional(),
+    }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findMany({
+            where: input.status ? { status: input.status } : {},
+            include: { items: true },
+        });
+    },
+});
+```
+```typescript [defineTool — Classic]
 import { defineTool } from '@vinkius-core/mcp-fusion';
 import { InvoicePresenter } from './presenters/InvoicePresenter';
 
@@ -380,6 +667,7 @@ const billing = defineTool<AppContext>('billing', {
     },
 });
 ```
+:::
 
 ---
 
@@ -778,7 +1066,156 @@ const hugeApi = createTool<AppContext>('api')
 
 ---
 
-## 10. Presenter Composition — Nested Relations
+## 10. Prompts — Reusable Context Templates <Badge type="tip" text="NEW v2.7" />
+
+Tools execute actions. **Prompts** are pre-built templates that inject structured context into the LLM conversation. Users select them from a menu in their MCP client.
+
+### Basic Prompt — No Zod
+
+```typescript
+import { initFusion, PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Code review prompt — plain JSON descriptors, no Zod needed
+const codeReview = f.prompt({
+    name: 'code-review',
+    description: 'Review code for quality and suggest improvements',
+    args: {
+        language: { enum: ['typescript', 'python', 'go', 'rust'] as const },
+        focus: {
+            type: 'string',
+            description: 'Area to focus on: performance, security, readability',
+            optional: true,
+        },
+        severity: {
+            enum: ['strict', 'moderate', 'lenient'] as const,
+            description: 'How strict the review should be',
+            optional: true,
+        },
+    } as const,
+    handler: async ({ args }) => {
+        const focusHint = args.focus ? ` Focus specifically on ${args.focus}.` : '';
+        const severity = args.severity ?? 'moderate';
+        return [
+            PromptMessage.user(
+                `You are a ${severity} code reviewer for ${args.language}.${focusHint}\n\n` +
+                `Review the code I'm about to share. For each issue found:\n` +
+                `1. Describe the problem\n` +
+                `2. Explain the impact\n` +
+                `3. Provide the corrected code`
+            ),
+        ];
+    },
+});
+
+const registry = f.registry();
+registry.registerPrompt(codeReview);
+```
+
+### Multi-Modal Prompt — Images & Resources
+
+```typescript
+const debugUI = f.prompt({
+    name: 'debug-ui',
+    description: 'Debug a UI issue from a screenshot',
+    args: {
+        component: { type: 'string', description: 'Component name' },
+        framework: { enum: ['react', 'vue', 'svelte'] as const },
+    } as const,
+    handler: async ({ args }) => [
+        PromptMessage.user(
+            `I have a ${args.framework} component "${args.component}" with a visual bug. ` +
+            `Analyze the screenshot and the component source code below.`
+        ),
+        PromptMessage.image('https://screenshots.example.com/bug-report.png', 'image/png'),
+        PromptMessage.resource(`file:///src/components/${args.component}.tsx`, 'text/typescript'),
+    ],
+});
+```
+
+### Prompt with Presenter Bridge — `fromView()`
+
+Connect prompts to your MVA Presenters for rich, rule-aware context:
+
+```typescript
+import { definePresenter, PromptMessage } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const ProjectPresenter = definePresenter({
+    name: 'Project',
+    schema: z.object({
+        id: z.string(),
+        name: z.string(),
+        status: z.enum(['active', 'archived']).describe('Use emojis: 🟢 active, 📦 archived'),
+        budget_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
+    }),
+    autoRules: true,
+});
+
+const planSprint = f.prompt({
+    name: 'plan-sprint',
+    description: 'Plan the next sprint based on project state',
+    args: { project_id: 'string' } as const,
+    handler: async ({ args, ctx }) => {
+        const project = await ctx.db.projects.findUnique({
+            where: { id: args.project_id },
+        });
+
+        return [
+            PromptMessage.user('Plan the next 2-week sprint for this project:'),
+            // fromView() injects Presenter rules + UI blocks automatically
+            PromptMessage.fromView(project, ProjectPresenter),
+            PromptMessage.user(
+                'Consider the budget, current status, and team velocity. ' +
+                'Output a sprint backlog as a markdown table.'
+            ),
+        ];
+    },
+});
+```
+
+### Prompt with Zod Args
+
+```typescript
+import { z } from 'zod';
+import { PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const sqlHelper = f.prompt({
+    name: 'sql-helper',
+    description: 'Generate SQL queries from natural language',
+    args: z.object({
+        dialect: z.enum(['postgresql', 'mysql', 'sqlite']),
+        tables: z.string().describe('Comma-separated table names to query'),
+        intent: z.string().describe('What you want to query in plain English'),
+    }),
+    handler: async ({ args }) => [
+        PromptMessage.user(
+            `You are a ${args.dialect} expert. Available tables: ${args.tables}.\n\n` +
+            `Generate an optimized SQL query for: "${args.intent}"\n\n` +
+            `Rules:\n` +
+            `- Use CTEs for complex queries\n` +
+            `- Add comments explaining each section\n` +
+            `- Include an EXPLAIN plan estimate`
+        ),
+    ],
+});
+```
+
+::: tip Tools vs Prompts — When to Use Each
+| Use Case | Use |
+|---|---|
+| Execute an action (CRUD, API call) | `f.tool()` |
+| Pre-fill LLM context with instructions | `f.prompt()` |
+| User-triggered template (slash command) | `f.prompt()` |
+| Automated by the LLM during reasoning | `f.tool()` |
+| Accepts arrays or complex nested input | `f.tool()` |
+| Appears in MCP client menu as a template | `f.prompt()` |
+:::
+
+---
+
+## 11. Presenter Composition — Nested Relations
 
 Define Presenters once, embed them everywhere. DRY principle for domain models.
 
@@ -824,7 +1261,7 @@ When an invoice includes `client` data, the Client's rules and UI blocks are aut
 
 ---
 
-## 11. State Sync — Prevent Stale Data
+## 12. State Sync — Prevent Stale Data
 
 Tell the AI which data to re-fetch after mutations.
 
@@ -872,7 +1309,7 @@ This tells the AI to re-fetch those tools before using their data.
 
 ---
 
-## 12. Result Monad — Composable Error Handling
+## 13. Result Monad — Composable Error Handling
 
 Chain operations that might fail without nested `if/else` blocks.
 
@@ -934,7 +1371,7 @@ const projects = defineTool<AppContext>('projects', {
 
 ---
 
-## 13. Testing Tools
+## 14. Testing Tools
 
 Test your tools without an MCP server.
 
@@ -1005,11 +1442,65 @@ describe('projects tool', () => {
 
 ---
 
-## 14. Full Server Setup — Production Pattern
+## 15. Full Server Setup — Production Pattern
 
 The complete wiring from tools → registry → server.
 
-```typescript
+::: code-group
+```typescript [initFusion + autoDiscover — Recommended ✨]
+// src/server.ts
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { initFusion, autoDiscover, createDebugObserver } from '@vinkius-core/mcp-fusion';
+
+interface AppContext {
+    db: Database;
+    user: User;
+    tenant: Tenant;
+}
+
+// ── Initialize ───────────────────────────────────────────
+const f = initFusion<AppContext>();
+const registry = f.registry();
+
+// Auto-discover all tools from the filesystem
+await autoDiscover(registry, './src/tools');
+
+// ── Server ───────────────────────────────────────────────
+async function main() {
+    const server = new Server(
+        { name: 'my-app', version: '1.0.0' },
+        { capabilities: { tools: {} } },
+    );
+
+    registry.attachToServer(server, {
+        contextFactory: async (extra) => {
+            const session = extra as { sessionId?: string };
+            const db = await connectToDatabase();
+            const user = await resolveUser(session?.sessionId);
+            return { db, user, tenant: user.tenant };
+        },
+        filter: { exclude: ['internal'] },
+        debug: process.env.NODE_ENV !== 'production'
+            ? createDebugObserver()
+            : undefined,
+        stateSync: {
+            defaults: { cacheControl: 'no-store' },
+            policies: [
+                { match: 'tasks.update', invalidates: ['tasks.*', 'projects.get'] },
+                { match: 'billing.*', invalidates: ['billing.*'] },
+            ],
+        },
+    });
+
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('🚀 Server running');
+}
+
+main();
+```
+```typescript [Classic — Manual Imports]
 // src/server.ts
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -1069,13 +1560,121 @@ async function main() {
 
 main();
 ```
+:::
+
+---
+
+## 16. HMR Dev Server <Badge type="tip" text="NEW v2.7" />
+
+Hot-reload tools on file change during development — the LLM client stays connected.
+
+```typescript
+// src/dev.ts
+import { createDevServer, autoDiscover } from '@vinkius-core/mcp-fusion/dev';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+const server = new Server(
+    { name: 'my-app-dev', version: '1.0.0' },
+    { capabilities: { tools: {} } },
+);
+
+const devServer = createDevServer({
+    dir: './src/tools',
+    setup: async (registry) => await autoDiscover(registry, './src/tools'),
+    onReload: (file) => console.error(`♻️ Reloaded: ${file}`),
+    server,
+});
+
+await devServer.start();
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+console.error('🔥 Dev server running with HMR');
+```
+
+---
+
+## 17. Functional Groups — Standalone Modules <Badge type="tip" text="NEW v2.7" />
+
+Build self-contained tool modules with pre-composed middleware.
+
+::: code-group
+```typescript [No Zod 🚀]
+import { createGroup, success } from '@vinkius-core/mcp-fusion';
+
+const billingGroup = createGroup<AppContext>({
+    name: 'billing',
+    description: 'Payment processing',
+    middleware: [authMiddleware, auditLog],
+    tools: [
+        {
+            name: 'charge',
+            description: 'Charge an invoice',
+            input: {
+                invoice_id: 'string',
+                amount: { type: 'number', min: 1, description: 'Amount in cents' },
+            },
+            handler: async ({ input, ctx }) => {
+                await ctx.billing.charge(input.invoice_id, input.amount);
+                return success({ charged: true });
+            },
+        },
+        {
+            name: 'refund',
+            description: 'Refund a payment',
+            input: { payment_id: 'string' },
+            handler: async ({ input, ctx }) => {
+                await ctx.billing.refund(input.payment_id);
+                return success({ refunded: true });
+            },
+        },
+    ],
+});
+
+registry.register(billingGroup);
+```
+```typescript [With Zod]
+import { createGroup, success } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const billingGroup = createGroup<AppContext>({
+    name: 'billing',
+    description: 'Payment processing',
+    middleware: [authMiddleware, auditLog],
+    tools: [
+        {
+            name: 'charge',
+            description: 'Charge an invoice',
+            input: z.object({ invoice_id: z.string(), amount: z.number() }),
+            handler: async ({ input, ctx }) => {
+                await ctx.billing.charge(input.invoice_id, input.amount);
+                return success({ charged: true });
+            },
+        },
+        {
+            name: 'refund',
+            description: 'Refund a payment',
+            input: z.object({ payment_id: z.string() }),
+            handler: async ({ input, ctx }) => {
+                await ctx.billing.refund(input.payment_id);
+                return success({ refunded: true });
+            },
+        },
+    ],
+});
+
+registry.register(billingGroup);
+```
+:::
 
 ---
 
 ## Next Steps
 
+- [DX Guide →](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
 - [Quickstart →](/quickstart) — Your first tool in 5 minutes
-- [Building Tools →](/building-tools) — `defineTool()` vs `createTool()` deep dive
+- [Building Tools →](/building-tools) — `f.tool()`, `defineTool()`, `createTool()` in depth
 - [Presenter (MVA View) →](/presenter) — Full Presenter API reference
 - [Middleware →](/middleware) — Authentication, logging, rate limiting
 - [Testing →](/testing) — Test strategies and patterns

@@ -46,10 +46,13 @@ Perception layer. Presenters that shape how the Agent perceives domain data.
 // views/pet.presenter.ts
 import { PetResponseSchema } from '../models/pet.schema.js';
 
-export const PetPresenter = createPresenter()
-    .schema(PetResponseSchema)
-    .rules('Only show available pets unless explicitly requested')
-    .ui(pet => [{ type: 'text', text: `${pet.name} (${pet.status})` }]);
+export const PetPresenter = definePresenter({
+    name: 'Pet',
+    schema: PetResponseSchema,
+    autoRules: true,
+    systemRules: ['Only show available pets unless explicitly requested'],
+    uiBlocks: (pet) => [{ type: 'text', text: `${pet.name} (${pet.status})` }],
+});
 ```
 
 - One Presenter per domain entity, shared across all tools
@@ -64,15 +67,14 @@ Agent-facing interface. MCP tool definitions that the LLM interacts with.
 // agents/pet.tool.ts
 import { PetPresenter } from '../views/pet.presenter.js';
 
-export const petTools = defineTool<ApiContext>('pet', {
-    actions: {
-        get_by_id: {
-            description: 'Get a pet by ID',
-            parameters: z.object({ petId: z.coerce.number().int() }),
-            returns: PetPresenter,
-            handler: async (ctx, params) => { /* ... */ },
-        },
-    },
+const f = initFusion<ApiContext>();
+
+export const getPet = f.tool({
+    name: 'pet.get_by_id',
+    description: 'Get a pet by ID',
+    input: z.object({ petId: z.coerce.number().int() }),
+    returns: PetPresenter,
+    handler: async ({ input, ctx }) => { /* ... */ },
 });
 ```
 
@@ -127,8 +129,8 @@ No layer imports from a layer below it. Models never import Presenters. Views ne
 | Layer | Directory | Suffix | API |
 |---|---|---|---|
 | Model | `models/` | `.schema.ts` | `z.object()` |
-| View | `views/` | `.presenter.ts` | `createPresenter()` |
-| Agent | `agents/` | `.tool.ts` | `defineTool()` |
+| View | `views/` | `.presenter.ts` | `definePresenter()` |
+| Agent | `agents/` | `.tool.ts` | `f.tool()` |
 | Test — Firewall | `tests/firewall/` | `.firewall.test.ts` | `tester.callAction()` |
 | Test — Guards | `tests/guards/` | `.guard.test.ts` | `tester.callAction()` |
 | Test — Rules | `tests/rules/` | `.rules.test.ts` | `tester.callAction()` |

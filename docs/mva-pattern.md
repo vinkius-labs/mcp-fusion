@@ -93,7 +93,25 @@ A Presenter encapsulates six responsibilities:
 
 The Zod schema acts as a security boundary — only declared fields are accepted. Internal fields, tenant IDs, and sensitive data trigger explicit rejection with actionable error messages.
 
-```typescript
+::: code-group
+```typescript [definePresenter — Recommended ✨]
+import { definePresenter } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const invoiceSchema = z.object({
+    id: z.string(),
+    amount_cents: z.number().describe('Amount in cents — divide by 100 for display'),
+    status: z.enum(['paid', 'pending', 'overdue']),
+    // password_hash, tenant_id, internal_flags → rejected by .strict()
+});
+
+export const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    autoRules: true, // ← auto-extracts .describe() annotations as system rules
+});
+```
+```typescript [createPresenter — Classic]
 import { createPresenter } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
@@ -101,12 +119,12 @@ const invoiceSchema = z.object({
     id: z.string(),
     amount_cents: z.number(),
     status: z.enum(['paid', 'pending', 'overdue']),
-    // password_hash, tenant_id, internal_flags → rejected by .strict()
 });
 
 export const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema);
 ```
+:::
 
 ### 2. System Rules (JIT Context Injection)
 
@@ -257,7 +275,35 @@ When an invoice includes `client` data, the child Presenter's rules and UI block
 
 The Presenter integrates directly into the tool definition through the `returns` field. The framework handles everything automatically — validation, rules, UI blocks, context injection.
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+import { z } from 'zod';
+
+const f = initFusion<AppContext>();
+
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    input: z.object({ invoice_id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({
+            where: { id: input.invoice_id },
+            include: { client: true },
+        });
+        // ← raw data. Presenter handles the rest.
+    },
+});
+
+const listInvoices = f.tool({
+    name: 'billing.list_invoices',
+    input: z.object({}),
+    returns: InvoicePresenter,
+    handler: async ({ ctx }) => await ctx.db.invoices.findMany(),
+});
+```
+```typescript [defineTool — Classic]
 import { defineTool, success } from '@vinkius-core/mcp-fusion';
 import { InvoicePresenter } from './presenters/InvoicePresenter';
 
@@ -266,13 +312,13 @@ const billing = defineTool<AppContext>('billing', {
         get_invoice: {
             readOnly: true,
             params: { invoice_id: 'string' },
-            returns: InvoicePresenter,  // ← MVA View Layer
+            returns: InvoicePresenter,
             handler: async (ctx, args) => {
                 const invoice = await ctx.db.invoices.findUnique({
                     where: { id: args.invoice_id },
                     include: { client: true },
                 });
-                return invoice;  // ← raw data. Presenter handles the rest.
+                return invoice;
             },
         },
         list_invoices: {
@@ -285,6 +331,7 @@ const billing = defineTool<AppContext>('billing', {
     },
 });
 ```
+:::
 
 Notice: the handler returns **raw data**. The Presenter intercepts it in the execution pipeline, validates through Zod, rejects unknown fields, attaches domain rules, generates UI blocks, applies truncation limits, and suggests next actions — all automatically.
 
@@ -348,7 +395,7 @@ When these layers work together, the agent receives a **complete perception pack
 
 ## Next Steps
 
-- [Building Tools →](/building-tools) — Define tools with `defineTool()` or `createTool()`
-- [Presenter API →](/presenter) — Full Presenter configuration reference
+- [Building Tools →](/building-tools) — Define tools with `f.tool()`, `defineTool()`, or `createTool()`
+- [Presenter API →](/presenter) — Full Presenter configuration with `definePresenter()`
 - [Middleware →](/middleware) — Context derivation and authentication
 - [Architecture →](/architecture) — Internal execution pipeline

@@ -204,7 +204,48 @@ In traditional MVC, the View is **tool-level** — each controller action has it
 
 In MVA, the Presenter is **domain-level**. You don't create a Presenter per tool. You create a Presenter per **domain entity**:
 
-```typescript
+::: code-group
+
+```typescript [Recommended (v2.7+)]
+import { initFusion, definePresenter } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<Ctx>();
+
+// This Presenter is shared across EVERY tool that returns invoices
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    systemRules: ['amount_cents is in CENTS. Divide by 100.'],
+    suggestActions: (inv) => inv.status === 'pending'
+        ? [{ tool: 'billing.pay', reason: 'Pay' }]
+        : [],
+});
+
+// Used in billing.get_invoice
+f.tool({
+    name: 'billing.get_invoice',
+    input: z.object({ id: z.string() }),
+    returns: InvoicePresenter,
+    handler: async (ctx, { id }) => ctx.db.invoices.findUnique({ where: { id } }),
+});
+
+f.tool({
+    name: 'billing.list_invoices',
+    input: z.object({}),
+    returns: InvoicePresenter,
+    handler: async (ctx) => ctx.db.invoices.findMany(),
+});
+
+// Used in reports.financial_summary — same Presenter
+f.tool({
+    name: 'reports.financial_summary',
+    input: z.object({}),
+    returns: InvoicePresenter,
+    handler: async (ctx) => ctx.db.invoices.findMany(),
+});
+```
+
+```typescript [Classic builder]
 // This Presenter is shared across EVERY tool that returns invoices
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
@@ -228,6 +269,8 @@ const reports = defineTool<Ctx>('reports', {
     }
 });
 ```
+
+:::
 
 The agent perceives invoices identically whether they come from `billing.get_invoice`, `billing.list_invoices`, or `reports.financial_summary`. This is **Perception Consistency** — the third requirement derived above.
 

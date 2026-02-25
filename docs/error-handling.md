@@ -25,7 +25,25 @@ Result<T>      → Pipeline-oriented success/failure composition
 
 Use `error()` for straightforward failures:
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { error, success } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+const getProject = f.tool({
+    name: 'projects.get',
+    description: 'Get a project by ID',
+    input: z.object({ id: z.string() }),
+    handler: async ({ input, ctx }) => {
+        const project = await ctx.db.projects.findUnique(input.id);
+        if (!project) return error(`Project "${input.id}" not found`);
+        return success(project);
+    },
+});
+```
+```typescript [Handler Snippet]
 import { error } from '@vinkius-core/mcp-fusion';
 
 handler: async (ctx, args) => {
@@ -34,6 +52,7 @@ handler: async (ctx, args) => {
     return success(project);
 }
 ```
+:::
 
 **What the LLM receives:**
 

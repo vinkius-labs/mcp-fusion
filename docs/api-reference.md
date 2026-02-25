@@ -91,6 +91,181 @@ return toonSuccess(users, { delimiter: ',' });    // Custom delimiter
 
 ## Tool Builders
 
+### `initFusion<TContext>()` <Badge type="tip" text="NEW v2.7" />
+
+Creates a tRPC-style context initializer. Define the context type **once** — every method inherits it.
+
+```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<{ db: Database; user: User }>();
+```
+
+Returns a `FusionInstance<TContext>` with the following methods:
+
+| Method | Returns | Description |
+|---|---|---|
+| `f.tool(config)` | `GroupedToolBuilder` | Create a tool with `{ input, ctx }` handler — zero generics, auto `success()` wrapping |
+| `f.presenter(config)` | `Presenter` | Create a Presenter via `definePresenter()` — inherits context type |
+| `f.prompt(config)` | `PromptBuilder` | Create a prompt via `definePrompt()` — inherits context type |
+| `f.middleware(deriveFn)` | `MiddlewareDefinition` | Create context-deriving middleware — inherits context type |
+| `f.defineTool(name, config)` | `GroupedToolBuilder` | Proxy for `defineTool<TContext>()` |
+| `f.registry()` | `ToolRegistry<TContext>` | Create a typed registry — no generic needed |
+
+**`f.tool()` Config:**
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Tool name — auto-splits on `.` (e.g. `'billing.pay'` → domain `billing`, action `pay`) |
+| `description` | `string?` | Tool description for the LLM |
+| `input` | `ZodSchema \| StandardSchema` | Input schema (any Standard Schema v1 validator) |
+| `handler` | `({ input, ctx }) => Promise<T>` | Handler — receives destructured `{ input, ctx }` |
+| `returns` | `Presenter?` | MVA Presenter — handler returns raw data |
+
+### `definePresenter(config)` <Badge type="tip" text="NEW v2.7" />
+
+Object-config API for creating Presenters with auto-extracted Zod descriptions.
+
+```typescript
+import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+
+const P = definePresenter({
+    name: 'Invoice',
+    schema: invoiceSchema,
+    autoRules: true,
+    systemRules: ['Use currency format.'],
+    uiBlocks: (inv) => [ui.echarts({ /* ... */ })],
+    collectionUi: (items) => [ui.summary(`${items.length} items`)],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary(`${n} hidden`) },
+    suggestActions: (inv) => [],
+    embeds: [{ key: 'client', presenter: ClientPresenter }],
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Presenter name (used in errors and debugging) |
+| `schema` | `ZodObject` | Zod validation schema (security boundary) |
+| `autoRules` | `boolean?` | Auto-extract `.describe()` annotations as system rules (default: `true`) |
+| `systemRules` | `string[] \| Function?` | Static or dynamic domain rules |
+| `uiBlocks` | `(item) => Block[]` | Single-item UI blocks |
+| `collectionUi` | `(items) => Block[]` | Collection UI blocks |
+| `agentLimit` | `{ max, onTruncate }?` | Cognitive guardrail |
+| `suggestActions` | `(item) => Action[]` | HATEOAS affordances |
+| `embeds` | `{ key, presenter }[]?` | Child Presenter composition |
+
+### `createGroup<TContext>(config)` <Badge type="tip" text="NEW v2.7" />
+
+Functional closure-based tool groups with pre-composed middleware and O(1) dispatch.
+
+```typescript
+import { createGroup, success } from '@vinkius-core/mcp-fusion';
+
+const group = createGroup<AppContext>({
+    name: 'billing',
+    description: 'Payment operations',
+    middleware: [authMiddleware],
+    tools: [
+        {
+            name: 'charge',
+            input: z.object({ id: z.string() }),
+            handler: async ({ input, ctx }) => success('charged'),
+        },
+    ],
+});
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Group name (becomes MCP tool name) |
+| `description` | `string?` | Group description for the LLM |
+| `middleware` | `MiddlewareFn[]?` | Middleware chain — pre-composed at build time |
+| `tools` | `ToolConfig[]` | Array of tool configs with `{ name, input, handler }` |
+
+### `autoDiscover(registry, dir, options?)` <Badge type="tip" text="NEW v2.7" />
+
+File-based routing — scans a directory and auto-registers all exported tools.
+
+```typescript
+import { autoDiscover } from '@vinkius-core/mcp-fusion';
+
+await autoDiscover(registry, './src/tools');
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `registry` | `ToolRegistry` | Target registry for discovered tools |
+| `dir` | `string` | Directory path to scan |
+| `options.extensions` | `string[]?` | File extensions to consider (default: `['.ts', '.js']`) |
+| `options.exclude` | `string[]?` | Glob patterns to exclude |
+
+**Resolution chain:** `default export` → export named `tool` → first `GroupedToolBuilder` export.
+
+**Naming convention:** File path becomes tool name — `src/tools/billing/pay.ts` → `billing.pay`.
+
+### `createDevServer(config)` <Badge type="tip" text="NEW v2.7" />
+
+HMR dev server — watches tool files and hot-reloads on change without restarting the LLM client.
+
+```typescript
+import { createDevServer } from '@vinkius-core/mcp-fusion/dev';
+
+const devServer = createDevServer({
+    dir: './src/tools',
+    setup: async (registry) => await autoDiscover(registry, './src/tools'),
+    onReload: (file) => console.log(`Reloaded: ${file}`),
+    server: mcpServer,
+});
+await devServer.start();
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `dir` | `string` | Directory to watch |
+| `setup` | `(registry) => Promise<void>` | Registry setup function (called on each reload) |
+| `onReload` | `(file: string) => void` | Callback fired after successful reload |
+| `server` | `Server` | MCP Server instance (receives `notifications/tools/list_changed`) |
+
+| Method | Returns | Description |
+|---|---|---|
+| `.start()` | `Promise<void>` | Start watching and initial setup |
+| `.stop()` | `Promise<void>` | Stop watching |
+| `.reload()` | `Promise<void>` | Force a manual reload |
+
+### Standard Schema Support <Badge type="tip" text="NEW v2.7" />
+
+Decouple from Zod — use any Standard Schema v1 validator (Valibot, ArkType, TypeBox).
+
+```typescript
+import { toStandardValidator, isStandardSchema, autoValidator } from '@vinkius-core/mcp-fusion/schema';
+```
+
+| Function | Description |
+|---|---|
+| `isStandardSchema(value)` | Type guard — checks if value implements `~standard` interface |
+| `toStandardValidator(schema)` | Wraps a Standard Schema into Fusion's validator interface |
+| `fromZodSchema(zodSchema)` | Converts a Zod schema to Standard Schema format |
+| `autoValidator(schema)` | Auto-detects schema type (Zod, Standard Schema) and returns validator |
+
+### Subpath Exports <Badge type="tip" text="NEW v2.7" />
+
+10 granular entry points for minimal bundle size:
+
+| Export | Contains |
+|---|---|
+| `@vinkius-core/mcp-fusion` | Core: tools, registry, response helpers, middleware, Presenter |
+| `@vinkius-core/mcp-fusion/client` | `createFusionClient`, `createTypedRegistry` |
+| `@vinkius-core/mcp-fusion/ui` | `ui.*` block helpers |
+| `@vinkius-core/mcp-fusion/presenter` | `createPresenter`, `definePresenter`, Presenter types |
+| `@vinkius-core/mcp-fusion/prompt` | `definePrompt`, `PromptMessage`, `PromptRegistry` |
+| `@vinkius-core/mcp-fusion/state-sync` | `PolicyEngine`, `matchGlob`, state sync types |
+| `@vinkius-core/mcp-fusion/observability` | `createDebugObserver`, `DebugEvent` types |
+| `@vinkius-core/mcp-fusion/dev` | `createDevServer`, `autoDiscover` |
+| `@vinkius-core/mcp-fusion/schema` | Standard Schema utilities |
+| `@vinkius-core/mcp-fusion/testing` | `createTestHarness`, `createInlineServer` |
+
+---
+
 ### `createTool(name)` — Builder Pattern
 
 The fluent builder for composing tools with Zod schemas.
@@ -194,6 +369,18 @@ const tool = defineTool<AppContext>('projects', {
 ---
 
 ## Middleware
+
+### `f.middleware(deriveFn)` <Badge type="tip" text="NEW v2.7" />
+
+Creates a context-deriving middleware via `initFusion()` — zero generics:
+
+```typescript
+const f = initFusion<AppContext>();
+const authMw = f.middleware(async (ctx) => {
+    const user = await verifyToken(ctx.token);
+    return { user };
+});
+```
 
 ### `defineMiddleware(deriveFn)`
 

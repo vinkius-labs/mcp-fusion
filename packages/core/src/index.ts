@@ -64,6 +64,9 @@ export {
     succeed, fail,
     progress,
     defineMiddleware, resolveMiddleware,
+    initFusion,
+    createGroup,
+    toStandardValidator, fromZodSchema, isStandardSchema, autoValidator,
 } from './core/index.js';
 /** @category Core */
 export type {
@@ -79,6 +82,10 @@ export type {
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
     ConcurrencyConfig, EgressConfig,
+    FusionInstance, FusionToolConfig,
+    GroupConfig, GroupAction, CompiledGroup,
+    StandardSchemaV1, StandardSchemaIssue, InferStandardOutput,
+    FusionValidator, ValidationResult,
 } from './core/index.js';
 
 // ── Client (tRPC-style type-safe) ────────────────────────
@@ -104,9 +111,11 @@ export {
     ui,
     Presenter, createPresenter, isPresenter,
     PresenterValidationError,
+    definePresenter,
+    extractZodDescriptions,
 } from './presenter/index.js';
 /** @category Presenter */
-export type { UiBlock, ActionSuggestion } from './presenter/index.js';
+export type { UiBlock, ActionSuggestion, PresenterConfig, AgentLimitDef, EmbedDef } from './presenter/index.js';
 
 // ── Prompt Engine ────────────────────────────────────────
 /** @category Prompt */
@@ -125,6 +134,14 @@ export type { McpPromptDef, PromptFilter } from './prompt/PromptRegistry.js';
 // ── Server Integration ───────────────────────────────────
 /** @category Server */
 export type { AttachOptions, DetachFn } from './server/index.js';
+/** @category Server */
+export { autoDiscover } from './server/index.js';
+/** @category Server */
+export type { AutoDiscoverOptions } from './server/index.js';
+/** @category Server */
+export { createDevServer } from './server/index.js';
+/** @category Server */
+export type { DevServerConfig, DevServer } from './server/index.js';
 
 // ── Exposition (Topology Compiler) ───────────────────────
 /** @category Exposition */

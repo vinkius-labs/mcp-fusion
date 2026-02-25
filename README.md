@@ -85,120 +85,277 @@ The Presenter is domain-level, not tool-level. Define `InvoicePresenter` once �
 ## Installation
 
 ```bash
-npm install @vinkius-core/mcp-fusion zod
+npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk
 ```
 
-**MCP Fusion** has a required peer dependency on `@modelcontextprotocol/sdk` and `zod`:
+**Zod is optional.** MCP Fusion has a built-in JSON param descriptor system — you can define every tool, prompt, and action without ever importing Zod. Add it only if you want runtime schema validation on Presenters:
 
 ```bash
-npm install @modelcontextprotocol/sdk @vinkius-core/mcp-fusion zod
+npm install zod  # optional — only needed for Presenters
 ```
 
 ## Quick Start
 
-### 1. Define a Presenter
+### 1. Initialize Fusion (one file, one line)
 
 ```typescript
-import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
+// src/fusion.ts
+import { initFusion } from '@vinkius-core/mcp-fusion';
 
-export const InvoicePresenter = createPresenter('Invoice')
-    .schema(z.object({
-        id: z.string(),
-        amount_cents: z.number(),
-        status: z.enum(['paid', 'pending', 'overdue']),
-    }))
-    .systemRules(['CRITICAL: amount_cents is in CENTS. Divide by 100 before display.'])
-    .uiBlocks((invoice) => [
-        ui.echarts({
-            series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
-        }),
-    ])
-    .agentLimit(50, (omitted) =>
-        ui.summary(`⚠️ 50 shown, ${omitted} hidden. Use status or date_range filters.`)
-    )
-    .suggestActions((invoice) =>
-        invoice.status === 'pending'
-            ? [{ tool: 'billing.pay', reason: 'Process payment' }]
-            : []
-    );
+interface AppContext {
+    db: PrismaClient;
+    user: { id: string; role: string };
+}
+
+export const f = initFusion<AppContext>();
 ```
 
-### 2. Define a Tool
+Every `f.tool()`, `f.prompt()`, `f.presenter()`, and `f.middleware()` call inherits `AppContext` — zero generic repetition anywhere in the codebase.
+
+### 2. Define a Presenter — The Egress Firewall
+
+**Before:** Every MCP server returns raw `JSON.stringify()` — the handler picks which fields to include, formats the response, writes system rules in a global prompt, and hopes nobody leaks `password_hash`. This is repeated in every handler, for every entity, on every endpoint.
+
+**After:** The Presenter is a single, domain-level egress contract. It sits between your handler and the wire. Zod validates and strips undeclared fields in RAM, domain rules travel with the data (not in a global prompt), UI blocks render server-side, oversized collections truncate with guidance, and affordances tell the agent what to do next. **Define it once. Every tool and prompt that returns that entity uses the same Presenter — same validation, same rules, same UI, same security boundary.**
 
 ```typescript
-import { defineTool } from '@vinkius-core/mcp-fusion';
+// src/presenters/invoice.ts
+import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
 
-const billing = defineTool<AppContext>('billing', {
-    description: 'Billing operations',
-    shared: { workspace_id: 'string' },
-    actions: {
-        get_invoice: {
-            readOnly: true,
-            returns: InvoicePresenter,
-            params: { id: 'string' },
-            handler: async (ctx, args) =>
-                await ctx.db.invoices.findUnique({ where: { id: args.id } }),
-        },
-        create_invoice: {
-            params: {
-                client_id: 'string',
-                amount: { type: 'number', min: 0 },
-                currency: { enum: ['USD', 'EUR', 'BRL'] as const },
-            },
-            handler: async (ctx, args) =>
-                await ctx.db.invoices.create({ data: args }),
-        },
-        void_invoice: {
-            destructive: true,
-            params: { id: 'string', reason: { type: 'string', optional: true } },
-            handler: async (ctx, args) => {
-                await ctx.db.invoices.void(args.id);
-                return 'Invoice voided';
-            },
-        },
+export const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
+        id: z.string(),
+        amount_cents: z.number().describe('CRITICAL: value is in CENTS. Divide by 100 for display.'),
+        status: z.enum(['paid', 'pending', 'overdue']),
+        client_name: z.string(),
+        due_date: z.string(),
+    }),
+    // autoRules: true (default) — Zod .describe() annotations become system rules automatically
+    ui: (inv) => [
+        ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
+    ],
+    collectionUi: (items) => [
+        ui.summary({ total: items.length, showing: Math.min(items.length, 50) }),
+    ],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary({ omitted: n, hint: 'Use date/status filters.' }) },
+    suggestActions: (inv) => inv.status === 'pending'
+        ? [{ tool: 'billing.pay', reason: 'Process payment', args: { id: inv.id } }]
+        : [],
+    embeds: [{ key: 'client', presenter: ClientPresenter }],
+});
+```
+
+**What the Presenter does automatically — every time, on every tool response:**
+
+```text
+📄 DATA       → Zod-validated. password_hash, internal_flags — physically STRIPPED in RAM.
+📋 RULES      → "CRITICAL: amount_cents is in CENTS. Divide by 100." (from .describe())
+📊 UI         → ECharts gauge — server-rendered, deterministic, no hallucination.
+⚠️ GUARDRAIL  → "50 shown, 200 hidden. Use date/status filters."
+🔗 AFFORDANCE → "→ billing.pay: Process payment"
+👶 EMBEDS     → Child Presenters (client, items) inherit the same pipeline.
+```
+
+> **The Egress Firewall.** Your handler returns raw database rows. The Presenter's Zod schema acts as a whitelist: only declared fields survive. PII, password hashes, internal IDs — gone before they touch the network. This is **SOC2-auditable in CI/CD**.
+
+### 3. Define a Tool — No Zod Required
+
+```typescript
+// src/tools/billing.ts
+import { f } from '../fusion';
+import { InvoicePresenter } from '../presenters/invoice';
+
+export const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    description: 'Retrieve an invoice by ID',
+    input: { id: 'string' },           // ← JSON descriptor, no Zod import
+    readOnly: true,
+    returns: InvoicePresenter,          // ← Presenter does the rest
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
+    },
+});
+
+export const listInvoices = f.tool({
+    name: 'billing.list_invoices',
+    input: {
+        status: { enum: ['paid', 'pending', 'overdue'] as const, optional: true },
+        limit: { type: 'number', min: 1, max: 100, optional: true },
+    },
+    readOnly: true,
+    returns: InvoicePresenter,          // ← same Presenter, collection mode
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findMany({ where: input });
     },
 });
 ```
 
-### 3. Attach to Server
+The handler returns **raw data**. The Presenter validates it, strips undeclared fields, attaches domain rules, renders UI, truncates at 50 items with guidance, and suggests next actions. **You never write response formatting code.**
+
+**MCP Fusion auto-converts** JSON descriptors to Zod schemas internally — you get full `.strict()` validation, hallucination rejection, and actionable errors without ever writing `z.object()`.
+
+> **Want Zod?** Just pass a `z.object()` to `input:` instead. Both work everywhere.
+
+### 4. Define a Prompt — Powered by the Presenter
 
 ```typescript
-import { ToolRegistry } from '@vinkius-core/mcp-fusion';
+// src/prompts/audit.ts
+import { f } from '../fusion';
+import { InvoicePresenter } from '../presenters/invoice';
+import { PromptMessage } from '@vinkius-core/mcp-fusion';
 
-const tools = new ToolRegistry<AppContext>();
-tools.register(billing);
+export const AuditPrompt = f.prompt('financial_audit', {
+    description: 'Deep financial audit on a specific invoice',
+    args: {
+        invoiceId: 'string',
+        depth: { enum: ['quick', 'thorough'] as const },
+        since: { type: 'string', optional: true, description: 'ISO 8601 date filter' },
+    } as const,
+    handler: async (ctx, { invoiceId, depth }) => {
+        const invoice = await ctx.db.invoices.get(invoiceId);
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Financial Auditor.'),
+                // ↓ THE BRIDGE — Presenter data becomes prompt context
+                ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+                PromptMessage.user(`Perform a ${depth} audit on this invoice.`),
+            ],
+        };
+    },
+});
+```
+
+`PromptMessage.fromView()` decomposes the Presenter into XML-tagged prompt messages — `<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`. **Same source of truth as tools.** The LLM gets the exact same validated data, the exact same rules, the exact same affordances — whether through a tool response or a prompt.
+
+### 5. Bootstrap the Server
+
+```typescript
+// src/server.ts
+import { ToolRegistry, PromptRegistry } from '@vinkius-core/mcp-fusion';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { f } from './fusion';
+import { getInvoice, listInvoices } from './tools/billing';
+import { AuditPrompt } from './prompts/audit';
+
+// Tools
+const tools = f.registry();
+tools.register(getInvoice);
+tools.register(listInvoices);
+
+// Prompts
+const prompts = new PromptRegistry<AppContext>();
+prompts.register(AuditPrompt);
+
+// Start
+const server = new Server(
+    { name: 'my-billing-server', version: '1.0.0' },
+    { capabilities: { tools: {}, prompts: {} } },
+);
 
 tools.attachToServer(server, {
     contextFactory: (extra) => createAppContext(extra),
 });
+prompts.attachToServer(server, {
+    contextFactory: (extra) => createAppContext(extra),
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
 ```
 
-The handler returns raw data. The framework does the rest:
+### JSON Param Descriptor Reference
 
-```text
-📄 DATA       → Zod-validated. Undeclared fields stripped.
-📋 RULES      → "amount_cents is in CENTS. Divide by 100."
-📊 UI         → ECharts gauge config — server-rendered, deterministic.
-⚠️ GUARDRAIL  → "50 shown, 250 hidden. Use filters."
-🔗 AFFORDANCE → "→ billing.pay: Process payment"
-```
+These descriptors work **everywhere** — `f.tool()`, `defineTool()`, `definePrompt()`, `f.prompt()`:
+
+| Descriptor | Generates |
+|---|---|
+| `'string'` | `z.string()` |
+| `'number'` | `z.number()` |
+| `'boolean'` | `z.boolean()` |
+| `{ type: 'string', min: 1, max: 100 }` | `z.string().min(1).max(100)` |
+| `{ type: 'number', min: 0, max: 100 }` | `z.number().min(0).max(100)` |
+| `{ type: 'string', optional: true }` | `z.string().optional()` |
+| `{ type: 'string', regex: '^\\d+$' }` | `z.string().regex(/^\\d+$/)` |
+| `{ enum: ['a', 'b', 'c'] as const }` | `z.enum(['a', 'b', 'c'])` |
+| `{ type: 'string', description: '...' }` | `z.string().describe('...')` |
 
 ## Features
 
-### Presenter — MVA View Layer
+### 🎯 The Presenter — Egress Firewall & Perception Layer
 
-Domain-level perception layer with schema validation, JIT system rules, server-rendered UI blocks, cognitive guardrails, action affordances, and relational composition via `.embed()`.
+**The architectural problem every MCP server shares:** the handler owns the response shape. It decides which fields to include, how to format them, what rules to attach, and when to truncate. This logic is duplicated across every handler, drifts between tools, and is invisible to security audits.
+
+**The Presenter inverts this.** It is a domain-level egress contract — a typed, composable pipeline that sits between `handler return` and `wire serialization`. The handler returns raw data; the Presenter validates it through Zod (stripping undeclared fields in RAM), injects just-in-time domain rules, renders deterministic UI blocks, truncates oversized collections with actionable guidance, and suggests valid next actions. The same `InvoicePresenter` governs every tool and every prompt that touches invoices — one contract, one security boundary, one source of truth.
+
+**Before and After:**
+
+```text
+BEFORE (every MCP server today)         AFTER (MCP Fusion Presenter)
+─────────────────────────────────       ─────────────────────────────────
+Handler formats its own response   →    Handler returns raw data
+Fields chosen ad-hoc per handler   →    Zod schema is the field whitelist
+password_hash leaks silently       →    Undeclared fields stripped in RAM
+Rules live in global system prompt →    Rules travel with the data (JIT)
+10,000 rows → OOM crash            →    .agentLimit(50) + filter guidance
+Agent guesses next action          →    .suggestActions() → HATEOAS hints
+Response format drifts per tool    →    One Presenter per entity, everywhere
+```
+
+**Two APIs. Same power. Your choice:**
+
+<details>
+<summary><b>definePresenter() — Declarative Object Config (Recommended)</b></summary>
 
 ```typescript
+import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
+        id: z.string(),
+        amount_cents: z.number().describe('CRITICAL: in CENTS. Divide by 100 for display.'),
+        status: z.enum(['paid', 'pending', 'overdue']),
+        client_name: z.string(),
+    }),
+    // autoRules: true (default) — .describe() annotations become system rules
+    ui: (inv) => [
+        ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
+    ],
+    collectionUi: (items) => [
+        ui.summary({ total: items.length, showing: Math.min(items.length, 50) }),
+    ],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary({ omitted: n, hint: 'Use filters.' }) },
+    suggestActions: (inv) => inv.status === 'pending'
+        ? [{ tool: 'billing.pay', reason: 'Process payment', args: { id: inv.id } }]
+        : [],
+    embeds: [{ key: 'client', presenter: ClientPresenter }],
+});
+```
+
+</details>
+
+<details>
+<summary><b>createPresenter() — Fluent Builder Chain</b></summary>
+
+```typescript
+import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
+
 const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-    .systemRules((invoice, ctx) => [
-        'CRITICAL: amount_cents is in CENTS.',
-        ctx?.user?.role !== 'admin' ? 'Mask exact totals.' : null,
+    .schema(z.object({
+        id: z.string(),
+        amount_cents: z.number(),
+        status: z.enum(['paid', 'pending', 'overdue']),
+        client_name: z.string(),
+    }))
+    .systemRules(['CRITICAL: amount_cents is in CENTS. Divide by 100.'])
+    .systemRules((inv, ctx) => ctx?.user?.role !== 'admin' ? ['Mask exact totals.'] : [])
+    .uiBlocks((inv) => [
+        ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
     ])
-    .uiBlocks((inv) => [ui.echarts(chartConfig)])
-    .agentLimit(50, (omitted) => ui.summary(`50 shown, ${omitted} hidden.`))
+    .agentLimit(50, (omitted) => ui.summary({ omitted, hint: 'Use filters.' }))
     .suggestActions((inv) => inv.status === 'pending'
         ? [{ tool: 'billing.pay', reason: 'Process payment' }]
         : []
@@ -206,7 +363,125 @@ const InvoicePresenter = createPresenter('Invoice')
     .embed('client', ClientPresenter);
 ```
 
-→ [Presenter docs](https://mcp-fusion.vinkius.com/presenter) · [Anatomy](https://mcp-fusion.vinkius.com/mva/presenter-anatomy) · [Context Tree-Shaking](https://mcp-fusion.vinkius.com/mva/context-tree-shaking)
+</details>
+
+**What the Presenter gives you — on every single response, automatically:**
+
+| Layer | What It Does | Why It Matters |
+|---|---|---|
+| **Egress Firewall** | Zod `.parse()` strips undeclared fields in RAM | `password_hash`, internal IDs — gone before they touch the wire. SOC2-auditable. |
+| **JIT System Rules** | Domain rules travel with data, not in a bloated global prompt | "amount is in CENTS" only appears when invoices are returned. Zero wasted tokens. |
+| **Server-Rendered UI** | ECharts, Mermaid, summaries — deterministic, no hallucination | The AI doesn't guess chart config. The server renders it. |
+| **Cognitive Guardrails** | `.agentLimit()` truncates + injects filter guidance | 10,000 rows → 50 shown + "Use date/status filters." No OOM, no context explosion. |
+| **Action Affordances** | `.suggestActions()` tells the AI what to do next | Status = "pending" → "→ billing.pay". Eliminates hallucinated guesswork. |
+| **Relational Composition** | `.embed()` / `embeds:` — child Presenters inherit the full pipeline | InvoicePresenter embeds ClientPresenter. Rules, UI, affordances cascade. |
+| **Prompt Bridge** | `PromptMessage.fromView()` decomposes Presenter into prompt messages | Same source of truth for tools AND prompts. Zero duplication. |
+
+> **Domain-level, not tool-level.** Define `InvoicePresenter` once — every tool and prompt that returns invoices uses the same contract. Same validation, same egress boundary, same rules, same UI, same affordances. This is what makes the Presenter an architectural primitive, not a convenience wrapper.
+
+→ [Presenter docs](https://mcp-fusion.vinkius.com/presenter) · [definePresenter()](https://mcp-fusion.vinkius.com/dx-guide#definepresenter-object-config-instead-of-builder) · [Anatomy](https://mcp-fusion.vinkius.com/mva/presenter-anatomy) · [Context Tree-Shaking](https://mcp-fusion.vinkius.com/mva/context-tree-shaking)
+
+### Zero-Friction DX — `initFusion()` + `f.tool()` + `f.prompt()`
+
+Define your context type **once**. Every factory method inherits it automatically — zero generic noise, tRPC-style `{ input, ctx }` handler. **No Zod required** — JSON descriptors work everywhere.
+
+```typescript
+// src/fusion.ts — ONE file for the entire project
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+interface AppContext { db: PrismaClient; user: { id: string; role: string } }
+export const f = initFusion<AppContext>();
+
+// src/tools/billing.ts — No Zod, No Generics
+import { f } from '../fusion';
+
+export const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    input: { id: 'string' },          // JSON descriptor → Zod internally
+    readOnly: true,
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
+    },
+});
+
+// src/prompts/summary.ts — Prompts are equally clean
+import { f } from '../fusion';
+import { PromptMessage } from '@vinkius-core/mcp-fusion';
+
+export const SummaryPrompt = f.prompt('summarize_invoice', {
+    args: {
+        invoiceId: 'string',
+        format: { enum: ['brief', 'detailed'] as const },
+    } as const,
+    handler: async (ctx, { invoiceId, format }) => ({
+        messages: [
+            PromptMessage.system('You are a Financial Analyst.'),
+            PromptMessage.user(`Summarize invoice ${invoiceId} (${format}).`),
+        ],
+    }),
+});
+```
+
+→ [DX Guide](https://mcp-fusion.vinkius.com/dx-guide)
+
+### File-Based Routing — `autoDiscover()`
+
+Drop a file → it's a tool. No central import file, no merge conflicts.
+
+```typescript
+import { autoDiscover } from '@vinkius-core/mcp-fusion';
+
+// src/tools/billing/get_invoice.ts → billing.get_invoice
+// src/tools/users/list.ts → users.list
+await autoDiscover(registry, './src/tools');
+```
+
+→ [DX Guide — autoDiscover](https://mcp-fusion.vinkius.com/dx-guide#file-based-routing-autodiscover)
+
+### HMR Dev Server
+
+File changes reload tools **without** restarting the LLM client. The dev server sends `notifications/tools/list_changed` — the client picks up new definitions transparently.
+
+```typescript
+import { createDevServer, autoDiscover } from '@vinkius-core/mcp-fusion/dev';
+
+const devServer = createDevServer({
+    dir: './src/tools',
+    setup: async (registry) => await autoDiscover(registry, './src/tools'),
+    onReload: (file) => console.log(`♻️ Reloaded: ${file}`),
+    server: mcpServer,
+});
+await devServer.start();
+```
+
+→ [DX Guide — DevServer](https://mcp-fusion.vinkius.com/dx-guide#hmr-dev-server-createdevserver)
+
+### Standard Schema — Beyond Zod
+
+Decouple from Zod. Use **any** Standard Schema v1 validator — Valibot (~1kb), ArkType (~5kb), TypeBox (~4kb).
+
+```typescript
+import * as v from 'valibot';
+import { autoValidator } from '@vinkius-core/mcp-fusion/schema';
+
+const validator = autoValidator(v.object({ name: v.string() }));
+const result = validator.validate({ name: 'Alice' });
+// { success: true, data: { name: 'Alice' } }
+```
+
+→ [DX Guide — Standard Schema](https://mcp-fusion.vinkius.com/dx-guide#standard-schema-decouple-from-zod)
+
+### Subpath Exports — Tree-Shake to Zero
+
+Import only what you use. The bundler ships only the modules you reference.
+
+```typescript
+import { createFusionClient } from '@vinkius-core/mcp-fusion/client';     // ~2kb
+import { ui } from '@vinkius-core/mcp-fusion/ui';                          // ~1kb
+import { definePresenter } from '@vinkius-core/mcp-fusion/presenter';      // ~4kb
+import { autoValidator } from '@vinkius-core/mcp-fusion/schema';           // ~2kb
+import { autoDiscover, createDevServer } from '@vinkius-core/mcp-fusion/dev';
+```
 
 ### Action Consolidation & Hierarchical Groups
 
@@ -227,14 +502,34 @@ createTool<AppContext>('platform')
 
 → [Building Tools](https://mcp-fusion.vinkius.com/building-tools) · [Routing](https://mcp-fusion.vinkius.com/routing) · [Tool Exposition](https://mcp-fusion.vinkius.com/tool-exposition)
 
-### Prompt Engine
+### Prompt Engine — No Zod Required
 
-Full MCP `prompts/list` + `prompts/get` with `PromptMessage.fromView()` — decomposes a Presenter view into XML-tagged prompt messages. Same source of truth as tool responses, zero duplication.
+Full MCP `prompts/list` + `prompts/get` with JSON descriptors, `PromptMessage.fromView()`, and `f.prompt()`. **Same No-Zod DX as tools.**
 
 ```typescript
-const AuditPrompt = definePrompt<AppContext>('financial_audit', {
+// No Zod — JSON descriptors auto-convert to flat schemas
+const ReviewPrompt = f.prompt('code_review', {
+    description: 'Review a pull request',
+    args: {
+        prUrl: { type: 'string', description: 'GitHub PR URL' },
+        depth: { enum: ['quick', 'thorough', 'security'] as const },
+        language: { type: 'string', optional: true },
+    } as const,
+    middleware: [requireAuth],
+    handler: async (ctx, { prUrl, depth }) => {
+        const pr = await ctx.github.getPullRequest(prUrl);
+        return {
+            messages: [
+                PromptMessage.system(`You are a Senior ${depth} Code Reviewer.`),
+                PromptMessage.user(`Review this PR:\n\n${pr.diff}`),
+            ],
+        };
+    },
+});
+
+// With Presenter integration — fromView() decomposes data into XML-tagged messages
+const AuditPrompt = f.prompt('financial_audit', {
     args: { invoiceId: 'string', depth: { enum: ['quick', 'thorough'] as const } } as const,
-    middleware: [requireAuth, requireRole('auditor')],
     handler: async (ctx, { invoiceId, depth }) => {
         const invoice = await ctx.db.invoices.get(invoiceId);
         return {
@@ -400,11 +695,20 @@ expect(denied.isError).toBe(true);
 
 | Capability | Mechanism |
 |---|---|
-| **Presenter** | `.schema()`, `.systemRules()`, `.uiBlocks()`, `.suggestActions()`, `.embed()` |
+| **Presenter — Egress Firewall & Perception Layer** | Zod whitelist stripping, JIT system rules, server-rendered UI, `.agentLimit()`, `.suggestActions()`, `.embed()`, `PromptMessage.fromView()` |
+| **`definePresenter()`** | Object config API — zero builder chains, auto-rules from Zod `.describe()` |
+| **`createPresenter()`** | Fluent builder — `.schema()`, `.systemRules()`, `.uiBlocks()`, `.suggestActions()`, `.embed()` |
+| **`initFusion()`** | Define context once — `f.tool()`, `f.presenter()`, `f.prompt()`, `f.middleware()`, `f.registry()` |
+| **No-Zod JSON Descriptors** | `'string'`, `{ type: 'number', min: 0 }`, `{ enum: [...] as const }` — auto-converted to Zod internally |
+| **Prompt Engine** | `f.prompt()` / `definePrompt()` with JSON descriptors, `PromptMessage.fromView()`, hydration timeout |
+| **File-Based Routing** | `autoDiscover(registry, dir)` — drop a file, it's a tool |
+| **HMR Dev Server** | `createDevServer()` — file changes reload tools without restarting the LLM client |
+| **Standard Schema** | `autoValidator()` — Zod, Valibot, ArkType, TypeBox support |
+| **Subpath Exports** | `mcp-fusion/client`, `/ui`, `/presenter`, `/schema`, `/dev`, `/prompt`, `/testing` |
+| **`createGroup()`** | Functional tool groups — closure-based, pre-composed middleware, frozen by default |
 | **Cognitive Guardrails** | `.agentLimit(max, onTruncate)` — truncation + filter guidance |
 | **Action Consolidation** | Multiple actions → single MCP tool with discriminator enum |
 | **Hierarchical Groups** | `.group()` — namespace 5,000+ actions as `module.action` |
-| **Prompt Engine** | `definePrompt()` with flat schema, middleware, `PromptMessage.fromView()` |
 | **Context Derivation** | `defineMiddleware()` — tRPC-style typed context merging |
 | **Self-Healing Errors** | `toolError()` — severity, details, retryAfter, HATEOAS actions |
 | **Strict Validation** | Zod `.merge().strict()` — unknown fields rejected with actionable errors |
@@ -437,8 +741,9 @@ Full documentation available at **[mcp-fusion.vinkius.com](https://mcp-fusion.vi
 | Guide | |
 |---|---|
 | [MVA Architecture](https://mcp-fusion.vinkius.com/mva-pattern) | The MVA pattern and manifesto |
+| [**Presenter — Egress Firewall**](https://mcp-fusion.vinkius.com/presenter) | **Schema whitelist, JIT rules, UI blocks, affordances, composition, before/after architecture** |
 | [Quickstart](https://mcp-fusion.vinkius.com/quickstart) | Build a Fusion server from zero |
-| [Presenter](https://mcp-fusion.vinkius.com/presenter) | Schema, rules, UI blocks, affordances, composition |
+| [DX Guide](https://mcp-fusion.vinkius.com/dx-guide) | `initFusion()`, `definePresenter()`, `autoDiscover()`, `createDevServer()`, Standard Schema |
 | [Prompt Engine](https://mcp-fusion.vinkius.com/prompts) | `definePrompt()`, `PromptMessage.fromView()`, registry |
 | [Context Tree-Shaking](https://mcp-fusion.vinkius.com/mva/context-tree-shaking) | JIT rules vs global system prompts |
 | [Cognitive Guardrails](https://mcp-fusion.vinkius.com/mva/cognitive-guardrails) | Truncation, strict validation, self-healing |
@@ -460,4 +765,4 @@ Full documentation available at **[mcp-fusion.vinkius.com](https://mcp-fusion.vi
 - Node.js 18+
 - TypeScript 5.7+
 - `@modelcontextprotocol/sdk ^1.12.1` (peer dependency)
-- `zod ^3.25.1 || ^4.0.0` (peer dependency)
+- `zod ^3.25.1 || ^4.0.0` (optional peer — only needed for Presenters and explicit Zod schemas)

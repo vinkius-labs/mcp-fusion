@@ -68,10 +68,18 @@ Even with grouping, exposing all tools at once may saturate the context. `ToolRe
 
 You declare tags via `.tags()` on your builder:
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+// f.tool() auto-splits names on '.' — tags are set at the builder level
+const usersTool = f.defineTool('users', {}).tags('core', 'user-management');
+```
+```typescript [createTool]
 const usersTool = createTool<AppContext>('users')
     .tags('core', 'user-management')
 ```
+:::
 
 When attaching to the server, you explicitly pass evaluation filters:
 

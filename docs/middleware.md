@@ -4,6 +4,47 @@ Middleware conceptually intercepts every action call before or after your route 
 
 ---
 
+## Creating Middleware
+
+MCP Fusion offers **three ways** to create middleware:
+
+::: code-group
+```typescript [f.middleware() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Context-derivation style — similar to tRPC
+const authMiddleware = f.middleware(async (ctx) => {
+    const user = await db.getUser(ctx.token);
+    if (!user) throw new Error('Unauthorized');
+    return { user, permissions: user.permissions };
+    // ↑ TypeScript infers these fields are added to ctx
+});
+```
+```typescript [defineMiddleware — Classic]
+import { defineMiddleware } from '@vinkius-core/mcp-fusion';
+
+const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
+    const user = await db.getUser(ctx.token);
+    if (!user) throw new Error('Unauthorized');
+    return { user, permissions: user.permissions };
+});
+```
+```typescript [Raw MiddlewareFn]
+import type { MiddlewareFn } from '@vinkius-core/mcp-fusion';
+
+const loggingMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
+    console.log(`[${new Date().toISOString()}] Action called`);
+    const result = await next();
+    console.log(`[${new Date().toISOString()}] Action completed`);
+    return result;
+};
+```
+:::
+
+---
+
 ## The `MiddlewareFn` Signature
 
 ```typescript
@@ -89,18 +130,32 @@ Because group-scoped middleware applies natively to all actions inside the struc
 
 ---
 
-## Context Derivation — `defineMiddleware()`
+## Context Derivation — `f.middleware()` / `defineMiddleware()`
 
-For middleware that derives data and injects it into the context (like tRPC's `.use`), use `defineMiddleware()`:
+For middleware that derives data and injects it into the context (like tRPC's `.use`), use `f.middleware()` (recommended) or `defineMiddleware()`:
 
-```typescript
+::: code-group
+```typescript [f.middleware() — Recommended ✨]
+const f = initFusion<AppContext>();
+
+const requireAuth = f.middleware(async (ctx) => {
+    const user = await db.getUser(ctx.token);
+    if (!user) throw new Error('Unauthorized');
+    return { user, permissions: user.permissions };
+});
+
+const addTenant = f.middleware(async (ctx) => {
+    const tenant = await db.getTenant(ctx.orgId);
+    return { tenant };
+});
+```
+```typescript [defineMiddleware — Classic]
 import { defineMiddleware } from '@vinkius-core/mcp-fusion';
 
 const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
     const user = await db.getUser(ctx.token);
     if (!user) throw new Error('Unauthorized');
     return { user, permissions: user.permissions };
-    // ↑ TypeScript infers these fields are added to ctx
 });
 
 const addTenant = defineMiddleware(async (ctx: { orgId: string }) => {
@@ -108,12 +163,33 @@ const addTenant = defineMiddleware(async (ctx: { orgId: string }) => {
     return { tenant };
 });
 ```
+:::
 
 ### Using Derived Middleware
 
-Convert to a `MiddlewareFn` with `.toMiddlewareFn()`:
+::: code-group
+```typescript [f.tool() + createGroup — Recommended ✨]
+import { initFusion, createGroup, success } from '@vinkius-core/mcp-fusion';
 
-```typescript
+const f = initFusion<AppContext>();
+
+// Use with createGroup — middleware pre-composed at build time
+const billingGroup = createGroup<AppContext>({
+    name: 'billing',
+    middleware: [requireAuth.toMiddlewareFn(), addTenant.toMiddlewareFn()],
+    tools: [
+        {
+            name: 'refund',
+            input: z.object({ invoiceId: z.string() }),
+            handler: async ({ ctx }) => {
+                // ctx.user and ctx.tenant are now available
+                return success(`Refunded by ${ctx.user.id} for ${ctx.tenant.name}`);
+            },
+        },
+    ],
+});
+```
+```typescript [createTool — Classic]
 const tool = createTool<AppContext>('billing')
     .use(requireAuth.toMiddlewareFn())
     .use(addTenant.toMiddlewareFn())
@@ -125,10 +201,7 @@ const tool = createTool<AppContext>('billing')
         },
     });
 ```
-
-Or in `defineTool()`:
-
-```typescript
+```typescript [defineTool — Classic]
 const tool = defineTool<AppContext>('billing', {
     middleware: [requireAuth.toMiddlewareFn(), addTenant.toMiddlewareFn()],
     actions: {
@@ -138,6 +211,7 @@ const tool = defineTool<AppContext>('billing', {
     },
 });
 ```
+:::
 
 ### How It Works
 

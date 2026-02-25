@@ -1,6 +1,6 @@
 # Prompt Engine
 
-MCP Fusion's Prompt Engine brings the same **zero-Zod, enterprise-ready** DX of `defineTool()` to MCP Prompts — server-side hydrated templates that prepare context for LLMs. Define prompts declaratively, let the framework handle coercion, validation, middleware, and lifecycle sync.
+MCP Fusion's Prompt Engine brings the same **enterprise-ready DX** to MCP Prompts — server-side hydrated templates that prepare context for LLMs. Define prompts with `f.prompt()` (recommended) or `definePrompt()`, and the framework handles coercion, validation, middleware, and lifecycle sync.
 
 **100% MCP Spec Compliant** — supports all `ContentBlock` types (text, image, audio, resource), `BaseMetadata` fields (`title`, `icons`), and full lifecycle notifications.
 
@@ -30,7 +30,41 @@ MCP clients like Claude Desktop and Cursor render prompt arguments as **visual f
 
 ## Quick Start
 
-```typescript
+::: code-group
+```typescript [f.prompt() — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { PromptMessage, PromptRegistry } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// 1. Define a prompt — args are fully typed
+const SummarizePrompt = f.prompt({
+    name: 'summarize',
+    description: 'Summarize text with a given style.',
+    args: {
+        text: { type: 'string', description: 'The text to summarize' },
+        style: { enum: ['brief', 'detailed', 'bullet-points'] as const },
+    } as const,
+    handler: async (ctx, { text, style }) => ({
+        messages: [
+            PromptMessage.system('You are a professional summarizer. Follow the given style precisely.'),
+            PromptMessage.user(`Style: ${style}\n\nText:\n${text}`),
+        ],
+    }),
+});
+
+// 2. Register in a PromptRegistry
+const prompts = new PromptRegistry();
+prompts.register(SummarizePrompt);
+
+// 3. Attach to server alongside tools
+const registry = f.registry();
+registry.attachToServer(server, {
+    contextFactory: () => createContext(),
+    prompts,  // ← opt-in
+});
+```
+```typescript [definePrompt — Classic]
 import { definePrompt, PromptMessage, PromptRegistry } from '@vinkius-core/mcp-fusion';
 
 // 1. Define a prompt — args are fully typed via `as const`
@@ -59,14 +93,15 @@ registry.attachToServer(server, {
     prompts,  // ← opt-in
 });
 ```
+:::
 
 That's it. MCP clients can now discover the prompt via `prompts/list` and hydrate it via `prompts/get`.
 
 ---
 
-## `definePrompt()` — Type-Safe Prompt Builder
+## `f.prompt()` / `definePrompt()` — Type-Safe Prompt Builder
 
-The main factory for creating prompts. Uses **function overloads** for full TypeScript type inference — zero Zod imports for simple cases, full Zod power when needed.
+The main factories for creating prompts. `f.prompt()` inherits context type from `initFusion()` (zero generics), while `definePrompt()` accepts an explicit generic. Both use **function overloads** for full TypeScript type inference.
 
 ### JSON-First Approach <Badge type="tip" text="Recommended" />
 

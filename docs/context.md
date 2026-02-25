@@ -2,13 +2,37 @@
 
 In realistic applications, your tool execution handlers need access to external states: database clients, active HTTP sessions, active user contexts, or logging architectures.
 
-You should not rely on global variables for this. **MCP Fusion** handles this elegantly via a generic `TContext` typing injection constraint.
+You should not rely on global variables for this. **MCP Fusion** handles this elegantly via typed context injection — define your context type once and it flows through every tool, middleware, and presenter.
 
-## 1. Type your Context Context
-
-When constructing your tool, pass an Interface representing your required state into the generic bracket `<TContext>`.
+## 1. Define Your Context
 
 ::: code-group
+```typescript [initFusion — Recommended ✨]
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+// Define your context type ONCE — every f.tool(), f.middleware(), f.presenter() inherits it
+interface AppContext {
+    userId: string;
+    db: any; // e.g. PrismaClient, PostgresPool, etc.
+}
+
+const f = initFusion<AppContext>();
+
+// Context flows automatically — no generic annotations needed
+const tasks = f.tool({
+    name: 'tasks.list',
+    description: 'List user tasks',
+    input: z.object({}),
+    handler: async ({ input, ctx }) => {
+        // `ctx` is perfectly typed as `AppContext`
+        const myTasks = await ctx.db.tasks.findMany({
+            where: { ownerId: ctx.userId },
+        });
+        return myTasks; // auto-wrapped in success()
+    },
+});
+```
 ```typescript [defineTool]
 import { defineTool, success } from '@vinkius-core/mcp-fusion';
 
@@ -36,19 +60,16 @@ const tasks = defineTool<AppContext>('tasks', {
 ```typescript [createTool]
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 
-// Define your application's state requirements
 interface AppContext {
     userId: string;
     db: any; // e.g. PrismaClient, PostgresPool, etc.
 }
 
-// Inject it into the generic constraint
 const tasks = createTool<AppContext>('tasks')
     .description('Manage tasks')
     .action({
         name: 'list',
         handler: async (ctx, args) => {
-            // `ctx` is perfectly typed as `AppContext` natively.
             const myTasks = await ctx.db.tasks.findMany({ 
                 where: { ownerId: ctx.userId } 
             });
@@ -58,6 +79,10 @@ const tasks = createTool<AppContext>('tasks')
 ```
 :::
 
+::: tip Why `initFusion`?
+With `initFusion<AppContext>()`, you define the context type **once**. Every `f.tool()`, `f.middleware()`, `f.prompt()`, and `f.presenter()` call inherits the context type automatically — zero generic annotations, zero type drift.
+:::
+
 ## 2. Supply the Factory Context
 
 When you attach your `ToolRegistry` to the official MCP server, you provide a `contextFactory` callback function. 
@@ -65,8 +90,8 @@ When you attach your `ToolRegistry` to the official MCP server, you provide a `c
 This hydration function will be executed **per-request** whenever a tool is invoked by the LLM client, guaranteeing your context is always perfectly fresh.
 
 ```typescript
-const registry = new ToolRegistry<AppContext>();
-registry.register(tasks); // From step 1
+const registry = f.registry(); // or new ToolRegistry<AppContext>()
+registry.register(tasks);
 
 // Attach to MCP SDK and supply the resolver
 registry.attachToServer(server, {

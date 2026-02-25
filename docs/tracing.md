@@ -24,7 +24,19 @@ Traditional APM treats every error equally: `SpanStatusCode.ERROR` → PagerDuty
 
 ### Per-Tool
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { trace } from '@opentelemetry/api';
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const tracer = trace.getTracer('mcp-fusion');
+const f = initFusion<AppContext>();
+
+// With f.tool(), tracing is configured at registry/server level:
+const registry = f.registry();
+registry.enableTracing(tracer);
+```
+```typescript [createTool]
 import { trace } from '@opentelemetry/api';
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 
@@ -37,6 +49,7 @@ const tool = createTool<AppContext>('projects')
         handler: async (ctx) => success(await ctx.db.projects.findMany()),
     });
 ```
+:::
 
 ### Registry-Level
 

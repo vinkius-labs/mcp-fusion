@@ -21,7 +21,20 @@ The Introspection API answers all of these natively at runtime — with data par
 
 Use `getActionNames()` to quickly dump an array of every registered action discriminator key.
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<void>();
+
+const listTool = f.tool({ name: 'projects.list', input: z.object({}), handler: async () => [] });
+const createTool = f.tool({ name: 'projects.create', input: z.object({ name: z.string() }), handler: async () => 'ok' });
+const deleteTool = f.tool({ name: 'projects.delete', input: z.object({ id: z.string() }), handler: async () => 'ok' });
+
+// Introspection works via the registry
+const registry = f.registry();
+registry.registerAll(listTool, createTool, deleteTool);
+// Registry-level introspection via getTools()
+```
+```typescript [createTool]
 const tool = createTool<void>('projects')
     .action({ name: 'list', /* ... */ })
     .action({ name: 'create', /* ... */ })
@@ -33,6 +46,7 @@ tool.buildToolDefinition();
 console.log(tool.getActionNames());
 // ['list', 'create', 'delete']
 ```
+:::
 
 For hierarchically grouped namespaces, the framework automatically produces the compound keys:
 

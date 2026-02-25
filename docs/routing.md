@@ -6,7 +6,60 @@ If you expose 100 individual flat tools to an LLM, two negative things happen:
 1. **Context Bloat:** You eat thousands of tokens of context space just sending instructions about the tools.
 2. **Semantic Hallucination:** The AI gets confused between `user_preferences_update` and `system_preferences_update`.
 
-**MCP Fusion** solves this through **Grouped Routing** and **Discriminators**.
+**MCP Fusion** solves this through **Grouped Routing**, **Discriminators**, and **File-Based Auto-Discovery**.
+
+---
+
+## 0. File-Based Routing — `autoDiscover()` <Badge type="tip" text="NEW v2.7" />
+
+The simplest way to scale. Your file structure **becomes** your routing table.
+
+```typescript
+import { initFusion, autoDiscover } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+const registry = f.registry();
+
+// Scan src/tools/ and auto-register everything
+await autoDiscover(registry, './src/tools');
+```
+
+```
+src/tools/
+├── billing/
+│   ├── get_invoice.ts  → billing.get_invoice
+│   ├── pay.ts          → billing.pay
+│   └── refund.ts       → billing.refund
+├── users/
+│   ├── list.ts         → users.list
+│   ├── invite.ts       → users.invite
+│   └── ban.ts          → users.ban
+└── analytics/
+    └── dashboard.ts    → analytics.dashboard
+```
+
+**Resolution chain:** Each file must export a tool — `default export` → named `tool` export → first `GroupedToolBuilder` export.
+
+```typescript
+// src/tools/billing/pay.ts
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const f = initFusion<AppContext>();
+
+export default f.tool({
+    name: 'billing.pay',
+    description: 'Process a payment',
+    input: z.object({ invoice_id: z.string(), amount: z.number() }),
+    handler: async ({ input, ctx }) => {
+        return await ctx.billing.charge(input.invoice_id, input.amount);
+    },
+});
+```
+
+::: tip HMR Dev Server
+Pair `autoDiscover()` with `createDevServer()` for hot-reload during development — edit a tool file and the LLM client picks up the change instantly. See the [DX Guide](/dx-guide#hmr-dev-server-createdevserver).
+:::
 
 ---
 
@@ -38,6 +91,22 @@ Often, operations share common requirements. For example, if you are building a 
 Instead of repeating `workspaceId` in every specific Zod schema, Fusion provides shared parameters.
 
 ::: code-group
+```typescript [f.tool() — Recommended ✨]
+const f = initFusion<void>();
+
+// Share schema via a common Zod base
+const base = z.object({ workspaceId: z.string().describe('The active SaaS Workspace ID') });
+
+const createProject = f.tool({
+    name: 'projects.create',
+    description: 'Create a new project',
+    input: base.extend({ projectName: z.string() }),
+    handler: async ({ input }) => {
+        // input.workspaceId + input.projectName — both typed
+        return { created: true };
+    },
+});
+```
 ```typescript [defineTool]
 const projects = defineTool<void>('projects', {
     description: 'Project management tool',

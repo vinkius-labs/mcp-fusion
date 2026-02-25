@@ -18,11 +18,13 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 ## Core Concepts
 
 - **MVA Pattern**: Model-View-Agent — the architectural foundation where Presenters replace Views
-- **Presenter**: Domain-level View layer — schema validation, system rules, UI blocks, affordances, guardrails
+- **Presenter**: **THE core differentiator** — domain-level Egress Firewall. Schema validation, JIT system rules, server-rendered UI, action affordances, cognitive guardrails, relational composition. Define once, reuse across every tool and prompt.
+- **definePresenter()**: Declarative object-config API — auto-rules from Zod `.describe()`, embeds, agentLimit, suggestActions
+- **createPresenter()**: Fluent builder for domain-level Presenters — `.schema()`, `.systemRules()`, `.uiBlocks()`, `.embed()`
+- **initFusion()**: tRPC-style context initialization — define context once, every f.tool/f.presenter/f.prompt inherits it
 - **GroupedToolBuilder**: Fluent builder that groups related actions into a single MCP tool
 - **createTool()**: Factory function to create a GroupedToolBuilder with full Zod power
 - **defineTool()**: JSON-first factory — define tools without Zod imports using plain strings/objects
-- **createPresenter()**: Fluent builder for domain-level Presenters
 - **ResponseBuilder**: Fine-grained manual response composition
 - **Action**: A single operation within a grouped tool (e.g., "list", "create", "delete")
 - **Group**: Hierarchical namespace for actions (e.g., "users.create", "billing.refund")
@@ -35,14 +37,131 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
 - **Tool Exposition**: Compile-time topology compiler — choose flat (one tool per action) or grouped (one tool per builder with discriminator enum) at attach time. Same handlers, different wire format.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
+- **initFusion()**: tRPC-style context initialization — define context once, every f.tool/f.presenter/f.prompt inherits it
+- **definePresenter()**: Declarative object-config API replacing the fluent builder, with auto-rules from Zod `.describe()`
+- **createGroup()**: Functional closure-based tool groups — pre-composed middleware, frozen by default, minifies 30-40% better
+- **autoDiscover()**: File-based routing — scan directory, auto-register tools from file structure
+- **createDevServer()**: HMR dev server — file changes reload tools, sends MCP notifications/tools/list_changed
+- **Standard Schema**: Decouple from Zod — `autoValidator()` supports Valibot, ArkType, TypeBox via Standard Schema v1
+- **Subpath Exports**: Tree-shakeable imports — `mcp-fusion/client`, `/ui`, `/presenter`, `/schema`, `/dev`, `/prompt`
 
-## Quick Start — MVA with Presenter
+## Quick Start — initFusion() (Recommended)
+
+```typescript
+import { initFusion, definePresenter, ui, PromptMessage } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+interface AppContext { db: PrismaClient; user: { id: string; role: string } }
+export const f = initFusion<AppContext>();
+
+// ═══════════════════════════════════════════════════════════
+// STEP 1: THE PRESENTER — Egress Firewall & Perception Layer
+// Define once. Every tool and prompt that returns invoices uses it.
+// BEFORE: handler formats its own response, fields leak, rules live in global prompt
+// AFTER:  Presenter validates, strips, renders, truncates, suggests — domain-level contract
+// ═══════════════════════════════════════════════════════════
+export const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
+        id: z.string(),
+        amount_cents: z.number().describe('CRITICAL: in CENTS. Divide by 100 for display.'),
+        status: z.enum(['paid', 'pending', 'overdue']),
+        client_name: z.string(),
+    }),
+    // autoRules: true (default) — .describe() annotations become JIT system rules
+    ui: (inv) => [ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] })],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary({ omitted: n, hint: 'Use filters.' }) },
+    suggestActions: (inv) => inv.status === 'pending'
+        ? [{ tool: 'billing.pay', reason: 'Process payment', args: { id: inv.id } }]
+        : [],
+    embeds: [{ key: 'client', presenter: ClientPresenter }],
+});
+// What the Presenter does on EVERY response:
+// 📄 Zod-validated — undeclared fields (password_hash, internal IDs) STRIPPED in RAM
+// 📋 JIT rules — "amount is in CENTS" only when invoices are returned
+// 📊 Server-rendered UI — ECharts gauge, deterministic
+// ⚠️ Guardrails — 10,000 rows → 50 shown + "Use filters."
+// 🔗 Affordances — pending → "→ billing.pay"
+// 👶 Embeds — child Presenters inherit the same pipeline
+
+// ═══════════════════════════════════════════════════════════
+// STEP 2: TOOLS — No Zod Required (JSON descriptors)
+// Handler returns raw data. Presenter does the rest.
+// ═══════════════════════════════════════════════════════════
+const getInvoice = f.tool({
+    name: 'billing.get_invoice',
+    input: { id: 'string' },              // ← JSON descriptor, no Zod import
+    readOnly: true,
+    returns: InvoicePresenter,             // ← Presenter validates, strips, renders
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
+    },
+});
+
+const createInvoice = f.tool({
+    name: 'billing.create_invoice',
+    input: {
+        client_id: 'string',
+        amount: { type: 'number', min: 0 },
+        currency: { enum: ['USD', 'EUR', 'BRL'] as const },
+        notes: { type: 'string', optional: true },
+    },
+    handler: async ({ input, ctx }) => {
+        return await ctx.db.invoices.create({ data: input });
+    },
+});
+
+// ═══════════════════════════════════════════════════════════
+// STEP 3: PROMPTS — Powered by the Presenter
+// fromView() decomposes Presenter data into XML-tagged messages
+// ═══════════════════════════════════════════════════════════
+const AuditPrompt = f.prompt('financial_audit', {
+    args: {
+        invoiceId: 'string',
+        depth: { enum: ['quick', 'thorough'] as const },
+    } as const,
+    handler: async (ctx, { invoiceId, depth }) => {
+        const invoice = await ctx.db.invoices.get(invoiceId);
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Financial Auditor.'),
+                // ↓ THE BRIDGE — same Presenter, same source of truth
+                ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+                PromptMessage.user(`Perform a ${depth} audit on this invoice.`),
+            ],
+        };
+    },
+});
+
+// f.registry() — pre-typed
+const registry = f.registry();
+registry.register(getInvoice);
+registry.register(createInvoice);
+```
+
+## JSON Param Descriptors (No-Zod API)
+
+Works everywhere — `f.tool()`, `defineTool()`, `f.prompt()`, `definePrompt()`:
+
+| Descriptor | Generates |
+|---|---|
+| `'string'` | `z.string()` |
+| `'number'` | `z.number()` |
+| `'boolean'` | `z.boolean()` |
+| `{ type: 'string', min: 1, max: 100 }` | `z.string().min(1).max(100)` |
+| `{ type: 'number', min: 0 }` | `z.number().min(0)` |
+| `{ type: 'string', optional: true }` | `z.string().optional()` |
+| `{ type: 'string', regex: '^\\d+$' }` | `z.string().regex()` |
+| `{ enum: ['a', 'b'] as const }` | `z.enum(['a', 'b'])` |
+| `{ type: 'string', description: '...' }` | `z.string().describe('...')` |
+
+## Quick Start — MVA with Presenter (Classic Builder)
 
 ```typescript
 import { createPresenter, ui, defineTool, success } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// 1. Define the Presenter — the MVA View Layer
+// 1. Define the Presenter — the MVA View Layer (builder API)
 export const InvoicePresenter = createPresenter('Invoice')
     .schema(z.object({
         id: z.string(),
@@ -50,14 +169,17 @@ export const InvoicePresenter = createPresenter('Invoice')
         status: z.enum(['paid', 'pending', 'overdue']),
     }))
     .systemRules(['CRITICAL: amount_cents is in CENTS. Divide by 100.'])
+    .systemRules((inv, ctx) => ctx?.user?.role !== 'admin' ? ['Mask exact totals.'] : [])
     .uiBlocks((inv) => [
         ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
     ])
+    .agentLimit(50, (omitted) => ui.summary({ omitted, hint: 'Use filters.' }))
     .suggestActions((inv) =>
         inv.status === 'pending'
             ? [{ tool: 'billing.pay', reason: 'Process payment' }]
             : []
-    );
+    )
+    .embed('client', ClientPresenter);
 
 // 2. Attach to any tool — handler returns raw data, Presenter does the rest
 const billing = defineTool<AppContext>('billing', {
@@ -143,7 +265,36 @@ const projects = createTool<AppContext>('projects')
     });
 ```
 
-## Presenter API
+## Presenter API — Egress Firewall & Perception Layer
+
+The Presenter is the domain-level egress contract between your handler and the wire. It solves the fundamental problem of every MCP server: the handler owns the response shape, so validation, formatting, and security are ad-hoc, duplicated, and invisible to audits.
+
+BEFORE: Handler formats its own response. Fields chosen ad-hoc. password_hash leaks. Rules live in global prompt. 10,000 rows crash the agent. Response format drifts between tools.
+AFTER: Handler returns raw data. Presenter validates through Zod (stripping undeclared fields in RAM), injects JIT domain rules, renders UI server-side, truncates with guidance, and suggests next actions. One Presenter per entity, reused everywhere.
+
+### definePresenter() — Object Config (Recommended)
+
+```typescript
+import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = definePresenter({
+    name: 'Invoice',
+    schema: z.object({
+        id: z.string(),
+        amount_cents: z.number().describe('CRITICAL: in CENTS. Divide by 100.'),
+        status: z.enum(['paid', 'pending', 'overdue']),
+    }),
+    // autoRules: true (default) — Zod .describe() annotations auto-extracted as system rules
+    ui: (inv) => [ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] })],
+    collectionUi: (items) => [ui.summary({ total: items.length, showing: Math.min(items.length, 50) })],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary({ omitted: n, hint: 'Use filters.' }) },
+    suggestActions: (inv) => inv.status === 'pending'
+        ? [{ tool: 'billing.pay', reason: 'Process payment', args: { id: inv.id } }] : [],
+    embeds: [{ key: 'client', presenter: ClientPresenter }],
+});
+```
+
+### createPresenter() — Fluent Builder
 
 ```typescript
 import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
@@ -159,6 +310,18 @@ const UserPresenter = createPresenter('User')
     ])
     .embed('team', TeamPresenter);
 ```
+
+### Presenter Layers
+
+| Layer | What It Does | Why |
+|---|---|---|
+| Egress Firewall | `.parse()` strips undeclared fields in RAM | PII, passwords gone before wire |
+| JIT System Rules | Rules travel with data, not global prompt | Zero wasted tokens |
+| Server-Rendered UI | ECharts, Mermaid — deterministic | No hallucinated charts |
+| Cognitive Guardrails | `.agentLimit()` truncates + guidance | No OOM, no context explosion |
+| Action Affordances | `.suggestActions()` | Eliminates hallucinated guesswork |
+| Relational Composition | `.embed()` / `embeds:` | Child Presenters inherit full pipeline |
+| Prompt Bridge | `PromptMessage.fromView()` | Same source of truth for tools AND prompts |
 
 ## Presenter Composition
 
@@ -447,13 +610,14 @@ handler: async function* (ctx, args) {
 // Wire format: { method: 'notifications/progress', params: { progressToken, progress: 25, total: 100, message: 'Loading data...' } }
 ```
 
-## Prompt Engine
+## Prompt Engine — Powered by the Presenter
 
-Server-side hydrated prompt templates with schema-informed coercion and lifecycle sync. The `definePrompt()` factory enforces a **flat schema constraint** — prompt arguments must be primitives (string, number, boolean, enum) because MCP clients render them as forms.
+Server-side hydrated prompt templates with schema-informed coercion and lifecycle sync. The `definePrompt()` factory enforces a **flat schema constraint** — prompt arguments must be primitives (string, number, boolean, enum) because MCP clients render them as forms. **No Zod required** — JSON descriptors work everywhere.
 
 ```typescript
 import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
 
+// No-Zod prompt — JSON descriptors for args
 const SummarizePrompt = definePrompt<AppContext>('summarize', {
     title: 'Summarize Document',
     description: 'Generate a summary of a document.',
@@ -467,6 +631,23 @@ const SummarizePrompt = definePrompt<AppContext>('summarize', {
             messages: [
                 PromptMessage.system('You are a Senior Technical Writer.'),
                 PromptMessage.user(`Summarize this document (${length}):\n\n${doc.content}`),
+            ],
+        };
+    },
+});
+
+// f.prompt() — context-typed, same No-Zod DX
+const ReviewPrompt = f.prompt('code_review', {
+    args: {
+        prUrl: { type: 'string', description: 'GitHub PR URL' },
+        depth: { enum: ['quick', 'thorough', 'security'] as const },
+    } as const,
+    handler: async (ctx, { prUrl, depth }) => {
+        const pr = await ctx.github.getPullRequest(prUrl);
+        return {
+            messages: [
+                PromptMessage.system(`You are a Senior ${depth} Code Reviewer.`),
+                PromptMessage.user(`Review this PR:\n\n${pr.diff}`),
             ],
         };
     },
@@ -496,9 +677,9 @@ prompts.register(Briefing); // overrides with 3s
 
 Zero overhead when no timeout configured. Timer cleanup via `finally` — no resource leaks. Interceptors still run after timeout.
 
-## MVA-Driven Prompts — fromView()
+## MVA-Driven Prompts — The Presenter Bridge
 
-Bridge your Presenter layer into Prompts with zero duplication. `PromptMessage.fromView()` decomposes a `ResponseBuilder` into XML-tagged prompt messages (`<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`) optimized for frontier LLMs. Domain rules, UI blocks, and action suggestions from the Presenter are automatically extracted — single source of truth.
+`PromptMessage.fromView()` extends the Presenter’s egress contract to Prompts. It decomposes a Presenter’s `ResponseBuilder` into XML-tagged prompt messages (`<domain_rules>`, `<dataset>`, `<visual_context>`, `<system_guidance>`) optimized for frontier LLMs. Domain rules, UI blocks, and action suggestions from the Presenter are automatically extracted — **single source of truth between tools and prompts.** The same InvoicePresenter that governs tool responses also governs prompt context.
 
 ```typescript
 const AuditPrompt = definePrompt<AppContext>('audit', {
@@ -539,6 +720,61 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 10. `.agentLimit()` automatically truncates and injects guidance blocks
 
 ## Public API (all from '@vinkius-core/mcp-fusion')
+
+### Context Initialization (v2.7+)
+- `initFusion<TContext>()` → FusionInstance — define context once, inherit everywhere
+- `FusionInstance<TContext>` — .tool(), .presenter(), .prompt(), .middleware(), .defineTool(), .registry()
+- `f.tool(config)` → GroupedToolBuilder — handler receives `{ input, ctx }` (tRPC-style)
+- `f.presenter(config)` → Presenter — delegates to `definePresenter()`
+- `f.prompt(name, config)` → PromptBuilder — context-typed prompt
+- `f.middleware(deriveFn)` → MiddlewareDefinition — context derivation
+- `f.defineTool(name, config)` → GroupedToolBuilder — full ToolConfig power
+- `f.registry()` → ToolRegistry — pre-typed registry
+- `FusionToolConfig<TContext, TInput>` — { name, description?, input?, tags?, annotations?, readOnly?, destructive?, idempotent?, middleware?, returns?, handler }
+
+### Declarative Presenter (v2.7+)
+- `definePresenter(config)` → Presenter — object-config API with auto-rules from Zod `.describe()`
+- `PresenterConfig<T>` — { name, schema?, rules?, ui?, collectionUi?, agentLimit?, suggestActions?, embeds?, autoRules? }
+- `AgentLimitDef` — { max: number, onTruncate: (omittedCount) => UiBlock }
+- `EmbedDef` — { key: string, presenter: Presenter }
+- `extractZodDescriptions(schema)` → string[] — walks Zod AST extracting `.describe()` annotations
+
+### Functional Groups (v2.7+)
+- `createGroup<TContext>(config)` → CompiledGroup — closure-based, frozen, pre-composed middleware
+- `GroupConfig<TContext>` — { name, description?, tags?, middleware?, actions }
+- `GroupAction<TContext>` — { description?, schema?, readOnly?, destructive?, idempotent?, middleware?, handler }
+- `CompiledGroup<TContext>` — .name, .description, .tags, .actionNames, .execute(ctx, action, args), .getAction(name)
+
+### File-Based Routing (v2.7+)
+- `autoDiscover(registry, dir, options?)` — scan directory, auto-register tool builders
+- `AutoDiscoverOptions` — { pattern?, recursive?, loader?, resolve? }
+
+### Dev Server (v2.7+, from 'mcp-fusion/dev')
+- `createDevServer(config)` → DevServer — HMR-enabled development server
+- `DevServerConfig` — { dir, extensions?, debounce?, setup, onReload?, server? }
+- `DevServer` — .start(), .stop(), .reload(reason?)
+
+### Standard Schema (v2.7+, from 'mcp-fusion/schema')
+- `StandardSchemaV1<TInput, TOutput>` — universal validator contract interface
+- `FusionValidator<T>` — .validate(value) → ValidationResult, .vendor, .schema
+- `toStandardValidator(schema)` → FusionValidator — wrap Standard Schema v1 (Valibot, ArkType, etc.)
+- `fromZodSchema(schema)` → FusionValidator — wrap Zod via safeParse()
+- `autoValidator(schema)` → FusionValidator — auto-detect schema type and wrap
+- `isStandardSchema(value)` → boolean — duck-type check for Standard Schema v1
+- `ValidationResult<T>` — { success: true, data: T } | { success: false, issues: StandardSchemaIssue[] }
+- `InferStandardOutput<T>` — infer output type from Standard Schema
+
+### Subpath Exports (v2.7+)
+- `@vinkius-core/mcp-fusion` — full framework
+- `@vinkius-core/mcp-fusion/client` — FusionClient only
+- `@vinkius-core/mcp-fusion/ui` — UI blocks only
+- `@vinkius-core/mcp-fusion/presenter` — Presenter + definePresenter
+- `@vinkius-core/mcp-fusion/prompt` — Prompt engine
+- `@vinkius-core/mcp-fusion/state-sync` — State Sync layer
+- `@vinkius-core/mcp-fusion/observability` — Debug observers + tracing
+- `@vinkius-core/mcp-fusion/dev` — autoDiscover + createDevServer
+- `@vinkius-core/mcp-fusion/schema` — Standard Schema adapters
+- `@vinkius-core/mcp-fusion/testing` — FusionTester
 
 ### Builder
 - `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod)

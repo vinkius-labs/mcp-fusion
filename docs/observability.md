@@ -22,7 +22,17 @@
 
 Attach a debug observer to a single tool using `.debug()`:
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+import { initFusion, createDebugObserver, success } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Debug is configured at registry or server level with f.tool()
+const registry = f.registry();
+registry.enableDebug(createDebugObserver());
+```
+```typescript [createTool]
 import { createTool, createDebugObserver, success } from '@vinkius-core/mcp-fusion';
 
 const tool = createTool<AppContext>('projects')
@@ -32,6 +42,7 @@ const tool = createTool<AppContext>('projects')
         handler: async (ctx) => success(await ctx.db.projects.findMany()),
     });
 ```
+:::
 
 Output:
 ```

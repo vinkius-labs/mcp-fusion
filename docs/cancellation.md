@@ -47,19 +47,38 @@ registry.attachToServer(server, {
 
 ### 2. Use Signal in Handlers
 
-```typescript
+::: code-group
+```typescript [f.tool() — Recommended ✨]
+const heavyQuery = f.tool({
+    name: 'analytics.heavy_query',
+    input: z.object({ range: z.string() }),
+    handler: async ({ input, ctx }) => {
+        // Pass signal to Prisma — query dies if cancelled
+        const data = await ctx.db.analytics.findMany({
+            where: { range: input.range },
+        });
+
+        // Pass signal to fetch — HTTP request dies if cancelled
+        const enriched = await fetch('https://api.internal/enrich', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            signal: ctx.signal, // ← native AbortSignal
+        });
+
+        return await enriched.json();
+    },
+});
+```
+```typescript [createTool]
 createTool<AppContext>('analytics')
     .action({
         name: 'heavy_query',
         schema: z.object({ range: z.string() }),
         handler: async (ctx, args) => {
-            // Pass signal to Prisma — query dies if cancelled
             const data = await ctx.db.analytics.findMany({
                 where: { range: args.range },
-                // Prisma supports AbortSignal via $transaction
             });
 
-            // Pass signal to fetch — HTTP request dies if cancelled
             const enriched = await fetch('https://api.internal/enrich', {
                 method: 'POST',
                 body: JSON.stringify(data),
@@ -70,6 +89,7 @@ createTool<AppContext>('analytics')
         },
     });
 ```
+:::
 
 ### 3. Generator Handlers (Automatic)
 

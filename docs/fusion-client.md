@@ -28,7 +28,41 @@ FusionClient solves all of these:
 
 Use `createTypedRegistry()` and `InferRouter` to **automatically** extract a fully typed router from your builders — no manual type definitions needed:
 
-```typescript
+::: code-group
+```typescript [initFusion — Recommended ✨]
+// mcp-server.ts
+import { initFusion, createTypedRegistry } from '@vinkius-core/mcp-fusion';
+import type { InferRouter } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const f = initFusion<AppContext>();
+
+const listProjects = f.tool({
+    name: 'projects.list',
+    input: z.object({
+        workspace_id: z.string(),
+        status: z.enum(['active', 'archived']).optional(),
+    }),
+    handler: async ({ input, ctx }) => await ctx.db.projects.findMany(),
+});
+
+const createProject = f.tool({
+    name: 'projects.create',
+    input: z.object({ workspace_id: z.string(), name: z.string().min(1) }),
+    handler: async ({ input, ctx }) => await ctx.db.projects.create(input),
+});
+
+const refund = f.tool({
+    name: 'billing.refund',
+    input: z.object({ invoice_id: z.string(), amount: z.number() }),
+    handler: async ({ input, ctx }) => 'Refunded',
+});
+
+// Automatic router type extraction:
+const registry = createTypedRegistry<AppContext>()(listProjects, createProject, refund);
+export type AppRouter = InferRouter<typeof registry>;
+```
+```typescript [defineTool]
 // mcp-server.ts
 import { defineTool, createTypedRegistry, success } from '@vinkius-core/mcp-fusion';
 import type { InferRouter } from '@vinkius-core/mcp-fusion';
@@ -61,12 +95,8 @@ const billing = defineTool<AppContext>('billing', {
 // Automatic router type extraction:
 const registry = createTypedRegistry<AppContext>()(projects, billing);
 export type AppRouter = InferRouter<typeof registry>;
-// Result: {
-//   'projects.list': { workspace_id: string; status?: 'active' | 'archived' };
-//   'projects.create': { workspace_id: string; name: string };
-//   'billing.refund': { invoice_id: string; amount: number };
-// }
 ```
+:::
 
 ::: info Manual Type Definition
 If you prefer manual control, you can still define `AppRouter` by hand as a `Record<string, Record<string, unknown>>`.
