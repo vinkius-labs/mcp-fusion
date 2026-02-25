@@ -583,7 +583,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `PromptBuilder<TContext>` — DIP interface: .name, .getDefinition(), .handleGet(), .tags
 - `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, hydrationTimeout?, handler }
 
-### Testing (from '@vinkius-core/testing')
+### Testing (from '@vinkius-core/mcp-fusion-testing')
 - `createFusionTester<TContext>(registry, options)` → FusionTester — in-memory MVA lifecycle emulator
 - `FusionTester<TContext>` — .callAction(toolName, actionName, args?, overrideContext?) → Promise<MvaTestResult>
 - `TesterOptions<TContext>` — { contextFactory: () => TContext | Promise<TContext> }
@@ -592,7 +592,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 The FusionTester runs the REAL execution pipeline in RAM (Zod → Middleware → Handler → Presenter → Egress Firewall). Zero tokens consumed. Zero servers. Deterministic — same input → same output on every CI run. Uses the Symbol Backdoor (MVA_META_SYMBOL) to extract structured MVA layers from ToolResponse without XML parsing.
 
 ```typescript
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 
 const tester = createFusionTester(registry, {
     contextFactory: () => ({ prisma: mockPrisma, tenantId: 't_42', role: 'ADMIN' }),

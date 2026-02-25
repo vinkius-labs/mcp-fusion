@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing — Deterministic AI Governance Auditing
 
-New `@vinkius-core/testing` package. The first and only framework capable of mathematically auditing AI Data Governance (SOC2) in a CI/CD pipeline — zero tokens, zero servers, deterministic.
+New `@vinkius-core/mcp-fusion-testing` package. The first and only framework capable of mathematically auditing AI Data Governance (SOC2) in a CI/CD pipeline — zero tokens, zero servers, deterministic.
 
 ### Added
 
-- **`packages/testing/`:** New `@vinkius-core/testing` package:
+- **`packages/testing/`:** New `@vinkius-core/mcp-fusion-testing` package:
   - `FusionTester` — In-memory MVA lifecycle emulator, runs the real pipeline (Zod → Middleware → Handler → Presenter → Egress Firewall) entirely in RAM
   - `createFusionTester(registry, options)` — Factory function for ergonomic test setup
   - `MvaTestResult` — Structured response decomposition with `data`, `systemRules`, `uiBlocks`, `isError`, `rawResponse` fields
@@ -754,7 +754,7 @@ This is the first stable release of `mcp-fusion`, introducing **MVA (Model-View-
 - **BREAKING:** `@modelcontextprotocol/sdk` moved from `dependencies` to `peerDependencies`. Projects already have it installed — no duplication.
 
 ### Fixed
-- GitHub URLs in `package.json` and `CONTRIBUTING.md` corrected from `vinkius-core` to `vinkius-core`.
+- GitHub URLs in `package.json` and `CONTRIBUTING.md` corrected from `vinkius-labs` to `vinkius-labs`.
 
 ## [0.1.1] - 2026-02-12
 

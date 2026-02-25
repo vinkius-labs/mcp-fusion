@@ -1,4 +1,4 @@
-# @vinkius-core/testing
+# @vinkius-core/mcp-fusion-testing
 
 <div align="center">
   <strong>The official test runner for MCP Fusion applications.</strong>
@@ -6,7 +6,7 @@
   In-memory MVA lifecycle emulator — runs the full execution pipeline without network transport.
   <br /><br />
 
-  [![npm version](https://img.shields.io/npm/v/@vinkius-core/testing.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/testing)
+  [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-testing.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion-testing)
   [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg?style=flat-square)](package.json)
   [![Runner Agnostic](https://img.shields.io/badge/runner-agnostic-purple.svg?style=flat-square)](package.json)
 </div>
@@ -60,7 +60,7 @@ Every MCP server today is tested with HTTP mocks, raw `JSON.stringify` assertion
 ## Install
 
 ```bash
-npm install @vinkius-core/testing
+npm install @vinkius-core/mcp-fusion-testing
 ```
 
 ### Peer Dependencies
@@ -78,7 +78,7 @@ npm install @vinkius-core/testing
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from './server/registry.js';
 
 const tester = createFusionTester(registry, {
@@ -459,7 +459,7 @@ tests/
 
 ```typescript
 // tests/setup.ts
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../src/index.js';
 
 export const tester = createFusionTester(registry, {

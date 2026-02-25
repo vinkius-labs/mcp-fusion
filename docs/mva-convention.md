@@ -82,11 +82,11 @@ export const petTools = defineTool<ApiContext>('pet', {
 
 ### Tests (`tests/`)
 
-Pipeline verification. Uses `@vinkius-core/testing` to audit each MVA layer independently.
+Pipeline verification. Uses `@vinkius-core/mcp-fusion-testing` to audit each MVA layer independently.
 
 ```typescript
 // tests/setup.ts
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../src/index.js';
 
 export const tester = createFusionTester(registry, {

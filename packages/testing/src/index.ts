@@ -1,5 +1,5 @@
 /**
- * @vinkius-core/testing — Barrel Export
+ * @vinkius-core/mcp-fusion-testing — Barrel Export
  *
  * Public API for the in-memory MVA lifecycle emulator.
  *

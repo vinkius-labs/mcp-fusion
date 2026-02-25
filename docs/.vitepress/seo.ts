@@ -395,7 +395,7 @@ const pages: Record<string, PageSEO> = {
     title: 'Testing Quick Start — First Test in 5 Minutes',
     description: 'Build your first FusionTester in 5 minutes. Step-by-step from install to first passing SOC2 governance assertion with zero servers and zero tokens.',
     faqs: [
-      { q: 'How do I install the MCP Fusion testing package?', a: 'npm install @vinkius-core/testing. Zero runtime dependencies. Only peer dependencies on @vinkius-core/mcp-fusion and zod. Works with any test runner: Vitest, Jest, Mocha, or Node\'s native node:test.' },
+      { q: 'How do I install the MCP Fusion testing package?', a: 'npm install @vinkius-core/mcp-fusion-testing. Zero runtime dependencies. Only peer dependencies on @vinkius-core/mcp-fusion and zod. Works with any test runner: Vitest, Jest, Mocha, or Node\'s native node:test.' },
       { q: 'How do I create a FusionTester?', a: 'Use createFusionTester(registry, { contextFactory: () => ({ prisma: mockPrisma, tenantId: "t_42", role: "ADMIN" }) }). The contextFactory produces mock context for every test call. It supports async factories for JWT resolution or database lookups.' },
       { q: 'How do I call a tool action in tests?', a: 'await tester.callAction("db_user", "find_many", { take: 5 }). Returns an MvaTestResult with data, systemRules, uiBlocks, isError, and rawResponse. The FusionTester injects the action discriminator automatically.' },
       { q: 'How do I override context per test?', a: 'Pass a fourth argument: await tester.callAction("db_user", "find_many", { take: 5 }, { role: "GUEST" }). Shallow-merged with contextFactory output. Does not mutate the original context.' },

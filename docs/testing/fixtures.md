@@ -13,7 +13,7 @@ Every test suite shares a single `FusionTester` instance defined in `tests/setup
 
 ```typescript
 // tests/setup.ts
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../src/index.js';
 
 // Mock database layer
@@ -185,7 +185,7 @@ If you need per-test setup/teardown, use your runner's lifecycle hooks:
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../../src/index.js';
 
 describe('User CRUD', () => {

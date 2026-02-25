@@ -12,7 +12,7 @@
  *
  * @example
  * ```typescript
- * import { createFusionTester } from '@vinkius-core/testing';
+ * import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
  * import { registry } from '../src/server/registry.js';
  *
  * const tester = createFusionTester(registry, {

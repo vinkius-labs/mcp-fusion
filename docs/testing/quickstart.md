@@ -15,7 +15,7 @@ Get your first deterministic AI governance test running in 5 minutes.
 ## Step 1: Install
 
 ```bash
-npm install @vinkius-core/testing
+npm install @vinkius-core/mcp-fusion-testing
 ```
 
 No additional configuration needed. Zero runtime dependencies.
@@ -26,7 +26,7 @@ Create a `tests/setup.ts` file with your shared `FusionTester` instance:
 
 ```typescript
 // tests/setup.ts
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../src/index.js';
 
 /**

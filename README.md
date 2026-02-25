@@ -398,7 +398,7 @@ expect(denied.isError).toBe(true);
 | [`mcp-fusion-openapi-gen`](https://mcp-fusion.vinkius.com/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
 | [`mcp-fusion-prisma-gen`](https://mcp-fusion.vinkius.com/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
 | [`mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
-| [`@vinkius-core/testing`](https://mcp-fusion.vinkius.com/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
+| [`@vinkius-core/mcp-fusion-testing`](https://mcp-fusion.vinkius.com/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
 | [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Drop-in `createAuthTool()` with Device Flow, secure token storage, and `requireAuth()` middleware — provider agnostic. |
 
 ## Documentation

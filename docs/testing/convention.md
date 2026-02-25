@@ -5,7 +5,7 @@ description: "The tests/ layer in the MVA convention — folder structure, file 
 
 # Convention
 
-The **MVA Convention** organizes code into three architectural layers: **Model**, **View**, **Agent**. The `@vinkius-core/testing` package introduces a fourth layer: **Tests**.
+The **MVA Convention** organizes code into three architectural layers: **Model**, **View**, **Agent**. The `@vinkius-core/mcp-fusion-testing` package introduces a fourth layer: **Tests**.
 
 ## Structure
 
@@ -49,7 +49,7 @@ Every test suite shares a single `FusionTester` instance:
 
 ```typescript
 // tests/setup.ts
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from '../src/index.js';
 
 export const tester = createFusionTester(registry, {

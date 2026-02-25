@@ -30,11 +30,11 @@
     "author": "Vinkius Labs",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/vinkius-core/mcp-fusion.git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
         "directory": "packages/oauth"
     },
     "bugs": {
-        "url": "https://github.com/vinkius-core/mcp-fusion/issues"
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
     },
     "homepage": "https://mcp-fusion.vinkius.com/",
     "files": [

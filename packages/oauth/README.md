@@ -1,6 +1,6 @@
 # @vinkius-core/mcp-fusion-oauth
 
-OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers built with [mcp-fusion](https://github.com/vinkius-core/mcp-fusion).
+OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers built with [mcp-fusion](https://github.com/vinkius-labs/mcp-fusion).
 
 ## Features
 

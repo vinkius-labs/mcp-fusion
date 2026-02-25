@@ -48,7 +48,7 @@ That's fragile, format-dependent, and breaks every time the response format evol
 
 ### The Paradigm Shift: Deterministic MVA Auditing
 
-**MCP Fusion** introduces `@vinkius-core/testing` — the first and only framework capable of **mathematically auditing AI Data Governance (SOC2)** in a CI/CD pipeline.
+**MCP Fusion** introduces `@vinkius-core/mcp-fusion-testing` — the first and only framework capable of **mathematically auditing AI Data Governance (SOC2)** in a CI/CD pipeline.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -113,7 +113,7 @@ Every assertion above is **deterministic** — it does not depend on what any AI
 ## Install
 
 ```bash
-npm install @vinkius-core/testing
+npm install @vinkius-core/mcp-fusion-testing
 ```
 
 **Zero runtime dependencies.** Only peer dependencies on `@vinkius-core/mcp-fusion` and `zod`.
@@ -124,7 +124,7 @@ npm install @vinkius-core/testing
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from './server/registry.js';
 
 const tester = createFusionTester(registry, {

@@ -29,7 +29,7 @@ export default defineConfig({
       'alternateName': 'MCP Fusion',
       'description': 'The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol. Introduces Presenters — a deterministic View layer for AI agents — with action consolidation, cognitive guardrails, structured perception packages, and self-healing errors.',
       'url': 'https://mcp-fusion.vinkius.com/',
-      'codeRepository': 'https://github.com/vinkius-core/mcp-fusion',
+      'codeRepository': 'https://github.com/vinkius-labs/mcp-fusion',
       'programmingLanguage': 'TypeScript',
       'runtimePlatform': 'Node.js',
       'license': 'https://opensource.org/licenses/Apache-2.0',
@@ -44,12 +44,12 @@ export default defineConfig({
       'author': {
         '@type': 'Person',
         'name': 'Renato Marinho',
-        'url': 'https://github.com/vinkius-core'
+        'url': 'https://github.com/renatomarinho'
       },
       'publisher': {
         '@type': 'Organization',
         'name': 'Vinkius Labs',
-        'url': 'https://github.com/vinkius-core',
+        'url': 'https://github.com/vinkius-labs',
         'logo': 'https://site-assets.vinkius.com/vk/icon-v-black-min.png'
       },
       'offers': {
@@ -81,7 +81,7 @@ export default defineConfig({
       { text: 'Documentation', link: '/introduction' },
       { text: 'Examples', link: '/examples' },
       { text: 'API', link: '/api-reference' },
-      { text: 'GitHub', link: 'https://github.com/vinkius-core/mcp-fusion' }
+      { text: 'GitHub', link: 'https://github.com/vinkius-labs/mcp-fusion' }
     ],
 
     sidebar: [
@@ -238,7 +238,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vinkius-core/mcp-fusion' }
+      { icon: 'github', link: 'https://github.com/vinkius-labs/mcp-fusion' }
     ]
   }
 })
