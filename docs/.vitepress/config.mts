@@ -70,7 +70,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: 'https://github.com/vinkius-core.png',
+    logo: 'https://site-assets.vinkius.com/vk/icon-v-black-min.png',
     
     search: {
       provider: 'local'
