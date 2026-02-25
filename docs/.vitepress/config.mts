@@ -4,7 +4,7 @@ import { getPageHeadTags } from './seo'
 export default defineConfig({
   title: "MCP Fusion",
   description: "The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol.",
-  base: '/'},
+  base: '/',
   cleanUrls: true,
   appearance: 'force-dark',
 
