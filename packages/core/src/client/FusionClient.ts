@@ -57,6 +57,122 @@ export interface FusionTransport {
  */
 export type RouterMap = Record<string, Record<string, unknown>>;
 
+// ============================================================================
+// Client Middleware (Interceptor Pattern)
+// ============================================================================
+
+/**
+ * Client-side middleware for request/response interception.
+ *
+ * Follows the same onion model as server-side middleware:
+ * each middleware wraps the next, forming a pipeline.
+ *
+ * Use cases: authentication injection, request logging,
+ * retry logic, timeout enforcement, response transformation.
+ *
+ * @example
+ * ```typescript
+ * const authMiddleware: ClientMiddleware = async (action, args, next) => {
+ *     const enrichedArgs = { ...args, _token: getToken() };
+ *     return next(action, enrichedArgs);
+ * };
+ *
+ * const retryMiddleware: ClientMiddleware = async (action, args, next) => {
+ *     for (let i = 0; i < 3; i++) {
+ *         const result = await next(action, args);
+ *         if (!result.isError) return result;
+ *     }
+ *     return next(action, args);
+ * };
+ * ```
+ */
+export type ClientMiddleware = (
+    action: string,
+    args: Record<string, unknown>,
+    next: (action: string, args: Record<string, unknown>) => Promise<ToolResponse>,
+) => Promise<ToolResponse>;
+
+// ============================================================================
+// Structured Client Error
+// ============================================================================
+
+/**
+ * Structured error parsed from a `<tool_error>` XML envelope.
+ *
+ * Provides typed access to self-healing fields so client code
+ * can programmatically react to server errors without regex parsing.
+ */
+export class FusionClientError extends Error {
+    /** Error code from the `code` attribute (e.g. `'NOT_FOUND'`). */
+    readonly code: string;
+    /** Recovery suggestion from `<recovery>` element. */
+    readonly recovery?: string;
+    /** Available actions from `<available_actions>` children. */
+    readonly availableActions: readonly string[];
+    /** Error severity from the `severity` attribute. */
+    readonly severity: string;
+    /** Raw ToolResponse that caused the error. */
+    readonly raw: ToolResponse;
+
+    constructor(
+        message: string,
+        code: string,
+        raw: ToolResponse,
+        options?: {
+            recovery?: string;
+            availableActions?: string[];
+            severity?: string;
+        },
+    ) {
+        super(message);
+        this.name = 'FusionClientError';
+        this.code = code;
+        this.raw = raw;
+        this.recovery = options?.recovery;
+        this.availableActions = Object.freeze(options?.availableActions ?? []);
+        this.severity = options?.severity ?? 'error';
+    }
+}
+
+// ============================================================================
+// Client Options
+// ============================================================================
+
+/**
+ * Options for creating a FusionClient.
+ */
+export interface FusionClientOptions {
+    /**
+     * Client-side middleware pipeline.
+     *
+     * Middleware execute in registration order (first = outermost).
+     * Each middleware can modify the request, response, or both.
+     *
+     * @example
+     * ```typescript
+     * const client = createFusionClient<AppRouter>(transport, {
+     *     middleware: [authMiddleware, loggingMiddleware],
+     * });
+     * ```
+     */
+    middleware?: ClientMiddleware[];
+
+    /**
+     * When `true`, `execute()` throws a {@link FusionClientError}
+     * for responses with `isError: true`.
+     *
+     * When `false` (default), error responses are returned normally
+     * and the caller must check `result.isError`.
+     *
+     * @default false
+     */
+    throwOnError?: boolean;
+}
+
+// ============================================================================
+// Client Interface
+// ============================================================================
+
 /**
  * Type-safe client that provides autocomplete and compile-time
  * validation for MCP tool calls.
@@ -75,6 +191,117 @@ export interface FusionClient<TRouter extends RouterMap> {
         action: TAction,
         args: TRouter[TAction],
     ): Promise<ToolResponse>;
+
+    /**
+     * Execute multiple tool actions concurrently.
+     *
+     * All calls run in parallel via `Promise.all`.
+     * Use `{ sequential: true }` for ordered execution.
+     *
+     * @param calls - Array of `{ action, args }` objects
+     * @param options - Optional execution mode
+     * @returns Array of tool responses, one per call
+     *
+     * @example
+     * ```typescript
+     * const results = await client.executeBatch([
+     *     { action: 'projects.list', args: { workspace_id: 'ws_1' } },
+     *     { action: 'billing.balance', args: { account_id: 'acc_1' } },
+     * ]);
+     * ```
+     */
+    executeBatch<TActions extends ReadonlyArray<keyof TRouter & string>>(
+        calls: { [K in keyof TActions]: { action: TActions[K]; args: TRouter[TActions[K] & keyof TRouter] } },
+        options?: { sequential?: boolean },
+    ): Promise<ToolResponse[]>;
+}
+
+// ============================================================================
+// XML Error Parser (Internal)
+// ============================================================================
+
+/**
+ * Decode XML entities back to their original characters.
+ *
+ * Reverses the escaping applied by `escapeXml()` and `escapeXmlAttr()`
+ * so that parsed error messages are human-readable.
+ *
+ * @internal
+ */
+function unescapeXml(str: string): string {
+    return str
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&'); // &amp; must be last to avoid double-decode
+}
+
+/**
+ * Parse a `<tool_error>` XML envelope into structured fields.
+ *
+ * Coupled to the output format of `toolError()` from `response.ts`.
+ * Uses regex for lightweight parsing — acceptable since the XML is
+ * self-produced by the framework, not user-authored.
+ *
+ * @internal
+ */
+function parseToolErrorXml(text: string): {
+    code: string;
+    message: string;
+    recovery?: string;
+    availableActions: string[];
+    severity: string;
+} | null {
+    const codeMatch = text.match(/<tool_error\s[^>]*code="([^"]+)"/);
+    const severityMatch = text.match(/<tool_error\s[^>]*severity="([^"]+)"/);
+    const messageMatch = text.match(/<message>([\s\S]*?)<\/message>/);
+    const recoveryMatch = text.match(/<recovery>([\s\S]*?)<\/recovery>/);
+
+    if (!messageMatch) return null;
+
+    const actions: string[] = [];
+    const actionMatches = text.matchAll(/<action>([\s\S]*?)<\/action>/g);
+    for (const m of actionMatches) {
+        if (m[1]) actions.push(unescapeXml(m[1].trim()));
+    }
+
+    // Fallback: legacy comma-separated format
+    if (actions.length === 0) {
+        const legacyMatch = text.match(/<available_actions>([\s\S]*?)<\/available_actions>/);
+        if (legacyMatch?.[1]) {
+            actions.push(...legacyMatch[1].split(',').map(a => unescapeXml(a.trim())).filter(Boolean));
+        }
+    }
+
+    return {
+        code: codeMatch?.[1] != null ? unescapeXml(codeMatch[1]) : 'UNKNOWN',
+        message: unescapeXml(messageMatch[1]!.trim()),
+        recovery: recoveryMatch?.[1] != null ? unescapeXml(recoveryMatch[1].trim()) : undefined,
+        availableActions: actions,
+        severity: severityMatch?.[1] ?? 'error',
+    };
+}
+
+// ============================================================================
+// Middleware Chain Compiler (Internal)
+// ============================================================================
+
+/** @internal */
+function compileClientMiddleware(
+    middleware: ClientMiddleware[],
+    terminal: (action: string, args: Record<string, unknown>) => Promise<ToolResponse>,
+): (action: string, args: Record<string, unknown>) => Promise<ToolResponse> {
+    let chain = terminal;
+
+    // Wrap from right to left: first middleware in array = outermost
+    for (let i = middleware.length - 1; i >= 0; i--) {
+        const mw = middleware[i]!;
+        const next = chain;
+        chain = (action, args) => mw(action, args, next);
+    }
+
+    return chain;
 }
 
 // ============================================================================
@@ -90,6 +317,7 @@ export interface FusionClient<TRouter extends RouterMap> {
  *
  * @typeParam TRouter - The router map (use `InferRouter<typeof registry>`)
  * @param transport - The MCP transport layer
+ * @param options - Client options (middleware, error handling)
  * @returns A typed {@link FusionClient}
  *
  * @example
@@ -107,28 +335,97 @@ export interface FusionClient<TRouter extends RouterMap> {
  * // TS error: missing required arg 'name'
  * await client.execute('projects.create', {});
  * ```
+ *
+ * @example
+ * ```typescript
+ * // With client middleware and throwOnError
+ * const client = createFusionClient<AppRouter>(transport, {
+ *     throwOnError: true,
+ *     middleware: [
+ *         async (action, args, next) => {
+ *             console.log(`[Client] calling ${action}`);
+ *             const result = await next(action, args);
+ *             console.log(`[Client] ${action} done`);
+ *             return result;
+ *         },
+ *     ],
+ * });
+ * ```
  */
 export function createFusionClient<TRouter extends RouterMap>(
     transport: FusionTransport,
+    options?: FusionClientOptions,
 ): FusionClient<TRouter> {
+    const throwOnError = options?.throwOnError ?? false;
+
+    /** Terminal function: builds the MCP call from the dotted action path */
+    function terminalCall(action: string, args: Record<string, unknown>): Promise<ToolResponse> {
+        const dotIndex = action.indexOf('.');
+        if (dotIndex === -1) {
+            return transport.callTool(action, args);
+        }
+
+        const toolName = action.substring(0, dotIndex);
+        const actionName = action.substring(dotIndex + 1);
+
+        return transport.callTool(toolName, {
+            action: actionName,
+            ...args,
+        });
+    }
+
+    // Compile middleware chain once at creation time
+    const dispatch = (options?.middleware != null && options.middleware.length > 0)
+        ? compileClientMiddleware(options.middleware, terminalCall)
+        : terminalCall;
+
+    /** Post-process: handle throwOnError */
+    async function executeInternal(action: string, args: Record<string, unknown>): Promise<ToolResponse> {
+        const result = await dispatch(action, args);
+
+        if (throwOnError && result.isError) {
+            const text = result.content
+                .map(c => c.text)
+                .join('\n');
+
+            const parsed = parseToolErrorXml(text);
+            if (parsed) {
+                throw new FusionClientError(parsed.message, parsed.code, result, {
+                    recovery: parsed.recovery,
+                    availableActions: parsed.availableActions,
+                    severity: parsed.severity,
+                });
+            }
+
+            throw new FusionClientError(text || 'Unknown error', 'UNKNOWN', result);
+        }
+
+        return result;
+    }
+
     return {
         async execute<TAction extends keyof TRouter & string>(
             action: TAction,
             args: TRouter[TAction],
         ): Promise<ToolResponse> {
-            // Parse "toolName.actionName" from the action path
-            const dotIndex = action.indexOf('.');
-            if (dotIndex === -1) {
-                return transport.callTool(action, args);
+            return executeInternal(action, args as Record<string, unknown>);
+        },
+
+        async executeBatch(
+            calls: Array<{ action: string; args: Record<string, unknown> }>,
+            batchOptions?: { sequential?: boolean },
+        ): Promise<ToolResponse[]> {
+            if (batchOptions?.sequential) {
+                const results: ToolResponse[] = [];
+                for (const call of calls) {
+                    results.push(await executeInternal(call.action, call.args));
+                }
+                return results;
             }
 
-            const toolName = action.substring(0, dotIndex);
-            const actionName = action.substring(dotIndex + 1);
-
-            return transport.callTool(toolName, {
-                action: actionName,
-                ...args,
-            });
+            return Promise.all(
+                calls.map(call => executeInternal(call.action, call.args)),
+            );
         },
     };
 }

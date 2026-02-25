@@ -266,37 +266,60 @@ const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
 
 ### Self-Healing Errors
 
-Structured errors with recovery instructions and suggested actions:
+Structured errors with recovery instructions, severity levels, and action affordances:
 
 ```typescript
-return toolError('ProjectNotFound', {
-    message: `Project '${id}' does not exist.`,
-    suggestion: 'Call projects.list first to get valid IDs.',
-    availableActions: ['projects.list'],
+return toolError('NOT_FOUND', {
+    message: `Invoice '${id}' does not exist.`,
+    suggestion: 'Call billing.list first to get valid IDs.',
+    availableActions: ['billing.list'],
+    severity: 'error',           // 'warning' | 'error' | 'critical'
+    details: { entity_type: 'invoice' },
+    retryAfter: 5,               // seconds
 });
 ```
 
-Zod `.strict()` on all input schemas — hallucinated parameters rejected with per-field correction prompts.
+15 canonical error codes (`NOT_FOUND`, `RATE_LIMITED`, `CONFLICT`, etc.) plus custom string codes. Zod `.strict()` on all input schemas — hallucinated parameters rejected with per-field correction prompts.
 
 → [Error Handling docs](https://mcp-fusion.vinkius.com/error-handling) · [Cognitive Guardrails](https://mcp-fusion.vinkius.com/mva/cognitive-guardrails)
 
 ### Type-Safe Client
 
-End-to-end type inference from server to client:
+End-to-end type inference from server to client, with middleware, structured error parsing, and batch execution:
 
 ```typescript
-import { createFusionClient } from '@vinkius-core/mcp-fusion/client';
+import { createFusionClient, FusionClientError } from '@vinkius-core/mcp-fusion/client';
 import type { AppRouter } from './server';
 
-const client = createFusionClient<AppRouter>(transport);
+const client = createFusionClient<AppRouter>(transport, {
+    middleware: [authMiddleware, logMiddleware],
+    throwOnError: true,
+});
+
+// Single call — full autocomplete + arg validation
 const result = await client.execute('billing.get_invoice', { workspace_id: 'ws_1', id: 'inv_42' });
+
+// Batch calls — parallel by default
+const [projects, invoices] = await client.executeBatch([
+    { action: 'projects.list', args: { status: 'active' } },
+    { action: 'billing.list_invoices', args: { workspace_id: 'ws_1' } },
+]);
+
+// Structured error handling
+try {
+    await client.execute('billing.refund', { invoice_id: 'inv_999' });
+} catch (err) {
+    if (err instanceof FusionClientError) {
+        console.log(err.code, err.recovery, err.availableActions);
+    }
+}
 ```
 
 → [FusionClient docs](https://mcp-fusion.vinkius.com/fusion-client)
 
 ### State Sync
 
-RFC 7234-inspired cache-control signals. Causal invalidation after mutations:
+RFC 7234-inspired cache-control signals. Causal invalidation after mutations, with observability hooks and protocol notifications:
 
 ```typescript
 tools.attachToServer(server, {
@@ -306,9 +329,15 @@ tools.attachToServer(server, {
             { match: 'sprints.update', invalidates: ['sprints.*'] },
             { match: 'countries.*',    cacheControl: 'immutable' },
         ],
+        onInvalidation: (event) => {
+            metrics.increment('cache.invalidations', { tool: event.causedBy });
+        },
+        notificationSink: (n) => server.notification(n),
     },
 });
 ```
+
+Static policy analysis with `detectOverlaps()` catches first-match-wins ordering bugs at startup.
 
 → [State Sync docs](https://mcp-fusion.vinkius.com/state-sync)
 
@@ -377,12 +406,12 @@ expect(denied.isError).toBe(true);
 | **Hierarchical Groups** | `.group()` — namespace 5,000+ actions as `module.action` |
 | **Prompt Engine** | `definePrompt()` with flat schema, middleware, `PromptMessage.fromView()` |
 | **Context Derivation** | `defineMiddleware()` — tRPC-style typed context merging |
-| **Self-Healing Errors** | `toolError()` — structured recovery with action suggestions |
+| **Self-Healing Errors** | `toolError()` — severity, details, retryAfter, HATEOAS actions |
 | **Strict Validation** | Zod `.merge().strict()` — unknown fields rejected with actionable errors |
-| **Type-Safe Client** | `createFusionClient<T>()` — full inference from server to client |
+| **Type-Safe Client** | `createFusionClient<T>()` — middleware, `throwOnError`, `executeBatch()` |
 | **Streaming Progress** | `yield progress()` → MCP `notifications/progress` |
 | **Testing** | `createFusionTester()` — in-memory MVA emulator, SOC2 audit in CI/CD |
-| **State Sync** | RFC 7234 cache-control — `invalidates`, `no-store`, `immutable` |
+| **State Sync** | RFC 7234 cache-control — `invalidates`, `no-store`, `immutable`, `onInvalidation`, `detectOverlaps` |
 | **Tool Exposition** | `'flat'` or `'grouped'` wire format |
 | **Tag Filtering** | RBAC context gating — `{ tags: ['core'] }` / `{ exclude: ['internal'] }` |
 | **Observability** | Zero-overhead debug observers + OpenTelemetry-compatible tracing |

@@ -67,7 +67,7 @@ export {
 } from './core/index.js';
 /** @category Core */
 export type {
-    ToolResponse, ToolErrorOptions,
+    ToolResponse, ToolErrorOptions, ErrorCode, ErrorSeverity,
     ActionConfig, MiddlewareFn, GroupConfigurator,
     ToolFilter,
     ToolBuilder, ActionMetadata,
@@ -83,9 +83,9 @@ export type {
 
 // ── Client (tRPC-style type-safe) ────────────────────────
 /** @category Client */
-export { createFusionClient, createTypedRegistry } from './client/index.js';
+export { createFusionClient, createTypedRegistry, FusionClientError } from './client/index.js';
 /** @category Client */
-export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRegistry } from './client/index.js';
+export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRegistry, ClientMiddleware, FusionClientOptions } from './client/index.js';
 
 // ── Observability (Debug + Tracing) ──────────────────────
 /** @category Observability */
@@ -132,10 +132,11 @@ export type { ToolExposition, ExpositionConfig } from './exposition/index.js';
 
 // ── State Sync (Epistemic Cache-Control) ─────────────────
 /** @category StateSync */
-export { StateSyncLayer, PolicyEngine, matchGlob } from './state-sync/index.js';
+export { StateSyncLayer, PolicyEngine, matchGlob, detectOverlaps } from './state-sync/index.js';
 /** @category StateSync */
 export type {
     CacheDirective, SyncPolicy, StateSyncConfig, ResolvedPolicy,
+    InvalidationEvent, ResourceNotification, OverlapWarning,
 } from './state-sync/index.js';
 
 // ── Testing (In-Memory MVA Backdoor) ─────────────────────

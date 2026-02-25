@@ -108,6 +108,74 @@ export interface StateSyncConfig {
     readonly defaults?: {
         readonly cacheControl?: CacheDirective;
     };
+
+    /**
+     * Observability hook invoked after each causal invalidation event.
+     *
+     * Use this to log, trace, or count invalidation events without
+     * coupling the state-sync engine to a specific observability backend.
+     *
+     * @example
+     * ```typescript
+     * stateSync: {
+     *     policies: [...],
+     *     onInvalidation: (event) => {
+     *         console.log(`[StateSync] ${event.causedBy} invalidated ${event.patterns.join(', ')}`);
+     *         metrics.increment('statesync.invalidation', { tool: event.causedBy });
+     *     },
+     * }
+     * ```
+     */
+    readonly onInvalidation?: (event: InvalidationEvent) => void;
+
+    /**
+     * Protocol-level notification sink for MCP resource change events.
+     *
+     * When provided, causal invalidation also emits
+     * `notifications/resources/updated` MCP protocol messages
+     * in addition to the in-band XML signal.
+     *
+     * @example
+     * ```typescript
+     * stateSync: {
+     *     policies: [...],
+     *     notificationSink: async (notification) => {
+     *         await server.sendNotification(notification);
+     *     },
+     * }
+     * ```
+     */
+    readonly notificationSink?: (notification: ResourceNotification) => void | Promise<void>;
+}
+
+// ── Invalidation Event ───────────────────────────────────
+
+/**
+ * Event emitted when causal invalidation is triggered.
+ *
+ * @see {@link StateSyncConfig.onInvalidation}
+ */
+export interface InvalidationEvent {
+    /** The tool that caused the invalidation (fully qualified name). */
+    readonly causedBy: string;
+    /** Glob patterns that were invalidated. */
+    readonly patterns: readonly string[];
+    /** ISO-8601 timestamp of the event. */
+    readonly timestamp: string;
+}
+
+/**
+ * MCP protocol notification for resource changes.
+ *
+ * Mirrors the `notifications/resources/updated` JSON-RPC message.
+ *
+ * @see {@link StateSyncConfig.notificationSink}
+ */
+export interface ResourceNotification {
+    readonly method: 'notifications/resources/updated';
+    readonly params: {
+        readonly uri: string;
+    };
 }
 
 // ── Resolved Policy ──────────────────────────────────────

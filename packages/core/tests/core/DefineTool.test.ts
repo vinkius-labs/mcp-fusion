@@ -525,7 +525,8 @@ describe('toolError()', () => {
             message: 'Not found',
             availableActions: ['projects.list', 'projects.search'],
         });
-        expect(result.content[0].text).toContain('<available_actions>projects.list, projects.search</available_actions>');
+        expect(result.content[0].text).toContain('<action>projects.list</action>');
+        expect(result.content[0].text).toContain('<action>projects.search</action>');
     });
 
     it('should format full self-healing response', () => {
@@ -539,7 +540,7 @@ describe('toolError()', () => {
         expect(text).toContain('code="ProjectNotFound"');
         expect(text).toContain('<message>Project \'xyz\' does not exist.</message>');
         expect(text).toContain('<recovery>');
-        expect(text).toContain('<available_actions>projects.list</available_actions>');
+        expect(text).toContain('<action>projects.list</action>');
         expect(result.isError).toBe(true);
     });
 
@@ -547,7 +548,8 @@ describe('toolError()', () => {
         const result = toolError('RateLimited', {
             message: 'Too many requests',
         });
-        expect(result.content[0].text).toContain('<tool_error code="RateLimited">');
+        expect(result.content[0].text).toContain('code="RateLimited"');
+        expect(result.content[0].text).toContain('severity="error"');
         expect(result.content[0].text).toContain('<message>Too many requests</message>');
         expect(result.isError).toBe(true);
     });

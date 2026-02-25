@@ -193,11 +193,115 @@ Every call in this function is fully typed. If you rename an action on the serve
 
 | Export | Type | Description |
 |---|---|---|
-| `createFusionClient(transport)` | `function` | Creates a typed `FusionClient<TRouter>` |
+| `createFusionClient(transport, options?)` | `function` | Creates a typed `FusionClient<TRouter>` with optional middleware and error handling |
 | `createTypedRegistry<TContext>()` | `function` | Creates a `TypedToolRegistry` preserving builder types for `InferRouter` |
 | `InferRouter<T>` | `type` | Extracts a typed `RouterMap` from a `TypedToolRegistry` (zero runtime cost) |
 | `TypedToolRegistry<TContext, TBuilders>` | `interface` | Type-preserving registry wrapper for compile-time inference |
-| `FusionClient<TRouter>` | `interface` | Type-safe client with `.execute()` method |
+| `FusionClient<TRouter>` | `interface` | Type-safe client with `.execute()` and `.executeBatch()` |
+| `FusionClientError` | `class` | Structured error parsed from `<tool_error>` XML envelopes |
+| `ClientMiddleware` | `type` | `(action, args, next) => Promise<ToolResponse>` — request interceptor |
+| `FusionClientOptions` | `interface` | `{ middleware?, throwOnError? }` |
 | `FusionTransport` | `interface` | Transport abstraction (`callTool`) |
 | `RouterMap` | `type` | Base constraint for router types |
+
+---
+
+## Client Middleware
+
+Intercept every outgoing call with typed middleware:
+
+```typescript
+import { createFusionClient } from '@vinkius-core/mcp-fusion';
+import type { ClientMiddleware } from '@vinkius-core/mcp-fusion';
+
+// Add auth token to every call
+const authMiddleware: ClientMiddleware = async (action, args, next) => {
+    return next(action, { ...args, _token: await getToken() });
+};
+
+// Log all calls
+const logMiddleware: ClientMiddleware = async (action, args, next) => {
+    console.log(`→ ${action}`, args);
+    const result = await next(action, args);
+    console.log(`← ${action}`, result.isError ? 'ERROR' : 'OK');
+    return result;
+};
+
+const client = createFusionClient<AppRouter>(transport, {
+    middleware: [authMiddleware, logMiddleware],
+});
+```
+
+Middleware executes in registration order (onion model). The chain is compiled once at client creation — **O(1) overhead per call**.
+
+---
+
+## Structured Error Handling
+
+### throwOnError
+
+When `throwOnError: true`, error responses are automatically parsed into `FusionClientError` instances:
+
+```typescript
+import { createFusionClient, FusionClientError } from '@vinkius-core/mcp-fusion';
+
+const client = createFusionClient<AppRouter>(transport, { throwOnError: true });
+
+try {
+    await client.execute('billing.get_invoice', { id: 'inv_999' });
+} catch (err) {
+    if (err instanceof FusionClientError) {
+        console.log(err.code);              // 'NOT_FOUND'
+        console.log(err.message);           // 'Invoice inv_999 not found.'
+        console.log(err.recovery);          // 'Call billing.list first.'
+        console.log(err.availableActions);  // ['billing.list']
+        console.log(err.severity);          // 'error'
+        console.log(err.raw);              // Original ToolResponse
+    }
+}
+```
+
+The parser automatically unescapes XML entities (`&amp;`, `&lt;`, etc.) so error messages are always human-readable.
+
+### FusionClientError Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `code` | `string` | Error code from `<tool_error code="...">` |
+| `message` | `string` | Human-readable error message |
+| `recovery` | `string \| undefined` | Recovery instruction from `<recovery>` |
+| `availableActions` | `string[]` | Suggested actions from `<action>` elements |
+| `severity` | `string` | Error severity (`warning`, `error`, `critical`) |
+| `raw` | `ToolResponse` | The original unmodified MCP response |
+
+---
+
+## Batch Execution
+
+Execute multiple calls in a single operation:
+
+```typescript
+const results = await client.executeBatch([
+    { action: 'projects.list', args: { status: 'active' } },
+    { action: 'billing.get_invoice', args: { id: 'inv_42' } },
+    { action: 'users.me', args: {} },
+]);
+// results[0] — projects.list response
+// results[1] — billing.get_invoice response
+// results[2] — users.me response
+```
+
+By default, calls execute **in parallel** (`Promise.all`). Use `sequential: true` for ordered execution:
+
+```typescript
+const results = await client.executeBatch(
+    [
+        { action: 'projects.create', args: { name: 'New Project' } },
+        { action: 'tasks.create', args: { project_id: '...' } },
+    ],
+    { sequential: true },
+);
+```
+
+Middleware and `throwOnError` apply to every call in the batch.
 

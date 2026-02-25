@@ -37,7 +37,7 @@
  */
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolResponse } from '../core/response.js';
-import type { StateSyncConfig } from './types.js';
+import type { StateSyncConfig, InvalidationEvent, ResourceNotification } from './types.js';
 import { PolicyEngine } from './PolicyEngine.js';
 import { decorateDescription } from './DescriptionDecorator.js';
 import { resolveInvalidations } from './CausalEngine.js';
@@ -45,6 +45,8 @@ import { decorateResponse } from './ResponseDecorator.js';
 
 export class StateSyncLayer {
     private readonly _engine: PolicyEngine;
+    private readonly _onInvalidation?: (event: InvalidationEvent) => void;
+    private readonly _notificationSink?: (notification: ResourceNotification) => void | Promise<void>;
 
     /**
      * Per-tool-name cache of decorated McpTool objects.
@@ -55,10 +57,9 @@ export class StateSyncLayer {
      * on every `tools/list` request — which is the hottest path since
      * it runs at the start of every LLM conversation.
      *
-     * The cache key is the tool name + JSON input schema hash to detect
-     * changes in the underlying tool definition. In practice, tool
-     * definitions are immutable after registration, so the cache
-     * hit rate approaches 100%.
+     * The cache key is the tool name — tool definitions are immutable
+     * after registration, so the name alone is sufficient.
+     * Cache hit rate approaches 100%.
      */
     private readonly _decoratedToolCache = new Map<string, McpTool>();
 
@@ -74,6 +75,8 @@ export class StateSyncLayer {
      */
     constructor(config: StateSyncConfig) {
         this._engine = new PolicyEngine(config.policies, config.defaults);
+        this._onInvalidation = config.onInvalidation;
+        this._notificationSink = config.notificationSink;
     }
 
     /**
@@ -109,6 +112,32 @@ export class StateSyncLayer {
         const invalidations = resolveInvalidations(policy, result.isError ?? false);
 
         if (invalidations.length > 0) {
+            // Fire observability hook (sync, fire-and-forget)
+            if (this._onInvalidation) {
+                const event: InvalidationEvent = {
+                    causedBy: toolName,
+                    patterns: invalidations,
+                    timestamp: new Date().toISOString(),
+                };
+                try { this._onInvalidation(event); } catch { /* observer must not break the pipeline */ }
+            }
+
+            // Emit protocol-level notifications (fire-and-forget, safe for async sinks)
+            if (this._notificationSink) {
+                for (const pattern of invalidations) {
+                    const notification: ResourceNotification = {
+                        method: 'notifications/resources/updated',
+                        params: { uri: `fusion://stale/${pattern}` },
+                    };
+                    try {
+                        const maybePromise = this._notificationSink(notification);
+                        if (maybePromise instanceof Promise) {
+                            maybePromise.catch(() => { /* swallow async errors — best-effort */ });
+                        }
+                    } catch { /* swallow sync errors — best-effort */ }
+                }
+            }
+
             return decorateResponse(result, invalidations, toolName);
         }
 

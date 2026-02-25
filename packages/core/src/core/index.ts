@@ -12,7 +12,7 @@
 
 // ── Cross-cutting ────────────────────────────────────────
 export { success, error, required, toonSuccess, toolError } from './response.js';
-export type { ToolResponse, ToolErrorOptions } from './response.js';
+export type { ToolResponse, ToolErrorOptions, ErrorCode, ErrorSeverity } from './response.js';
 export { succeed, fail } from './result.js';
 export type { Result, Success, Failure } from './result.js';
 

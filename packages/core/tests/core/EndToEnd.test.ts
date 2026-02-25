@@ -360,7 +360,7 @@ describe('E2E: Self-healing errors', () => {
         expect(fail.isError).toBe(true);
         expect(fail.content[0].text).toContain('code="NotFound"');
         expect(fail.content[0].text).toContain('<recovery>');
-        expect(fail.content[0].text).toContain('<available_actions>lookup.list</available_actions>');
+        expect(fail.content[0].text).toContain('<action>lookup.list</action>');
     });
 });
 
@@ -468,7 +468,7 @@ describe('E2E: FusionClient → ToolRegistry', () => {
         const result = await client.execute('guarded.get', { id: 'x' } as any);
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toContain('code="NotFound"');
-        expect(result.content[0].text).toContain('<available_actions>guarded.list</available_actions>');
+        expect(result.content[0].text).toContain('<action>guarded.list</action>');
     });
 });
 

@@ -315,6 +315,85 @@ matchGlob('**', 'anything.at.all');          // true
 | `SyncPolicy` | A single policy rule (match, cacheControl, invalidates) |
 | `CacheDirective` | `'no-store' \| 'immutable'` |
 | `ResolvedPolicy` | Result of resolving a tool name against policies |
+| `InvalidationEvent` | `{ causedBy, patterns, timestamp }` — fired on invalidation |
+| `ResourceNotification` | MCP protocol notification payload |
+| `OverlapWarning` | Result of `detectOverlaps()` — policy shadowing info |
+
+---
+
+## Observability Hooks
+
+### onInvalidation Callback
+
+React to invalidation events for logging, metrics, or downstream coordination:
+
+```typescript
+registry.attachToServer(server, {
+    stateSync: {
+        policies: [
+            { match: 'billing.pay', invalidates: ['billing.invoices.*', 'reports.balance'] },
+        ],
+        onInvalidation: (event) => {
+            console.log(`[invalidation] ${event.causedBy} → ${event.patterns.join(', ')}`);
+            metrics.increment('cache.invalidations', { tool: event.causedBy });
+        },
+    },
+});
+```
+
+The `InvalidationEvent` contains:
+
+| Field | Type | Description |
+|---|---|---|
+| `causedBy` | `string` | Tool name that triggered the invalidation |
+| `patterns` | `string[]` | Domain patterns that were invalidated |
+| `timestamp` | `number` | `Date.now()` value when the invalidation occurred |
+
+::: warning
+Observer exceptions are silently caught — a crashing observer never breaks the pipeline.
+:::
+
+### notificationSink — Protocol-Level Notifications
+
+Emit MCP `notifications/resources/updated` notifications for each invalidated domain. Useful for Multi-Agent architectures where downstream clients subscribe to resource changes:
+
+```typescript
+registry.attachToServer(server, {
+    stateSync: {
+        policies: [
+            { match: 'sprints.create', invalidates: ['sprints.*'] },
+        ],
+        notificationSink: (notification) => {
+            server.notification(notification);
+        },
+    },
+});
+// After sprints.create succeeds:
+// → { method: 'notifications/resources/updated', params: { uri: 'fusion://stale/sprints.*' } }
+```
+
+The sink is fire-and-forget. Both sync and async sinks are supported — async rejections are safely swallowed to prevent unhandled promise rejections.
+
+---
+
+## Policy Overlap Detection
+
+Use `detectOverlaps()` to identify policy ordering issues at startup:
+
+```typescript
+import { detectOverlaps } from '@vinkius-core/mcp-fusion';
+
+const warnings = detectOverlaps([
+    { match: 'sprints.*', cacheControl: 'no-store' },      // index 0
+    { match: 'sprints.update', invalidates: ['sprints.*'] }, // index 1 — shadowed by 0!
+]);
+
+for (const w of warnings) {
+    console.warn(`Policy [${w.shadowingIndex}] shadows [${w.shadowedIndex}]: ${w.message}`);
+}
+```
+
+This is a static analysis utility — call it at server startup to catch first-match-wins ordering bugs before they affect production.
 
 ---
 

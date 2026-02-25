@@ -10,7 +10,7 @@
  * Pipeline: ensureBuilt → parseDiscriminator → resolveAction → validateArgs → runChain
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { type ToolResponse, error, escapeXml } from '../response.js';
+import { type ToolResponse, error, escapeXml, toolError } from '../response.js';
 import { formatValidationError } from './ValidationErrorFormatter.js';
 import { type Result, succeed, fail } from '../result.js';
 import { type InternalAction } from '../types.js';
@@ -153,7 +153,11 @@ export async function runChain<TContext>(
     } catch (err) {
         if (rethrow) throw err;
         const message = err instanceof Error ? err.message : String(err);
-        return error(`[${execCtx.toolName}/${resolved.discriminatorValue}] ${message}`);
+        return toolError('INTERNAL_ERROR', {
+            message: `[${execCtx.toolName}/${resolved.discriminatorValue}] ${message}`,
+            suggestion: 'This may be a transient error. Retry the same call with identical parameters.',
+            severity: 'error',
+        });
     }
 }
 

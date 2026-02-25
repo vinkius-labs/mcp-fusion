@@ -21,6 +21,7 @@
  * @module
  */
 import type { ToolResponse } from '../core/response.js';
+import { escapeXmlAttr } from '../core/response.js';
 
 /**
  * Prepend a System invalidation content block to a tool call response.
@@ -40,7 +41,7 @@ export function decorateResponse(
     return {
         ...result,
         content: [
-            { type: 'text' as const, text: `<cache_invalidation cause="${causedBy}" domains="${domains}" />` },
+            { type: 'text' as const, text: `<cache_invalidation cause="${escapeXmlAttr(causedBy)}" domains="${escapeXmlAttr(domains)}" />` },
             ...result.content,
         ],
     };

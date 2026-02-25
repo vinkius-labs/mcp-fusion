@@ -92,17 +92,135 @@ handler: async (ctx, args) => {
 **What the LLM receives:**
 
 ```xml
-<tool_error code="ProjectNotFound">
+<tool_error code="ProjectNotFound" severity="error">
 <message>Project 'proj_xyz' does not exist.</message>
 <recovery>Call projects.list first to get valid IDs, then retry.</recovery>
-<available_actions>projects.list</available_actions>
+<available_actions>
+  <action>projects.list</action>
+</available_actions>
 </tool_error>
 ```
 
 This structured format helps the agent:
 1. **Structurally perceive the error** — via the `code` attribute
-2. **Know what to do** — via `<recovery>`
-3. **Know which actions exist** — via `<available_actions>`
+2. **Assess impact** — via the `severity` attribute (`warning`, `error`, `critical`)
+3. **Know what to do** — via `<recovery>`
+4. **Know which actions exist** — via individual `<action>` elements
+
+### Error Codes
+
+`toolError()` accepts a canonical `ErrorCode` or any custom string:
+
+| Code | Use Case |
+|---|---|
+| `NOT_FOUND` | Entity doesn't exist |
+| `VALIDATION_ERROR` | Business rule violation |
+| `UNAUTHORIZED` | Missing credentials |
+| `FORBIDDEN` | Insufficient permissions |
+| `CONFLICT` | Duplicate or state conflict |
+| `RATE_LIMITED` | Too many requests |
+| `TIMEOUT` | Operation timed out |
+| `INTERNAL_ERROR` | Unexpected server error |
+| `DEPRECATED` | Feature being removed |
+| `MISSING_REQUIRED_FIELD` | Missing argument |
+| `UNKNOWN_ACTION` | Invalid action name |
+| `MISSING_DISCRIMINATOR` | Missing action field |
+| `UNKNOWN_TOOL` | Tool not found |
+| `SERVER_BUSY` | Concurrency limit reached |
+| `AUTH_REQUIRED` | Authentication needed |
+| *Custom string* | Any domain-specific code |
+
+### Severity Levels
+
+```typescript
+return toolError('DEPRECATED', {
+    message: 'This endpoint is deprecated.',
+    severity: 'warning',  // 'warning' | 'error' | 'critical'
+});
+```
+
+| Severity | `isError` | Use Case |
+|---|---|---|
+| `warning` | `false` | Non-fatal advisories (deprecation, soft limits) |
+| `error` | `true` | Standard recoverable errors (default) |
+| `critical` | `true` | System-level failures requiring escalation |
+
+### Structured Details
+
+Attach arbitrary key-value metadata for richer context:
+
+```typescript
+return toolError('NOT_FOUND', {
+    message: 'Invoice not found.',
+    details: {
+        entity_id: 'inv_123',
+        entity_type: 'invoice',
+        searched_workspace: 'ws_42',
+    },
+});
+```
+
+```xml
+<tool_error code="NOT_FOUND" severity="error">
+<message>Invoice not found.</message>
+<details>
+  <detail key="entity_id">inv_123</detail>
+  <detail key="entity_type">invoice</detail>
+  <detail key="searched_workspace">ws_42</detail>
+</details>
+</tool_error>
+```
+
+Detail keys are rendered as XML attributes (not element names), making them safe for any string including numeric or special characters.
+
+### Retry Hints
+
+For transient errors, include a retry delay:
+
+```typescript
+return toolError('RATE_LIMITED', {
+    message: 'Too many requests.',
+    retryAfter: 30,
+});
+```
+
+```xml
+<tool_error code="RATE_LIMITED" severity="error">
+<message>Too many requests.</message>
+<retry_after>30 seconds</retry_after>
+</tool_error>
+```
+
+### Full HATEOAS Envelope
+
+All features combined:
+
+```typescript
+return toolError('CONFLICT', {
+    message: 'Invoice already paid.',
+    suggestion: 'Check the invoice status first.',
+    availableActions: ['billing.get', 'billing.list'],
+    severity: 'error',
+    details: { invoice_id: 'inv_456', status: 'paid' },
+    retryAfter: 5,
+});
+```
+
+```xml
+<tool_error code="CONFLICT" severity="error">
+<message>Invoice already paid.</message>
+<recovery>Check the invoice status first.</recovery>
+<available_actions>
+  <action>billing.get</action>
+  <action>billing.list</action>
+</available_actions>
+<details>
+  <detail key="invoice_id">inv_456</detail>
+  <detail key="status">paid</detail>
+</details>
+<retry_after>5 seconds</retry_after>
+</tool_error>
+```
 
 ### Minimal Usage
 

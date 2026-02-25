@@ -238,12 +238,44 @@ import { toolError } from '@vinkius-core/mcp-fusion';
 
 return toolError('INVALID_DATE_RANGE', {
     message: 'Start date must be before end date',
-    recovery: { action: 'retry', suggestion: 'Swap the date values' },
-    suggestedArgs: { start: args.end, end: args.start },
+    suggestion: 'Swap the date values and retry.',
+    availableActions: ['calendar.list'],
+    severity: 'error',             // 'warning' | 'error' | 'critical'
+    details: { start: args.start, end: args.end },
+    retryAfter: 0,                 // retry immediately (seconds)
 });
 ```
 
-All error XML output is automatically escaped to prevent injection. Pipeline errors use structured codes: `MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`, `UNKNOWN_TOOL`, `MISSING_REQUIRED_FIELD`.
+### ErrorCode Union (15 canonical codes + custom strings)
+
+`NOT_FOUND`, `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `CONFLICT`, `RATE_LIMITED`, `TIMEOUT`, `INTERNAL_ERROR`, `DEPRECATED`, `MISSING_REQUIRED_FIELD`, `UNKNOWN_ACTION`, `MISSING_DISCRIMINATOR`, `UNKNOWN_TOOL`, `SERVER_BUSY`, `AUTH_REQUIRED`, or any custom string.
+
+### Severity Levels
+
+| Severity | `isError` | Use Case |
+|---|---|---|
+| `warning` | `false` | Non-fatal advisories (deprecation, soft limits) |
+| `error` | `true` | Standard recoverable errors (default) |
+| `critical` | `true` | System-level failures requiring escalation |
+
+### XML Output Format
+
+```xml
+<tool_error code="NOT_FOUND" severity="error">
+<message>Invoice not found.</message>
+<recovery>Call billing.list first.</recovery>
+<available_actions>
+  <action>billing.list</action>
+</available_actions>
+<details>
+  <detail key="entity_id">inv_123</detail>
+  <detail key="entity_type">invoice</detail>
+</details>
+<retry_after>5 seconds</retry_after>
+</tool_error>
+```
+
+All error XML output is automatically escaped to prevent injection. Detail keys are rendered as XML attributes (safe for any string). Pipeline errors use structured codes: `MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`, `UNKNOWN_TOOL`, `MISSING_REQUIRED_FIELD`.
 
 ## State Sync
 
@@ -257,9 +289,31 @@ registry.attachToServer(server, {
             { match: 'tasks.update',   invalidates: ['tasks.*', 'sprints.*'] },
             { match: 'countries.*',    cacheControl: 'immutable' },
         ],
+        onInvalidation: (event) => {
+            // event: { causedBy: string, patterns: string[], timestamp: number }
+            metrics.increment('cache.invalidations', { tool: event.causedBy });
+        },
+        notificationSink: (notification) => {
+            // notification: { method: 'notifications/resources/updated', params: { uri: 'fusion://stale/sprints.*' } }
+            server.notification(notification);
+        },
     },
 });
 ```
+
+### Policy Overlap Detection
+
+```typescript
+import { detectOverlaps } from '@vinkius-core/mcp-fusion';
+
+const warnings = detectOverlaps([
+    { match: 'sprints.*', cacheControl: 'no-store' },
+    { match: 'sprints.update', invalidates: ['sprints.*'] },  // shadowed by index 0
+]);
+// warnings[0]: { shadowingIndex: 0, shadowedIndex: 1, message: '...' }
+```
+
+Static analysis utility — call at server startup to catch first-match-wins ordering bugs.
 
 ## Runtime Guards
 
@@ -366,9 +420,17 @@ import { success, error, required, toonSuccess, toolError } from '@vinkius-core/
 return success('Task completed');
 return success({ id: '123', name: 'Acme' });
 return error('Project not found');
+return error('Project not found', 'NOT_FOUND');   // with optional code
 return required('workspace_id');
-return toonSuccess(users);                  // ~40% fewer tokens
-return toolError('NOT_FOUND', { message: 'Invoice not found', recovery: { action: 'list' } });
+return toonSuccess(users);                         // ~40% fewer tokens
+return toolError('NOT_FOUND', {
+    message: 'Invoice not found',
+    suggestion: 'Call billing.list first.',
+    availableActions: ['billing.list'],
+    severity: 'error',
+    details: { entity_type: 'invoice' },
+    retryAfter: 30,
+});
 ```
 
 ## Streaming Progress
@@ -497,19 +559,27 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `ToolRegistry<TContext>` — .register(), .registerAll(), .getAllTools(), .getTools(filter), .routeCall(), .attachToServer(), .has(), .clear(), .size
 
 ### FusionClient (tRPC-style)
-- `createFusionClient<TRouter>(transport)` → FusionClient — type-safe client with autocomplete
-- `FusionClient<TRouter>` — .execute(action, args) with full type inference
+- `createFusionClient<TRouter>(transport, options?)` → FusionClient — type-safe client with autocomplete, middleware, error parsing
+- `FusionClient<TRouter>` — .execute(action, args) with full type inference, .executeBatch(calls, options?) for parallel/sequential batch execution
+- `FusionClientError` — Structured error class: code, message, recovery, availableActions, severity, raw
+- `ClientMiddleware` — `(action, args, next) => Promise<ToolResponse>` — request interceptor type
+- `FusionClientOptions` — `{ middleware?: ClientMiddleware[], throwOnError?: boolean }`
 
 ### Response Helpers
 - `success(data)` → ToolResponse
-- `error(message)` → ToolResponse (isError: true)
+- `error(message, code?)` → ToolResponse (isError: true, optional code attribute)
 - `required(field)` → ToolResponse (isError: true)
-- `toolError(code, options)` → ToolResponse (structured recovery hints for LLM agents)
+- `toolError(code, options)` → ToolResponse (structured recovery hints with severity, details, retryAfter)
 - `toonSuccess(data, options?)` → ToolResponse (TOON-encoded)
+- `ErrorCode` — Union type: 15 canonical codes + custom strings
+- `ErrorSeverity` — `'warning' | 'error' | 'critical'`
 
 ### State Sync
-- `cacheSignal(data, options)` → ToolResponse with cache-control metadata
-- `invalidates(data, scopes)` → ToolResponse with invalidation signals
+- `StateSyncConfig` — { defaults?, policies, onInvalidation?, notificationSink? }
+- `InvalidationEvent` — { causedBy: string, patterns: string[], timestamp: number }
+- `ResourceNotification` — { method: string, params: { uri: string } }
+- `detectOverlaps(policies)` → OverlapWarning[] — static analysis for policy shadowing
+- `OverlapWarning` — { shadowingIndex: number, shadowedIndex: number, message: string }
 
 ### Dynamic Manifest
 - `registerIntrospectionResource(server, config, serverName, builders, contextFactory?)` — registers MCP resources/list + resources/read handlers

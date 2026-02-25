@@ -10,6 +10,7 @@
  * @module
  */
 import type { SyncPolicy, CacheDirective } from './types.js';
+import { matchGlob } from './GlobMatcher.js';
 
 // ── Constants ────────────────────────────────────────────
 
@@ -119,4 +120,67 @@ export function validateDefaults(
             `Allowed: "no-store", "immutable".`,
         );
     }
+}
+
+// ── Overlap Detection ────────────────────────────────────
+
+/**
+ * Warning produced when two policies potentially overlap.
+ *
+ * Overlapping policies are not an error (first-match-wins is deterministic),
+ * but they can cause subtle configuration bugs when the user expects a
+ * more-specific policy to fire but a broader one shadows it.
+ *
+ * @example
+ * ```typescript
+ * const warnings = detectOverlaps(policies);
+ * warnings.forEach(w => console.warn(`[StateSync] ${w.message}`));
+ * ```
+ */
+export interface OverlapWarning {
+    /** Human-readable description of the overlap. */
+    readonly message: string;
+    /** Index of the shadowing (earlier) policy. */
+    readonly shadowingIndex: number;
+    /** Index of the shadowed (later) policy. */
+    readonly shadowedIndex: number;
+}
+
+/**
+ * Detect potentially overlapping glob policies.
+ *
+ * Checks if a broader policy at index `i` could shadow a more-specific
+ * policy at index `j > i`. Uses GlobMatcher to test if the earlier
+ * pattern matches the later pattern's literal segments.
+ *
+ * This is a heuristic: it only catches cases where the later policy's
+ * `match` string (treated as a literal tool name) would match the
+ * earlier policy's glob. It does NOT do full set-intersection analysis.
+ *
+ * @param policies - The policies array to analyze
+ * @returns Array of overlap warnings (empty if no overlaps detected)
+ */
+export function detectOverlaps(policies: readonly SyncPolicy[]): readonly OverlapWarning[] {
+    const warnings: OverlapWarning[] = [];
+
+    for (let i = 0; i < policies.length; i++) {
+        for (let j = i + 1; j < policies.length; j++) {
+            const earlier = policies[i]!.match;
+            const later = policies[j]!.match;
+
+            // If the later policy's match pattern (as a literal name)
+            // would be caught by the earlier policy's glob, it's shadowed.
+            if (matchGlob(earlier, later)) {
+                warnings.push({
+                    message:
+                        `policy[${i}] (match: "${earlier}") shadows policy[${j}] (match: "${later}"). ` +
+                        `The later policy will never match because first-match-wins applies.`,
+                    shadowingIndex: i,
+                    shadowedIndex: j,
+                });
+            }
+        }
+    }
+
+    return warnings;
 }

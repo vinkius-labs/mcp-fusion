@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-02-25
+
+### 🛡️ Self-Healing HATEOAS · State Sync Observability · Client Middleware
+
+Three-pillar enhancement across the framework: richer self-healing error envelopes, State Sync observability hooks, and a full-featured tRPC-style client.
+
+### Added
+
+- **Self-Healing Errors (Pillar A):**
+  - `ErrorCode` union type — 15 canonical codes (`NOT_FOUND`, `RATE_LIMITED`, `CONFLICT`, `INTERNAL_ERROR`, etc.) plus any custom string via `string & {}`
+  - `ErrorSeverity` type — `'warning' | 'error' | 'critical'` with semantic `isError` mapping (warnings are non-fatal)
+  - `severity` attribute on `<tool_error>` XML envelope — agents can triage errors by impact level
+  - `details` option — key-value metadata rendered as `<detail key="...">value</detail>` elements (safe for any key string)
+  - `retryAfter` option — `<retry_after>N seconds</retry_after>` for transient errors
+  - `error(message, code?)` — optional `code` parameter for structured minimal errors
+  - Individual `<action>` child elements in `<available_actions>` (replaces comma-separated format)
+  - Structured error boundary in `ExecutionPipeline.runChain()` — catch block now produces `toolError('INTERNAL_ERROR', ...)` with severity and recovery hint
+
+- **State Sync Observability (Pillar B):**
+  - `onInvalidation` callback — fires after successful causal invalidation with `{ causedBy, patterns, timestamp }`
+  - `notificationSink` — emits MCP `notifications/resources/updated` per invalidated pattern (fire-and-forget, async-safe)
+  - `detectOverlaps(policies)` — static analysis utility returning `OverlapWarning[]` for first-match-wins ordering bugs
+  - `InvalidationEvent`, `ResourceNotification`, `OverlapWarning` types exported from barrel
+
+- **FusionClient (Pillar C):**
+  - `ClientMiddleware` type — `(action, args, next) → Promise<ToolResponse>` request interceptor
+  - `FusionClientOptions` interface — `{ middleware?, throwOnError? }`
+  - `FusionClientError` class — parses `<tool_error>` XML into typed fields (code, message, recovery, availableActions, severity, raw)
+  - `executeBatch(calls, options?)` — parallel (default) or sequential batch execution
+  - `throwOnError` option — error responses auto-throw as `FusionClientError` instead of returning
+  - Middleware chain compiled once at client creation (O(1) per call)
+  - XML entity unescaping in parsed error fields (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`)
+
+### Fixed
+
+- **[CRITICAL] XML injection via detail keys** — details keys were used as XML element names (`<key>value</key>`), allowing invalid XML for keys like `"123"` or `"a b"`. Now rendered as attributes: `<detail key="...">value</detail>`
+- **Severity attribute not XML-escaped** — `severity` value in `<tool_error>` was unescaped; now uses `escapeXmlAttr()`
+- **Async notificationSink unhandled rejection** — `try { void sink(n); } catch {}` didn't catch async rejections; now uses `Promise.resolve(...).catch()`
+- **ResponseDecorator XML injection** — `cause` and `domains` attributes in `<cache_invalidation>` were not XML-escaped; now uses `escapeXmlAttr()`
+- **parseToolErrorXml missing XML entity unescaping** — parsed error messages containing `&amp;`, `&lt;`, etc. were returned with raw entities; added `unescapeXml()` decoder
+- **Misleading JSDoc** — StateSyncLayer cache key comment incorrectly referenced "JSON input schema hash"; corrected to reflect tool-name-only caching
+
+### Documentation
+
+- Updated `docs/error-handling.md` with ErrorCode table, severity levels, structured details, retryAfter, full HATEOAS envelope example
+- Updated `docs/fusion-client.md` with client middleware, `throwOnError`, `FusionClientError`, `executeBatch()`, batch options
+- Updated `docs/state-sync.md` with `onInvalidation`, `notificationSink`, `detectOverlaps()`, observability hooks section
+- Updated `README.md` — Self-Healing Errors, Type-Safe Client, and State Sync feature sections + capabilities table
+- Updated `llms.txt` — Public API section, Self-Healing Errors section, State Sync section, Response Helpers
+
+### Test Suite
+
+- **52 new tests** across 3 files:
+  - `SelfHealing.test.ts` (15 tests) — severity, details, retryAfter, ErrorCode, XML-unsafe keys, empty details, error() with code
+  - `StateSyncEnhanced.test.ts` (16 tests) — onInvalidation, notificationSink, async rejection safety, ResponseDecorator escaping, detectOverlaps
+  - `FusionClientEnhanced.test.ts` (21 tests) — middleware pipeline, throwOnError, XML entity unescaping, executeBatch, empty batch, middleware exceptions, backward compat
+- All **2092 tests** passing across 94 files
+
 ## [2.4.0] - 2026-02-24
 
 ### 🧪 Testing — Deterministic AI Governance Auditing

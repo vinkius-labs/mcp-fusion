@@ -27,8 +27,12 @@ export type {
     SyncPolicy,
     StateSyncConfig,
     ResolvedPolicy,
+    InvalidationEvent,
+    ResourceNotification,
 } from './types.js';
 
 // ── Infrastructure (advanced usage) ──────────────────────
 export { PolicyEngine } from './PolicyEngine.js';
 export { matchGlob } from './GlobMatcher.js';
+export { detectOverlaps } from './PolicyValidator.js';
+export type { OverlapWarning } from './PolicyValidator.js';

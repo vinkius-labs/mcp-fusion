@@ -157,9 +157,10 @@ export function success(data: string | object): ToolResponse {
  * @see {@link required} for missing field errors
  * @see {@link success} for success responses
  */
-export function error(message: string): ToolResponse {
+export function error(message: string, code?: ErrorCode): ToolResponse {
+    const codeAttr = code !== undefined ? ` code="${escapeXmlAttr(code)}"` : '';
     return {
-        content: [{ type: "text", text: `<tool_error>\n<message>${escapeXml(message)}</message>\n</tool_error>` }],
+        content: [{ type: "text", text: `<tool_error${codeAttr}>\n<message>${escapeXml(message)}</message>\n</tool_error>` }],
         isError: true,
     };
 }
@@ -232,6 +233,46 @@ export function toonSuccess(data: unknown, options?: EncodeOptions): ToolRespons
 // ============================================================================
 
 /**
+ * Canonical error codes for deterministic agent self-correction.
+ *
+ * Provides compile-time autocomplete while allowing custom codes
+ * via the `string` fallback. Constants cover the most common
+ * failure modes in agentic pipelines.
+ *
+ * @example
+ * ```typescript
+ * return toolError('VALIDATION_ERROR', { message: '...' });
+ * return toolError('RateLimited', { message: '...' }); // custom code — also valid
+ * ```
+ */
+export type ErrorCode =
+    | 'MISSING_DISCRIMINATOR'
+    | 'UNKNOWN_ACTION'
+    | 'VALIDATION_ERROR'
+    | 'MISSING_REQUIRED_FIELD'
+    | 'INTERNAL_ERROR'
+    | 'RATE_LIMITED'
+    | 'UNAUTHORIZED'
+    | 'FORBIDDEN'
+    | 'NOT_FOUND'
+    | 'CONFLICT'
+    | 'TIMEOUT'
+    | 'SERVER_BUSY'
+    | 'DEPRECATED'
+    | 'AUTH_REQUIRED'
+    | (string & {}); // custom codes welcome — union preserves autocomplete
+
+/**
+ * Error severity level.
+ *
+ * - `'warning'`  — Non-fatal. The operation succeeded but with caveats
+ *   (e.g. deprecated tool, partial results, soft quota approaching).
+ * - `'error'`    — The operation failed. Agent should attempt recovery.
+ * - `'critical'` — Unrecoverable. Agent should escalate to the user.
+ */
+export type ErrorSeverity = 'warning' | 'error' | 'critical';
+
+/**
  * Options for a self-healing error response.
  *
  * @see {@link toolError} for usage
@@ -243,6 +284,30 @@ export interface ToolErrorOptions {
     suggestion?: string;
     /** Action names the agent should try instead */
     availableActions?: string[];
+    /**
+     * Error severity.
+     *
+     * Defaults to `'error'` when omitted.
+     *
+     * @example `'warning'` for deprecation notices
+     */
+    severity?: ErrorSeverity;
+    /**
+     * Structured metadata about the error (e.g. the invalid value,
+     * the entity ID that wasn't found, or constraint violations).
+     *
+     * Rendered as `<details>` child elements in the XML envelope.
+     *
+     * @example `{ entity_id: 'inv_123', expected_type: 'string' }`
+     */
+    details?: Record<string, string>;
+    /**
+     * Suggested retry delay in seconds for transient errors.
+     *
+     * Rendered as `<retry_after>{n} seconds</retry_after>` in the
+     * XML envelope. Useful for rate-limit and concurrency errors.
+     */
+    retryAfter?: number;
 }
 
 /**
@@ -285,18 +350,41 @@ export interface ToolErrorOptions {
  * @see {@link error} for simple error responses
  * @see {@link required} for missing field errors
  */
-export function toolError(code: string, options: ToolErrorOptions): ToolResponse {
-    const parts: string[] = [`<tool_error code="${escapeXmlAttr(code)}">`, `<message>${escapeXml(options.message)}</message>`];
+export function toolError(code: ErrorCode, options: ToolErrorOptions): ToolResponse {
+    const severity = options.severity ?? 'error';
+    const parts: string[] = [
+        `<tool_error code="${escapeXmlAttr(code)}" severity="${escapeXmlAttr(severity)}">`,
+        `<message>${escapeXml(options.message)}</message>`,
+    ];
 
     if (options.suggestion) {
         parts.push(`<recovery>${escapeXml(options.suggestion)}</recovery>`);
     }
 
     if ((options.availableActions?.length ?? 0) > 0) {
-        parts.push(`<available_actions>${options.availableActions!.map(escapeXml).join(', ')}</available_actions>`);
+        parts.push('<available_actions>');
+        for (const action of options.availableActions!) {
+            parts.push(`  <action>${escapeXml(action)}</action>`);
+        }
+        parts.push('</available_actions>');
+    }
+
+    if (options.details != null && Object.keys(options.details).length > 0) {
+        parts.push('<details>');
+        for (const [key, value] of Object.entries(options.details)) {
+            parts.push(`  <detail key="${escapeXmlAttr(key)}">${escapeXml(value)}</detail>`);
+        }
+        parts.push('</details>');
+    }
+
+    if (options.retryAfter !== undefined) {
+        parts.push(`<retry_after>${options.retryAfter} seconds</retry_after>`);
     }
 
     parts.push('</tool_error>');
 
-    return { content: [{ type: "text", text: parts.join('\n') }], isError: true };
+    // Warnings are non-fatal — do not set isError so the response
+    // flows through the success path while still carrying guidance.
+    const isError = severity !== 'warning';
+    return { content: [{ type: "text", text: parts.join('\n') }], isError };
 }
