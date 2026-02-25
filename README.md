@@ -348,7 +348,7 @@ handler: async function* (ctx, args) {
 The only AI framework where PII protection is **code-assertable** and **SOC2-auditable in CI/CD**:
 
 ```typescript
-import { createFusionTester } from '@vinkius-core/testing';
+import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 
 const tester = createFusionTester(registry, {
     contextFactory: () => ({ prisma: mockPrisma, tenantId: 't_42', role: 'ADMIN' }),
