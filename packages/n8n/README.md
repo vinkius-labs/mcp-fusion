@@ -59,4 +59,4 @@ npm install mcp-fusion-n8n @vinkius-core/mcp-fusion zod
 
 ## Documentation
 
-Full docs with configuration reference and production examples: [vinkius-labs.github.io/mcp-fusion/n8n-connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector).
+Full docs with configuration reference and production examples: [mcp-fusion.vinkius.com/n8n-connector](https://mcp-fusion.vinkius.com/n8n-connector).

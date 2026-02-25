@@ -1,6 +1,6 @@
 import type { HeadConfig } from 'vitepress';
 
-const BASE_URL = 'https://vinkius-labs.github.io/mcp-fusion';
+const BASE_URL = 'https://mcp-fusion.vinkius.com';
 
 interface PageSEO {
   title: string;

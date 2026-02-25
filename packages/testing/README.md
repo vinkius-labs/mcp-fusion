@@ -491,4 +491,4 @@ export const tester = createFusionTester(registry, {
 
 ## Documentation
 
-Full docs: **[vinkius-labs.github.io/mcp-fusion](https://vinkius-labs.github.io/mcp-fusion/)**.
+Full docs: **[mcp-fusion.vinkius.com](https://mcp-fusion.vinkius.com/)**.

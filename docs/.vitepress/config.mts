@@ -4,7 +4,7 @@ import { getPageHeadTags } from './seo'
 export default defineConfig({
   title: "MCP Fusion",
   description: "The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol.",
-  base: '/mcp-fusion/',
+  base: '/'},
   cleanUrls: true,
   appearance: 'force-dark',
 
@@ -13,7 +13,7 @@ export default defineConfig({
     ['meta', { property: 'og:title', content: 'mcp-fusion — The MVA Framework for MCP Servers' }],
     ['meta', { property: 'og:description', content: 'The first framework with a Structured Perception Layer for your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:url', content: 'https://vinkius-labs.github.io/mcp-fusion/' }],
+    ['meta', { property: 'og:url', content: 'https://mcp-fusion.vinkius.com/' }],
     ['meta', { property: 'og:site_name', content: 'mcp-fusion' }],
 
     // ── Twitter Card ──
@@ -28,8 +28,8 @@ export default defineConfig({
       'name': 'mcp-fusion',
       'alternateName': 'MCP Fusion',
       'description': 'The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol. Introduces Presenters — a deterministic View layer for AI agents — with action consolidation, cognitive guardrails, structured perception packages, and self-healing errors.',
-      'url': 'https://vinkius-labs.github.io/mcp-fusion/',
-      'codeRepository': 'https://github.com/vinkius-labs/mcp-fusion',
+      'url': 'https://mcp-fusion.vinkius.com/',
+      'codeRepository': 'https://github.com/vinkius-core/mcp-fusion',
       'programmingLanguage': 'TypeScript',
       'runtimePlatform': 'Node.js',
       'license': 'https://opensource.org/licenses/Apache-2.0',
@@ -44,13 +44,13 @@ export default defineConfig({
       'author': {
         '@type': 'Person',
         'name': 'Renato Marinho',
-        'url': 'https://github.com/vinkius-labs'
+        'url': 'https://github.com/vinkius-core'
       },
       'publisher': {
         '@type': 'Organization',
         'name': 'Vinkius Labs',
-        'url': 'https://github.com/vinkius-labs',
-        'logo': 'https://github.com/vinkius-Labs.png'
+        'url': 'https://github.com/vinkius-core',
+        'logo': 'https://github.com/vinkius-core.png'
       },
       'offers': {
         '@type': 'Offer',
@@ -70,7 +70,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: 'https://github.com/vinkius-Labs.png',
+    logo: 'https://github.com/vinkius-core.png',
     
     search: {
       provider: 'local'
@@ -81,7 +81,7 @@ export default defineConfig({
       { text: 'Documentation', link: '/introduction' },
       { text: 'Examples', link: '/examples' },
       { text: 'API', link: '/api-reference' },
-      { text: 'GitHub', link: 'https://github.com/vinkius-labs/mcp-fusion' }
+      { text: 'GitHub', link: 'https://github.com/vinkius-core/mcp-fusion' }
     ],
 
     sidebar: [
@@ -238,7 +238,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vinkius-labs/mcp-fusion' }
+      { icon: 'github', link: 'https://github.com/vinkius-core/mcp-fusion' }
     ]
   }
 })

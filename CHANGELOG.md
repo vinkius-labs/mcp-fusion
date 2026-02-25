@@ -754,7 +754,7 @@ This is the first stable release of `mcp-fusion`, introducing **MVA (Model-View-
 - **BREAKING:** `@modelcontextprotocol/sdk` moved from `dependencies` to `peerDependencies`. Projects already have it installed — no duplication.
 
 ### Fixed
-- GitHub URLs in `package.json` and `CONTRIBUTING.md` corrected from `vinkius-core` to `vinkius-labs`.
+- GitHub URLs in `package.json` and `CONTRIBUTING.md` corrected from `vinkius-core` to `vinkius-core`.
 
 ## [0.1.1] - 2026-02-12
 

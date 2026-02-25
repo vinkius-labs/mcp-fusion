@@ -25,7 +25,7 @@ So we built one.
 **MVA replaces the human-centric View with the Presenter** — an agent-centric perception layer that tells the AI exactly how to interpret, display, and act on domain data. This is not a feature. This is a new architectural paradigm.
 
 ::: info Created by Renato Marinho · Vinkius Labs
-**MVA (Model-View-Agent)** is an original architectural pattern designed by [Renato Marinho](https://github.com/renatomarinho) and implemented at [Vinkius Labs](https://github.com/vinkius-labs). First introduced in **mcp-fusion**, it represents the foundational architecture for building scalable Agentic APIs where the AI consumer is treated as a first-class citizen — not as a dumb HTTP client.
+**MVA (Model-View-Agent)** is an original architectural pattern designed by [Renato Marinho](https://github.com/renatomarinho) and implemented at [Vinkius Labs](https://github.com/vinkius-core). First introduced in **mcp-fusion**, it represents the foundational architecture for building scalable Agentic APIs where the AI consumer is treated as a first-class citizen — not as a dumb HTTP client.
 :::
 
 ## The Problem: Why MVC Fails for Agents

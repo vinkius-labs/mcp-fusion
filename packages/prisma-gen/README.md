@@ -58,4 +58,4 @@ npm install mcp-fusion-prisma-gen @vinkius-core/mcp-fusion zod
 
 ## Documentation
 
-Full docs with configuration reference and production examples: [vinkius-labs.github.io/mcp-fusion/prisma-gen](https://vinkius-labs.github.io/mcp-fusion/prisma-gen).
+Full docs with configuration reference and production examples: [mcp-fusion.vinkius.com/prisma-gen](https://mcp-fusion.vinkius.com/prisma-gen).

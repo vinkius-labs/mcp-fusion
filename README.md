@@ -9,11 +9,11 @@
 </div>
 
 <p align="center">
-  <a href="https://vinkius-labs.github.io/mcp-fusion/">Documentation</a> · 
-  <a href="https://vinkius-labs.github.io/mcp-fusion/quickstart">Quickstart</a> ·
-  <a href="https://vinkius-labs.github.io/mcp-fusion/api-reference">API Reference</a> ·
-  <a href="https://vinkius-labs.github.io/mcp-fusion/examples">Examples</a> ·
-  <a href="https://vinkius-labs.github.io/mcp-fusion/cost-and-hallucination">Why MCP Fusion</a>
+  <a href="https://mcp-fusion.vinkius.com/">Documentation</a> · 
+  <a href="https://mcp-fusion.vinkius.com/quickstart">Quickstart</a> ·
+  <a href="https://mcp-fusion.vinkius.com/api-reference">API Reference</a> ·
+  <a href="https://mcp-fusion.vinkius.com/examples">Examples</a> ·
+  <a href="https://mcp-fusion.vinkius.com/cost-and-hallucination">Why MCP Fusion</a>
 </p>
 
 ---
@@ -206,7 +206,7 @@ const InvoicePresenter = createPresenter('Invoice')
     .embed('client', ClientPresenter);
 ```
 
-→ [Presenter docs](https://vinkius-labs.github.io/mcp-fusion/presenter) · [Anatomy](https://vinkius-labs.github.io/mcp-fusion/mva/presenter-anatomy) · [Context Tree-Shaking](https://vinkius-labs.github.io/mcp-fusion/mva/context-tree-shaking)
+→ [Presenter docs](https://mcp-fusion.vinkius.com/presenter) · [Anatomy](https://mcp-fusion.vinkius.com/mva/presenter-anatomy) · [Context Tree-Shaking](https://mcp-fusion.vinkius.com/mva/context-tree-shaking)
 
 ### Action Consolidation & Hierarchical Groups
 
@@ -225,7 +225,7 @@ createTool<AppContext>('platform')
 // Discriminator values: users.list | users.ban | billing.refund
 ```
 
-→ [Building Tools](https://vinkius-labs.github.io/mcp-fusion/building-tools) · [Routing](https://vinkius-labs.github.io/mcp-fusion/routing) · [Tool Exposition](https://vinkius-labs.github.io/mcp-fusion/tool-exposition)
+→ [Building Tools](https://mcp-fusion.vinkius.com/building-tools) · [Routing](https://mcp-fusion.vinkius.com/routing) · [Tool Exposition](https://mcp-fusion.vinkius.com/tool-exposition)
 
 ### Prompt Engine
 
@@ -248,7 +248,7 @@ const AuditPrompt = definePrompt<AppContext>('financial_audit', {
 });
 ```
 
-→ [Prompt Engine docs](https://vinkius-labs.github.io/mcp-fusion/prompts)
+→ [Prompt Engine docs](https://mcp-fusion.vinkius.com/prompts)
 
 ### Middleware
 
@@ -262,7 +262,7 @@ const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
 });
 ```
 
-→ [Middleware docs](https://vinkius-labs.github.io/mcp-fusion/middleware)
+→ [Middleware docs](https://mcp-fusion.vinkius.com/middleware)
 
 ### Self-Healing Errors
 
@@ -278,7 +278,7 @@ return toolError('ProjectNotFound', {
 
 Zod `.strict()` on all input schemas — hallucinated parameters rejected with per-field correction prompts.
 
-→ [Error Handling docs](https://vinkius-labs.github.io/mcp-fusion/error-handling) · [Cognitive Guardrails](https://vinkius-labs.github.io/mcp-fusion/mva/cognitive-guardrails)
+→ [Error Handling docs](https://mcp-fusion.vinkius.com/error-handling) · [Cognitive Guardrails](https://mcp-fusion.vinkius.com/mva/cognitive-guardrails)
 
 ### Type-Safe Client
 
@@ -292,7 +292,7 @@ const client = createFusionClient<AppRouter>(transport);
 const result = await client.execute('billing.get_invoice', { workspace_id: 'ws_1', id: 'inv_42' });
 ```
 
-→ [FusionClient docs](https://vinkius-labs.github.io/mcp-fusion/fusion-client)
+→ [FusionClient docs](https://mcp-fusion.vinkius.com/fusion-client)
 
 ### State Sync
 
@@ -310,7 +310,7 @@ tools.attachToServer(server, {
 });
 ```
 
-→ [State Sync docs](https://vinkius-labs.github.io/mcp-fusion/state-sync)
+→ [State Sync docs](https://mcp-fusion.vinkius.com/state-sync)
 
 ### Observability & Tracing
 
@@ -322,13 +322,13 @@ tools.enableDebug(createDebugObserver((event) => opentelemetry.addEvent(event.ty
 tools.enableTracing(tracer);
 ```
 
-→ [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) · [Tracing](https://vinkius-labs.github.io/mcp-fusion/tracing)
+→ [Observability](https://mcp-fusion.vinkius.com/observability) · [Tracing](https://mcp-fusion.vinkius.com/tracing)
 
 ### Runtime Guards
 
 Per-tool concurrency limits, egress payload guards, and mutation serialization:
 
-→ [Runtime Guards docs](https://vinkius-labs.github.io/mcp-fusion/runtime-guards)
+→ [Runtime Guards docs](https://mcp-fusion.vinkius.com/runtime-guards)
 
 ### Streaming Progress
 
@@ -365,7 +365,7 @@ expect(denied.isError).toBe(true);
 
 **2ms per test. $0.00 in tokens. Zero servers. Deterministic on every CI run, on every machine.**
 
-→ [Testing docs](https://vinkius-labs.github.io/mcp-fusion/testing) · [CI/CD Integration](https://vinkius-labs.github.io/mcp-fusion/testing/ci-cd) · [SOC2 Audit Patterns](https://vinkius-labs.github.io/mcp-fusion/testing/egress-firewall)
+→ [Testing docs](https://mcp-fusion.vinkius.com/testing) · [CI/CD Integration](https://mcp-fusion.vinkius.com/testing/ci-cd) · [SOC2 Audit Patterns](https://mcp-fusion.vinkius.com/testing/egress-firewall)
 
 ## All Capabilities
 
@@ -395,36 +395,36 @@ expect(denied.isError).toBe(true);
 
 | Package | Description |
 |---|---|
-| [`mcp-fusion-openapi-gen`](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
-| [`mcp-fusion-prisma-gen`](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
-| [`mcp-fusion-n8n`](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
-| [`@vinkius-core/testing`](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
-| [`@vinkius-core/mcp-fusion-oauth`](https://vinkius-labs.github.io/mcp-fusion/oauth) | OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Drop-in `createAuthTool()` with Device Flow, secure token storage, and `requireAuth()` middleware — provider agnostic. |
+| [`mcp-fusion-openapi-gen`](https://mcp-fusion.vinkius.com/openapi-gen) | OpenAPI 3.x → complete MCP Server generator. Parses any spec and emits Presenters, Tools, Registry, and server bootstrap — all configurable via YAML. |
+| [`mcp-fusion-prisma-gen`](https://mcp-fusion.vinkius.com/prisma-gen) | Prisma Generator that reads `schema.prisma` annotations and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection. |
+| [`mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Bidirectional translation driver: n8n REST API ↔ MCP in-memory objects. Auto-discovers webhook workflows, infers semantics from workflow Notes, enables in-memory MVA interception, and live-syncs tool lists with zero downtime. |
+| [`@vinkius-core/testing`](https://mcp-fusion.vinkius.com/testing) | In-memory MVA lifecycle emulator. Runs the full execution pipeline (Zod → Middleware → Handler → Egress Firewall) without network transport. Returns structured `MvaTestResult` objects for SOC2-grade auditing. |
+| [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Drop-in `createAuthTool()` with Device Flow, secure token storage, and `requireAuth()` middleware — provider agnostic. |
 
 ## Documentation
 
-Full documentation available at **[vinkius-labs.github.io/mcp-fusion](https://vinkius-labs.github.io/mcp-fusion/)**.
+Full documentation available at **[mcp-fusion.vinkius.com](https://mcp-fusion.vinkius.com/)**.
 
 | Guide | |
 |---|---|
-| [MVA Architecture](https://vinkius-labs.github.io/mcp-fusion/mva-pattern) | The MVA pattern and manifesto |
-| [Quickstart](https://vinkius-labs.github.io/mcp-fusion/quickstart) | Build a Fusion server from zero |
-| [Presenter](https://vinkius-labs.github.io/mcp-fusion/presenter) | Schema, rules, UI blocks, affordances, composition |
-| [Prompt Engine](https://vinkius-labs.github.io/mcp-fusion/prompts) | `definePrompt()`, `PromptMessage.fromView()`, registry |
-| [Context Tree-Shaking](https://vinkius-labs.github.io/mcp-fusion/mva/context-tree-shaking) | JIT rules vs global system prompts |
-| [Cognitive Guardrails](https://vinkius-labs.github.io/mcp-fusion/mva/cognitive-guardrails) | Truncation, strict validation, self-healing |
-| [Cost & Hallucination](https://vinkius-labs.github.io/mcp-fusion/cost-and-hallucination) | Token reduction analysis |
-| [Middleware](https://vinkius-labs.github.io/mcp-fusion/middleware) | Context derivation, authentication |
-| [State Sync](https://vinkius-labs.github.io/mcp-fusion/state-sync) | Cache-control signals, causal invalidation |
-| [Runtime Guards](https://vinkius-labs.github.io/mcp-fusion/runtime-guards) | Concurrency limits, egress guards, mutation serialization |
-| [Observability](https://vinkius-labs.github.io/mcp-fusion/observability) | Debug observers, tracing |
-| [OpenAPI Generator](https://vinkius-labs.github.io/mcp-fusion/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
-| [Prisma Generator](https://vinkius-labs.github.io/mcp-fusion/prisma-gen) | Generate Presenters and ToolBuilders from `schema.prisma` annotations |
-| [n8n Connector](https://vinkius-labs.github.io/mcp-fusion/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
-| [Testing Toolkit](https://vinkius-labs.github.io/mcp-fusion/testing) | In-memory MVA emulator, SOC2 audit patterns, test conventions |
-| [OAuth](https://vinkius-labs.github.io/mcp-fusion/oauth) | Device Flow authentication for MCP servers |
-| [Cookbook](https://vinkius-labs.github.io/mcp-fusion/examples) | Real-world patterns |
-| [API Reference](https://vinkius-labs.github.io/mcp-fusion/api-reference) | Complete typings |
+| [MVA Architecture](https://mcp-fusion.vinkius.com/mva-pattern) | The MVA pattern and manifesto |
+| [Quickstart](https://mcp-fusion.vinkius.com/quickstart) | Build a Fusion server from zero |
+| [Presenter](https://mcp-fusion.vinkius.com/presenter) | Schema, rules, UI blocks, affordances, composition |
+| [Prompt Engine](https://mcp-fusion.vinkius.com/prompts) | `definePrompt()`, `PromptMessage.fromView()`, registry |
+| [Context Tree-Shaking](https://mcp-fusion.vinkius.com/mva/context-tree-shaking) | JIT rules vs global system prompts |
+| [Cognitive Guardrails](https://mcp-fusion.vinkius.com/mva/cognitive-guardrails) | Truncation, strict validation, self-healing |
+| [Cost & Hallucination](https://mcp-fusion.vinkius.com/cost-and-hallucination) | Token reduction analysis |
+| [Middleware](https://mcp-fusion.vinkius.com/middleware) | Context derivation, authentication |
+| [State Sync](https://mcp-fusion.vinkius.com/state-sync) | Cache-control signals, causal invalidation |
+| [Runtime Guards](https://mcp-fusion.vinkius.com/runtime-guards) | Concurrency limits, egress guards, mutation serialization |
+| [Observability](https://mcp-fusion.vinkius.com/observability) | Debug observers, tracing |
+| [OpenAPI Generator](https://mcp-fusion.vinkius.com/openapi-gen) | Generate a full MCP Server from any OpenAPI 3.x spec |
+| [Prisma Generator](https://mcp-fusion.vinkius.com/prisma-gen) | Generate Presenters and ToolBuilders from `schema.prisma` annotations |
+| [n8n Connector](https://mcp-fusion.vinkius.com/n8n-connector) | Turn n8n workflows into AI-callable tools — 5 engineering primitives |
+| [Testing Toolkit](https://mcp-fusion.vinkius.com/testing) | In-memory MVA emulator, SOC2 audit patterns, test conventions |
+| [OAuth](https://mcp-fusion.vinkius.com/oauth) | Device Flow authentication for MCP servers |
+| [Cookbook](https://mcp-fusion.vinkius.com/examples) | Real-world patterns |
+| [API Reference](https://mcp-fusion.vinkius.com/api-reference) | Complete typings |
 
 ## Requirements
 
