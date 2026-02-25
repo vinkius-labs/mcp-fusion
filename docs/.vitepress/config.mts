@@ -50,7 +50,7 @@ export default defineConfig({
         '@type': 'Organization',
         'name': 'Vinkius Labs',
         'url': 'https://github.com/vinkius-core',
-        'logo': 'https://github.com/vinkius-core.png'
+        'logo': 'https://site-assets.vinkius.com/vk/icon-v-black-min.png'
       },
       'offers': {
         '@type': 'Offer',
