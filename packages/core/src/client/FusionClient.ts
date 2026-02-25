@@ -106,7 +106,7 @@ export class FusionClientError extends Error {
     /** Error code from the `code` attribute (e.g. `'NOT_FOUND'`). */
     readonly code: string;
     /** Recovery suggestion from `<recovery>` element. */
-    readonly recovery?: string;
+    readonly recovery?: string | undefined;
     /** Available actions from `<available_actions>` children. */
     readonly availableActions: readonly string[];
     /** Error severity from the `severity` attribute. */
@@ -119,9 +119,9 @@ export class FusionClientError extends Error {
         code: string,
         raw: ToolResponse,
         options?: {
-            recovery?: string;
-            availableActions?: string[];
-            severity?: string;
+            recovery?: string | undefined;
+            availableActions?: string[] | undefined;
+            severity?: string | undefined;
         },
     ) {
         super(message);
@@ -212,7 +212,7 @@ export interface FusionClient<TRouter extends RouterMap> {
      */
     executeBatch<TActions extends ReadonlyArray<keyof TRouter & string>>(
         calls: { [K in keyof TActions]: { action: TActions[K]; args: TRouter[TActions[K] & keyof TRouter] } },
-        options?: { sequential?: boolean },
+        options?: { sequential?: boolean | undefined } | undefined,
     ): Promise<ToolResponse[]>;
 }
 
@@ -249,7 +249,7 @@ function unescapeXml(str: string): string {
 function parseToolErrorXml(text: string): {
     code: string;
     message: string;
-    recovery?: string;
+    recovery?: string | undefined;
     availableActions: string[];
     severity: string;
 } | null {
@@ -274,13 +274,26 @@ function parseToolErrorXml(text: string): {
         }
     }
 
-    return {
+    const recovery = recoveryMatch?.[1] != null ? unescapeXml(recoveryMatch[1].trim()) : undefined;
+
+    const result: {
+        code: string;
+        message: string;
+        recovery?: string | undefined;
+        availableActions: string[];
+        severity: string;
+    } = {
         code: codeMatch?.[1] != null ? unescapeXml(codeMatch[1]) : 'UNKNOWN',
         message: unescapeXml(messageMatch[1]!.trim()),
-        recovery: recoveryMatch?.[1] != null ? unescapeXml(recoveryMatch[1].trim()) : undefined,
         availableActions: actions,
         severity: severityMatch?.[1] ?? 'error',
     };
+
+    if (recovery !== undefined) {
+        result.recovery = recovery;
+    }
+
+    return result;
 }
 
 // ============================================================================
@@ -390,11 +403,14 @@ export function createFusionClient<TRouter extends RouterMap>(
 
             const parsed = parseToolErrorXml(text);
             if (parsed) {
-                throw new FusionClientError(parsed.message, parsed.code, result, {
-                    recovery: parsed.recovery,
+                const opts: { recovery?: string | undefined; availableActions?: string[]; severity?: string } = {
                     availableActions: parsed.availableActions,
                     severity: parsed.severity,
-                });
+                };
+                if (parsed.recovery !== undefined) {
+                    opts.recovery = parsed.recovery;
+                }
+                throw new FusionClientError(parsed.message, parsed.code, result, opts);
             }
 
             throw new FusionClientError(text || 'Unknown error', 'UNKNOWN', result);
@@ -411,20 +427,21 @@ export function createFusionClient<TRouter extends RouterMap>(
             return executeInternal(action, args as Record<string, unknown>);
         },
 
-        async executeBatch(
-            calls: Array<{ action: string; args: Record<string, unknown> }>,
-            batchOptions?: { sequential?: boolean },
+        async executeBatch<TActions extends readonly (keyof TRouter & string)[]>(
+            calls: { [K in keyof TActions]: { action: TActions[K]; args: TRouter[TActions[K] & keyof TRouter] } },
+            batchOptions?: { sequential?: boolean | undefined } | undefined,
         ): Promise<ToolResponse[]> {
+            const items = calls as unknown as Array<{ action: string; args: Record<string, unknown> }>;
             if (batchOptions?.sequential) {
                 const results: ToolResponse[] = [];
-                for (const call of calls) {
+                for (const call of items) {
                     results.push(await executeInternal(call.action, call.args));
                 }
                 return results;
             }
 
             return Promise.all(
-                calls.map(call => executeInternal(call.action, call.args)),
+                items.map(call => executeInternal(call.action, call.args)),
             );
         },
     };

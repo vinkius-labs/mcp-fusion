@@ -45,8 +45,8 @@ import { decorateResponse } from './ResponseDecorator.js';
 
 export class StateSyncLayer {
     private readonly _engine: PolicyEngine;
-    private readonly _onInvalidation?: (event: InvalidationEvent) => void;
-    private readonly _notificationSink?: (notification: ResourceNotification) => void | Promise<void>;
+    private readonly _onInvalidation?: ((event: InvalidationEvent) => void) | undefined;
+    private readonly _notificationSink?: ((notification: ResourceNotification) => void | Promise<void>) | undefined;
 
     /**
      * Per-tool-name cache of decorated McpTool objects.
