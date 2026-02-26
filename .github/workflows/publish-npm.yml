@@ -63,6 +63,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
+      - name: Publish aws connector package
+        run: npm publish -w packages/aws --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
       - name: Publish oauth package
         run: npm publish -w packages/oauth --provenance --access public
         env:

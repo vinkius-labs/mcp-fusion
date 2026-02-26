@@ -1017,6 +1017,74 @@ expect(oom.isError).toBe(true);
 expect(JSON.stringify(result.rawResponse)).not.toContain('passwordHash');
 ```
 
+### AWS Connector (from 'mcp-fusion-aws')
+
+Auto-discover AWS Lambda functions and Step Functions via resource tags and expose them as grouped MCP tools. Tag filtering controls what the AI can see.
+
+- `createLambdaAdapter(client)` → LambdaAdapter — wraps `@aws-sdk/client-lambda` (dynamic import)
+- `createSfnAdapter(client)` → SfnAdapter — wraps `@aws-sdk/client-sfn` (dynamic import)
+- `AwsClient(lambdaAdapter?, sfnAdapter?)` — facade over both adapters
+  - `.listLambdaFunctions()` → LambdaFunctionSummary[]
+  - `.getLambdaTags(arn)` → Record<string, string>
+  - `.invokeLambda(arn, payload)` → { statusCode, payload, functionError? }
+  - `.listStateMachines()` → SfnStateMachineSummary[]
+  - `.getStateMachineTags(arn)` → Record<string, string>
+  - `.describeStateMachine(arn)` → { description, type }
+  - `.startSyncExecution(arn, input)` → { status, output, error?, cause?, executionArn }
+  - `.startExecution(arn, input)` → { executionArn, startDate }
+- `LambdaDiscovery(client, options?)` — discovers tagged Lambda functions
+  - `.discover()` → AwsLambdaConfig[] — fetches functions with `mcp:expose=true`
+  - `LambdaDiscoveryOptions` — { tagFilter?: Record<string, string> }
+- `StepFunctionDiscovery(client)` — discovers tagged Step Functions
+  - `.discover()` → AwsStepFunctionConfig[] — fetches state machines with `mcp:expose=true`
+- `synthesizeLambdaTools(configs, client)` → SynthesizedToolConfig[] — converts discovered Lambdas into tool definitions
+- `synthesizeStepFunctionTools(configs, client)` → SynthesizedToolConfig[] — converts discovered SFNs into tool definitions
+- `synthesizeAll(lambdas, sfns, client)` → SynthesizedToolConfig[] — combines both
+- `toToolName(name)` → string — converts PascalCase/camelCase to snake_case MCP tool name
+- `createAwsConnector(config)` → AwsConnector — full auto-discovery lifecycle
+  - `.tools()` → SynthesizedToolConfig[] — current compiled tool definitions
+  - `.lambdas` → AwsLambdaConfig[] — discovered Lambda configurations
+  - `.stepFunctions` → AwsStepFunctionConfig[] — discovered Step Function configurations
+  - `.client` → AwsClient — for use with `defineAwsTool()`
+  - `.refresh()` → Promise<boolean> — manual poll; returns true if list changed
+  - `.stop()` → void — stop background polling
+  - config: { lambdaClient?, sfnClient?, enableLambda?, enableStepFunctions?, tagFilter?, pollInterval?, onChange?, onError? }
+- `defineAwsTool(name, client, config)` → SynthesizedToolConfig — manual tool definition
+  - config: { arn, description?, annotations?: { readOnlyHint?, destructiveHint? } }
+  - ARN detection: `arn:aws:lambda:...` → Lambda invoke, `arn:aws:states:...` → SFN startSyncExecution
+
+Resource Tagging Convention:
+- `mcp:expose = true` — opt-in, resource becomes an MCP tool
+- `mcp:group = <name>` — groups multiple resources into a single multi-action tool
+- `mcp:action = <name>` — action name within a group (default: `execute`)
+- `mcp:readOnly = true` — marks the action as read-only
+- `mcp:destructive = true` — marks the action as destructive
+- `mcp:sfn-type = express|standard` — overrides Step Function execution type
+
+Step Function Execution Types:
+- EXPRESS — synchronous, blocks until completion, returns parsed output
+- STANDARD — async fire-and-forget, returns executionArn + cognitive instruction (`_instruction: "Do NOT assume completion"`)
+
+Peer dependencies: `@vinkius-core/mcp-fusion`, `@aws-sdk/client-lambda` (optional), `@aws-sdk/client-sfn` (optional).
+
+```typescript
+import { createAwsConnector, createLambdaAdapter, defineAwsTool } from 'mcp-fusion-aws';
+import { LambdaClient } from '@aws-sdk/client-lambda';
+import { defineTool, ToolRegistry } from '@vinkius-core/mcp-fusion';
+
+const connector = await createAwsConnector({
+  lambdaClient: await createLambdaAdapter(new LambdaClient({ region: 'us-east-1' })),
+  enableLambda: true,
+  pollInterval: 60_000,
+  onChange: () => server.notification({ method: 'notifications/tools/list_changed' }),
+});
+
+const registry = new ToolRegistry();
+for (const tool of connector.tools()) {
+  registry.register(defineTool(tool.name, tool.config));
+}
+```
+
 ### OAuth — Device Authorization Grant (from '@vinkius-core/mcp-fusion-oauth')
 
 OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers. Provider agnostic.

@@ -33,7 +33,7 @@ npx fusion create
 
   Project name?  (my-mcp-server) › my-server
   Transport?     [stdio, sse]    › stdio
-  Vector?        [vanilla, prisma, n8n, openapi, oauth] › vanilla
+  Vector?        [vanilla, prisma, n8n, openapi, aws, oauth] › vanilla
   Include testing?               › yes
 
   ● Scaffolding project — 14 files (6ms)
@@ -86,7 +86,7 @@ Building an MCP server from scratch means solving the same problems every time:
 npx fusion create my-server
 ```
 
-The interactive wizard configures transport (stdio/SSE), ingestion vector (vanilla/prisma/n8n/openapi/oauth), and testing. Use `--yes` for defaults.
+The interactive wizard configures transport (stdio/SSE), ingestion vector (vanilla/prisma/n8n/openapi/aws/oauth), and testing. Use `--yes` for defaults.
 
 ### Manual installation
 
@@ -450,6 +450,7 @@ const greetPrompt = f.prompt('greet', {
 | `prisma` | Prisma schema + DB tool stubs + `mcp-fusion-prisma-gen` generator |
 | `n8n` | n8n connector — `discoverWorkflows()` auto-registers webhook workflows as MCP tools |
 | `openapi` | OpenAPI 3.x spec + `mcp-fusion-openapi-gen` code generator |
+| `aws` | AWS connector — `createAwsConnector()` auto-discovers tagged Lambda & Step Functions as MCP tools |
 | `oauth` | RFC 8628 Device Flow — `createAuthTool()` + `requireAuth()` middleware + secure token persistence |
 
 ```bash
@@ -457,6 +458,20 @@ npx fusion create my-api --vector prisma --transport sse
 ```
 
 > **Docs**: [mcp-fusion.vinkius.com/vectors](https://mcp-fusion.vinkius.com/vectors)
+
+---
+
+## Generators & Connectors
+
+First-party packages that generate MCP tools from external sources:
+
+| Package | What it does |
+|---|---|
+| [`mcp-fusion-openapi-gen`](https://mcp-fusion.vinkius.com/openapi-gen) | Generate typed MCP tools from any OpenAPI 3.x spec |
+| [`mcp-fusion-prisma-gen`](https://mcp-fusion.vinkius.com/prisma-gen) | Generate CRUD tools from your Prisma schema |
+| [`mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Auto-discover n8n webhook workflows and expose them as tools |
+| [`mcp-fusion-aws`](https://mcp-fusion.vinkius.com/aws-connector) | Auto-discover tagged AWS Lambda & Step Functions as grouped tools |
+| [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | RFC 8628 Device Flow authentication with `createAuthTool()` |
 
 ---
 

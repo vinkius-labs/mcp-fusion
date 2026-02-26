@@ -9,6 +9,10 @@ export default defineConfig({
   appearance: 'force-dark',
 
   head: [
+    // ── Google Analytics ──
+    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-346DSQJMFD' }],
+    ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-346DSQJMFD');"],
+
     // ── Open Graph ──
     ['meta', { property: 'og:title', content: 'mcp-fusion — The MVA Framework for MCP Servers' }],
     ['meta', { property: 'og:description', content: 'A TypeScript framework with a Structured Perception Layer for AI agents. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
@@ -249,6 +253,7 @@ export default defineConfig({
           { text: 'OpenAPI Generator', link: '/openapi-gen' },
           { text: 'Prisma Generator', link: '/prisma-gen' },
           { text: 'n8n Connector', link: '/n8n-connector' },
+          { text: 'AWS Connector', link: '/aws-connector' },
           { text: 'OAuth', link: '/oauth' },
         ]
       },

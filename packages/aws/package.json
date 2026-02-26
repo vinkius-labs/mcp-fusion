@@ -1,0 +1,67 @@
+{
+    "name": "mcp-fusion-aws",
+    "version": "1.0.0",
+    "description": "AWS Lambda & Step Functions connector for MCP Fusion. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "aws",
+        "lambda",
+        "step-functions",
+        "mcp-fusion",
+        "serverless",
+        "ai",
+        "llm",
+        "connector"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/aws"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://mcp-fusion.vinkius.com/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "peerDependencies": {
+        "@aws-sdk/client-lambda": "^3.0.0",
+        "@aws-sdk/client-sfn": "^3.0.0",
+        "@vinkius-core/mcp-fusion": "^2.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@aws-sdk/client-lambda": {
+            "optional": true
+        },
+        "@aws-sdk/client-sfn": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.0"
+    },
+    "license": "Apache-2.0"
+}
