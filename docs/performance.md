@@ -1,16 +1,6 @@
 # Performance
 
-**MCP Fusion** was designed from the ground up with performance as a first-class concern. This page documents every optimization technique actually implemented in the framework — no theoretical claims, only what exists in the codebase.
-
----
-
-## Philosophy: Zero-Cost Abstractions
-
-**MCP Fusion** follows a core principle: **features that are not enabled have zero runtime cost.**
-
-Debug observers, State Sync, middleware, Presenters — when not configured, they produce no conditionals, no object allocations, and no function calls in the hot path. The framework pays only for what you use.
-
----
+Every optimization documented here exists in the codebase. Features that are not enabled have zero runtime cost — debug observers, State Sync, middleware, Presenters produce no conditionals, no object allocations, and no function calls in the hot path when not configured.
 
 ## 1. Build-Time Pre-Compilation
 
@@ -90,7 +80,6 @@ const actionKeysString = input.actions.map(a => a.key).join(', ');
 
 No `Array.join()` on every error path.
 
----
 
 ## 2. Freeze-After-Build Immutability
 
@@ -118,7 +107,6 @@ buildToolDefinition(): McpTool {
 - Subsequent calls to `buildToolDefinition()` return the cached `McpTool` object — zero recomputation.
 - The `_frozen` flag prevents accidental mutation, guaranteeing deterministic behavior without defensive copies.
 
----
 
 ## 3. Zero-Overhead Observability
 
@@ -154,7 +142,6 @@ debug({ type: 'execute', tool: this._name, action: actionName,
 
 **Result:** Production deployments without `createDebugObserver()` run the pure fast path. Adding observability is a single line — no code changes, no conditionals in any handler.
 
----
 
 ## 4. Railway-Oriented Execution Pipeline
 
@@ -186,7 +173,6 @@ if (!disc.ok) return disc.response;  // Short-circuit — zero cost
 
 This is measurably faster than exception-based error handling for expected failures (missing discriminator, unknown action, validation errors).
 
----
 
 ## 5. Zero-Copy Validation
 
@@ -207,7 +193,6 @@ return succeed(validated);
 
 Instead of creating a new object with `{ ...result.data, action: value }`, the framework mutates the `result.data` reference directly. This avoids an extra object allocation on every validated call.
 
----
 
 ## 6. State Sync Caching Architecture
 
@@ -273,7 +258,6 @@ private _decorateToolCached(tool: McpTool): McpTool {
 
 Since `tools/list` is the **hottest path** (runs at the start of every LLM conversation), this cache ensures near-zero overhead.
 
----
 
 ## 7. Bounded Glob Matching
 
@@ -295,7 +279,6 @@ function matchIterative(pattern: string[], name: string[]): boolean {
 
 **Why this matters:** Recursive glob matching can be O(2^n) for pathological patterns like `**.**.**.**`. The iterative approach with a 1024-iteration cap guarantees deterministic worst-case CPU usage while being generous enough for any real-world MCP tool name hierarchy.
 
----
 
 ## 8. Tag Filtering with O(1) Set Lookups
 
@@ -330,7 +313,6 @@ export function filterTools<TContext>(
 
 Early `break` on first match/exclusion avoids unnecessary iterations.
 
----
 
 ## 9. TOON Token Compression (30-50% Fewer Tokens)
 
@@ -382,7 +364,6 @@ export function toonSuccess(data: unknown, options?: EncodeOptions): ToolRespons
 
 For a 100-row user list, this saves thousands of tokens per response, translating directly to lower API costs.
 
----
 
 ## 10. Cognitive Guardrails (Context DDoS Prevention)
 
@@ -406,7 +387,6 @@ if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
 
 Truncation happens **before Zod validation**, so the schema only processes the capped set — saving CPU on large datasets.
 
----
 
 ## 11. Zod `.strict()` Security Boundary
 
@@ -422,7 +402,6 @@ function buildValidationSchema(action, commonSchema) {
 
 `.strict()` **rejects all undeclared fields** from the LLM's payload with an actionable error message naming the invalid fields. This is both a security measure (no undeclared data reaches handlers) and an agent experience improvement — the LLM learns which fields are valid and self-corrects on retry.
 
----
 
 ## 12. Pure-Function Module Architecture
 
@@ -447,7 +426,6 @@ Critical performance modules are implemented as pure functions with **no state a
 - Thread-safe by construction (no shared mutable state)
 - Deterministic output enables internal caching
 
----
 
 ## 13. Minimal Dependency Footprint
 
@@ -468,7 +446,6 @@ Critical performance modules are implemented as pure functions with **no state a
 - **Fast `npm install`** — two packages to resolve
 - **Reduced attack surface** — fewer transitive dependencies
 
----
 
 ## 14. Self-Healing Error Responses (Reduced LLM Retry Loops)
 
@@ -485,28 +462,3 @@ While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` r
 ```
 
 Each retry is a full LLM round-trip (input + output tokens billed again). Self-healing errors make the LLM succeed on the **second attempt** instead of cycling through 3-5 retries, saving 60-80% of error-path token usage.
-
----
-
-## Summary
-
-| Optimization | Where It Lives | Impact |
-|---|---|---|
-| Middleware pre-compilation | `MiddlewareCompiler.ts` | Zero chain assembly per request |
-| Validation schema cache | `ToolDefinitionCompiler.ts` | O(1) schema lookup per action |
-| O(1) action routing | `ToolDefinitionCompiler.ts` | `Map.get()` instead of linear scan |
-| Freeze-after-build | `GroupedToolBuilder.ts` | V8 JIT optimization + cache reuse |
-| Zero-overhead debug | `GroupedToolBuilder.ts` | No conditionals when disabled |
-| Railway-oriented pipeline | `ExecutionPipeline.ts` | No exceptions for expected errors |
-| Zero-copy validation | `ExecutionPipeline.ts` | Direct mutation instead of spread |
-| Policy resolution cache | `PolicyEngine.ts` | O(1) repeat lookups, bounded |
-| Pre-frozen policy objects | `PolicyEngine.ts` | Shared references, no allocation |
-| Tool decoration cache | `StateSyncLayer.ts` | Cache 100% hot path |
-| Bounded glob matching | `GlobMatcher.ts` | O(n) worst case, iterative |
-| Set-based tag filtering | `ToolFilterEngine.ts` | O(1) membership test |
-| TOON compression | `ToonDescriptionGenerator.ts` | 30-50% fewer prompt tokens |
-| Cognitive guardrails | `Presenter.ts` | 100x cost reduction on large sets |
-| Zod `.strict()` | `ToolDefinitionCompiler.ts` | Unknown field rejection, cleaner payloads |
-| Pure-function modules | 10+ files | V8 inlining, no GC pressure |
-| 2 runtime dependencies | `package.json` | Minimal install, tiny bundle |
-| Self-healing errors | `ValidationErrorFormatter.ts` | 60-80% fewer LLM retries |

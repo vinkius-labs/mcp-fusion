@@ -239,11 +239,7 @@ The FusionTester is designed for CI speed:
 | API keys required | **None** |
 | External services | **None** |
 
-::: info Zero Flakiness
 Because the FusionTester runs in RAM with zero external dependencies, your CI tests have **zero flakiness**. No API rate limits. No network timeouts. No model behavior variance. The same test produces the same result every time, on every machine.
-:::
-
----
 
 ## SOC2 Automated Audit — The Tests That Block PRs
 
@@ -431,8 +427,6 @@ describe('SOC2 CC8.1 — Input Boundary Protection', () => {
 });
 ```
 
----
-
 ### GitHub Actions Output
 
 When these tests run in your pipeline, the PR shows:
@@ -464,11 +458,9 @@ If a developer introduces a regression that leaks `passwordHash`:
 
 **The PR cannot merge.** The `passwordHash` leak is caught **before** it reaches production, **before** it reaches the LLM, and **before** your compliance officer sees it.
 
-::: danger This is What Automated SOC2 Looks Like
 No other AI framework in existence can do this. Every other MCP server relies on a developer opening Claude Desktop and saying *"looks fine to me."* That is not an audit. That is a liability.
 
 **MCP Fusion** converts compliance requirements into `expect()` assertions that run on every commit. The auditor receives a CI/CD log, not a verbal assurance.
-:::
 
 ### Manual Audit vs Automated Audit
 

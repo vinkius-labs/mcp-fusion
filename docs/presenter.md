@@ -1,16 +1,10 @@
 # Presenter
 
-In a raw MCP server, the handler does everything: it queries data, picks which fields to include, formats the response, and decides what guidance to give the agent. Add 30 tools that all return user objects, and you get 30 different representations of a user — some leak `password_hash`, some forget to mention that `amount_cents` needs division, some return 10,000 rows when the agent asked for "recent orders."
-
-The Presenter separates _what the agent sees_ from _how the data is fetched_. Your handler returns raw data. The Presenter validates, strips, enriches, truncates, and governs the response. You define `InvoicePresenter` once. Every tool and every prompt that touches invoices uses the same Presenter — same schema whitelist, same rules, same affordances.
+The Presenter separates what the agent sees from how data is fetched. Your handler returns raw data. The Presenter validates, strips, enriches, truncates, and governs the response. Define `InvoicePresenter` once — every tool and prompt that touches invoices uses the same schema, rules, and affordances.
 
 This is the **View** in the [MVA (Model-View-Agent)](/mva-pattern) pattern.
 
----
-
-## A Minimal Presenter {#minimal}
-
-At its simplest, a Presenter is a Zod schema with a name:
+## Defining a Presenter {#minimal}
 
 ```typescript
 import { definePresenter } from '@vinkius-core/mcp-fusion';
@@ -27,15 +21,11 @@ export const UserPresenter = definePresenter({
 });
 ```
 
-The schema is a whitelist. The handler returns the full database row — `id`, `name`, `email`, `role`, `password_hash`, `internal_flags`, `stripe_customer_id`, `tenant_secret`. The Presenter strips everything not declared in the schema via `Zod.parse()`. Four fields go to the agent. The rest are physically absent from the output object — not masked, not hidden, not in RAM.
-
-This inversion matters: a new column added to the database is invisible by default. The developer must explicitly add it to the schema for it to appear. The default is secure, not permissive.
-
----
+The schema is a whitelist. The handler returns the full database row — `id`, `name`, `email`, `role`, `password_hash`, `internal_flags`, `stripe_customer_id`. The Presenter strips everything not declared via `Zod.parse()`. A new column added to the database is invisible by default — the developer must explicitly add it to the schema.
 
 ## Auto-Extracted Rules {#auto-rules}
 
-Zod `.describe()` annotations serve double duty. They document the schema _and_ generate system rules that the agent reads alongside the data:
+Zod `.describe()` annotations generate system rules that travel with the data:
 
 ```typescript
 const invoiceSchema = z.object({
@@ -51,21 +41,11 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-With `autoRules: true` (the default in `definePresenter()`), the framework walks the schema and extracts every `.describe()` annotation as a system rule:
-
-```text
-[SYSTEM HINT]:
-  • amount_cents: Value in CENTS. Divide by 100 for display.
-  • status: Use emoji: ✅ paid, ⏳ pending, 🔴 overdue
-```
-
-These rules travel _with_ the data, not in a global system prompt. The agent sees "amount_cents: Value in CENTS" only when an invoice is in the response — zero wasted tokens on irrelevant instructions.
-
----
+The agent sees these rules only when invoice data is in the response — zero wasted tokens on irrelevant instructions.
 
 ## System Rules {#rules}
 
-For rules that don't map to a single field, use `systemRules`. Static rules are arrays of strings:
+Static:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -78,7 +58,7 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-Dynamic rules receive the data and context, so they can adapt to the current user's role or tenant configuration:
+Dynamic — adapts to the current user's role or tenant:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -94,15 +74,9 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-`null` values are filtered automatically. Dynamic rules are evaluated on every `.make()` call with fresh context, so a user who changes roles mid-session gets the correct rules immediately.
-
-When both `autoRules` and `systemRules` are set, they merge — auto-extracted rules first, then explicit rules.
-
----
+`null` values are filtered automatically. When both `autoRules` and `systemRules` are set, they merge.
 
 ## UI Blocks {#ui-blocks}
-
-UI blocks embed charts, diagrams, tables, and formatted text into the response. The `ui` namespace provides factory functions for all supported types:
 
 ```typescript
 import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
@@ -118,7 +92,7 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-`uiBlocks` receives a single validated item and returns an array of UI blocks. Available helpers:
+Available helpers:
 
 ```typescript
 ui.echarts({ /* ECharts config */ })    // Interactive charts
@@ -131,9 +105,7 @@ ui.json({ key: 'value' })              // Formatted JSON
 ui.summary('3 invoices found.')         // Collection summaries
 ```
 
-### Collection UI Blocks {#collection-ui}
-
-When the handler returns an array, `uiBlocks` fires for each item — which creates N individual charts. For aggregate visualizations, use `collectionUi` instead:
+For arrays, use `collectionUi` to get aggregate visualizations instead of N individual charts:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -149,15 +121,9 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-`collectionUi` receives the entire validated array and fires once. It's mutually exclusive with `uiBlocks` per call — the Presenter detects whether the data is a single item or an array.
-
----
-
 ## Agent Limit {#agent-limit}
 
-Without truncation, a handler that returns 10,000 rows sends all of them into the agent's context window. Agent accuracy degrades as context length increases — this is a well-documented LLM limitation.
-
-`agentLimit` slices the array _before_ validation (only kept items are validated) and injects a guidance UI block explaining what was omitted:
+Slices arrays before validation and injects guidance about what was omitted:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -174,13 +140,11 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-The agent receives 50 items plus a UI block that says "there are more — filter to narrow." The agent doesn't OOM, and it knows how to get more specific results. This doesn't affect single items — only arrays.
-
----
+The agent receives 50 items plus a UI block that tells it how to get more specific results.
 
 ## Suggested Actions {#affordances}
 
-Without affordances, the agent guesses what to do next. It might hallucinate `billing.process_payment` when the actual tool is `billing.pay`. `suggestActions` provides HATEOAS-style hints based on the data's current state:
+HATEOAS-style hints based on the data's current state:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -201,21 +165,11 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-The agent receives:
-
-```text
-[SYSTEM HINT]: Based on the current state, recommended next tools:
-  → billing.pay: Process immediate payment
-  → billing.send_reminder: Send payment reminder
-```
-
-The valid next actions arrive with pre-populated reasons. The agent doesn't need to scan the full `tools/list` to figure out what makes sense — the data tells it.
-
----
+The agent receives valid next actions with reasons instead of scanning the full `tools/list`.
 
 ## Embeds — Nested Presenters {#embeds}
 
-When your data has nested objects (e.g., an invoice with a client), each nested entity can have its own Presenter. Rules, UI blocks, and affordances from the child merge into the parent response:
+When data has nested objects, each entity gets its own Presenter. Rules, UI blocks, and affordances from children merge into the parent:
 
 ```typescript
 const ClientPresenter = definePresenter({
@@ -233,30 +187,16 @@ export const InvoicePresenter = definePresenter({
   schema: invoiceSchema,
   embeds: [
     { key: 'client', presenter: ClientPresenter },
+    { key: 'line_items', presenter: LineItemPresenter },
   ],
 });
 ```
 
-When `invoice.client` exists, `ClientPresenter` processes it — validating fields, stripping undeclared ones, merging rules. Multiple embeds are supported:
-
-```typescript
-embeds: [
-  { key: 'client', presenter: ClientPresenter },
-  { key: 'line_items', presenter: LineItemPresenter },
-],
-```
-
-Embeds nest to any depth. Each child Presenter at each level contributes its own rules, UI, and affordances to the final response.
-
----
+Embeds nest to any depth.
 
 ## Tool Integration {#tool-integration}
 
-Attach a Presenter to any tool via the `returns` field. The handler returns raw data; the framework calls `presenter.make(data, ctx).build()` automatically:
-
 ```typescript
-const f = initFusion<AppContext>();
-
 const getInvoice = f.tool({
   name: 'billing.get_invoice',
   description: 'Retrieve an invoice by ID',
@@ -271,13 +211,11 @@ const getInvoice = f.tool({
 });
 ```
 
-The handler's only job is to query data. Validation, field stripping, rule injection, UI rendering, affordance generation — all of it is separated into the Presenter.
-
----
+The handler's only job is to query data. The framework calls `presenter.make(data, ctx).build()` automatically.
 
 ## Prompt Integration {#prompt-integration}
 
-Presenters work in prompts too. `PromptMessage.fromView()` decomposes a Presenter's output — data, rules, UI blocks, affordances — into prompt messages:
+`PromptMessage.fromView()` decomposes a Presenter's output into prompt messages:
 
 ```typescript
 import { definePrompt, PromptMessage } from '@vinkius-core/mcp-fusion';
@@ -297,41 +235,28 @@ const AuditPrompt = definePrompt<AppContext>('audit', {
 });
 ```
 
-The same Presenter used in your `billing.get_invoice` tool now shapes the data in your audit prompt. Same schema, same rules, same affordances — zero duplication.
+Same Presenter, same schema, same rules — in both tools and prompts.
 
----
-
-## The Execution Pipeline {#pipeline}
-
-When `.make(data, ctx).build()` runs, the Presenter executes stages in this exact order:
+## Execution Pipeline {#pipeline}
 
 ```text
 handler return value
     ↓
 1. Array Detection         → single-item or collection path
-    ↓
 2. agentLimit (arrays)     → slice BEFORE validation, inject guidance
-    ↓
 3. Zod .parse() (strict)   → strip undeclared fields, validate types
-    ↓
 4. Embed Resolution        → run child Presenters on nested keys
-    ↓
 5. System Rules            → autoRules + static + dynamic rules
-    ↓
 6. UI Blocks               → uiBlocks (single) or collectionUi (array)
-    ↓
 7. Suggested Actions       → HATEOAS affordances per item
-    ↓
 8. ResponseBuilder.build() → final ToolResponse
 ```
 
-Every stage is optional and independently composable. A Presenter with only `name` and `schema` is a pure egress whitelist. Add `systemRules` and it becomes a JIT instruction channel. Add `agentLimit` and it becomes a truncation guard. Add all layers and you get the full perception package.
+Every stage is optional. A Presenter with only `name` and `schema` is a pure egress whitelist.
 
----
+## Builder API {#builder-api}
 
-## The Builder API {#builder-api}
-
-`definePresenter()` is the recommended API — a single configuration object with `autoRules` support. The classic fluent builder `createPresenter()` is fully supported:
+`definePresenter()` is recommended. The fluent builder `createPresenter()` is also supported:
 
 ```typescript
 import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
@@ -347,24 +272,9 @@ export const InvoicePresenter = createPresenter('Invoice')
   );
 ```
 
-| `definePresenter()` config | `createPresenter()` builder |
-|---|---|
-| `schema: zodSchema` | `.schema(zodSchema)` |
-| `systemRules: rules` | `.systemRules(rules)` |
-| `autoRules: true` | Not available — use `definePresenter()` |
-| `uiBlocks: fn` | `.uiBlocks(fn)` |
-| `collectionUi: fn` | `.collectionUiBlocks(fn)` |
-| `agentLimit: { max, onTruncate }` | `.agentLimit(max, onTruncate)` |
-| `suggestActions: fn` | `.suggestActions(fn)` |
-| `embeds: [{ key, presenter }]` | `.embed(key, presenter)` |
-
-After the first `.make()` call, the Presenter is sealed — configuration methods throw if called. This prevents accidental mutation in shared modules.
-
----
+After the first `.make()` call, the Presenter is sealed — configuration methods throw if called.
 
 ## Manual Usage {#manual}
-
-For advanced cases where you need to add extra layers beyond what the Presenter config provides, call `.make()` directly:
 
 ```typescript
 const builder = InvoicePresenter.make(invoiceData, ctx);
@@ -376,11 +286,9 @@ builder
 return builder.build();
 ```
 
----
-
 ## Error Handling {#errors}
 
-When validation fails, the Presenter throws a `PresenterValidationError` with the Presenter name:
+When validation fails, a `PresenterValidationError` is thrown with per-field details:
 
 ```typescript
 import { PresenterValidationError } from '@vinkius-core/mcp-fusion';
@@ -395,21 +303,9 @@ try {
 }
 ```
 
-The error message includes per-field details:
-
-```text
-[Invoice Presenter] Validation failed:
-  - "id": Expected string, received number
-  - "status": Invalid enum value
-```
-
----
-
 ## Composition Patterns {#patterns}
 
 ### Shared Base Schema {#base-schema}
-
-Extract common fields into a base schema and extend for each entity:
 
 ```typescript
 const baseEntity = z.object({
@@ -425,20 +321,9 @@ const InvoicePresenter = definePresenter({
     status: z.enum(['paid', 'pending', 'overdue']),
   }),
 });
-
-const UserPresenter = definePresenter({
-  name: 'User',
-  schema: baseEntity.extend({
-    name: z.string(),
-    email: z.string().email(),
-    role: z.enum(['admin', 'member', 'guest']),
-  }),
-});
 ```
 
 ### Multi-Level Embeds {#multi-embed}
-
-Embeds compose to arbitrary depth. Each child contributes rules, UI, and affordances:
 
 ```typescript
 const LineItemPresenter = definePresenter({
@@ -455,16 +340,4 @@ const InvoicePresenter = definePresenter({
     { key: 'line_items', presenter: LineItemPresenter },
   ],
 });
-// invoice.client     → validated by ClientPresenter
-// invoice.line_items → truncated at 20, validated by LineItemPresenter
-// All rules, UI, affordances merge into one response
 ```
-
----
-
-## Where to Go Next {#next-steps}
-
-- [MVA Pattern](/mva-pattern) — the architectural paradigm behind Presenters
-- [Building Tools](/building-tools) — attaching Presenters via `returns`
-- [Prompt Engine](/prompts) — using Presenters in prompts with `fromView()`
-- [MVA Convention](/mva-convention) — file structure and naming conventions

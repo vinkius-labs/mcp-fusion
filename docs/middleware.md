@@ -1,371 +1,186 @@
 # Middleware
 
-Middleware intercepts every action call before or after your route handler resolves. MCP Fusion supports three middleware scopes and pre-compiles chains at build time.
-
----
-
-## Creating Middleware
-
-MCP Fusion offers **three ways** to create middleware:
-
-::: code-group
-```typescript [f.middleware() — Recommended ✨]
-import { initFusion } from '@vinkius-core/mcp-fusion';
-
-const f = initFusion<AppContext>();
-
-// Context-derivation style — similar to tRPC
-const authMiddleware = f.middleware(async (ctx) => {
-    const user = await db.getUser(ctx.token);
-    if (!user) throw new Error('Unauthorized');
-    return { user, permissions: user.permissions };
-    // ↑ TypeScript infers these fields are added to ctx
-});
-```
-```typescript [defineMiddleware — Classic]
-import { defineMiddleware } from '@vinkius-core/mcp-fusion';
-
-const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
-    const user = await db.getUser(ctx.token);
-    if (!user) throw new Error('Unauthorized');
-    return { user, permissions: user.permissions };
-});
-```
-```typescript [Raw MiddlewareFn]
-import type { MiddlewareFn } from '@vinkius-core/mcp-fusion';
-
-const loggingMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    console.log(`[${new Date().toISOString()}] Action called`);
-    const result = await next();
-    console.log(`[${new Date().toISOString()}] Action completed`);
-    return result;
-};
-```
-:::
-
----
-
-## The `MiddlewareFn` Signature
+## The Signature
 
 ```typescript
 type MiddlewareFn<TContext> = (
-    ctx: TContext,
-    args: Record<string, unknown>,
-    next: () => Promise<ToolResponse>,
-) => Promise<ToolResponse>;
+  ctx: TContext,
+  args: Record<string, unknown>,
+  next: () => Promise<unknown>,
+) => Promise<unknown>;
 ```
 
-- **`ctx`** — the strongly-typed per-request context (database connections, auth sessions, etc.)
-- **`args`** — the perfectly validated arguments (post Zod parsing and `.strict()`)
-- **`next()`** — calls the downstream middleware or the final execution handler. If you don't call `next()`, the handler is never executed.
+Call `next()` to continue to the next middleware or handler. Don't call it to block the request. The same signature works for tool and prompt middleware — share them freely.
 
----
+## Creating Middleware
 
-## The Three Middleware Scopes
+### f.middleware()
 
-### 1. Global Middleware
+Derive data and inject it into context. Like tRPC's `.use`:
 
-Attaching via `.use()` directly on the root builder runs the middleware for **every** connected action in the entire tool. This is the outermost execution layer.
-
-::: code-group
-```typescript [createTool]
-const tool = createTool<AppContext>('platform')
-    .use(loggingMiddleware)     // Runs first (outermost)
-    .use(authMiddleware)        // Runs second
-    .group('users', g => { /* ... */ })
-    .group('billing', g => { /* ... */ });
-```
-```typescript [defineTool]
-const tool = defineTool<AppContext>('platform', {
-    middleware: [loggingMiddleware, authMiddleware],
-    actions: { /* ... */ },
-    groups: { /* ... */ },
-});
-```
-:::
-
-### 2. Group-Scoped Middleware
-
-By calling `.use()` onto a specific `ActionGroupBuilder`, the middleware strictly isolates to actions within that designated structural group. This lives perfectly between global middleware and your handler.
-
-::: code-group
-```typescript [createTool]
-const tool = createTool<AppContext>('platform')
-    .use(loggingMiddleware)   // Global: runs for ALL actions
-    .group('users', g => {
-        g.use(requireAdmin)   // Group-scoped: runs ONLY for users.* actions
-         .action({ name: 'list', handler: listUsers })
-         .action({ name: 'ban', destructive: true, handler: banUser });
-    })
-    .group('billing', g => {
-        g.use(requireBilling) // Group-scoped: runs ONLY for billing.* actions
-         .action({ name: 'invoices', handler: listInvoices });
-    });
-```
-```typescript [defineTool]
-const tool = defineTool<AppContext>('platform', {
-    middleware: [loggingMiddleware],
-    groups: {
-        users: {
-            middleware: [requireAdmin],
-            actions: {
-                list: { handler: listUsers },
-                ban: { destructive: true, handler: banUser },
-            },
-        },
-        billing: {
-            middleware: [requireBilling],
-            actions: {
-                invoices: { handler: listInvoices },
-            },
-        },
-    },
-});
-```
-:::
-
-### 3. Per-Action Middleware
-
-Because group-scoped middleware applies natively to all actions inside the structural group, the most granular unit in **MCP Fusion** is the Group. If you strictly need per-action middleware, create a single-action focused group namespace.
-
----
-
-## Context Derivation — `f.middleware()` / `defineMiddleware()`
-
-For middleware that derives data and injects it into the context (like tRPC's `.use`), use `f.middleware()` (recommended) or `defineMiddleware()`:
-
-::: code-group
-```typescript [f.middleware() — Recommended ✨]
+```typescript
 const f = initFusion<AppContext>();
 
 const requireAuth = f.middleware(async (ctx) => {
-    const user = await db.getUser(ctx.token);
-    if (!user) throw new Error('Unauthorized');
-    return { user, permissions: user.permissions };
-});
-
-const addTenant = f.middleware(async (ctx) => {
-    const tenant = await db.getTenant(ctx.orgId);
-    return { tenant };
+  const user = await db.getUser(ctx.token);
+  if (!user) throw new Error('Unauthorized');
+  return { user, permissions: user.permissions };
 });
 ```
-```typescript [defineMiddleware — Classic]
+
+The returned object merges into `ctx` via `Object.assign`. Downstream handlers see `ctx.user` and `ctx.permissions` — fully typed, no casting.
+
+### Raw MiddlewareFn
+
+For before/after hooks, wrap `next()` directly:
+
+```typescript
+const loggingMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
+  console.log(`[${new Date().toISOString()}] Action called`);
+  const result = await next();
+  console.log(`[${new Date().toISOString()}] Action completed`);
+  return result;
+};
+```
+
+### defineMiddleware()
+
+Same as `f.middleware()` but standalone — for shared utility packages:
+
+```typescript
 import { defineMiddleware } from '@vinkius-core/mcp-fusion';
 
-const requireAuth = defineMiddleware(async (ctx: { token: string }) => {
-    const user = await db.getUser(ctx.token);
-    if (!user) throw new Error('Unauthorized');
-    return { user, permissions: user.permissions };
-});
-
 const addTenant = defineMiddleware(async (ctx: { orgId: string }) => {
-    const tenant = await db.getTenant(ctx.orgId);
-    return { tenant };
+  const tenant = await db.getTenant(ctx.orgId);
+  return { tenant };
 });
 ```
-:::
 
-### Using Derived Middleware
+Both `f.middleware()` and `defineMiddleware()` return a `MiddlewareDefinition`. Call `.toMiddlewareFn()` when passing it to a tool or group.
 
-::: code-group
-```typescript [f.tool() + createGroup — Recommended ✨]
-import { initFusion, createGroup, success } from '@vinkius-core/mcp-fusion';
-
-const f = initFusion<AppContext>();
-
-// Use with createGroup — middleware pre-composed at build time
-const billingGroup = createGroup<AppContext>({
-    name: 'billing',
-    middleware: [requireAuth.toMiddlewareFn(), addTenant.toMiddlewareFn()],
-    tools: [
-        {
-            name: 'refund',
-            input: z.object({ invoiceId: z.string() }),
-            handler: async ({ ctx }) => {
-                // ctx.user and ctx.tenant are now available
-                return success(`Refunded by ${ctx.user.id} for ${ctx.tenant.name}`);
-            },
-        },
-    ],
-});
-```
-```typescript [createTool — Classic]
-const tool = createTool<AppContext>('billing')
-    .use(requireAuth.toMiddlewareFn())
-    .use(addTenant.toMiddlewareFn())
-    .action({
-        name: 'refund',
-        handler: async (ctx, args) => {
-            // ctx.user and ctx.tenant are now available
-            return success(`Refunded by ${ctx.user.id} for ${ctx.tenant.name}`);
-        },
-    });
-```
-```typescript [defineTool — Classic]
-const tool = defineTool<AppContext>('billing', {
-    middleware: [requireAuth.toMiddlewareFn(), addTenant.toMiddlewareFn()],
-    actions: {
-        refund: {
-            handler: async (ctx, args) => success(`Refunded by ${ctx.user.id}`),
-        },
-    },
-});
-```
-:::
-
-### How It Works
-
-1. **`defineMiddleware(fn)` returns a `MiddlewareDefinition`** — a branded object with a `derive` function and a `toMiddlewareFn()` converter.
-2. **The derive function** receives the current context, performs async work, and returns new properties.
-3. **The returned properties are merged** into the context before `next()` is called.
-4. **If derive throws**, the request short-circuits — `next()` is never called.
-
-### Type Safety
-
-`isMiddlewareDefinition()` and `resolveMiddleware()` are available for programmatic inspection:
-
-```typescript
-import { isMiddlewareDefinition, resolveMiddleware } from '@vinkius-core/mcp-fusion';
-
-// Check if a value is a MiddlewareDefinition
-isMiddlewareDefinition(requireAuth); // true
-isMiddlewareDefinition(regularFn);   // false
-
-// Resolve either type to a MiddlewareFn
-const fn = resolveMiddleware(requireAuth); // Works with both
-```
-
----
-
-## Execution Constraints
-
-The framework pre-compiles the chain deterministically.
+## Scopes
 
 ```text
-Global MW 1 → Global MW 2 → Group MW 1 → Group MW 2 → Handler
-(outermost)                                              (innermost)
+Global → Group → Per-Action → Handler
 ```
 
-::: info Why Pre-Compilation Matters
-Instead of composing middleware arrays at request time, MCP Fusion compiles the full chain at build time:
+**Global** — runs for every action in the tool:
 
 ```typescript
-// What the compiler builds internally:
-const chain = (ctx, args) =>
-    loggingMiddleware(ctx, args, () =>
-        requireAdmin(ctx, args, () =>
-            banUser(ctx, args)
-        )
-    );
+const tool = createTool<AppContext>('platform')
+  .use(loggingMiddleware)
+  .use(authMiddleware);
 ```
-At runtime, `.execute()` runs a single `Map.get()` lookup and calls the pre-compiled function. No iteration overhead, no runtime array allocation.
-:::
 
----
+**Group-scoped** — runs only for actions in that group:
 
-## Real-World Patterns
+```typescript
+const tool = createTool<AppContext>('platform')
+  .use(loggingMiddleware)
+  .group('users', g => {
+    g.use(requireRole('admin'))
+     .action({ name: 'list', handler: listUsers })
+     .action({ name: 'ban', destructive: true, handler: banUser });
+  })
+  .group('billing', g => {
+    g.use(requireRole('finance'))
+     .action({ name: 'invoices', handler: listInvoices });
+  });
+```
 
-### Authentication Blocks
-A foundational check to verify active session capabilities on LLM connections.
+`users.ban` runs: `loggingMiddleware → requireRole('admin') → banUser`.
+`billing.invoices` runs: `loggingMiddleware → requireRole('finance') → listInvoices`.
+
+**Per-action** — via the `middleware` array:
+
+```typescript
+const billingGroup = createGroup<AppContext>({
+  name: 'billing',
+  middleware: [requireAuth.toMiddlewareFn()],
+  actions: {
+    invoices: {
+      description: 'List invoices',
+      input: z.object({ year: z.number() }),
+      handler: async ({ ctx, input }) => ctx.db.invoices.findMany({ where: { year: input.year } }),
+    },
+    refund: {
+      description: 'Refund an invoice',
+      input: z.object({ invoiceId: z.string() }),
+      middleware: [requireRole('finance')],
+      handler: async ({ ctx, input }) => ctx.db.invoices.refund(input.invoiceId),
+    },
+  },
+});
+```
+
+## Pre-Compilation
+
+Chains are compiled at build time into a single nested function:
+
+```typescript
+const chain = (ctx, args) =>
+  loggingMiddleware(ctx, args, () =>
+    requireRole('admin')(ctx, args, () =>
+      banUser(ctx, args)
+    )
+  );
+```
+
+At runtime, handler execution is a `Map.get()` lookup + one function call. No iteration, no array allocation per request.
+
+## Patterns
+
+**Authentication guard:**
 
 ```typescript
 const authMiddleware: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    if (!ctx.session?.userId) {
-        return error('Authentication required. Missing token.');
-    }
-    return next();
+  if (!ctx.session?.userId) {
+    return error('Authentication required. Missing token.');
+  }
+  return next();
 };
 ```
 
-### Role-Based Access Control (RBAC)
-Restrict entire namespaces natively without copying checks into 40 distinct route handlers.
+**Role factory:**
 
 ```typescript
 function requireRole(...roles: string[]): MiddlewareFn<AppContext> {
-    return async (ctx, args, next) => {
-        if (!roles.includes(ctx.role)) {
-            return error(`Forbidden: requires one of [${roles.join(', ')}]`);
-        }
-        return next();
-    };
+  return async (ctx, args, next) => {
+    if (!roles.includes(ctx.role)) {
+      return error(`Forbidden: requires one of [${roles.join(', ')}]`);
+    }
+    return next();
+  };
 }
-
-// Usage
-builder.group('admin', g => {
-    g.use(requireRole('admin', 'super_admin'))
-     .action({ name: 'reset', destructive: true, handler: resetHandler });
-});
 ```
 
-### Automatic Audit Logging
-Because middleware sits firmly around the `next()` lifecycle, you can inject audit logs completely invisibly.
+**Audit logging** — capture the result after the handler:
 
 ```typescript
 const auditLog: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-    const result = await next();
-
-    await ctx.db.auditLogs.create({
-        data: {
-            userId: ctx.session.userId,
-            action: args.action as string,
-            args: JSON.stringify(args),
-            success: !result.isError,
-            timestamp: new Date(),
-        },
-    });
-
-    return result;
+  const result = await next();
+  await ctx.db.auditLogs.create({
+    data: { userId: ctx.session.userId, action: args.action as string, timestamp: new Date() },
+  });
+  return result;
 };
 ```
 
-### Context Derivation with `defineMiddleware`
-The cleanest pattern for injecting derived state:
+**Stacking derivations:**
 
 ```typescript
-const withDatabase = defineMiddleware(async (ctx: { connectionString: string }) => {
-    const db = await connectToDatabase(ctx.connectionString);
-    return { db };
-});
-
-const withCurrentUser = defineMiddleware(async (ctx: { token: string }) => {
-    const user = await verifyToken(ctx.token);
-    if (!user) throw new Error('Invalid token');
-    return { user, isAdmin: user.role === 'admin' };
-});
-
 const tool = createTool<AppContext>('platform')
-    .use(withDatabase.toMiddlewareFn())
-    .use(withCurrentUser.toMiddlewareFn())
-    .action({
-        name: 'dashboard',
-        handler: async (ctx) => {
-            // ctx.db, ctx.user, ctx.isAdmin — all available, all typed
-            const data = await ctx.db.getDashboard(ctx.user.id);
-            return success(data);
-        },
-    });
+  .use(withDatabase.toMiddlewareFn())
+  .use(withCurrentUser.toMiddlewareFn())
+  .action({
+    name: 'dashboard',
+    handler: async (ctx) => {
+      // ctx.db, ctx.user, ctx.isAdmin — all typed
+      return success(await ctx.db.getDashboard(ctx.user.id));
+    },
+  });
 ```
 
----
+## Utilities
 
-## Composing Dense APIs
-
-A realistic production MCP module leveraging Fusion routing might combine all these patterns into deeply constrained LLM tooling surfaces:
-
-```typescript
-const platform = createTool<AppContext>('platform')
-    .description('Platform API')
-    .use(metrics)            
-    .use(authMiddleware)     
-    .use(auditLog)           
-    .group('users', g => {
-        g.use(requireRole('admin'))  
-         .action({ name: 'create', schema: createUserSchema, handler: createUser })
-         .action({ name: 'ban', destructive: true, schema: banSchema, handler: banUser });
-    })
-    .group('projects', g => {
-        g.use(rateLimit(30, 60_000)) 
-         .action({ name: 'list', readOnly: true, handler: listProjects })
-         .action({ name: 'create', schema: createProjectSchema, handler: createProject });
-    });
-```
+`resolveMiddleware(mw)` accepts either `MiddlewareFn` or `MiddlewareDefinition` and returns a `MiddlewareFn`. Useful for accepting middleware from external packages that might use either form.

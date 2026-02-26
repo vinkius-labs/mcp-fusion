@@ -5,15 +5,12 @@ description: "The fusion CLI — generate, verify, and manage capability lockfil
 
 # CLI Reference
 
-::: tip One-Liner
-`fusion lock` captures the behavioral surface. `fusion lock --check` gates the CI build.
-:::
+The `fusion` CLI generates and verifies capability lockfiles from the command line. Two commands cover the entire workflow: `fusion lock` captures the behavioral surface, `fusion lock --check` gates the CI build.
 
----
 
-## Installation
+## Installation {#install}
 
-The CLI is included in `@vinkius-core/mcp-fusion` and available as `fusion` via npx:
+The CLI is included in `@vinkius-core/mcp-fusion` and available via npx:
 
 ```bash
 npx fusion lock --server ./src/server.ts
@@ -26,19 +23,12 @@ npm install -g @vinkius-core/mcp-fusion
 fusion lock --server ./src/server.ts
 ```
 
----
 
-## Commands
-
-### `fusion lock`
-
-Generate or update `mcp-fusion.lock` — a deterministic, git-diffable snapshot of the server's complete behavioral surface.
+## Generating a Lockfile {#generate}
 
 ```bash
 fusion lock --server ./src/server.ts
 ```
-
-Output:
 
 ```
   fusion lock — Generating mcp-fusion.lock
@@ -53,15 +43,16 @@ Output:
   Integrity: sha256:a1b2c3d4e5f6...
 ```
 
-### `fusion lock --check`
+The CLI imports your server entrypoint, resolves the `ToolRegistry`, compiles contracts from all registered builders, computes behavioral digests, and writes a deterministic, git-diffable lockfile.
 
-Verify the lockfile matches the current server surface. Exits with code 0 if up-to-date, code 1 if stale. Designed for CI gates.
+
+## Verifying in CI {#check}
 
 ```bash
 fusion lock --check --server ./src/server.ts
 ```
 
-When stale:
+`--check` compares the existing lockfile against the live server surface without writing. Exits with code 0 if up-to-date, code 1 if stale:
 
 ```
   fusion lock — Verifying mcp-fusion.lock
@@ -78,103 +69,65 @@ When stale:
   - Prompts removed: legacy-greeting
 ```
 
----
+This is the command you put in your CI pipeline. When it fails, someone changed the behavioral surface without running `fusion lock`.
 
-## Options
+
+## Options {#options}
 
 | Option | Short | Default | Description |
 |---|---|---|---|
 | `--server <path>` | `-s` | — | Path to server entrypoint. **Required.** |
-| `--name <name>` | `-n` | Auto-detected | Server name for the lockfile header. Falls back to the export name or `mcp-fusion-server`. |
-| `--cwd <dir>` | — | `process.cwd()` | Project root directory. The lockfile is written to / read from this directory. |
-| `--check` | — | — | Verify mode: compare the lockfile to the live surface without writing. |
-| `--help` | `-h` | — | Show help message. |
+| `--name <name>` | `-n` | Auto-detected | Server name for the lockfile header |
+| `--cwd <dir>` | — | `process.cwd()` | Project root directory |
+| `--check` | — | — | Verify mode — compare without writing |
+| `--help` | `-h` | — | Show help message |
 
----
 
-## Registry Auto-Discovery
+## Registry Auto-Discovery {#discovery}
 
-The CLI needs to resolve a `ToolRegistry` from your server entrypoint. It supports three export patterns, tried in order:
+The CLI needs to resolve a `ToolRegistry` from your server entrypoint. It tries three export patterns in order:
 
-### 1. Named `registry` Export
+Named `registry` export:
 
 ```typescript
-// src/server.ts
 export const registry = new ToolRegistry();
 export const serverName = 'payments-api';
 ```
 
-### 2. Named `fusion` Export (initFusion Pattern)
+Named `fusion` export (from `initFusion`):
 
 ```typescript
-// src/server.ts
 export const fusion = initFusion({
-    name: 'payments-api',
-    registry,
+  name: 'payments-api',
+  registry,
 });
 ```
 
-### 3. Default Export
+Default export:
 
 ```typescript
-// src/server.ts
 export default { registry, serverName: 'payments-api' };
 ```
 
 If none of these patterns match, the CLI exits with a descriptive error explaining the expected export shapes.
 
----
+The CLI also discovers prompt registries for inclusion in the lockfile. It looks for `promptRegistry`, `prompts`, or `promptsRegistry` exports in the same entrypoint.
 
-## Prompt Discovery
 
-The CLI also discovers prompt registries for inclusion in the lockfile. It looks for these exports in the same entrypoint:
-
-- `promptRegistry`
-- `prompts`
-- `promptsRegistry`
-
-```typescript
-// src/server.ts
-export const registry = new ToolRegistry();
-export const promptRegistry = new PromptRegistry();
-```
-
-When prompts are found, the lockfile includes a `prompts` section alongside tools.
-
----
-
-## Progress Reporting
-
-The CLI outputs Composer/Yarn-style progress indicators to `stderr`:
-
-| Icon | Status | Meaning |
-|---|---|---|
-| `○` | pending | Step queued |
-| `◐` | running | Step in progress |
-| `●` | done | Step completed successfully |
-| `✗` | failed | Step failed |
-
-Each step shows elapsed duration in milliseconds. Output goes to `stderr` so it doesn't interfere with piped `stdout`.
-
----
-
-## CI/CD Integration
+## CI/CD Integration {#ci}
 
 ### GitHub Actions
 
 ```yaml
-# .github/workflows/ci.yml
 jobs:
   governance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+        with: { node-version: '22' }
       - run: npm ci
-      - name: Verify capability lockfile
-        run: npx fusion lock --check --server ./src/server.ts
+      - run: npx fusion lock --check --server ./src/server.ts
 ```
 
 ### GitLab CI
@@ -194,28 +147,40 @@ governance:
 npx fusion lock --check --server ./src/server.ts
 ```
 
----
 
-## Exit Codes
+## Exit Codes {#exit}
 
 | Code | Meaning |
 |---|---|
-| `0` | Success — lockfile generated or verification passed |
-| `1` | Failure — lockfile is stale, missing, or server could not be resolved |
+| `0` | Lockfile generated or verification passed |
+| `1` | Lockfile is stale, missing, or server could not be resolved |
 
----
 
-## Programmatic API
+## Progress Reporting {#progress}
 
-The CLI logic is also available as importable functions for programmatic use:
+The CLI outputs Composer/Yarn-style progress indicators to `stderr`:
+
+| Icon | Status |
+|---|---|
+| `○` | Step queued |
+| `◐` | Step in progress |
+| `●` | Step completed |
+| `✗` | Step failed |
+
+Each step shows elapsed duration in milliseconds. Output goes to `stderr` so it doesn't interfere with piped `stdout`.
+
+
+## Programmatic API {#programmatic}
+
+The CLI logic is also available as importable functions:
 
 ```typescript
 import {
-    parseArgs,
-    commandLock,
-    resolveRegistry,
-    ProgressTracker,
-    createDefaultReporter,
+  parseArgs,
+  commandLock,
+  resolveRegistry,
+  ProgressTracker,
+  createDefaultReporter,
 } from '@vinkius-core/mcp-fusion/cli';
 ```
 

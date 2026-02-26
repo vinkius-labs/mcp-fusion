@@ -1,18 +1,7 @@
 # Observability & Audit
 
-## The Problem
+MCP Fusion provides structured observability through `createDebugObserver()` — a typed event stream that emits one event per pipeline stage, capturing the full request lifecycle.
 
-MCP servers are black boxes. A tool is called, something happens, a result comes back. If the handler fails, you see a generic error. If middleware rejects a request, there's no record. If a tool takes 3 seconds instead of 30 milliseconds, nobody knows.
-
-Compliance frameworks like SOC 2 require audit trails that answer: _who_ called _what_, _when_, _how long_, and _whether it succeeded_. Infrastructure teams need latency metrics. Security teams need to see rejected requests. A raw MCP server provides none of this.
-
-MCP Fusion solves this with `createDebugObserver()` — a typed event stream that emits one event per pipeline stage. Every tool call generates a sequence of events capturing the full request lifecycle.
-
-::: info
-To see observability in a full server setup, start with the [Enterprise Quickstart](/enterprise-quickstart#step-6-server). This page covers the event system in depth.
-:::
-
----
 
 ## createDebugObserver {#debug-observer}
 
@@ -36,7 +25,6 @@ debug: createDebugObserver((event) => {
 
 The observer captures everything that happens _before_ your handler runs — authentication failures, validation errors, routing misses. Without it, failed requests are invisible.
 
----
 
 ## The Six Event Types
 
@@ -86,11 +74,8 @@ if (event.type === 'error') {
 }
 ```
 
-::: info
 `event.durationMs` is only available on `execute`, `validate`, and `governance` events. Every event includes `timestamp` (ISO 8601).
-:::
 
----
 
 ## Building an Audit Trail {#audit-trail}
 
@@ -121,7 +106,6 @@ Middleware failures become `WARN` (expected security events). Handler errors bec
 
 The events don't _implement_ these controls — your middleware and Presenters do. The events _prove_ the controls are operating, which is what auditors need.
 
----
 
 ## SIEM Forwarding {#siem}
 
@@ -151,7 +135,6 @@ setInterval(() => {
 }, 5000);
 ```
 
----
 
 ## OpenTelemetry Tracing {#otel}
 
@@ -187,11 +170,8 @@ attachToServer(server, registry, {
 });
 ```
 
-::: info
 You can enable one without the other. The debug observer has no dependency on OpenTelemetry.
-:::
 
----
 
 ## Governance Events {#governance-events}
 
@@ -214,7 +194,6 @@ if (event.type === 'governance') {
 
 These events prove compliance: the lockfile was verified before deployment, attestation was checked at startup, and contract diffing caught a breaking change before it reached production. No governance stack → no governance events.
 
----
 
 ## Introspection API {#introspection}
 
@@ -228,7 +207,6 @@ attachToServer(server, registry, {
 
 The manifest includes all tool names, tags, input/output schemas, and [MCP annotations](https://spec.modelcontextprotocol.io/specification/2025-03-26/server/tools/#annotations). Since the registry is frozen after `attachToServer()`, the manifest is immutable — snapshot it in CI and diff against the previous version to detect capability drift.
 
----
 
 ## SOC 2 Alignment {#soc2}
 
@@ -245,16 +223,4 @@ MCP Fusion's observability primitives map directly to SOC 2 trust service criter
 
 Each row represents an auditor question you can answer with evidence generated automatically. The framework provides the mechanisms; your team configures and retains them.
 
-::: warning
 MCP Fusion provides the _mechanisms_ for SOC 2 compliance, not the _certification_. You still need to configure correctly, retain logs, and demonstrate ongoing operational compliance.
-:::
-
----
-
-## Next Steps
-
-- **[Security & Authentication](/enterprise/security)** — the middleware pipeline, contextFactory, tag-based filtering that generate the security events this page captures
-- **[Multi-Tenancy](/enterprise/multi-tenancy)** — per-tenant event logging and capability isolation
-- **[Governance Stack](/governance/)** — lockfile, contract diffing, zero-trust attestation (source of governance events)
-- **[Tracing Guide](/tracing)** — full OpenTelemetry integration reference, custom span attributes, trace sampling
-- **[Enterprise Quickstart](/enterprise-quickstart)** — see all observability features in a working project

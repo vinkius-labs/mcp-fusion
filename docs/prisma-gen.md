@@ -1,8 +1,6 @@
 # Prisma Generator
 
-An official compiler plugin that parasitizes the Prisma generation cycle to emit **MCP Fusion** ToolBuilders and Presenters — with field-level security, tenant isolation, and OOM protection baked into the generated code.
-
-This package is **not a runtime server**. It is a Prisma Generator that reads your `schema.prisma` annotations and produces hardened TypeScript files during `npx prisma generate`. The developer retains 100% control over routing, context, and middleware in `server.ts`.
+A Prisma Generator that reads `schema.prisma` annotations and produces MCP Fusion ToolBuilders and Presenters with field-level security, tenant isolation, and OOM protection baked into the generated code.
 
 ```prisma
 generator mcp {
@@ -27,33 +25,17 @@ npx prisma generate
 # → src/tools/database/userTools.ts
 ```
 
----
-
 ## Install
 
-::: code-group
-```bash [npm]
+```bash
 npm install mcp-fusion-prisma-gen
 ```
-```bash [pnpm]
-pnpm add mcp-fusion-prisma-gen
-```
-```bash [yarn]
-yarn add mcp-fusion-prisma-gen
-```
-:::
 
-**Peer dependencies:** `@vinkius-core/mcp-fusion`, `zod`, and `@prisma/generator-helper`.
+Peer dependencies: `@vinkius-core/mcp-fusion`, `zod`, and `@prisma/generator-helper`.
 
----
+## Field-Level Security
 
-## The 3 Engineering Primitives
-
-### 1. The Egress Firewall — Field-Level Security at Compile Time
-
-Prisma models contain columns that must never reach the LLM: password hashes, API tokens, internal tenant flags. If the handler returns a raw Prisma object, every field leaks into the agent's context.
-
-**What it does:** The generator reads `/// @fusion.hide` annotations on your Prisma schema and physically excludes those columns from the generated Zod response schema. The `/// @fusion.describe()` annotation compiles into `.describe()` calls that inject domain semantics into the schema — the LLM reads these descriptions and understands the business rules.
+`/// @fusion.hide` physically excludes fields from the generated Zod response schema. `/// @fusion.describe()` compiles into `.describe()` calls that inject domain semantics.
 
 ```prisma
 model User {
@@ -74,7 +56,7 @@ export const UserResponseSchema = z.object({
     email: z.string(),
     role: z.string(),
     creditScore: z.number().int().describe('Financial score from 0 to 1000. Above 700 is PREMIUM.'),
-    // passwordHash and stripeToken are physically absent from the schema
+    // passwordHash and stripeToken are physically absent
 }).strict();
 
 export const UserPresenter = createPresenter('User')
@@ -82,23 +64,11 @@ export const UserPresenter = createPresenter('User')
     .systemRules(['Data originates from the database via Prisma ORM.']);
 ```
 
-**The impact:** Prisma queries return `passwordHash` and `stripeToken` from the database. The Presenter's Zod `.strict()` strips those fields in RAM before the response reaches the transport layer. The LLM never sees them. The 2MB of raw Prisma output becomes 5KB of clean, shaped data. SOC2 compliance is enforced at the generator level — not in code review.
+Prisma queries return `passwordHash` and `stripeToken` from the database. The Presenter's `.strict()` strips them in RAM before serialization.
 
----
+## OOM Guard & Tenant Isolation
 
-### 2. OOM Guard & Tenant Isolation — Generated Query Safety
-
-LLMs have no concept of database size. Without constraints, a `findMany` call returns 100,000 rows, blows through the context window, and crashes the Node.js process with OOM.
-
-**What it does:** The generator reads `/// @fusion.tenantKey` annotations and injects the tenant filter into every generated query's `WHERE` clause. Pagination is enforced with `take` (capped at 50) and `skip` parameters — the LLM is physically unable to request unbounded result sets.
-
-```prisma
-model User {
-  tenantId String /// @fusion.tenantKey
-}
-```
-
-Generated tool:
+`/// @fusion.tenantKey` injects the tenant filter into every generated query's `WHERE` clause. Pagination is enforced with `take` capped at 50.
 
 ```typescript
 // src/tools/database/userTools.ts (generated)
@@ -117,7 +87,7 @@ export const userTools = defineTool<PrismaFusionContext>('db_user', {
             }),
             handler: async (ctx, args) => {
                 const where: Record<string, unknown> = {};
-                where['tenantId'] = ctx.tenantId; // ← injected by generator
+                where['tenantId'] = ctx.tenantId;
                 if (args.email_contains !== undefined) {
                     where['email'] = { contains: args.email_contains };
                 }
@@ -132,9 +102,7 @@ export const userTools = defineTool<PrismaFusionContext>('db_user', {
             readOnly: true,
             description: 'Get a single record by ID',
             returns: UserPresenter,
-            params: z.object({
-                id: z.string(),
-            }),
+            params: z.object({ id: z.string() }),
             handler: async (ctx, args) => {
                 return await ctx.prisma.user.findUniqueOrThrow({
                     where: { id: args.id, tenantId: ctx.tenantId },
@@ -182,9 +150,7 @@ export const userTools = defineTool<PrismaFusionContext>('db_user', {
         delete: {
             destructive: true,
             description: 'Delete a record by ID',
-            params: z.object({
-                id: z.string(),
-            }),
+            params: z.object({ id: z.string() }),
             handler: async (ctx, args) => {
                 await ctx.prisma.user.delete({
                     where: { id: args.id, tenantId: ctx.tenantId },
@@ -196,15 +162,11 @@ export const userTools = defineTool<PrismaFusionContext>('db_user', {
 });
 ```
 
-**The impact:** Every query is tenant-isolated at the generated code level. Cross-tenant data leakage is not a runtime bug to catch — it is a structural impossibility. The `take: z.number().max(50)` cap means the LLM cannot request more than 50 rows per call. OOM protection is built into the schema, not into a post-hoc middleware.
+Every query is tenant-isolated at the generated code level. Cross-tenant access is structurally impossible.
 
----
+## Wiring into Your Server
 
-### 3. Inversion of Control — The Developer Owns the Server
-
-The generator produces `ToolBuilder` instances and `Presenter` files. It does **not** start a server, bind a port, or touch the transport layer. The developer wires the generated code into their server exactly like any other **MCP Fusion** tool.
-
-**What it does:** The generated files export standard `defineTool()` builders. The developer imports them, attaches middleware (auth, logging, rate limiting), and registers them into the `ToolRegistry` with their own context factory.
+The generator produces `ToolBuilder` instances and `Presenter` files — no server, no transport. You import and wire them:
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -213,19 +175,14 @@ import { ToolRegistry, createServerAttachment } from '@vinkius-core/mcp-fusion';
 import { userTools } from './tools/database/userTools.js';
 import { prisma } from './lib/prisma.js';
 
-// ── Intercept: add middleware to the generated tool ────
 userTools.use(async (ctx, args, next) => {
-    if (!ctx.auth?.hasScope('users:read')) {
-        throw new Error('Unauthorized');
-    }
+    if (!ctx.auth?.hasScope('users:read')) throw new Error('Unauthorized');
     return next();
 });
 
-// ── Register ───────────────────────────────────────────
 const registry = new ToolRegistry();
 registry.register(userTools);
 
-// ── Boot ───────────────────────────────────────────────
 const server = new McpServer({ name: 'my-api', version: '1.0.0' });
 createServerAttachment(server, registry, {
     contextFactory: (req) => ({
@@ -237,19 +194,13 @@ createServerAttachment(server, registry, {
 await server.connect(new StdioServerTransport());
 ```
 
-**The impact:** The generator handles the tedious, error-prone plumbing — Zod schemas, CRUD handlers, tenant filters, pagination limits. But the business rules, authentication, middleware chains, and transport selection remain **hardcoded in your TypeScript backend**. The generated code is the starting point, not a black box. You can modify any generated file, add custom actions, or override handlers.
-
----
-
 ## Schema Annotations
 
 | Annotation | Location | Effect |
 |---|---|---|
-| `/// @fusion.hide` | Field | Excludes the field from the generated Zod response schema |
-| `/// @fusion.describe("...")` | Field | Adds `.describe()` to the Zod field — LLM reads this as a business rule |
-| `/// @fusion.tenantKey` | Field | Injects the field into every query's `WHERE` clause from `ctx` |
-
----
+| `/// @fusion.hide` | Field | Excludes from the generated Zod response schema |
+| `/// @fusion.describe("...")` | Field | Adds `.describe()` to the Zod field |
+| `/// @fusion.tenantKey` | Field | Injects into every query's `WHERE` clause from `ctx` |
 
 ## Generator Configuration
 
@@ -265,24 +216,18 @@ generator mcp {
 | `provider` | `string` | — | Must be `"vinkius-prisma-gen"` |
 | `output` | `string` | `"./generated"` | Output directory for generated files |
 
----
-
 ## Generated Output
 
 ```
 src/tools/database/
 ├── userPresenter.ts     ← Zod schema + Presenter (fields filtered)
 ├── userTools.ts         ← CRUD tool with pagination + tenant isolation
-├── postPresenter.ts     ← ... per model
-├── postTools.ts         ← ... per model
+├── postPresenter.ts
+├── postTools.ts
 └── index.ts             ← Barrel export
 ```
 
-Each model produces two files:
-- **Presenter** — Zod `.strict()` schema with `@fusion.hide` fields removed and `@fusion.describe()` mapped
-- **Tool** — `defineTool()` builder with `find_many`, `find_unique`, `create`, `update`, `delete` actions
-
----
+Each model produces a Presenter (Zod `.strict()` schema with `@fusion.hide` fields removed) and a Tool (`defineTool()` builder with `find_many`, `find_unique`, `create`, `update`, `delete` actions).
 
 ## Requirements
 

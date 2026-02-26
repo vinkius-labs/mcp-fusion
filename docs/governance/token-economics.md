@@ -5,113 +5,58 @@ description: "Cognitive overload detection, context window budget profiling, and
 
 # Token Economics
 
-::: tip One-Liner
-If your tool returns 50KB of JSON, it will flood the context window and evict system rules. TokenEconomics detects this before it happens.
-:::
-
----
-
-## Overview
-
 An MCP tool that returns large, unbounded responses will rapidly exhaust the LLM's context window. When the window fills, the system rules injected by the Presenter's `addRules()` — the primary mechanism for controlling behavioral correctness — are pushed out of the model's attention window. The LLM's behavior silently degrades.
 
-**TokenEconomics** solves this with two levels of analysis:
+Consider a tool with a schema of 8 fields and no collection limit. A query that returns 200 users produces ~20KB+ of JSON. After Presenter rendering, the system rules that were injected earlier are now outside the model's effective attention. Nothing breaks. Nothing throws. The output just gets worse.
 
-1. **Static analysis** — Estimate worst-case token cost from Presenter schema and guardrail config at build time. Zero runtime cost.
-2. **Runtime profiling** — Measure actual token counts of response blocks after Presenter rendering. Opt-in.
+TokenEconomics detects this before it happens, at two levels:
+
+- **Static analysis** — Estimate worst-case token cost from Presenter schema and guardrail config at build time. Zero runtime cost.
+- **Runtime profiling** — Measure actual token counts of response blocks after Presenter rendering. Opt-in.
 
 Both levels classify responses into risk tiers and generate actionable recommendations.
 
----
 
-## The Problem
+## Risk Classification {#risk}
 
-Consider a tool that queries a database and returns all matching rows:
-
-```typescript
-presenter
-  .addSchema(z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    address: z.string(),
-    phone: z.string(),
-    createdAt: z.string(),
-    metadata: z.record(z.string()),
-  }))
-  // No .agentLimit() — unbounded collection
-  // No .egressMaxBytes() — no payload cap
-```
-
-A query that returns 200 users will produce ~20KB+ of JSON. After Presenter rendering, this fills a significant portion of the context window. The system rules that were injected earlier are now outside the model's effective attention — behavioral correctness degrades silently.
-
----
-
-## Risk Classification
-
-| Risk Level | Token Range | Impact |
+| Risk | Token Range | Impact |
 |---|---|---|
-| **low** | ≤ 1,000 | Normal operation. System rules remain in attention. |
-| **medium** | 1,001 – 4,000 | Elevated density. Monitor overhead ratio. |
-| **high** | 4,001 – 8,000 | System rule eviction likely. Add `agentLimit()` or `egressMaxBytes()`. |
-| **critical** | > 8,000 | Context window flooding imminent. Immediate action required. |
+| `low` | ≤ 1,000 | Normal operation. System rules remain in attention. |
+| `medium` | 1,001 – 4,000 | Elevated density. Monitor overhead ratio. |
+| `high` | 4,001 – 8,000 | System rule eviction likely. Add `agentLimit()` or `egressMaxBytes()`. |
+| `critical` | > 8,000 | Context window flooding imminent. Immediate action required. |
 
-Thresholds are configurable:
+These thresholds are the defaults. Override them for stricter context windows:
 
 ```typescript
-import type { TokenThresholds } from 'mcp-fusion/introspection';
+import type { TokenThresholds } from '@vinkius-core/mcp-fusion/introspection';
 
 const customThresholds: TokenThresholds = {
-  low: 500,      // Stricter for small context windows
+  low: 500,
   medium: 2000,
   high: 5000,
 };
 ```
 
----
 
-## Static Analysis
+## Static Analysis {#static}
 
-### `computeStaticProfile()`
-
-Computes worst-case token estimates from schema metadata. Runs once at build time.
+`computeStaticProfile()` estimates worst-case token cost from schema metadata. It runs once at build time — no runtime overhead.
 
 ```typescript
-import { computeStaticProfile } from 'mcp-fusion/introspection';
+import { computeStaticProfile } from '@vinkius-core/mcp-fusion/introspection';
 
 const profile = computeStaticProfile(
-  'users',                                // tool name
-  ['id', 'name', 'email', 'address'],     // schema field names
-  50,                                     // agentLimit max
-  null,                                   // egressMaxBytes (not set)
+  'users',                              // tool name
+  ['id', 'name', 'email', 'address'],   // schema field names
+  50,                                   // agentLimit max
+  null,                                 // egressMaxBytes (not set)
 );
 
-console.log(profile.risk);
-// "medium"
-
-console.log(profile.bounded);
-// true — agentLimit provides an upper bound
-
-console.log(profile.maxTokens);
-// 1450 — estimated worst-case with 50 items
-
-console.log(profile.recommendations);
-// ["Add .egressMaxBytes() to cap payload size"]
+console.log(profile.risk);       // "medium"
+console.log(profile.bounded);    // true — agentLimit provides an upper bound
+console.log(profile.maxTokens);  // 1450 — estimated worst-case with 50 items
 ```
-
-### `StaticTokenProfile`
-
-| Field | Type | Description |
-|---|---|---|
-| `toolName` | `string` | Tool name |
-| `minTokens` | `number` | Estimated minimum tokens (1 item) |
-| `maxTokens` | `number` | Estimated maximum tokens (bounded or worst-case) |
-| `bounded` | `boolean` | Whether output is bounded by `agentLimit` or `egressMaxBytes` |
-| `fieldBreakdown` | `FieldTokenEstimate[]` | Per-field token cost breakdown |
-| `risk` | `TokenRisk` | Risk classification based on max estimate |
-| `recommendations` | `string[]` | Actionable recommendations for reducing cost |
-
-### Bounding Strategy
 
 The static analyzer resolves bounds in priority order:
 
@@ -121,22 +66,35 @@ The static analyzer resolves bounds in priority order:
 | `agentLimit` | Collection cap: $\text{maxTokens} = \text{baseTokens} \times \text{limit} + 50$ | 2 |
 | (none) | Worst-case estimate: $\text{baseTokens} \times 100$ | 3 (unbounded) |
 
-An unbounded tool — one with neither `agentLimit` nor `egressMaxBytes` — is assumed to potentially return 100× the base token cost.
+An unbounded tool — one with neither `agentLimit` nor `egressMaxBytes` — is assumed to potentially return 100× the base token cost. This deliberately pessimistic assumption ensures unbounded tools are flagged immediately.
 
----
-
-## Runtime Profiling
-
-### `profileResponse()`
-
-Measures actual token usage of a completed tool response.
+The profile also generates actionable recommendations:
 
 ```typescript
-import { profileResponse } from 'mcp-fusion/introspection';
+console.log(profile.recommendations);
+// ["Add .egressMaxBytes() to cap payload size"]
+```
+
+Conditions that trigger recommendations:
+
+| Condition | Recommendation |
+|---|---|
+| Not bounded (no `agentLimit` or `egressMaxBytes`) | "Add `.agentLimit()` to bound collection size" |
+| Risk is `critical` or `high` | "Add `.egressMaxBytes()` to cap payload size" |
+| Collection fields without `agentLimit` | "Collection fields detected without agentLimit — risk of context flooding" |
+| More than 15 schema fields | "Consider reducing schema field count (>15 fields adds cognitive load)" |
+
+
+## Runtime Profiling {#runtime}
+
+`profileResponse()` measures actual token usage of a completed tool response. Use this in staging or development to validate that production responses stay within budget:
+
+```typescript
+import { profileResponse } from '@vinkius-core/mcp-fusion/introspection';
 
 const analysis = profileResponse(
-  'users',                               // tool name
-  'list',                                // action key
+  'users',
+  'list',
   [
     { type: 'text', text: systemRulesXml },   // overhead block (rules)
     { type: 'text', text: affordancesXml },   // overhead block (UI)
@@ -145,146 +103,76 @@ const analysis = profileResponse(
   2,  // first 2 blocks are overhead
 );
 
-console.log(analysis.estimatedTokens);
-// 3800
+console.log(analysis.estimatedTokens);  // 3800
+console.log(analysis.overheadRatio);    // 0.42 — 42% of tokens are overhead
+console.log(analysis.risk);            // "medium"
+```
 
-console.log(analysis.overheadRatio);
-// 0.42 — 42% of tokens are overhead, not data
+The overhead ratio is the key metric. When it's high, it means the framework's own metadata — system rules, UI decorators, affordances — is consuming context that should be reserved for actual data. The advisory message calls this out:
 
-console.log(analysis.risk);
-// "medium"
-
+```typescript
 console.log(analysis.advisory);
 // "OVERHEAD WARNING: Tool "users" has 42% overhead ratio. System rules
 //  and UI decorators are consuming significant context."
 ```
 
-### `TokenAnalysis`
-
-| Field | Type | Description |
-|---|---|---|
-| `toolName` | `string` | Tool name |
-| `actionKey` | `string \| null` | Action key |
-| `estimatedTokens` | `number` | Total estimated tokens |
-| `blockCount` | `number` | Number of content blocks |
-| `blocks` | `BlockTokenProfile[]` | Per-block breakdown |
-| `overheadTokens` | `number` | Tokens spent on rules/UI |
-| `dataTokens` | `number` | Tokens spent on actual data |
-| `overheadRatio` | `number` | Overhead / Data (higher = worse) |
-| `risk` | `TokenRisk` | Risk classification |
-| `advisory` | `string \| null` | Human-readable advisory |
-
----
-
-## Server-Level Summary
-
-### `aggregateProfiles()`
-
-Aggregates all tool profiles into a server-level risk assessment.
-
-```typescript
-import { aggregateProfiles } from 'mcp-fusion/introspection';
-
-const summary = aggregateProfiles(allProfiles);
-
-console.log(summary.overallRisk);
-// "high" — at least one tool is high-risk
-
-console.log(summary.unboundedToolNames);
-// ["reports", "analytics"] — these tools need agentLimit
-
-console.log(summary.criticalToolNames);
-// ["export-all"] — this tool will flood the context window
-
-console.log(summary.recommendations);
-// [
-//   "[export-all] Add .agentLimit() to bound collection size",
-//   "[export-all] Add .egressMaxBytes() to cap payload size",
-//   "[reports] Add .agentLimit() to bound collection size",
-// ]
-```
-
-### `ServerTokenSummary`
-
-| Field | Type | Description |
-|---|---|---|
-| `toolCount` | `number` | Total number of tools |
-| `totalMinTokens` | `number` | Sum of all minimum estimates |
-| `totalMaxTokens` | `number` | Sum of all maximum estimates |
-| `unboundedToolCount` | `number` | Tools without `agentLimit`/`egressMaxBytes` |
-| `unboundedToolNames` | `string[]` | Names of unbounded tools |
-| `overallRisk` | `TokenRisk` | Worst-case risk across all tools |
-| `criticalToolNames` | `string[]` | Tools classified as `critical` |
-| `recommendations` | `string[]` | Prioritized recommendations |
-
----
-
-## Token Estimation Method
-
-Token estimation uses the ~3.5 characters/token heuristic for JSON/code content:
+Token estimation uses the ~3.5 characters/token heuristic:
 
 $$
 \text{estimatedTokens} = \left\lceil \frac{\text{text.length}}{3.5} \right\rceil
 $$
 
-This is a fast approximation optimized for profiling rather than billing. For exact token counts, integrate a tokenizer library (tiktoken, etc.).
+This is a fast approximation optimized for profiling, not billing. For exact counts, integrate a tokenizer library like tiktoken.
 
----
 
-## Integration With Governance Stack
+## Server-Level Summary {#aggregate}
 
-Token economics data flows into the lockfile and diff engine:
+`aggregateProfiles()` rolls up all tool profiles into a server-level risk assessment:
 
-```
-computeStaticProfile()
-         │
-         ▼
-TokenEconomicsProfile ──────────────────────────────────┐
-  (inflationRisk, schemaFieldCount, unboundedCollection) │
-         │                                               │
-         ▼                                               ▼
-   BehaviorDigest                               CapabilityLockfile
-   (tokenEconomics component hash)            (tokenEconomics section)
-         │
-         ▼
-   ContractDiff
-   (inflationRisk escalation → BREAKING)
-   (unbounded → bounded → SAFE)
+```typescript
+import { aggregateProfiles } from '@vinkius-core/mcp-fusion/introspection';
+
+const summary = aggregateProfiles(allProfiles);
+
+console.log(summary.overallRisk);         // "high"
+console.log(summary.unboundedToolNames);  // ["reports", "analytics"]
+console.log(summary.criticalToolNames);   // ["export-all"]
 ```
 
-When token economics change:
+The `overallRisk` is the worst-case across all tools. If any single tool is `critical`, the server is `critical`. The `recommendations` array is prioritized — critical tools first, then high-risk, then the rest:
 
-| Change | ContractDiff Severity | Rationale |
+```typescript
+for (const rec of summary.recommendations) {
+  console.warn(`  ${rec}`);
+}
+// "[export-all] Add .agentLimit() to bound collection size"
+// "[export-all] Add .egressMaxBytes() to cap payload size"
+// "[reports] Add .agentLimit() to bound collection size"
+```
+
+
+## Integration With the Governance Stack {#integration}
+
+Token economics data flows into the lockfile and diff engine. The `TokenEconomicsProfile` becomes the `tokenEconomics` section of the `ToolContract`, which means any change in token risk cascades through the entire pipeline:
+
+| Change | ContractDiff Severity | Why |
 |---|---|---|
-| Risk escalated (low → high) | **BREAKING** | Higher risk of system rule eviction |
-| Risk de-escalated (high → low) | **SAFE** | Reduced cognitive load |
-| Became unbounded | **RISKY** | Potential for context flooding |
-| Became bounded | **SAFE** | Guardrail added |
+| Risk escalated (low → high) | `BREAKING` | Higher risk of system rule eviction |
+| Risk de-escalated (high → low) | `SAFE` | Reduced cognitive load |
+| Became unbounded | `RISKY` | Potential for context flooding |
+| Became bounded | `SAFE` | Guardrail added |
 
----
+When risk escalates, the lockfile becomes stale, `fusion lock --check` fails in CI, and the diff engine reports the severity. This creates a mandatory review step for any change that increases token cost.
 
-## Recommendations Engine
 
-The profiler generates actionable recommendations based on a **declarative rule table**:
-
-| Condition | Recommendation |
-|---|---|
-| Not bounded (no `agentLimit` or `egressMaxBytes`) | "Add `.agentLimit()` to bound collection size" |
-| Risk is `critical` or `high` | "Add `.egressMaxBytes()` to cap payload size" |
-| Collection fields detected without `agentLimit` | "Collection fields detected without agentLimit — risk of context flooding" |
-| More than 15 schema fields | "Consider reducing schema field count (>15 fields adds cognitive load)" |
-
----
-
-## Example: Full Profile Pipeline
+## Full Profile Pipeline {#pipeline}
 
 ```typescript
 import {
   computeStaticProfile,
   aggregateProfiles,
-} from 'mcp-fusion/introspection';
+} from '@vinkius-core/mcp-fusion/introspection';
 
-// Profile each tool at build time
 const profiles = Object.entries(toolBuilders).map(([name, builder]) => {
   const schema = builder.presenter?.getSchemaKeys() ?? [];
   const limit = builder.presenter?.getAgentLimit() ?? null;
@@ -292,33 +180,12 @@ const profiles = Object.entries(toolBuilders).map(([name, builder]) => {
   return computeStaticProfile(name, schema, limit, maxBytes);
 });
 
-// Server-level summary
 const summary = aggregateProfiles(profiles);
 
 if (summary.overallRisk === 'critical') {
-  console.warn('⚠ CRITICAL: Token economics indicate context window flooding risk');
+  console.warn('CRITICAL: Token economics indicate context window flooding risk');
   for (const rec of summary.recommendations) {
-    console.warn(`  • ${rec}`);
+    console.warn(`  ${rec}`);
   }
 }
-
-// Embed in lockfile via TokenEconomicsProfile
-// {
-//   inflationRisk: "critical",
-//   schemaFieldCount: 22,
-//   unboundedCollection: true,
-//   baseOverheadTokens: 150
-// }
 ```
-
----
-
-## Design Decisions
-
-| Decision | Rationale |
-|---|---|
-| **Heuristic token estimation** | O(1) per string, no tokenizer dependency. Accuracy within ~10% for profiling. |
-| **Static + Runtime dual mode** | Static catches issues at build time; runtime catches issues with real data. |
-| **Overhead ratio tracking** | Separates system rules / UI overhead from data — detects when framework metadata crowds out useful content. |
-| **Declarative recommendation rules** | New recommendations require only a table entry, not imperative logic. |
-| **Zero overhead when not configured** | No token counting occurs unless explicitly opted in. |

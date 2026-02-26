@@ -1,33 +1,10 @@
 # Cognitive Guardrails
 
-> A raw MCP server is a fire hose pointed at a context window. **Cognitive Guardrails** are the valves that control flow, filter noise, and protect the agent's reasoning capacity.
-
 Cognitive Guardrails are the protective mechanisms in MVA that prevent the three most expensive failure modes in agent-based systems: **context overflow** (too much data), **parameter injection** (hallucinated fields), and **error spirals** (agents retrying blindly).
 
 Each guardrail is designed to be **zero-configuration by default, explicit when needed, and educational for the agent** — not just protective, but instructive.
 
----
-
 ## The Three Guardrails
-
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                       Cognitive Guardrails                            │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ① Smart Truncation            .agentLimit()                         │
-│     Bounds response size. Teaches the agent to use filters.          │
-│                                                                       │
-│  ② Strict Validation           Zod .strict()                        │
-│     Rejects hallucinated fields. Names each invalid field.           │
-│                                                                       │
-│  ③ Self-Healing Errors         toolError() + ValidationFormatter     │
-│     Turns errors into coaching prompts. Agents self-correct.         │
-│                                                                       │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
----
 
 ## ① Smart Truncation — `.agentLimit()`
 
@@ -97,8 +74,6 @@ Raw truncation alone doesn't help. Without guidance, the agent's next move is to
 
 This is not a static error message. It's a **correction prompt** — a structured instruction that guides the agent toward valid parameters.
 
----
-
 ## ② Strict Validation — Zod `.strict()`
 
 ### The Problem: Parameter Injection
@@ -152,8 +127,6 @@ Runtime (ExecutionPipeline):
 ```
 
 The handler is physically incapable of receiving hallucinated parameters. The validation boundary is enforced at the framework level, not by individual handler code.
-
----
 
 ## ③ Self-Healing Errors — Turning Failures into Recovery
 
@@ -262,46 +235,9 @@ if (ctx.user.role !== 'admin') {
 }
 ```
 
----
-
 ## The Compounding Protection
 
 All three guardrails work together to create a multi-layered defense:
-
-```text
-                Agent sends request
-                       │
-                       ▼
-           ┌───────────────────────┐
-           │  ② Strict Validation   │  Rejects hallucinated fields
-           │  Zod .strict()        │  with actionable error
-           └──────────┬────────────┘
-                       │ (valid args only)
-                       ▼
-           ┌───────────────────────┐
-           │  Handler executes      │  Business logic runs
-           │                        │  with guaranteed-typed args
-           └──────────┬────────────┘
-                       │
-               ┌───────┴───────┐
-               │               │
-          (error)         (success)
-               │               │
-               ▼               ▼
-    ┌─────────────────┐ ┌──────────────────┐
-    │  ③ Self-Healing  │ │  ① Truncation     │  Bounds response
-    │  toolError()     │ │  .agentLimit()    │  size + teaches
-    │  with recovery   │ │  + teaching block │  agent to filter
-    └─────────────────┘ └──────────────────┘
-               │               │
-               └───────┬───────┘
-                       │
-                       ▼
-              Agent receives either:
-              • Coaching prompt (learns from failure)
-              • Bounded perception package (learns from truncation)
-              • Clean data (acts correctly first time)
-```
 
 **The virtuous cycle:**
 
@@ -310,8 +246,6 @@ All three guardrails work together to create a multi-layered defense:
 3. **Third call:** Agent uses filters → smaller dataset → clean data → correct action
 
 By the third call, the agent has learned: which fields are valid, how to filter data, and what actions are available. The guardrails have transformed three potential failure loops into a three-step learning sequence.
-
----
 
 ## Cost Impact Analysis
 
@@ -323,12 +257,3 @@ By the third call, the agent has learned: which fields are valid, how to filter 
 | 5-step task → ~15 actual calls | 5-step task → ~6 actual calls |
 
 The guardrails don't just protect — they **educate**. Each interaction makes the agent more effective, reducing the cost curve over the course of a conversation.
-
----
-
-## Continue Reading
-
-- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT rules vs global system prompts
-- [Perception Package](/mva/perception-package) — The full response structure
-- [Agentic Affordances](/mva/affordances) — HATEOAS-style next-action hints
-- [Cost & Hallucination](/cost-and-hallucination) — Deep dive into the token economics

@@ -1,52 +1,8 @@
 # MVA vs MVC: Architectural Comparison
 
-> MVC was designed for a consumer that navigates by sight. MVA was designed for a consumer that navigates by structural perception.
-
 This page provides a formal, layer-by-layer comparison between MVC and MVA. The goal is not to criticize MVC — it has served brilliantly for four decades. The goal is to demonstrate why a new architecture is required when the consumer changes from human to AI agent.
 
----
-
 ## The Architectural Comparison
-
-```text
-              MVC                                    MVA
-┌─────────────────────────┐          ┌─────────────────────────┐
-│                          │          │                          │
-│  MODEL                   │          │  MODEL                   │
-│  ORM / Database Schema   │          │  Zod Schema (.strict())  │
-│  ─────────────────────   │          │  ─────────────────────   │
-│  Defines data shape.     │          │  Defines data shape      │
-│  No output filtering.    │          │  AND acts as security    │
-│                          │          │  boundary. Rejects       │
-│                          │          │  undeclared fields.      │
-│                          │          │                          │
-├──────────────────────────┤          ├──────────────────────────┤
-│                          │          │                          │
-│  VIEW                    │          │  VIEW (Presenter)        │
-│  HTML / CSS / Templates  │          │  Perception Layer        │
-│  ─────────────────────   │          │  ─────────────────────   │
-│  Visual rendering for    │          │  Structured data with    │
-│  human eyes. Layout,     │          │  domain rules, charts,   │
-│  typography, colors.     │          │  affordances, guardrails │
-│  Tool-level (per page).  │          │  Domain-level (per       │
-│                          │          │  entity). Reused across  │
-│                          │          │  all tools.              │
-│                          │          │                          │
-├──────────────────────────┤          ├──────────────────────────┤
-│                          │          │                          │
-│  CONTROLLER              │          │  AGENT                   │
-│  HTTP Handler            │          │  LLM Runtime             │
-│  ─────────────────────   │          │  ─────────────────────   │
-│  Receives HTTP requests. │          │  Autonomous consumer.    │
-│  Routes to business      │          │  Receives structured     │
-│  logic. Returns a View.  │          │  perception package.     │
-│  Human initiates.        │          │  Acts without human      │
-│                          │          │  intervention.           │
-│                          │          │                          │
-└──────────────────────────┘          └──────────────────────────┘
-```
-
----
 
 ## Layer-by-Layer Analysis
 
@@ -118,9 +74,7 @@ const InvoicePresenter = createPresenter('Invoice')
         : []);
 ```
 
-::: tip The Key Insight
 In MVC, domain knowledge is scattered across view templates. In MVA, domain knowledge is **centralized in the Presenter** and automatically attached to every response. This is how MVA reduces perception inconsistency — the rules can't diverge because they live in one place.
-:::
 
 ### The Controller / Agent Layer
 
@@ -143,8 +97,6 @@ In MVA, the Agent replaces the Controller as the consumer. But the Agent is not 
 | **Error handling** | Renders error page for human | Self-corrects using error recovery hints |
 | **Feedback loop** | Human reads → thinks → acts | Agent perceives → reasons → acts |
 | **State** | Session-based | Stateless (context window) |
-
----
 
 ## The Responsibility Shift
 
@@ -173,27 +125,6 @@ The MVA Presenter provides maximum context. The AI agent receives:
 - **Data-driven next actions** — no experience-based decision making needed
 
 This is necessary because AI agents are terrible at inference and have zero domain experience.
-
-```text
-MVC Responsibility Distribution:          MVA Responsibility Distribution:
-┌────────────┐                            ┌────────────┐
-│   Interface │  20% of the work          │   Interface │  90% of the work
-│   (View)    │  Layout, colors, basic    │  (Presenter)│  Validation, rules,
-│             │  HTML structure            │             │  affordances, guardrails,
-│             │                            │             │  UI blocks, composition
-└──────┬─────┘                            └──────┬─────┘
-       │                                         │
-       ▼                                         ▼
-┌────────────┐                            ┌────────────┐
-│  Consumer   │  80% of the work          │  Consumer   │  10% of the work
-│  (Human)    │  Interpretation, domain   │  (Agent)    │  Follow rules,
-│             │  knowledge, navigation,   │             │  execute affordances,
-│             │  security judgment,        │             │  render UI blocks
-│             │  next-action decisions     │             │
-└────────────┘                            └────────────┘
-```
-
----
 
 ## When MVC Still Makes Sense
 
@@ -239,8 +170,6 @@ const billing = defineTool<AppContext>('billing', {
 
 Both serve the same business data. Both use the same database. But they serve fundamentally different consumers through fundamentally different architectural patterns.
 
----
-
 ## Historical Precedent
 
 Architectural transitions follow a pattern: a new consumer class emerges, and the existing architecture cannot serve it well.
@@ -254,8 +183,6 @@ Architectural transitions follow a pattern: a new consumer class emerges, and th
 
 Each shift was driven by the same principle: **the existing architecture assumed a consumer that no longer exists.** MVC assumed a human browser. MVA assumes an autonomous AI agent. The pattern repeats.
 
----
-
 ## Summary
 
 | Dimension | MVC | MVA |
@@ -268,12 +195,3 @@ Each shift was driven by the same principle: **the existing architecture assumed
 | **Data limits** | Pagination UI | Cognitive guardrails with teaching blocks |
 | **Security** | View selectively renders | Schema rejects undeclared fields |
 | **Responsibility** | Consumer does 80% of interpretation | Interface provides 90% of context |
-
----
-
-## Continue Reading
-
-- [Anatomy of the Presenter](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
-- [Perception Package](/mva/perception-package) — The exact structure the agent receives
-- [The Theory](/mva/theory) — First-principles derivation of MVA
-- [Without MVA vs With MVA](/comparison) — Code-level comparison with examples

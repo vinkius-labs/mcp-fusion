@@ -5,22 +5,7 @@ description: Drop-in OAuth 2.0 Device Flow (RFC 8628) for MCP servers built with
 
 # OAuth — Device Authorization Grant
 
-<Badge type="info" text="@vinkius-core/mcp-fusion-oauth" />
-
-OAuth 2.0 Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)) for MCP servers built with mcp-fusion.
-
-## Why Device Flow?
-
-MCP servers run as CLI tools, IDE extensions, or background services — environments where browser redirects don't work. The Device Authorization Grant solves this:
-
-1. Server requests a **device code** + **verification URL**
-2. User opens the URL in a browser and authorizes
-3. Server polls until authorization completes
-4. Token is stored securely for future sessions
-
-No redirect URIs. No embedded browsers. Works with any OAuth 2.0 provider.
-
-## Installation
+OAuth 2.0 Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)) for MCP servers. The server requests a device code, the user authorizes in a browser, and the token is stored for future sessions. No redirect URIs, no embedded browsers.
 
 ```bash
 npm install @vinkius-core/mcp-fusion-oauth
@@ -28,9 +13,7 @@ npm install @vinkius-core/mcp-fusion-oauth
 
 Peer dependency: `@vinkius-core/mcp-fusion ^2.0.0`
 
-## Quick Start
-
-### 1. Create the auth tool
+## Create the Auth Tool
 
 ```typescript
 import { createAuthTool } from '@vinkius-core/mcp-fusion-oauth';
@@ -67,7 +50,7 @@ The auth tool exposes 4 actions:
 | `status` | Checks current authentication state |
 | `logout` | Clears the stored token |
 
-### 2. Protect tools with middleware
+## Protect Tools with Middleware
 
 ```typescript
 import { requireAuth } from '@vinkius-core/mcp-fusion-oauth';

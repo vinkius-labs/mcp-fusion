@@ -1,7 +1,5 @@
 # The Theory Behind MVA
 
-> Every software architecture in history was designed for a consumer that can tolerate ambiguity. AI agents cannot. MVA is an architecture designed for a consumer that **hallucinates when given incomplete context**.
-
 ## The Consumer Has Changed
 
 For fifty years, software architecture has been shaped by one constant: the human consumer. Every paradigm — MVC, MVVM, REST, GraphQL — was designed around the assumption that a thinking, context-aware human would be the final consumer of the interface.
@@ -28,8 +26,6 @@ An AI agent is a fundamentally different kind of consumer. It is:
 | Navigates interfaces by intent | **Blind** to available actions unless told |
 
 This is not a marginal difference. It is a **categorical** difference. The consumer class has changed. The architecture must change with it.
-
----
 
 ## The Four Failure Modes of Raw Interfaces
 
@@ -104,8 +100,6 @@ The agent ingests all of this into its context window. Internal fields, PII, and
 
 **MVA solution:** The Zod schema acts as a **security contract**. Using `.strict()` mode on your Presenter schemas rejects every field not declared in the schema. Internal fields never reach the agent — they trigger an actionable error that names the rejected fields, teaching the LLM what's valid.
 
----
-
 ## First Principles: What Does an Agent-Native Interface Require?
 
 Working from first principles, we can derive the requirements for an architecture that treats AI agents as first-class consumers.
@@ -146,53 +140,11 @@ Agents increasingly operate in environments that support rich rendering (Claude 
 
 **In MVA:** `.uiBlocks()` generates server-rendered ECharts, Mermaid diagrams, tables, and summaries. The agent passes these through to the user interface unchanged.
 
----
-
 ## The Formalization
 
 With these requirements established, MVA formalizes three architectural layers:
 
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          MVA Formal Model                                │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   MODEL (M)                                                              │
-│   ─────────                                                              │
-│   A typed validation schema that defines the shape of domain data        │
-│   AND acts as a security boundary. Data that does not conform is         │
-│   rejected with actionable errors. Undeclared fields are rejected.       │
-│                                                                          │
-│   Implementation: Zod schema with .strict()                              │
-│                                                                          │
-│   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    │
-│                                                                          │
-│   VIEW (V) — The Presenter                                               │
-│   ────────────────────────                                               │
-│   A domain-level perception layer that transforms validated data         │
-│   into a Structured Perception Package. It encapsulates:                 │
-│                                                                          │
-│   1. Schema Validation      — what fields the agent sees                 │
-│   2. System Rules           — how to interpret the data                  │
-│   3. UI Blocks              — how to visualize the data                  │
-│   4. Cognitive Guardrails   — how much data to show                      │
-│   5. Agentic Affordances    — what to do next                            │
-│   6. Presenter Composition  — how to merge nested entities               │
-│                                                                          │
-│   Implementation: createPresenter()                                      │
-│                                                                          │
-│   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    │
-│                                                                          │
-│   AGENT (A)                                                              │
-│   ─────────                                                              │
-│   The autonomous consumer. It receives the Structured Perception         │
-│   Package and acts deterministically based on the context provided.      │
-│   It does not guess. It does not hallucinate. It perceives.              │
-│                                                                          │
-│   Implementation: Any MCP-compatible LLM (Claude, GPT, Gemini series)    │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
-```
+
 
 ### The Critical Insight: Domain-Level, Not Tool-Level
 
@@ -200,9 +152,7 @@ In traditional MVC, the View is **tool-level** — each controller action has it
 
 In MVA, the Presenter is **domain-level**. You don't create a Presenter per tool. You create a Presenter per **domain entity**:
 
-::: code-group
-
-```typescript [Recommended (v2.7+)]
+```typescript
 import { initFusion, definePresenter } from '@vinkius-core/mcp-fusion';
 
 const f = initFusion<Ctx>();
@@ -241,36 +191,7 @@ f.tool({
 });
 ```
 
-```typescript [Classic builder]
-// This Presenter is shared across EVERY tool that returns invoices
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-    .systemRules(['amount_cents is in CENTS. Divide by 100.'])
-    .suggestActions((inv) => inv.status === 'pending'
-        ? [{ tool: 'billing.pay', reason: 'Pay' }]
-        : []);
-
-// Used in billing.get_invoice
-const billing = defineTool<Ctx>('billing', {
-    actions: {
-        get_invoice: { returns: InvoicePresenter, ... },
-        list_invoices: { returns: InvoicePresenter, ... },
-    }
-});
-
-// Used in reports.financial_summary — same Presenter
-const reports = defineTool<Ctx>('reports', {
-    actions: {
-        financial_summary: { returns: InvoicePresenter, ... },
-    }
-});
-```
-
-:::
-
 The agent perceives invoices identically whether they come from `billing.get_invoice`, `billing.list_invoices`, or `reports.financial_summary`. This is **Perception Consistency** — the third requirement derived above.
-
----
 
 ## Why Existing Architectures Fail
 
@@ -298,38 +219,12 @@ RPC provides typed function calls with schema validation.
 
 **Why it fails for agents:** RPC validates inputs but provides no output perception layer. The response is raw data. There are no rules, no affordances, no UI blocks. And RPC's schema is transport-level, not domain-level — it cannot express "divide by 100" or "suggest billing.pay when pending."
 
----
-
 ## The Convergence Hypothesis
 
 The trajectory of software architecture points toward **dual-interface** systems: products will need both MVC (for human consumers) and MVA (for agent consumers), often serving the same domain model.
 
-```text
-                        ┌─────────────────────┐
-                        │   Domain Model       │
-                        │   (shared truth)     │
-                        └──────────┬──────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    │                              │
-            ┌───────▼───────┐            ┌────────▼────────┐
-            │   MVC Stack    │            │   MVA Stack      │
-            │   View → HTML  │            │   Presenter →    │
-            │   for browsers │            │   Perception     │
-            │                │            │   Package for    │
-            │   (humans)     │            │   AI agents      │
-            └────────────────┘            └─────────────────┘
-```
+
 
 A SaaS product might render invoices as HTML tables for the dashboard (MVC) and as structured perception packages for Claude/GPT integration (MVA). Both consume the same `Invoice` model. Both serve the same business logic. But they serve fundamentally different consumer classes.
 
 This is not speculative. Every company building "AI-native" features on top of existing products is already facing this architectural split — they just haven't named it yet.
-
----
-
-## Continue Reading
-
-- [MVA vs MVC](/mva/mva-vs-mvc) — Formal layer-by-layer comparison
-- [Anatomy of the Presenter](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
-- [Perception Package](/mva/perception-package) — What the agent actually receives
-- [Quickstart](/quickstart) — Build your first MVA tool in 5 minutes

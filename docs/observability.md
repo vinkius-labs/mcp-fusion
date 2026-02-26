@@ -1,59 +1,8 @@
 # Observability
 
-**MCP Fusion** provides a built-in debug observability system that emits structured events at each stage of the execution pipeline. When disabled (the default), there is **zero runtime overhead** — no conditionals, no performance impact.
+Fusion emits structured events at each pipeline stage. When debug is off (default), zero runtime overhead — no conditionals, no observer objects. Events only flow when you opt in.
 
----
-
-## Design Principles
-
-| Principle | How It's Implemented |
-|---|---|
-| **Zero overhead** | Separate code path — when debug is off, execution takes the fast path with no conditionals |
-| **Opt-in** | Debug is only active when explicitly enabled via `.debug()` or `enableDebug()` |
-| **Pure function** | The observer is a simple function (`DebugObserverFn`), not a class hierarchy |
-| **Type-safe events** | Discriminated union (`DebugEvent`) enables exhaustive `switch` handling |
-| **Immutable payloads** | All event properties are `readonly` |
-
----
-
-## Quick Start
-
-### Per-Tool Debug
-
-Attach a debug observer to a single tool using `.debug()`:
-
-::: code-group
-```typescript [f.tool() — Recommended ✨]
-import { initFusion, createDebugObserver, success } from '@vinkius-core/mcp-fusion';
-
-const f = initFusion<AppContext>();
-
-// Debug is configured at registry or server level with f.tool()
-const registry = f.registry();
-registry.enableDebug(createDebugObserver());
-```
-```typescript [createTool]
-import { createTool, createDebugObserver, success } from '@vinkius-core/mcp-fusion';
-
-const tool = createTool<AppContext>('projects')
-    .debug(createDebugObserver())         // ← pretty console.debug output
-    .action({
-        name: 'list',
-        handler: async (ctx) => success(await ctx.db.projects.findMany()),
-    });
-```
-:::
-
-Output:
-```
-[mcp-fusion] route     projects/list
-[mcp-fusion] validate  projects/list ✓ 0.2ms
-[mcp-fusion] execute   projects/list ✓ 14.3ms
-```
-
-### Registry-Level Debug
-
-Enable debug for **all registered tools** at once using `enableDebug()`:
+## Quick Start {#quickstart}
 
 ```typescript
 import { ToolRegistry, createDebugObserver } from '@vinkius-core/mcp-fusion';
@@ -61,492 +10,178 @@ import { ToolRegistry, createDebugObserver } from '@vinkius-core/mcp-fusion';
 const registry = new ToolRegistry<AppContext>();
 registry.registerAll(projectsTool, usersTool, billingTool);
 
-// One line — all 3 tools now emit debug events
-registry.enableDebug(createDebugObserver());
-```
-
-### Server-Level Debug
-
-Pass the observer in `attachToServer()` options for full pipeline visibility:
-
-```typescript
-const detach = registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
-    debug: createDebugObserver(),    // ← observes everything
+registry.attachToServer(server, {
+  contextFactory: (extra) => createAppContext(extra),
+  debug: createDebugObserver(),
 });
 ```
 
-This is the recommended approach for production debugging. A single entry point enables observability across the entire MCP server.
-
----
-
-## The `createDebugObserver()` Factory
-
-```typescript
-import { createDebugObserver } from '@vinkius-core/mcp-fusion';
+```
+[mcp-fusion] route     projects/list
+[mcp-fusion] validate  projects/list ✓ 0.2ms
+[mcp-fusion] execute   projects/list ✓ 14.3ms
 ```
 
-| Signature | Description |
-|---|---|
-| `createDebugObserver()` | Returns a `DebugObserverFn` that formats events to `console.debug` |
-| `createDebugObserver(handler)` | Returns the custom handler directly — no wrapper |
+## Attachment Levels {#levels}
 
-### Default Console Output
-
-When called without arguments, produces compact, aligned output:
-
-```
-[mcp-fusion] route     platform/users.list
-[mcp-fusion] validate  platform/users.list ✓ 0.3ms
-[mcp-fusion] mw-chain  platform/users.list (2 functions)
-[mcp-fusion] execute   platform/users.list ✓ 8.7ms
-```
-
-### Custom Handler
-
-Pass a function to receive structured `DebugEvent` objects:
-
-```typescript
-const debug = createDebugObserver((event) => {
-    // event is a fully typed DebugEvent
-    myTelemetry.record(event.type, {
-        tool: event.tool,
-        action: event.action,
-        timestamp: event.timestamp,
-    });
-});
-```
-
----
-
-## Event Types
-
-Every event has `type`, `tool`, `action`, and `timestamp`. The `type` field is a discriminator for exhaustive handling.
-
-### `RouteEvent`
-
-Emitted when an incoming MCP call is matched to a tool and action. This is the **first event** in the pipeline.
-
-```typescript
-{
-    type: 'route',
-    tool: 'projects',
-    action: 'list',
-    timestamp: 1740195418000
-}
-```
-
-### `ValidateEvent`
-
-Emitted after Zod schema validation (pass or fail). Includes timing for the validation step.
-
-```typescript
-// Successful validation
-{
-    type: 'validate',
-    tool: 'projects',
-    action: 'create',
-    valid: true,
-    durationMs: 0.3,
-    timestamp: 1740195418001
-}
-
-// Failed validation
-{
-    type: 'validate',
-    tool: 'projects',
-    action: 'create',
-    valid: false,
-    error: 'Validation failed',
-    durationMs: 0.1,
-    timestamp: 1740195418001
-}
-```
-
-### `MiddlewareEvent`
-
-Emitted when the middleware chain starts executing. Only fires when there is at least one middleware in the chain (global or group-scoped).
-
-```typescript
-{
-    type: 'middleware',
-    tool: 'projects',
-    action: 'create',
-    chainLength: 3,             // total: global + group-scoped
-    timestamp: 1740195418002
-}
-```
-
-### `ExecuteEvent`
-
-Emitted after the handler completes. Contains total pipeline duration and error flag.
-
-```typescript
-// Success
-{
-    type: 'execute',
-    tool: 'projects',
-    action: 'list',
-    durationMs: 14.3,
-    isError: false,
-    timestamp: 1740195418015
-}
-
-// Error response from handler
-{
-    type: 'execute',
-    tool: 'projects',
-    action: 'create',
-    durationMs: 2.1,
-    isError: true,              // handler returned error()
-    timestamp: 1740195418003
-}
-```
-
-### `ErrorEvent`
-
-Emitted when an unrecoverable error occurs during routing (unknown action, missing discriminator, unknown tool at registry level).
-
-```typescript
-{
-    type: 'error',
-    tool: 'unknown_tool',
-    action: '?',
-    error: 'Unknown tool: "unknown_tool"',
-    step: 'route',
-    timestamp: 1740195418000
-}
-```
-
----
-
-## Event Pipeline Order
-
-For a successful call with middleware, events are emitted in this exact order:
-
-```
-route → validate → middleware → execute
-```
-
-- **No schema?** → `validate` is still emitted with `valid: true`
-- **No middleware?** → `middleware` is skipped
-- **Validation fails?** → Only `route` + `validate` are emitted (pipeline short-circuits)
-- **Unknown action?** → Only `error` is emitted
-
----
-
-## Three Levels of Observability
-
-### 1. Per-Tool `.debug()`
-
-Attach an observer to a single tool. Useful during development of a specific tool.
+**Per-tool** — attach to a single tool during development:
 
 ```typescript
 const tool = createTool<AppContext>('users')
-    .debug(createDebugObserver())
-    .action({ name: 'list', handler: listUsers })
-    .action({ name: 'create', schema: createUserSchema, handler: createUser });
+  .debug(createDebugObserver())
+  .action({ name: 'list', handler: listUsers });
 ```
 
-::: tip
-`.debug()` can be called after `defineTool()` — it's safe to attach even after the builder is frozen.
-:::
+**Registry-wide** — propagate to every registered builder:
 
 ```typescript
-const tool = defineTool<AppContext>('users', {
-    actions: {
-        list: { handler: listUsers },
-    },
-});
-
-// Attach debug later — this is fine
-tool.debug(createDebugObserver());
-```
-
-### 2. Registry `.enableDebug()`
-
-Propagate an observer to **every registered builder** at once:
-
-```typescript
-const registry = new ToolRegistry<AppContext>();
-registry.register(projectsTool);
-registry.register(usersTool);
-registry.register(billingTool);
-
-// All 3 tools now emit events
 registry.enableDebug(createDebugObserver());
 ```
 
-The registry also emits its own error events for unknown tools:
+**Server-wide** — pass as `AttachOptions.debug` (calls `enableDebug()` internally). One entry point, full pipeline visibility.
+
+## `createDebugObserver()` {#factory}
 
 ```typescript
-// Calling a non-existent tool
-await registry.routeCall(ctx, 'nonexistent', { action: 'run' });
-// → ErrorEvent with step: 'route' and tool: 'nonexistent'
-```
+import { createDebugObserver } from '@vinkius-core/mcp-fusion';
 
-### 3. Server `AttachOptions.debug`
+// Default — pretty console.debug output
+const observer = createDebugObserver();
 
-The recommended approach — a single entry point for the entire MCP server:
-
-```typescript
-const detach = registry.attachToServer(server, {
-    contextFactory: (extra) => createAppContext(extra),
-    debug: createDebugObserver(),
+// Custom — receive typed DebugEvent objects
+const observer = createDebugObserver((event) => {
+  myTelemetry.record(event.type, {
+    tool: event.tool,
+    action: event.action,
+    timestamp: event.timestamp,
+  });
 });
 ```
 
-This calls `registry.enableDebug()` internally, propagating to all builders.
+No argument → formats events to `console.debug`. With a handler function → returns that function directly. Type signature: `DebugObserverFn = (event: DebugEvent) => void`.
 
----
+## Event Types {#events}
 
-## Real-World Patterns
+Every event has `type`, `tool`, `action`, and `timestamp`. The `type` field is the discriminant for exhaustive `switch` handling.
 
-### Telemetry Integration
-
-Forward events to OpenTelemetry, Datadog, or any observability platform:
-
+**RouteEvent** — first event, call matched to a tool and action:
 ```typescript
-const debug = createDebugObserver((event) => {
-    switch (event.type) {
-        case 'execute':
-            histogram.record(event.durationMs, {
-                tool: event.tool,
-                action: event.action,
-                status: event.isError ? 'error' : 'success',
-            });
-            break;
-        case 'error':
-            errorCounter.add(1, {
-                tool: event.tool,
-                step: event.step,
-            });
-            break;
-    }
-});
-
-registry.enableDebug(debug);
+{ type: 'route', tool: 'projects', action: 'list', timestamp: 1740195418000 }
 ```
 
-### Error-Only Monitoring
-
-Filter events to only capture errors — useful for production alerting:
-
+**ValidateEvent** — after Zod validation, includes duration and pass/fail:
 ```typescript
-const alertObserver = createDebugObserver((event) => {
-    if (event.type === 'error') {
-        logger.error(`MCP pipeline error`, {
-            tool: event.tool,
-            action: event.action,
-            error: event.error,
-            step: event.step,
-        });
-    }
-    if (event.type === 'execute' && event.isError) {
-        logger.warn(`MCP handler returned error`, {
-            tool: event.tool,
-            action: event.action,
-            durationMs: event.durationMs,
-        });
-    }
-});
+{ type: 'validate', tool: 'projects', action: 'create', valid: true, durationMs: 0.3, timestamp: ... }
+{ type: 'validate', tool: 'projects', action: 'create', valid: false, error: 'Validation failed', durationMs: 0.1, timestamp: ... }
 ```
 
-### Latency Tracking
+**MiddlewareEvent** — when middleware chain starts (skipped when no middleware):
+```typescript
+{ type: 'middleware', tool: 'projects', action: 'create', chainLength: 3, timestamp: ... }
+```
 
-Track slow handlers and identify performance bottlenecks:
+**ExecuteEvent** — handler completed, contains total pipeline duration:
+```typescript
+{ type: 'execute', tool: 'projects', action: 'list', durationMs: 14.3, isError: false, timestamp: ... }
+```
+
+**ErrorEvent** — unrecoverable routing errors. `step` indicates where: `'route'`, `'validate'`, `'middleware'`, or `'execute'`:
+```typescript
+{ type: 'error', tool: 'unknown_tool', action: '?', error: 'Unknown tool', step: 'route', timestamp: ... }
+```
+
+Pipeline order: `route → validate → middleware → execute`. Validation failure short-circuits after `validate`. No middleware → `middleware` event skipped. Unknown action → only `error`.
+
+## Practical Patterns {#patterns}
+
+**Telemetry integration:**
 
 ```typescript
-const SLOW_THRESHOLD_MS = 100;
-
-const latencyObserver = createDebugObserver((event) => {
-    if (event.type === 'execute' && event.durationMs > SLOW_THRESHOLD_MS) {
-        console.warn(
-            `⚠️ Slow handler: ${event.tool}/${event.action} took ${event.durationMs.toFixed(1)}ms`
-        );
-    }
-    if (event.type === 'validate' && event.durationMs > 10) {
-        console.warn(
-            `⚠️ Slow validation: ${event.tool}/${event.action} took ${event.durationMs.toFixed(1)}ms`
-        );
-    }
+const observer = createDebugObserver((event) => {
+  switch (event.type) {
+    case 'execute':
+      histogram.record(event.durationMs, {
+        tool: event.tool,
+        action: event.action,
+        status: event.isError ? 'error' : 'success',
+      });
+      break;
+    case 'error':
+      errorCounter.add(1, { tool: event.tool, step: event.step });
+      break;
+  }
 });
 ```
 
-### Structured Event Collector
-
-Collect all events into a structured log for batch processing:
+**Latency alerting:**
 
 ```typescript
-const eventLog: DebugEvent[] = [];
-const collector = createDebugObserver((event) => eventLog.push(event));
-
-registry.enableDebug(collector);
-
-// After some calls...
-const summary = {
-    totalCalls: eventLog.filter(e => e.type === 'route').length,
-    errors: eventLog.filter(e => e.type === 'error').length,
-    avgDuration: eventLog
-        .filter((e): e is ExecuteEvent => e.type === 'execute')
-        .reduce((sum, e) => sum + e.durationMs, 0) / eventLog.filter(e => e.type === 'execute').length,
-};
+const observer = createDebugObserver((event) => {
+  if (event.type === 'execute' && event.durationMs > 100) {
+    console.warn(`Slow handler: ${event.tool}/${event.action} took ${event.durationMs.toFixed(1)}ms`);
+  }
+});
 ```
 
----
+**Error-only (production):**
 
-## Governance Observability
+```typescript
+const observer = createDebugObserver((event) => {
+  if (event.type === 'error') {
+    logger.error('MCP pipeline error', { tool: event.tool, error: event.error, step: event.step });
+  }
+  if (event.type === 'execute' && event.isError) {
+    logger.warn('Handler returned error', { tool: event.tool, action: event.action });
+  }
+});
+```
 
-The [Capability Governance](/governance/) stack integrates with the debug observer system. Governance operations — lockfile generation, contract diffing, attestation signing — emit structured `GovernanceEvent` objects through the same `DebugObserverFn` pipeline.
+## Governance Observability {#governance}
 
-### GovernanceEvent
-
-Emitted during governance operations (lockfile, diffing, attestation, entitlement scanning, token profiling).
+The [governance](/governance/) stack emits `GovernanceEvent` objects through the same `DebugObserverFn` pipeline.
 
 ```typescript
 {
-    type: 'governance',
-    operation: 'lockfile.generate',
-    label: 'Generate lockfile for payments-api',
-    outcome: 'success',           // 'success' | 'failure'
-    detail: '12 tools, 3 prompts',
-    durationMs: 4.2,
-    timestamp: 1740195418000
+  type: 'governance',
+  operation: 'lockfile.generate',
+  label: 'Generate lockfile for payments-api',
+  outcome: 'success',
+  detail: '12 tools, 3 prompts',
+  durationMs: 4.2,
+  timestamp: 1740195418000
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `type` | `'governance'` | Discriminator |
-| `operation` | `GovernanceOperation` | One of 11 operation kinds (see below) |
-| `label` | `string` | Human-readable description of the operation |
-| `outcome` | `'success' \| 'failure'` | Whether the operation completed or threw |
-| `detail` | `string?` | Optional context (e.g., error message on failure) |
-| `durationMs` | `number` | Wall-clock duration of the operation |
-| `timestamp` | `number` | Unix epoch (ms) |
+`operation` is one of: `'contract.compile'`, `'contract.diff'`, `'digest.compute'`, `'lockfile.generate'`, `'lockfile.check'`, `'lockfile.write'`, `'lockfile.read'`, `'attestation.sign'`, `'attestation.verify'`, `'entitlement.scan'`, `'token.profile'`. `outcome` is `'success'`, `'failure'`, or `'drift'`. `detail` is optional context (error message, counts).
 
-### GovernanceOperation
+**`createGovernanceObserver()`** wraps governance operations with debug events and optional tracing spans:
 
 ```typescript
-type GovernanceOperation =
-    | 'contract.compile'    // Materialize ToolContract from builders
-    | 'contract.diff'       // Semantic diff between two contracts
-    | 'digest.compute'      // SHA-256 behavioral fingerprint
-    | 'lockfile.generate'   // Generate mcp-fusion.lock
-    | 'lockfile.check'      // Verify lockfile against live contracts
-    | 'lockfile.write'      // Write lockfile to disk
-    | 'lockfile.read'       // Read lockfile from disk
-    | 'attestation.sign'    // Cryptographic signing
-    | 'attestation.verify'  // Signature verification
-    | 'entitlement.scan'    // Static entitlement analysis
-    | 'token.profile';      // Token economics profiling
-```
+import { createGovernanceObserver, createNoopObserver } from '@vinkius-core/mcp-fusion/introspection';
 
-### Default Console Output
-
-When a governance event flows through the default `createDebugObserver()`, it produces:
-
-```
-[mcp-fusion] gov  lockfile.generate ✓ Generate lockfile for payments-api  4.2ms
-[mcp-fusion] gov  attestation.sign  ✓ Sign server digest                 1.1ms
-[mcp-fusion] gov  lockfile.check    ✗ Surface drift detected             0.8ms
-```
-
-### GovernanceObserver Bridge
-
-`createGovernanceObserver()` wraps governance operations with both debug events and OpenTelemetry-compatible tracing spans:
-
-```typescript
-import {
-    createGovernanceObserver,
-    createNoopObserver,
-} from '@vinkius-core/mcp-fusion/introspection';
-import { createDebugObserver } from '@vinkius-core/mcp-fusion/observability';
-
-// With debug events
 const observer = createGovernanceObserver({
-    debug: createDebugObserver(),
+  debug: createDebugObserver(),
+  tracer: myOtelTracer,  // optional
 });
 
-// With both debug events and tracing spans
-const observer = createGovernanceObserver({
-    debug: createDebugObserver(),
-    tracer: myOtelTracer,
-});
-
-// Zero-overhead passthrough (when observability is not configured)
+// Zero-overhead passthrough
 const noop = createNoopObserver();
 ```
 
-#### Usage
-
-The observer wraps synchronous or asynchronous governance operations:
+Usage with `observe()` / `observeAsync()`:
 
 ```typescript
-// Synchronous
 const lockfile = observer.observe(
-    'lockfile.generate',
-    'Generate lockfile for payments-api',
-    () => generateLockfile('payments-api', contracts, version),
+  'lockfile.generate',
+  'Generate lockfile for payments-api',
+  () => generateLockfile('payments-api', contracts, version),
 );
 
-// Asynchronous
 const attestation = await observer.observeAsync(
-    'attestation.sign',
-    'Sign server digest',
-    () => attestServerDigest(digest, signer),
+  'attestation.sign',
+  'Sign server digest',
+  () => attestServerDigest(digest, signer),
 );
 ```
 
-Each call emits a `GovernanceEvent` to the debug observer and (if configured) creates a tracing span named `mcp.governance.<operation>`. On failure, the span records the exception and sets status to `ERROR`.
-
-#### GovernanceObserver API
-
-| Type | Description |
-|---|---|
-| `GovernanceObserverConfig` | `{ debug?: DebugObserverFn, tracer?: FusionTracer }` |
-| `GovernanceObserver` | Observer instance with `observe()` and `observeAsync()` methods |
-| `createGovernanceObserver(config)` | Factory — creates an observer that emits events and spans |
-| `createNoopObserver()` | Factory — zero-overhead passthrough, no events emitted |
-
----
-
-## API Reference
-
-### Types
-
-| Type | Description |
-|---|---|
-| `DebugEvent` | Discriminated union: `RouteEvent \| ValidateEvent \| MiddlewareEvent \| ExecuteEvent \| ErrorEvent \| GovernanceEvent` |
-| `DebugObserverFn` | `(event: DebugEvent) => void` — the observer function signature |
-| `RouteEvent` | `{ type: 'route', tool, action, timestamp }` |
-| `ValidateEvent` | `{ type: 'validate', tool, action, valid, error?, durationMs, timestamp }` |
-| `MiddlewareEvent` | `{ type: 'middleware', tool, action, chainLength, timestamp }` |
-| `ExecuteEvent` | `{ type: 'execute', tool, action, durationMs, isError, timestamp }` |
-| `ErrorEvent` | `{ type: 'error', tool, action, error, step, timestamp }` |
-| `GovernanceEvent` | `{ type: 'governance', operation, label, outcome, detail?, durationMs, timestamp }` |
-| `GovernanceOperation` | Union of 11 governance operation identifiers |
-| `GovernanceObserver` | Observer interface: `observe<T>(op, label, fn)`, `observeAsync<T>(op, label, fn)` |
-| `GovernanceObserverConfig` | `{ debug?: DebugObserverFn, tracer?: FusionTracer }` |
-
-### Functions
-
-| Function | Description |
-|---|---|
-| `createDebugObserver()` | Factory — returns a `DebugObserverFn` with default console output |
-| `createDebugObserver(handler)` | Factory — returns the custom handler directly |
-| `createGovernanceObserver(config)` | Factory — wraps governance ops with debug events + tracing spans |
-| `createNoopObserver()` | Factory — zero-overhead passthrough for production without observability |
-
-### Builder Methods
-
-| Method | On | Description |
-|---|---|---|
-| `.debug(observer)` | `createTool` / `defineTool` | Attach observer to a single tool |
-| `.enableDebug(observer)` | `ToolRegistry` | Propagate observer to all registered builders |
-
-### AttachOptions
-
-| Field | Type | Description |
-|---|---|---|
-| `debug` | `DebugObserverFn?` | Pass to `attachToServer()` for full server observability |
+Each call emits a `GovernanceEvent` to the debug observer and (if configured) creates a tracing span. On failure, the span records the exception.

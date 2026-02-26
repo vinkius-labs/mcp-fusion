@@ -1,218 +1,95 @@
----
-title: "Testing — Deterministic AI Governance"
-description: "The end of Vibes-Based Testing. Audit every MVA layer in CI/CD — zero tokens, zero servers, mathematically verifiable."
----
-
 # Testing
 
-::: danger PII Protection as Code-Assertable Invariants
-MCP Fusion enables sensitive data protection (PII Drop) to be **asserted in code** and **verified in CI/CD**:
-
-```typescript
-// Structurally enforceable invariants — not vibes, not visual checks.
-expect(result.data).not.toHaveProperty('passwordHash');  // SOC2 CC6.1
-expect(result.data).not.toHaveProperty('tenantId');       // Multi-tenant isolation
-expect(result.isError).toBe(true);                        // SOC2 CC6.3 — GUEST blocked
-expect(result.systemRules).toContain('PII policy');       // Governance directive present
-```
-
-The field is **physically absent** from `result.data` — not hidden, not masked, but removed by the Presenter's Zod schema in RAM. `JSON.stringify` cannot leak what doesn't exist. This runs in 2ms, costs $0.00, and produces the same result on every CI run, on every machine.
-:::
-
-## The End of Vibes-Based Testing
-
-How does a developer test if the Tool he created for Claude works today?
-
-He starts the Node.js server in the terminal, opens Claude Desktop, types "Get user 5", waits 10 seconds for the AI to respond, looks at the screen and says: *"Cool, the password didn't leak. Commit and Deploy."*
-
-The AI industry calls this **"Vibes-Based Testing"** — testing by gut feeling.
-
-**This is unacceptable in Enterprise Software Engineering.**
-
-- You **cannot** put this in a CI/CD pipeline (GitHub Actions).
-- You **cannot** spend tokens (money) from the API on unit tests.
-- You **cannot** pass a security audit by relying on what the AI *"decided"* to respond.
-
-And yet, today, this is the **only** testing strategy available for MCP servers. Every framework, every SDK, every tutorial ends at `JSON.stringify()` and hopes for the best.
-
-### The Problem is Structural
-
-MCP responses are flat `ToolResponse` objects — an array of `{ type: 'text', text: string }` blocks. Everything is serialized into strings. To assert that a `passwordHash` field was stripped, you would need to:
-
-1. Parse the XML wrapper
-2. Find the `<data>` block
-3. Parse the JSON inside it
-4. Check that the field is absent
-
-That's fragile, format-dependent, and breaks every time the response format evolves. It's not testable. It's not auditable. It's not engineering.
-
-### Deterministic MVA Auditing
-
-**MCP Fusion** provides `@vinkius-core/mcp-fusion-testing` — a testing framework for **deterministic AI Data Governance auditing (SOC2)** in a CI/CD pipeline.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    FusionTester                          │
-│                                                         │
-│  ┌──────────┐   ┌────────────┐   ┌─────────┐           │
-│  │   Zod    │──▶│ Middleware  │──▶│ Handler │           │
-│  │  Input   │   │   Chain    │   │         │           │
-│  └──────────┘   └────────────┘   └────┬────┘           │
-│                                       │                 │
-│                                  ┌────▼────┐            │
-│                                  │Presenter│            │
-│                                  │ (Egress │            │
-│                                  │Firewall)│            │
-│                                  └────┬────┘            │
-│                                       │                 │
-│  ┌────────────────────────────────────▼──────────────┐  │
-│  │              MvaTestResult                        │  │
-│  │  ┌──────┐ ┌───────────┐ ┌────────┐ ┌───────────┐ │  │
-│  │  │ data │ │systemRules│ │uiBlocks│ │rawResponse│ │  │
-│  │  └──────┘ └───────────┘ └────────┘ └───────────┘ │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
-The `FusionTester`:
-
-- Runs the **real** execution pipeline in RAM — the exact same code path as production
-- Returns **structured** `MvaTestResult` objects — each MVA layer decomposed into its own field
-- **Zero tokens consumed.** No LLM calls. No API bills. No network transport.
-- **Zero servers.** No HTTP, no stdio, no MCP transport layer.
-- **Deterministic.** Same input → same output. Every time. In every CI run. On every machine.
-
-### What You Can Audit
-
-| MVA Layer | What the test asserts | SOC2 / Compliance Relevance |
-|---|---|---|
-| [**Egress Firewall**](/testing/egress-firewall) | `result.data` has no `passwordHash`, no `tenantId` | Data leak prevention (SOC2 CC6.1) |
-| [**OOM Guard**](/testing/oom-guard) | `result.isError === true` when `take: 10000` | Memory exhaustion protection |
-| [**System Rules**](/testing/system-rules) | `result.systemRules` contains expected domain directives | Deterministic context control |
-| [**UI Blocks**](/testing/ui-blocks) | `result.uiBlocks` produces correct charts/summaries | Response quality assurance |
-| [**Middleware Guards**](/testing/middleware-guards) | `result.isError === true` when `role: 'GUEST'` | Access control verification (SOC2 CC6.3) |
-| **Agent Limit** | `result.data.length <= 20` even when DB has 10,000 rows | Context window protection |
-| **HATEOAS** | `rawResponse` includes `<action_suggestions>` | Agent navigation safety |
-
-::: tip Deterministic ≠ Vibes
-Every assertion above is **deterministic** — it does not depend on what any AI model "decides" to do. It depends on what **your code** does. That's the difference between engineering and vibes.
-:::
-
-### Before vs After
-
-| | Before (Vibes-Based) | After (FusionTester) |
-|---|---|---|
-| **How you test** | Open Claude Desktop, type a prompt, read the response | `await tester.callAction('users', 'find_many', { take: 5 })` |
-| **What you assert** | "Looks right to me" | `expect(result.data[0]).not.toHaveProperty('passwordHash')` |
-| **Cost per test** | ~$0.01–0.05 in API tokens | $0.00 |
-| **Duration** | 5–15 seconds (LLM round-trip) | 2ms (in-memory) |
-| **CI/CD compatible** | ❌ | ✅ `npx vitest run` |
-| **SOC2 auditable** | ❌ | ✅ Structurally enforceable |
-| **Reproducible** | ❌ LLM responses vary | ✅ Deterministic |
-
-## Install
+`@vinkius-core/mcp-fusion-testing` runs the full execution pipeline in RAM — same code path as production — and returns structured `MvaTestResult` objects with each MVA layer decomposed into its own field. Zero tokens, zero servers, deterministic on every CI run.
 
 ```bash
 npm install @vinkius-core/mcp-fusion-testing
 ```
 
-**Zero runtime dependencies.** Only peer dependencies on `@vinkius-core/mcp-fusion` and `zod`.
+Works with Vitest, Jest, Mocha, or `node:test`. The tester returns plain objects — your runner, your choice.
 
-**Runner agnostic.** Works with Vitest, Jest, Mocha, or Node's native `node:test`. The FusionTester returns plain JS objects — your test runner, your choice.
-
-## 30-Second Example
+## Create a Tester
 
 ```typescript
-import { describe, it, expect } from 'vitest';
 import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { registry } from './server/registry.js';
 
 const tester = createFusionTester(registry, {
-    contextFactory: () => ({
-        prisma: mockPrisma,
-        tenantId: 't_enterprise_42',
-        role: 'ADMIN',
-    }),
-});
-
-describe('SOC2 Data Governance Audit', () => {
-    it('Egress Firewall strips PII before it reaches the LLM', async () => {
-        const result = await tester.callAction('db_user', 'find_many', { take: 10 });
-
-        // DETERMINISTIC: passwordHash is physically absent from the response
-        for (const user of result.data) {
-            expect(user).not.toHaveProperty('passwordHash');
-            expect(user).not.toHaveProperty('tenantId');
-        }
-    });
-
-    it('OOM Guard rejects unbounded queries', async () => {
-        const result = await tester.callAction('db_user', 'find_many', { take: 99999 });
-        expect(result.isError).toBe(true);
-    });
-
-    it('LLM receives correct domain governance rules', async () => {
-        const result = await tester.callAction('db_user', 'find_many', { take: 5 });
-
-        expect(result.systemRules).toContain(
-            'Email addresses are PII. Mask when possible.'
-        );
-    });
-
-    it('Guest users cannot access admin tools', async () => {
-        const result = await tester.callAction(
-            'db_user', 'find_many', { take: 5 },
-            { role: 'GUEST' },  // ← context override
-        );
-        expect(result.isError).toBe(true);
-        expect(result.data).toContain('Unauthorized');
-    });
+  contextFactory: () => ({
+    prisma: mockPrisma,
+    tenantId: 't_enterprise_42',
+    role: 'ADMIN',
+  }),
 });
 ```
 
-**4 tests. 8ms total. Zero tokens. Zero servers. SOC2-grade proof.**
+`createFusionTester` wraps your real `ToolRegistry` and calls `routeCall()` — the same function production uses. No pipeline reimplementation, no mock transport.
 
-## Architecture: The Symbol Backdoor
-
-The `FusionTester` runs the **real** execution pipeline — the exact same code path as your production MCP server:
-
-```
-ToolRegistry.routeCall()
-  → Concurrency Semaphore
-    → Discriminator Parsing
-      → Zod Input Validation
-        → Compiled Middleware Chain
-          → Handler Execution
-            → PostProcessor (Presenter auto-application)
-              → Egress Guard (maxPayloadBytes)
-```
-
-The key insight: `ResponseBuilder.build()` attaches structured MVA metadata via a **global Symbol** (`MVA_META_SYMBOL`). Symbols are ignored by `JSON.stringify`, so the MCP transport never sees them — but the `FusionTester` reads them in RAM.
+## Assert Every MVA Layer
 
 ```typescript
-// What the MCP transport sees (JSON.stringify):
+import { describe, it, expect } from 'vitest';
+
+describe('SOC2 Data Governance', () => {
+  it('strips PII before it reaches the LLM', async () => {
+    const result = await tester.callAction('db_user', 'find_many', { take: 10 });
+
+    for (const user of result.data) {
+      expect(user).not.toHaveProperty('passwordHash');
+      expect(user).not.toHaveProperty('tenantId');
+    }
+  });
+
+  it('rejects unbounded queries', async () => {
+    const result = await tester.callAction('db_user', 'find_many', { take: 99999 });
+    expect(result.isError).toBe(true);
+  });
+
+  it('sends governance rules with data', async () => {
+    const result = await tester.callAction('db_user', 'find_many', { take: 5 });
+    expect(result.systemRules).toContain('Email addresses are PII. Mask when possible.');
+  });
+
+  it('blocks guest access', async () => {
+    const result = await tester.callAction(
+      'db_user', 'find_many', { take: 5 },
+      { role: 'GUEST' },
+    );
+    expect(result.isError).toBe(true);
+  });
+});
+```
+
+Four tests, 8 ms, zero tokens.
+
+## What `MvaTestResult` Exposes
+
+| Field | What you assert | Compliance mapping |
+|---|---|---|
+| `result.data` | Presenter schema stripped undeclared fields | SOC2 CC6.1 — data leak prevention |
+| `result.isError` | Middleware rejected the request | SOC2 CC6.3 — access control |
+| `result.systemRules` | Domain directives present in response | Context governance |
+| `result.uiBlocks` | Server-rendered charts and summaries correct | Response quality |
+| `result.data.length` | `agentLimit` capped the collection | Context window protection |
+| `rawResponse` | `<action_suggestions>` HATEOAS hints present | Agent navigation |
+
+## How It Works
+
+`ResponseBuilder.build()` attaches MVA metadata via `Symbol.for('mcp-fusion.mva-meta')`. Symbols are invisible to `JSON.stringify`, so the MCP transport never sees them — but `FusionTester` reads them in RAM:
+
+```typescript
+// MCP transport sees:
 { "content": [{ "type": "text", "text": "<data>...</data>" }] }
 
-// What FusionTester reads (Symbol key — invisible to transport):
+// FusionTester reads (Symbol key):
 response[Symbol.for('mcp-fusion.mva-meta')] = {
-    data: { id: '1', name: 'Alice', email: 'alice@acme.com' },
-    systemRules: ['Data from Prisma ORM. Do not infer outside this response.'],
-    uiBlocks: [{ type: 'summary', content: 'User: Alice (alice@acme.com)' }],
+  data: { id: '1', name: 'Alice', email: 'alice@acme.com' },
+  systemRules: ['Data from Prisma ORM. Do not infer outside this response.'],
+  uiBlocks: [{ type: 'summary', content: 'User: Alice (alice@acme.com)' }],
 };
 ```
 
-**No XML regex. No string parsing. No pipeline reimplementation.**
-
-The FusionTester calls `ToolRegistry.routeCall()` — the same function your production server uses. A reimplemented pipeline would allow tests to pass in the tester but fail in production. Full fidelity means:
-
-- ✅ Zod input validation
-- ✅ Compiled middleware chain
-- ✅ Concurrency semaphore limits
-- ✅ Mutation serialization
-- ✅ Abort signal propagation
-- ✅ Egress payload guards
-- ✅ Agent limit truncation
-- ✅ HATEOAS action suggestions
+The tester exercises the full pipeline — Zod validation, compiled middleware chain, concurrency semaphore, mutation serialization, abort signal propagation, egress guards, agent limit truncation, and HATEOAS suggestions.
 
 ## Guides
 

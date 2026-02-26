@@ -1,14 +1,8 @@
 # Error Handling
 
-When an MCP tool call fails, the agent receives the error as text. In a raw MCP server, that text is whatever you put in the response — usually a string like `"Not found"` or, worse, a full stack trace. The agent can't distinguish between a missing record and a database crash. It can't tell which field was invalid or which tool to call instead.
+MCP Fusion wraps every error in structured XML. LLMs parse XML reliably, and each error includes a code, message, and recovery instructions that tell the agent what to do next.
 
-MCP Fusion wraps every error — from simple failures to multi-field validation issues — in structured XML. LLMs parse XML reliably because they're pre-trained on millions of XML documents. Each error includes a code, a human-readable message, and (when appropriate) recovery instructions that tell the agent what to do next.
-
----
-
-## Simple Errors with `error()` {#simple}
-
-The most basic error helper. Use it when the failure is clear and there's no specific recovery path:
+## error() {#simple}
 
 ```typescript
 import { error, success } from '@vinkius-core/mcp-fusion';
@@ -25,28 +19,21 @@ const getProject = f.tool({
 });
 ```
 
-The agent receives:
-
 ```xml
 <tool_error>
   <message>Project "proj_xyz" not found</message>
 </tool_error>
 ```
 
-The XML envelope tells the agent this is an error (not data), and the MCP response sets `isError: true` so the LLM runtime distinguishes errors from successful calls.
+## required() {#required}
 
----
-
-## Missing Field Errors with `required()` {#required}
-
-A convenience shortcut for the specific case where a required field is absent. This matters because the error tells the agent _exactly which field_ to add:
+Shortcut for missing fields — tells the agent exactly which parameter to add:
 
 ```typescript
 import { required } from '@vinkius-core/mcp-fusion';
 
 handler: async ({ input, ctx }) => {
   if (!input.workspace_id) return required('workspace_id');
-  // ...
 }
 ```
 
@@ -57,13 +44,9 @@ handler: async ({ input, ctx }) => {
 </tool_error>
 ```
 
-The `code` attribute lets the agent match on `MISSING_REQUIRED_FIELD` structurally. The `<recovery>` tag tells it exactly what to do — provide the field and retry. No guessing, no hallucinating workarounds.
+## toolError() — Self-Healing Errors {#tool-error}
 
----
-
-## Self-Healing Errors with `toolError()` {#tool-error}
-
-This is where MCP Fusion's error handling diverges from every other framework. `toolError()` doesn't just report what went wrong — it tells the agent how to fix it:
+Tells the agent not just what went wrong, but how to fix it:
 
 ```typescript
 import { toolError } from '@vinkius-core/mcp-fusion';
@@ -93,29 +76,15 @@ handler: async ({ input, ctx }) => {
 </tool_error>
 ```
 
-The agent reads `<available_actions>` and calls `projects.list` instead of retrying with the same invalid ID. This is self-healing behavior — the error contains the instructions to recover from it.
+The agent reads `<available_actions>` and calls `projects.list` instead of retrying with the same invalid ID.
 
 ### Error Codes {#codes}
 
-`toolError()` accepts canonical codes or any custom string:
+`toolError()` accepts canonical codes or any custom string: `NOT_FOUND`, `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `CONFLICT`, `RATE_LIMITED`, `TIMEOUT`, `INTERNAL_ERROR`, `DEPRECATED`, `SERVER_BUSY`, or a domain-specific code like `'InvoiceAlreadyPaid'`.
 
-| Code | When to use |
-|---|---|
-| `NOT_FOUND` | Entity doesn't exist |
-| `VALIDATION_ERROR` | Business rule violation |
-| `UNAUTHORIZED` | Missing credentials |
-| `FORBIDDEN` | Insufficient permissions |
-| `CONFLICT` | Duplicate or state conflict |
-| `RATE_LIMITED` | Too many requests |
-| `TIMEOUT` | Operation timed out |
-| `INTERNAL_ERROR` | Unexpected server error |
-| `DEPRECATED` | Feature being removed |
-| `SERVER_BUSY` | Concurrency limit reached |
-| *Custom string* | Any domain-specific code (e.g., `'InvoiceAlreadyPaid'`) |
+### Severity {#severity}
 
-### Severity Levels {#severity}
-
-By default, errors have `severity: 'error'`. For non-fatal advisories (deprecation warnings, soft limits), use `'warning'`:
+Default is `'error'`. Use `'warning'` for non-fatal advisories:
 
 ```typescript
 return toolError('DEPRECATED', {
@@ -125,17 +94,9 @@ return toolError('DEPRECATED', {
 });
 ```
 
-Warnings set `isError: false` in the MCP response — the agent treats them as advisories, not failures.
-
-| Severity | `isError` | Use case |
-|---|---|---|
-| `warning` | `false` | Deprecation notices, soft limits |
-| `error` | `true` | Recoverable failures (default) |
-| `critical` | `true` | System-level failures requiring escalation |
+Warnings set `isError: false` in the MCP response — the agent treats them as advisories. `'critical'` signals system-level failures requiring escalation.
 
 ### Structured Details {#details}
-
-Attach key-value metadata for richer context. The agent uses these to narrow the problem without making additional calls:
 
 ```typescript
 return toolError('NOT_FOUND', {
@@ -148,20 +109,7 @@ return toolError('NOT_FOUND', {
 });
 ```
 
-```xml
-<tool_error code="NOT_FOUND" severity="error">
-  <message>Invoice not found.</message>
-  <details>
-    <detail key="entity_id">inv_123</detail>
-    <detail key="entity_type">invoice</detail>
-    <detail key="searched_workspace">ws_42</detail>
-  </details>
-</tool_error>
-```
-
 ### Retry Hints {#retry}
-
-For transient failures, include a retry delay so the agent waits instead of hammering the endpoint:
 
 ```typescript
 return toolError('RATE_LIMITED', {
@@ -170,18 +118,9 @@ return toolError('RATE_LIMITED', {
 });
 ```
 
-```xml
-<tool_error code="RATE_LIMITED" severity="error">
-  <message>Too many requests.</message>
-  <retry_after>30 seconds</retry_after>
-</tool_error>
-```
-
----
-
 ## Automatic Validation Errors {#validation}
 
-You never write validation error formatting yourself. When the agent sends arguments that fail Zod validation, the framework generates a per-field correction prompt automatically:
+When the agent sends arguments that fail Zod validation, the framework generates per-field correction prompts:
 
 ```xml
 <validation_error action="users/create">
@@ -191,13 +130,7 @@ You never write validation error formatting yourself. When the agent sends argum
 </validation_error>
 ```
 
-Three design decisions make this format effective for agents:
-
-1. **Per-field `You sent:` values** — the agent sees exactly what it passed, so it can diff against what's expected.
-2. **Expected types and valid options** — the agent knows what to send instead, not just that it was wrong.
-3. **Anti-apology `<recovery>`** — instructs the agent to retry immediately instead of producing a lengthy explanation to the user.
-
-When the agent sends fields not declared in the schema, they're explicitly rejected (not silently stripped):
+Per-field `You sent:` values let the agent diff against expectations. The `<recovery>` tag instructs immediate retry instead of apologizing. Unrecognized keys are explicitly rejected:
 
 ```xml
 <validation_error action="billing/create">
@@ -206,13 +139,9 @@ When the agent sends fields not declared in the schema, they're explicitly rejec
 </validation_error>
 ```
 
-This teaches the agent which fields actually exist, enabling self-correction on retry.
-
----
-
 ## Automatic Routing Errors {#routing}
 
-The framework also generates routing errors when the agent omits or misspells the discriminator field in grouped tools:
+Missing or misspelled discriminators produce structured corrections:
 
 ```xml
 <tool_error code="MISSING_DISCRIMINATOR">
@@ -230,29 +159,21 @@ The framework also generates routing errors when the agent omits or misspells th
 </tool_error>
 ```
 
-Both errors list the valid actions, so the agent knows what to choose. Typos like `"destory"` are common with smaller models — the error corrects them in one round-trip.
-
----
-
 ## The Error Protocol {#protocol}
-
-Every error in the system follows the same structural contract:
 
 | Error Type | Source | Root Element | Trigger |
 |---|---|---|---|
-| `error()` | Your handler | `<tool_error>` | Generic failures |
-| `required()` | Your handler | `<tool_error code="MISSING_REQUIRED_FIELD">` | Missing arguments |
-| `toolError()` | Your handler | `<tool_error code="...">` | Recoverable business errors |
+| `error()` | Handler | `<tool_error>` | Generic failures |
+| `required()` | Handler | `<tool_error code="MISSING_REQUIRED_FIELD">` | Missing arguments |
+| `toolError()` | Handler | `<tool_error code="...">` | Recoverable business errors |
 | Validation | Automatic | `<validation_error action="...">` | Invalid arguments |
-| Routing | Automatic | `<tool_error code="MISSING_DISCRIMINATOR\|UNKNOWN_ACTION">` | Missing or invalid action |
+| Routing | Automatic | `<tool_error code="MISSING_DISCRIMINATOR\|UNKNOWN_ACTION">` | Bad discriminator |
 
-All user-controlled data in error outputs is XML-escaped automatically. Element content escapes `&` and `<`. Attribute values escape all five XML special characters (`&`, `<`, `>`, `"`, `'`).
+All user-controlled data is XML-escaped automatically.
 
----
+## Composing Errors with Result {#pipelines}
 
-## Composing Errors in Pipelines {#pipelines}
-
-For multi-step operations where each step can fail, use the [Result monad](/result-monad) to compose error handling without `try/catch`:
+For multi-step operations, use the [Result monad](/result-monad):
 
 ```typescript
 import { succeed, fail, error, type Result } from '@vinkius-core/mcp-fusion';
@@ -279,13 +200,3 @@ handler: async ({ input, ctx }) => {
   return success('Deleted');
 }
 ```
-
-Each step returns `Result<T>` — either `{ ok: true, value: T }` or `{ ok: false, response: ToolResponse }`. Failures short-circuit with an early return. Successes narrow the type for the next step. See [Result Monad](/result-monad) for the full API.
-
----
-
-## Where to Go Next {#next-steps}
-
-- [Result Monad](/result-monad) — `succeed()`, `fail()`, pipeline composition patterns
-- [Building Tools](/building-tools) — `toolError()` usage with `f.tool()`, `defineTool()`, `createTool()`
-- [Middleware](/middleware) — cross-cutting error boundaries

@@ -1,82 +1,10 @@
 # The Structured Perception Package
 
-> In traditional architectures, a response is data. In MVA, a response is a **perception event** — a multi-layered package that tells the agent what the data is, what it means, how to display it, what to do next, and what the limits are.
-
 When a tool handler returns raw data and a Presenter is attached, mcp-fusion's execution pipeline transforms that data into a **Structured Perception Package** — a multi-block MCP response where each block carries a specific semantic purpose. This page documents the exact structure, the block ordering, and why each layer exists.
-
----
 
 ## The Six Blocks
 
-Every Structured Perception Package consists of up to six distinct content blocks, composed by `ResponseBuilder.build()`:
-
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                     Structured Perception Package                         │
-│              (output of ResponseBuilder.build())                          │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 1 — DATA                                                           │
-│  ─────────────                                                            │
-│  Zod-validated JSON. Only declared fields (when using .strict()).        │
-│  rejected undeclared fields. This is the canonical representation.        │
-│                                                                           │
-│  {"id":"INV-001","amount_cents":45000,"status":"pending"}                 │
-│                                                                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 2 — UI BLOCKS                                                      │
-│  ─────────────────                                                        │
-│  Server-rendered visualizations. Each block is a separate content         │
-│  entry with a [SYSTEM] directive instructing pass-through rendering.      │
-│                                                                           │
-│  ```echarts                                                               │
-│  {"series":[{"type":"gauge","data":[{"value":450}]}]}                    │
-│  ```                                                                      │
-│  [SYSTEM]: Pass this echarts block directly to the user interface.        │
-│                                                                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 3 — EMBEDDED PRESENTER BLOCKS                                      │
-│  ────────────────────────────────────                                     │
-│  Rules and UI blocks from child Presenters (via .embed()).                │
-│  Merged automatically from ClientPresenter, PaymentMethodPresenter, etc.  │
-│                                                                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 4 — LLM HINTS                                                      │
-│  ────────────────                                                         │
-│  Free-form directives for the agent. These provide situational            │
-│  context that doesn't fit into formal rules.                              │
-│                                                                           │
-│  💡 This client has an overdue balance. Mention it proactively.           │
-│                                                                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 5 — DOMAIN RULES                                                   │
-│  ──────────────────────                                                   │
-│  Interpretation directives from .systemRules(). These are the             │
-│  domain-specific instructions that eliminate ambiguity.                    │
-│                                                                           │
-│  [DOMAIN RULES]:                                                          │
-│  - CRITICAL: amount_cents is in CENTS. Divide by 100 before display.     │
-│  - Use currency format: $XX,XXX.00                                       │
-│  - Use status emojis: ✅ paid, ⏳ pending, 🔴 overdue                    │
-│                                                                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  Block 6 — ACTION SUGGESTIONS                                             │
-│  ────────────────────────────                                             │
-│  HATEOAS-style affordances computed from the data state.                  │
-│                                                                           │
-│  [SYSTEM HINT]: Based on the current state, recommended next tools:       │
-│    → billing.pay: Process immediate payment                               │
-│    → billing.send_reminder: Send payment reminder                         │
-│                                                                           │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
----
+Every Structured Perception Package consists of up to six distinct content blocks, composed by `ResponseBuilder.build()`.
 
 ## Block Ordering and Why It Matters
 
@@ -91,11 +19,7 @@ The block order is intentional and deterministic. It is not arbitrary — it fol
 | 5th | **Domain Rules** | Interpretation directives that the agent applies when formulating its response. Near the end so they're fresh in the context window when the agent starts generating. |
 | 6th | **Action Suggestions** | What to do next — the final block, positioned so the agent's last context before acting is the available actions. |
 
-::: tip Recency Bias in LLMs
 LLMs exhibit recency bias — they weight information at the end of the context more heavily. By placing domain rules and action suggestions last, the Structured Perception Package ensures the agent applies interpretation rules and considers available actions when formulating its response.
-:::
-
----
 
 ## Block Deep Dive
 
@@ -220,8 +144,6 @@ The final block contains HATEOAS-style affordances from `.suggestActions()`:
 
 This block is the **decision-making context** for the agent. By appearing last in the response, it is the freshest information when the agent decides what to call next.
 
----
-
 ## Before and After
 
 ### Before MVA: Raw JSON Response
@@ -270,8 +192,6 @@ Block 6 — ACTIONS:
 
 The difference is architectural, not cosmetic. The AI operating on the second response has explicit rules, explicit actions, and explicit boundaries that reduce hallucination compared to raw JSON.
 
----
-
 ## Manual Composition
 
 Not all responses need a Presenter. The `ResponseBuilder` allows manual composition for handlers that need full control:
@@ -301,12 +221,3 @@ handler: async (ctx, args) => {
 ```
 
 This produces the same Structured Perception Package format — the Presenter just automates the composition.
-
----
-
-## Continue Reading
-
-- [Agentic Affordances](/mva/affordances) — Deep dive into the action suggestion system
-- [Context Tree-Shaking](/mva/context-tree-shaking) — Why JIT rules beat global prompts
-- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, validation, self-healing
-- [Presenter API](/presenter) — Configuration reference for all Presenter methods

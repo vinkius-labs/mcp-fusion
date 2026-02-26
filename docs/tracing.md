@@ -1,334 +1,150 @@
 # Tracing
 
-**MCP Fusion** provides native **OpenTelemetry-compatible tracing** for AI-native MCP servers. Every tool call produces one span with rich semantic attributes — zero dependencies, zero overhead when disabled.
+Every tool call can produce an OpenTelemetry-compatible span with semantic error classification. Zero dependencies — Fusion uses structural subtyping, not `import @opentelemetry/api`. Zero overhead when disabled — a completely separate code path runs.
 
-::: tip One-line setup
-```typescript
-registry.attachToServer(server, { tracing: trace.getTracer('mcp-fusion') });
-```
-:::
-
----
-
-## Why Tracing Matters for AI Agents
-
-AI agents fail differently than humans. A human clicks the wrong button once. An AI sends invalid parameters **hundreds of times per day** — and that's expected behavior. It's exploring, retrying, self-correcting.
-
-Traditional APM treats every error equally: `SpanStatusCode.ERROR` → PagerDuty → dev wakes up at 3 AM. In production AI systems, this creates **alert fatigue**. The team ignores alerts, and when the database actually crashes, nobody notices.
-
-**MCP Fusion** solves this with **semantic error classification**: AI mistakes and infrastructure failures produce different span signals, so your monitoring can distinguish between "the AI sent wrong params" and "the database is down."
-
----
-
-## Quick Start
-
-### Per-Tool
-
-::: code-group
-```typescript [f.tool() — Recommended ✨]
-import { trace } from '@opentelemetry/api';
-import { initFusion } from '@vinkius-core/mcp-fusion';
-
-const tracer = trace.getTracer('mcp-fusion');
-const f = initFusion<AppContext>();
-
-// With f.tool(), tracing is configured at registry/server level:
-const registry = f.registry();
-registry.enableTracing(tracer);
-```
-```typescript [createTool]
-import { trace } from '@opentelemetry/api';
-import { createTool, success } from '@vinkius-core/mcp-fusion';
-
-const tracer = trace.getTracer('mcp-fusion');
-
-const tool = createTool<AppContext>('projects')
-    .tracing(tracer)
-    .action({
-        name: 'list',
-        handler: async (ctx) => success(await ctx.db.projects.findMany()),
-    });
-```
-:::
-
-### Registry-Level
+## Quick Start {#quickstart}
 
 ```typescript
+import { trace } from '@opentelemetry/api';
+import { ToolRegistry } from '@vinkius-core/mcp-fusion';
+
 const registry = new ToolRegistry<AppContext>();
-registry.register(projectsTool);
-registry.register(billingTool);
+registry.registerAll(projectsTool, billingTool, usersTool);
 
-registry.enableTracing(trace.getTracer('mcp-fusion'));
-// → all registered tools now emit spans
-```
-
-### Server Attachment <Badge type="tip" text="recommended" />
-
-```typescript
 registry.attachToServer(server, {
-    contextFactory: createAppContext,
-    tracing: trace.getTracer('mcp-fusion'),
+  contextFactory: createAppContext,
+  tracing: trace.getTracer('mcp-fusion'),
 });
 ```
 
----
+All tools now emit spans. Also available per-tool (`.tracing(tracer)`) or registry-wide (`registry.enableTracing(tracer)`).
 
-## Error Classification
+## Error Classification {#errors}
 
-**MCP Fusion** classifies every span into one of **six outcomes**. This is the most important design decision in the tracing system.
+AI agents fail differently than humans. An LLM sends invalid parameters hundreds of times while self-correcting. If every validation failure set `SpanStatusCode.ERROR`, your on-call engineer would drown in false alerts.
 
-### The Classification Matrix
+| Scenario | `SpanStatusCode` | `mcp.error_type` | `recordException`? |
+|---|---|---|---|
+| Handler returns `success()` | `OK` (1) | — | No |
+| Handler returns `error()` | `UNSET` (0) | `handler_returned_error` | No |
+| Validation failure | `UNSET` (0) | `validation_failed` | No |
+| Missing discriminator | `UNSET` (0) | `missing_discriminator` | No |
+| Unknown action | `UNSET` (0) | `unknown_action` | No |
+| Handler throws | `ERROR` (2) | `system_error` | **Yes** |
 
-| Scenario | `SpanStatusCode` | `mcp.error_type` | `mcp.isError` | PagerDuty? |
-|---|---|---|---|---|
-| Handler returns `success()` | **OK** (1) | — | `false` | ❌ |
-| Handler returns `error()` | UNSET (0) | `handler_returned_error` | `true` | ❌ |
-| Validation failure | UNSET (0) | `validation_failed` | `true` | ❌ |
-| Missing discriminator | UNSET (0) | `missing_discriminator` | `true` | ❌ |
-| Unknown action | UNSET (0) | `unknown_action` | `true` | ❌ |
-| Handler throws (`throw new Error`) | **ERROR** (2) | `system_error` | `true` | ✅ |
+Only an unhandled exception sets `ERROR`. Everything else uses `UNSET` — the AI self-corrects, the server stays alive.
 
-### Why AI Errors Don't Trigger Alerts
-
-Rows 2–5 use `SpanStatusCode.UNSET` instead of `ERROR`. This is intentional:
-
-> **`SpanStatusCode.ERROR`** means *"something is broken in the infrastructure and ops needs to act."*
->
-> **`SpanStatusCode.UNSET`** means *"the operation completed, but the outcome was not successful."*
-
-When the AI sends `{ action: "users.listt" }` (typo), that's not a server problem — it's the AI exploring. The MCP protocol returns an error response, the AI self-corrects, and life goes on. If this triggered PagerDuty, your on-call engineer would see hundreds of false alerts per hour.
-
-But when the handler throws because PostgreSQL is down, that's a **real infrastructure failure**. `SpanStatusCode.ERROR` + `recordException()` fires, and PagerDuty wakes up the right person.
-
-### Monitoring AI Error Rates
-
-Even though AI errors don't trigger `SpanStatusCode.ERROR`, you still have **full visibility**. The `mcp.isError` attribute and `mcp.error_type` attribute are set on every error path, enabling rate-based alerting:
-
-::: code-group
-
-```txt [PagerDuty — Infrastructure]
-# Only fires when the server is actually broken
+```
+# PagerDuty: only infra failures
 SpanStatusCode:ERROR service:mcp-fusion
-```
 
-```txt [Datadog Monitor — AI Error Rate]
-# Alert if >50% of calls fail validation (broken prompt?)
+# Datadog: AI error rate
 count(mcp.error_type:validation_failed) / count(*) > 0.5
-```
 
-```txt [Datadog Monitor — Unknown Actions]
-# Alert if AI keeps hitting non-existent actions (stale model?)
-count(mcp.error_type:unknown_action) > 10 per 5m
-```
-
-```txt [Grafana Dashboard — Business Errors]
-# Track handler error rate for SLO dashboards
+# Grafana: handler error rate for SLO
 count(mcp.error_type:handler_returned_error) / count(*) > 0.3
 ```
 
-:::
+## Span Attributes {#attributes}
 
-This layered approach gives you:
-- **Infra alerts** → PagerDuty via `SpanStatusCode.ERROR` (wake up the dev)
-- **AI health monitors** → Datadog/Grafana via `mcp.error_type` rate thresholds (notification, not page)
-- **Business dashboards** → filtered by `mcp.isError:true` for overall error visibility
+Every span includes: `mcp.system` ("fusion"), `mcp.tool` (tool name), `mcp.durationMs` (total execution time), `mcp.isError` (boolean), `mcp.response_size` (response text length).
 
----
+Routing attributes: `mcp.action` (resolved action), `mcp.error_type` (classification label).
 
-## Span Attributes
+Conditional attributes: `mcp.tags` (string[], when configured), `mcp.description` (when configured). Tags enable dashboard filtering:
 
-Every span includes rich metadata for filtering, dashboards, and billing.
-
-### Core <Badge type="info" text="always present" />
-
-| Attribute | Type | Example | Description |
-|---|---|---|---|
-| `mcp.system` | `string` | `"fusion"` | Framework identifier |
-| `mcp.tool` | `string` | `"projects"` | Tool name |
-| `mcp.durationMs` | `number` | `14.3` | Total execution time |
-| `mcp.isError` | `boolean` | `false` | Unified error flag across all paths |
-| `mcp.response_size` | `number` | `2048` | Response text length (billing/quota) |
-
-### Routing <Badge type="info" text="after routing" />
-
-| Attribute | Type | Example | Description |
-|---|---|---|---|
-| `mcp.action` | `string` | `"list"` | Resolved action name |
-| `mcp.error_type` | `string` | `"validation_failed"` | Error classification label |
-
-### Enterprise Metadata <Badge type="tip" text="conditional" />
-
-| Attribute | Type | Example | Description |
-|---|---|---|---|
-| `mcp.tags` | `string[]` | `["admin", "pci"]` | Tool tags — Datadog facet filtering |
-| `mcp.description` | `string` | `"Manages billing"` | Tool description — trace context |
-
-#### Using Tags for Dashboard Filtering
-
-```typescript
-const tool = createTool<void>('billing')
-    .tags('admin', 'finance', 'pci')
-    .description('Manages billing and invoicing')
-    .tracing(tracer)
-    .action({ name: 'charge', handler: ... });
 ```
-
-```txt
-# Datadog: find all PCI-scoped tool calls
+# Datadog: PCI-scoped calls
 mcp.tags:pci service:mcp-fusion
 
-# Grafana: filter to admin tools only
+# Grafana: admin tools only
 {mcp_tags=~".*admin.*"}
 ```
 
----
+## Pipeline Events {#pipeline}
 
-## Pipeline Events
-
-Each span contains structured **events** that trace the internal execution pipeline:
+Each span contains structured events tracing internal execution:
 
 | Event | Attributes | When |
 |---|---|---|
-| `mcp.route` | — | Discriminator resolved successfully |
-| `mcp.validate` | `mcp.valid`, `mcp.durationMs` | After Zod validation (pass or fail) |
+| `mcp.route` | — | Discriminator resolved |
+| `mcp.validate` | `mcp.valid`, `mcp.durationMs` | After Zod validation |
 | `mcp.middleware` | `mcp.chainLength` | When middleware chain exists |
 
-Events use optional chaining (`addEvent?.()`), so tracers that don't implement `addEvent` work without errors.
+Events use optional chaining (`addEvent?.()`), so tracers that don't implement `addEvent` work fine.
 
----
+## FusionTracer Interface {#interface}
 
-## FusionTracer Interface
-
-**MCP Fusion** uses **structural subtyping** — no `implements` keyword, no `import @opentelemetry/api` required. Any object that matches the shape works:
+Any object with the right shape works. The real `@opentelemetry/api` `Tracer` satisfies this automatically:
 
 ```typescript
 interface FusionTracer {
-    startSpan(name: string, options?: {
-        attributes?: Record<string, string | number | boolean | ReadonlyArray<string>>;
-    }): FusionSpan;
+  startSpan(name: string, options?: {
+    attributes?: Record<string, string | number | boolean | ReadonlyArray<string>>;
+  }): FusionSpan;
 }
 
 interface FusionSpan {
-    setAttribute(key: string, value: string | number | boolean | ReadonlyArray<string>): void;
-    setStatus(status: { code: number; message?: string }): void;
-    end(): void;
-    recordException(exception: Error | string): void;
-    addEvent?(name: string, attributes?: Record<string, string | number | boolean>): void;
+  setAttribute(key: string, value: string | number | boolean | ReadonlyArray<string>): void;
+  setStatus(status: { code: number; message?: string }): void;
+  end(): void;
+  recordException(exception: Error | string): void;
+  addEvent?(name: string, attributes?: Record<string, string | number | boolean>): void;
 }
 ```
 
-The real `@opentelemetry/api` `Tracer` satisfies `FusionTracer` automatically:
+`SpanStatusCode` constants: `UNSET` (0), `OK` (1), `ERROR` (2) — exported from `@vinkius-core/mcp-fusion`.
 
-```typescript
-import { trace } from '@opentelemetry/api';
+## Coexistence with Debug {#coexistence}
 
-const tracer = trace.getTracer('mcp-fusion');
-// ✅ tracer satisfies FusionTracer — no wrapper needed
-```
-
----
-
-## SpanStatusCode Constants
-
-**MCP Fusion** exports OTel-compatible constants:
-
-```typescript
-import { SpanStatusCode } from '@vinkius-core/mcp-fusion';
-
-SpanStatusCode.UNSET  // 0 — default, AI errors
-SpanStatusCode.OK     // 1 — successful execution
-SpanStatusCode.ERROR  // 2 — system failure → triggers alerts
-```
-
----
-
-## Coexistence with Debug
-
-Both tracing and debug can be enabled. When both are set on a tool, **tracing takes precedence** — debug events are not emitted to avoid duplicate overhead.
+Both tracing and debug can be configured, but tracing takes precedence. When both are set, debug events are not emitted to avoid duplicate overhead:
 
 ```typescript
 registry.enableDebug(createDebugObserver());
 registry.enableTracing(tracer);
-// ⚠️ Warning: Both tracing and debug are enabled.
-//    Tracing takes precedence; debug events will not be emitted.
+// ⚠️ Warning: Tracing takes precedence; debug events will not be emitted.
 ```
 
-The warning is **symmetric** — it fires regardless of which is enabled first.
+## Span Lifecycle {#lifecycle}
 
----
-
-## Graceful Error Handling
-
-When a handler throws, **MCP Fusion** **does not crash the server**. The exception is caught, the span is marked with `SpanStatusCode.ERROR` + `recordException()`, and a graceful error response is returned to the MCP client:
-
-```
-Handler throws → catch block:
-  1. span.recordException(err)          ← ops alerting
-  2. span.setAttribute('mcp.error_type', 'system_error')
-  3. span.setStatus({ code: ERROR })    ← PagerDuty fires
-  4. return error("[tool] message")      ← graceful MCP response
-```
-
-The span captures everything ops needs for diagnosis `while the server stays alive.
-
----
-
-## Span Lifecycle Guarantees
-
-```
+```text
 span = tracer.startSpan(...)
 try {
-    // route → validate → middleware → execute
+    route → validate → middleware → execute
 } catch {
-    // recordException + ERROR status
+    recordException + ERROR status
 } finally {
-    span.setAttribute('mcp.durationMs', ...)
-    span.setAttribute('mcp.response_size', ...)
-    span.setStatus(...)
-    span.end()  // ← ALWAYS called, even on throw
+    setAttribute('mcp.durationMs', ...)
+    setAttribute('mcp.response_size', ...)
+    setStatus(...)
+    span.end()  // always called
 }
 ```
 
-The `finally` block guarantees:
-- **No span leaks** — `span.end()` is always called
-- **Duration is always recorded** — even on exceptions
-- **Response size is always recorded** — for billing accuracy
+The `finally` block guarantees no span leaks — duration and response size recorded even on exceptions.
 
----
+## Context Propagation {#propagation}
 
-## Context Propagation
+Fusion doesn't depend on `@opentelemetry/api`, so it cannot inject span context automatically. Auto-instrumented downstream calls (Prisma, HTTP, Redis) appear as sibling spans, not children. For manual propagation:
 
-Since **MCP Fusion** doesn't depend on `@opentelemetry/api`, it cannot inject span context into the OpenTelemetry context. Auto-instrumented downstream calls (Prisma, HTTP, Redis) will appear as **sibling spans**, not children.
-
-This is an intentional trade-off for zero runtime dependencies.
-
-::: details Manual context propagation (workaround)
 ```typescript
 import { context, trace } from '@opentelemetry/api';
 
-const tool = createTool<AppCtx>('db')
-    .tracing(trace.getTracer('mcp-fusion'))
-    .action({
-        name: 'query',
-        handler: async (ctx, args) => {
-            const span = trace.getActiveSpan();
-            return context.with(
-                trace.setSpan(context.active(), span!),
-                async () => {
-                    const result = await ctx.db.query(args.sql);
-                    return success(result);
-                }
-            );
-        },
-    });
+const tool = createTool<AppContext>('db')
+  .tracing(trace.getTracer('mcp-fusion'))
+  .action({
+    name: 'query',
+    handler: async (ctx, args) => {
+      const span = trace.getActiveSpan();
+      return context.with(
+        trace.setSpan(context.active(), span!),
+        () => ctx.db.query(args.sql).then(success),
+      );
+    },
+  });
 ```
-:::
 
----
-
-## Production Setup
-
-Complete OTLP setup with Jaeger, Datadog, or any OTel-compatible backend:
+## Production Setup {#production}
 
 ```typescript
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -336,41 +152,23 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { trace } from '@opentelemetry/api';
 import { ToolRegistry } from '@vinkius-core/mcp-fusion';
 
-// 1. Configure OpenTelemetry SDK
 const sdk = new NodeSDK({
-    traceExporter: new OTLPTraceExporter({
-        url: process.env.OTLP_ENDPOINT ?? 'http://localhost:4317',
-    }),
-    serviceName: 'my-mcp-server',
+  traceExporter: new OTLPTraceExporter({
+    url: process.env.OTLP_ENDPOINT ?? 'http://localhost:4317',
+  }),
+  serviceName: 'my-mcp-server',
 });
 sdk.start();
 
-// 2. Create tracer
 const tracer = trace.getTracer('mcp-fusion', '1.0.0');
 
-// 3. Attach to server — one line enables tracing for everything
 const registry = new ToolRegistry<AppContext>();
-registry.register(projectsTool);
-registry.register(billingTool);
-registry.register(usersTool);
+registry.registerAll(projectsTool, billingTool, usersTool);
 
 registry.attachToServer(server, {
-    contextFactory: createAppContext,
-    tracing: tracer,
+  contextFactory: createAppContext,
+  tracing: tracer,
 });
 ```
 
-Spans appear in Jaeger, Datadog, New Relic, Grafana Tempo, or any OTLP-compatible backend — with full semantic attributes, error classification, and pipeline events.
-
----
-
-## Zero Overhead Guarantee
-
-When no tracer is set, **MCP Fusion** takes the **fast path** — a completely separate code path with zero tracing logic:
-
-- No `startSpan()` calls
-- No `setAttribute()` calls
-- No `performance.now()` timing
-- No object allocations for span data
-
-The tracing path only activates when `.tracing(tracer)` or `enableTracing(tracer)` is explicitly called.
+Spans appear in Jaeger, Datadog, Grafana Tempo, or any OTLP-compatible backend.

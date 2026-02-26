@@ -1,15 +1,11 @@
 # Cookbook & Examples
 
-Real-world, copy-pasteable patterns for every **MCP Fusion** feature. Each example is self-contained — pick the one closest to your use case and adapt.
+Copy-paste patterns for every MCP Fusion feature. Each example is self-contained.
 
----
 
 ## 1. Basic CRUD Tool
 
-The most common pattern. A single tool with list, get, create, update, and delete actions.
-
-::: code-group
-```typescript [f.tool() — No Zod 🚀]
+```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
 
 interface AppContext {
@@ -82,241 +78,7 @@ registry.register(getProject);
 registry.register(createProject);
 registry.register(deleteProject);
 ```
-```typescript [f.tool() — Zod]
-import { initFusion } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
 
-interface AppContext {
-    db: Database;
-}
-
-const f = initFusion<AppContext>();
-
-const listProjects = f.tool({
-    name: 'projects.list',
-    description: 'List all projects in a workspace',
-    input: z.object({
-        workspace_id: z.string(),
-        status: z.enum(['active', 'archived', 'all']).optional(),
-        limit: z.number().min(1).max(100).optional(),
-    }),
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.projects.findMany({
-            where: {
-                workspaceId: input.workspace_id,
-                ...(input.status && input.status !== 'all' && { status: input.status }),
-            },
-            take: input.limit ?? 20,
-        });
-    },
-});
-
-const getProject = f.tool({
-    name: 'projects.get',
-    description: 'Get a single project by ID',
-    input: z.object({ workspace_id: z.string(), id: z.string() }),
-    handler: async ({ input, ctx }) => {
-        const project = await ctx.db.projects.findUnique({
-            where: { id: input.id, workspaceId: input.workspace_id },
-        });
-        if (!project) throw new Error(`Project "${input.id}" not found`);
-        return project;
-    },
-});
-
-const createProject = f.tool({
-    name: 'projects.create',
-    description: 'Create a new project',
-    input: z.object({
-        workspace_id: z.string(),
-        name: z.string().min(1).max(200),
-        description: z.string().optional(),
-    }),
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.projects.create({ data: input });
-    },
-});
-
-const deleteProject = f.tool({
-    name: 'projects.delete',
-    description: 'Delete a project permanently',
-    input: z.object({ workspace_id: z.string(), id: z.string() }),
-    handler: async ({ input, ctx }) => {
-        await ctx.db.projects.delete({
-            where: { id: input.id, workspaceId: input.workspace_id },
-        });
-        return `Project "${input.id}" deleted`;
-    },
-});
-
-// Register all
-const registry = f.registry();
-registry.register(listProjects);
-registry.register(getProject);
-registry.register(createProject);
-registry.register(deleteProject);
-```
-```typescript [defineTool — No Zod]
-import { defineTool, success, error, required } from '@vinkius-core/mcp-fusion';
-
-interface AppContext {
-    db: Database;
-}
-
-const projects = defineTool<AppContext>('projects', {
-    description: 'Manage workspace projects',
-    shared: { workspace_id: 'string' },
-    actions: {
-        list: {
-            readOnly: true,
-            params: {
-                status: { enum: ['active', 'archived', 'all'] as const, optional: true },
-                limit: { type: 'number', min: 1, max: 100, optional: true },
-            },
-            handler: async (ctx, args) => {
-                const projects = await ctx.db.projects.findMany({
-                    where: {
-                        workspaceId: args.workspace_id,
-                        ...(args.status && args.status !== 'all' && { status: args.status }),
-                    },
-                    take: args.limit ?? 20,
-                });
-                return success(projects);
-            },
-        },
-        get: {
-            readOnly: true,
-            params: { id: 'string' },
-            handler: async (ctx, args) => {
-                const project = await ctx.db.projects.findUnique({
-                    where: { id: args.id, workspaceId: args.workspace_id },
-                });
-                if (!project) return error(`Project "${args.id}" not found`);
-                return success(project);
-            },
-        },
-        create: {
-            params: {
-                name: { type: 'string', min: 1, max: 200 },
-                description: { type: 'string', optional: true },
-            },
-            handler: async (ctx, args) => {
-                const project = await ctx.db.projects.create({
-                    data: {
-                        workspaceId: args.workspace_id,
-                        name: args.name,
-                        description: args.description,
-                    },
-                });
-                return success(project);
-            },
-        },
-        update: {
-            idempotent: true,
-            params: {
-                id: 'string',
-                name: { type: 'string', min: 1, max: 200, optional: true },
-                status: { enum: ['active', 'archived'] as const, optional: true },
-            },
-            handler: async (ctx, args) => {
-                const project = await ctx.db.projects.update({
-                    where: { id: args.id, workspaceId: args.workspace_id },
-                    data: {
-                        ...(args.name && { name: args.name }),
-                        ...(args.status && { status: args.status }),
-                    },
-                });
-                return success(project);
-            },
-        },
-        delete: {
-            destructive: true,
-            params: { id: 'string' },
-            handler: async (ctx, args) => {
-                await ctx.db.projects.delete({
-                    where: { id: args.id, workspaceId: args.workspace_id },
-                });
-                return success(`Project "${args.id}" deleted`);
-            },
-        },
-    },
-});
-```
-```typescript [createTool — Full Zod]
-import { createTool, success, error } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-interface AppContext {
-    db: Database;
-}
-
-const projects = createTool<AppContext>('projects')
-    .description('Manage workspace projects')
-    .commonSchema(z.object({
-        workspace_id: z.string().describe('Workspace identifier'),
-    }))
-    .action({
-        name: 'list',
-        readOnly: true,
-        schema: z.object({
-            status: z.enum(['active', 'archived', 'all']).optional(),
-            limit: z.number().min(1).max(100).optional(),
-        }),
-        handler: async (ctx, args) => {
-            const projects = await ctx.db.projects.findMany({
-                where: {
-                    workspaceId: args.workspace_id,
-                    ...(args.status && args.status !== 'all' && { status: args.status }),
-                },
-                take: args.limit ?? 20,
-            });
-            return success(projects);
-        },
-    })
-    .action({
-        name: 'get',
-        readOnly: true,
-        schema: z.object({ id: z.string() }),
-        handler: async (ctx, args) => {
-            const project = await ctx.db.projects.findUnique({
-                where: { id: args.id, workspaceId: args.workspace_id },
-            });
-            if (!project) return error(`Project "${args.id}" not found`);
-            return success(project);
-        },
-    })
-    .action({
-        name: 'create',
-        schema: z.object({
-            name: z.string().min(1).max(200),
-            description: z.string().optional(),
-        }),
-        handler: async (ctx, args) => {
-            const project = await ctx.db.projects.create({
-                data: {
-                    workspaceId: args.workspace_id,
-                    name: args.name,
-                    description: args.description,
-                },
-            });
-            return success(project);
-        },
-    })
-    .action({
-        name: 'delete',
-        destructive: true,
-        schema: z.object({ id: z.string() }),
-        handler: async (ctx, args) => {
-            await ctx.db.projects.delete({
-                where: { id: args.id, workspaceId: args.workspace_id },
-            });
-            return success(`Project "${args.id}" deleted`);
-        },
-    });
-```
-:::
-
----
 
 ## 2. Self-Healing Errors with `toolError()`
 
@@ -388,7 +150,8 @@ const billing = defineTool<AppContext>('billing', {
 });
 ```
 
-::: tip What the AI sees on error
+The AI sees the error as structured XML:
+
 ```xml
 <tool_error code="InvoiceNotFound">
 <message>Invoice "INV-999" does not exist.</message>
@@ -396,17 +159,13 @@ const billing = defineTool<AppContext>('billing', {
 <available_actions>billing.list_invoices</available_actions>
 </tool_error>
 ```
-This guides the AI to self-correct on the next call — no hallucination, no retry loops.
-:::
 
----
 
 ## 3. Full MVA Presenter — Invoice Domain
 
-Complete Presenter with schema validation, domain rules, UI blocks, cognitive guardrails, and HATEOAS suggestions.
+Complete Presenter with validation, rules, UI blocks, guardrails, and HATEOAS.
 
-::: code-group
-```typescript [definePresenter — Recommended ✨]
+```typescript
 import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
@@ -475,97 +234,10 @@ export const InvoicePresenter = definePresenter({
     },
 });
 ```
-```typescript [createPresenter — Classic Builder]
-import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-// ── Schema (Security Boundary) ──────────────────────────
-// Only these fields reach the AI. Internal fields (tenant_id,
-// password_hash, etc.) are rejected by .strict() automatically.
-
-const invoiceSchema = z.object({
-    id: z.string(),
-    client_name: z.string(),
-    amount_cents: z.number(),
-    status: z.enum(['paid', 'pending', 'overdue']),
-    due_date: z.string(),
-    items: z.array(z.object({
-        description: z.string(),
-        amount_cents: z.number(),
-    })),
-});
-
-// ── Presenter ───────────────────────────────────────────
-
-export const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-
-    // Domain Rules: JIT context that travels with the data
-    .systemRules([
-        'CRITICAL: amount_cents is in CENTS. Always divide by 100 before displaying.',
-        'Use currency format: $XX,XXX.00',
-        'Use status emojis: ✅ paid, ⏳ pending, 🔴 overdue',
-        'Display due_date in human-readable format: "Jan 15, 2025"',
-    ])
-
-    // Single Item UI: gauge chart for the invoice amount
-    .uiBlocks((invoice) => [
-        ui.echarts({
-            series: [{
-                type: 'gauge',
-                data: [{ value: invoice.amount_cents / 100, name: invoice.status }],
-                max: Math.ceil(invoice.amount_cents / 100 * 1.5),
-            }],
-        }),
-    ])
-
-    // Collection UI: bar chart comparing all invoices
-    .collectionUiBlocks((invoices) => [
-        ui.echarts({
-            xAxis: { type: 'category', data: invoices.map(i => i.id) },
-            yAxis: { type: 'value' },
-            series: [{
-                type: 'bar',
-                data: invoices.map(i => i.amount_cents / 100),
-            }],
-        }),
-        ui.summary(
-            `${invoices.length} invoices. ` +
-            `Total: $${(invoices.reduce((s, i) => s + i.amount_cents, 0) / 100).toLocaleString()}`
-        ),
-    ])
-
-    // Cognitive Guardrails: prevent context DDoS
-    .agentLimit(50, (omitted) =>
-        ui.summary(
-            `⚠️ Dataset truncated. 50 shown, ${omitted} hidden. ` +
-            `Use status or date_range filters to narrow results.`
-        )
-    )
-
-    // HATEOAS: tell the AI what it CAN do next
-    .suggestActions((invoice) => {
-        if (invoice.status === 'pending') {
-            return [
-                { tool: 'billing.charge', reason: 'Process payment' },
-                { tool: 'billing.send_reminder', reason: 'Send payment reminder email' },
-            ];
-        }
-        if (invoice.status === 'overdue') {
-            return [
-                { tool: 'billing.escalate', reason: 'Escalate to collections' },
-                { tool: 'billing.charge', reason: 'Attempt late payment' },
-            ];
-        }
-        return [];   // No suggestions for paid invoices
-    });
-```
-:::
 
 ### Using the Presenter in a Tool
 
-::: code-group
-```typescript [f.tool() — No Zod 🚀]
+```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import { InvoicePresenter } from './presenters/InvoicePresenter';
 
@@ -599,77 +271,7 @@ const listInvoices = f.tool({
     },
 });
 ```
-```typescript [f.tool() — Zod]
-import { initFusion } from '@vinkius-core/mcp-fusion';
-import { InvoicePresenter } from './presenters/InvoicePresenter';
 
-const f = initFusion<AppContext>();
-
-const getInvoice = f.tool({
-    name: 'billing.get_invoice',
-    description: 'Gets an invoice by ID',
-    input: z.object({ invoice_id: z.string() }),
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.invoices.findUnique({
-            where: { id: input.invoice_id },
-            include: { items: true },
-        });
-    },
-});
-
-const listInvoices = f.tool({
-    name: 'billing.list_invoices',
-    description: 'Lists invoices with optional status filter',
-    input: z.object({
-        status: z.enum(['paid', 'pending', 'overdue']).optional(),
-    }),
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.invoices.findMany({
-            where: input.status ? { status: input.status } : {},
-            include: { items: true },
-        });
-    },
-});
-```
-```typescript [defineTool — Classic]
-import { defineTool } from '@vinkius-core/mcp-fusion';
-import { InvoicePresenter } from './presenters/InvoicePresenter';
-
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get_invoice: {
-            readOnly: true,
-            params: { invoice_id: 'string' },
-            returns: InvoicePresenter,     // ← Attach the Presenter
-            handler: async (ctx, args) => {
-                // Return RAW data — the Presenter does the rest
-                return await ctx.db.invoices.findUnique({
-                    where: { id: args.invoice_id },
-                    include: { items: true },
-                });
-            },
-        },
-        list_invoices: {
-            readOnly: true,
-            params: {
-                status: { enum: ['paid', 'pending', 'overdue'] as const, optional: true },
-            },
-            returns: InvoicePresenter,     // ← Same Presenter, auto-detects array
-            handler: async (ctx, args) => {
-                return await ctx.db.invoices.findMany({
-                    where: args.status ? { status: args.status } : {},
-                    include: { items: true },
-                });
-            },
-        },
-    },
-});
-```
-:::
-
----
 
 ## 4. Context-Aware Rules (RBAC / DLP)
 
@@ -727,11 +329,10 @@ const EmployeePresenter = createPresenter('Employee')
     });
 ```
 
----
 
 ## 5. Hierarchical Groups — Platform Tool
 
-Organize dozens of actions into logical namespaces. The AI sees `platform` as one tool but calls `platform` with `action: "users.list"` or `action: "billing.charge"`.
+Organize many actions into named groups under a single tool.
 
 ```typescript
 import { defineTool, success, error } from '@vinkius-core/mcp-fusion';
@@ -804,16 +405,14 @@ const platform = defineTool<AppContext>('platform', {
 });
 ```
 
-::: tip How the AI calls it
+The AI calls the tool using the `action` discriminator:
+
 ```json
 { "action": "users.list", "org_id": "org_123" }
 { "action": "users.invite", "org_id": "org_123", "email": "alice@co.io", "role": "admin" }
 { "action": "billing.upgrade", "org_id": "org_123", "plan": "enterprise" }
 ```
-One tool, many actions. The LLM picks the right one via the `action` discriminator.
-:::
 
----
 
 ## 6. Authentication Middleware
 
@@ -880,7 +479,6 @@ const admin = defineTool<BaseContext>('admin', {
 });
 ```
 
----
 
 ## 7. ResponseBuilder — Rich Custom Responses
 
@@ -958,7 +556,6 @@ return response.withRules(invoiceData, [
 ]);
 ```
 
----
 
 ## 8. Streaming Progress
 
@@ -1012,11 +609,8 @@ const data = defineTool<AppContext>('data', {
 });
 ```
 
----
+When attached to an MCP server via `attachToServer()`, `yield progress()` calls are automatically forwarded as `notifications/progress` — zero configuration.
 
-::: tip Automatic MCP Notification Wiring
-When attached to an MCP server via `attachToServer()`, these `yield progress()` calls are automatically forwarded to the client as `notifications/progress` — **zero configuration**. The framework detects the `progressToken` from the client's request metadata and wires the notifications transparently. When no token is present, progress events are silently consumed with zero overhead.
-:::
 
 ## 9. TOON — Token-Optimized Responses
 
@@ -1059,16 +653,12 @@ const hugeApi = createTool<AppContext>('api')
 ;
 ```
 
-::: tip When to use TOON
-- `toonSuccess(data)` — When returning **arrays of uniform objects** (lists, tables)
-- `.toonDescription()` — When your tool has **many actions** and the description is consuming too many tokens
-:::
+Use `toonSuccess(data)` for arrays of uniform objects. Use `.toonDescription()` when your tool has many actions and the description consumes too many tokens.
 
----
 
-## 10. Prompts — Reusable Context Templates <Badge type="tip" text="NEW v2.7" />
+## 10. Prompts — Reusable Context Templates 
 
-Tools execute actions. **Prompts** are pre-built templates that inject structured context into the LLM conversation. Users select them from a menu in their MCP client.
+Prompts inject structured context into the conversation — users select them from a menu in their MCP client.
 
 ### Basic Prompt — No Zod
 
@@ -1202,7 +792,6 @@ const sqlHelper = f.prompt({
 });
 ```
 
-::: tip Tools vs Prompts — When to Use Each
 | Use Case | Use |
 |---|---|
 | Execute an action (CRUD, API call) | `f.tool()` |
@@ -1211,13 +800,11 @@ const sqlHelper = f.prompt({
 | Automated by the LLM during reasoning | `f.tool()` |
 | Accepts arrays or complex nested input | `f.tool()` |
 | Appears in MCP client menu as a template | `f.prompt()` |
-:::
 
----
 
 ## 11. Presenter Composition — Nested Relations
 
-Define Presenters once, embed them everywhere. DRY principle for domain models.
+Define Presenters once, embed them everywhere.
 
 ```typescript
 import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
@@ -1259,7 +846,6 @@ const ContractPresenter = createPresenter('Contract')
 
 When an invoice includes `client` data, the Client's rules and UI blocks are automatically merged into the response. One definition, consistent perception everywhere.
 
----
 
 ## 12. State Sync — Prevent Stale Data
 
@@ -1299,15 +885,12 @@ registry.attachToServer(server, {
 });
 ```
 
-::: tip What happens
-After `tasks.create` succeeds, the AI receives:
+After `tasks.create` succeeds, the AI receives a cache invalidation notice:
+
 ```
 [System: Cache invalidated for tasks.*, projects.get, sprints.get — caused by tasks.create]
 ```
-This tells the AI to re-fetch those tools before using their data.
-:::
 
----
 
 ## 13. Result Monad — Composable Error Handling
 
@@ -1369,7 +952,6 @@ const projects = defineTool<AppContext>('projects', {
 });
 ```
 
----
 
 ## 14. Testing Tools
 
@@ -1440,14 +1022,12 @@ describe('projects tool', () => {
 });
 ```
 
----
 
 ## 15. Full Server Setup — Production Pattern
 
 The complete wiring from tools → registry → server.
 
-::: code-group
-```typescript [initFusion + autoDiscover — Recommended ✨]
+```typescript
 // src/server.ts
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -1500,71 +1080,9 @@ async function main() {
 
 main();
 ```
-```typescript [Classic — Manual Imports]
-// src/server.ts
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-    ToolRegistry,
-    createDebugObserver,
-} from '@vinkius-core/mcp-fusion';
 
-// Import your tools
-import { projects } from './tools/projects.js';
-import { tasks } from './tools/tasks.js';
-import { billing } from './tools/billing.js';
-import { analytics } from './tools/analytics.js';
 
-// ── Registry ─────────────────────────────────────────────
-const registry = new ToolRegistry<AppContext>();
-registry.registerAll(projects, tasks, billing, analytics);
-
-// ── Server ───────────────────────────────────────────────
-async function main() {
-    const server = new Server(
-        { name: 'my-app', version: '1.0.0' },
-        { capabilities: { tools: {} } },
-    );
-
-    registry.attachToServer(server, {
-        // Create context per request (auth, db connection, etc.)
-        contextFactory: async (extra) => {
-            const session = extra as { sessionId?: string };
-            const db = await connectToDatabase();
-            const user = await resolveUser(session?.sessionId);
-            return { db, user, tenant: user.tenant };
-        },
-
-        // Tag-based filtering: only expose public tools
-        filter: { exclude: ['internal'] },
-
-        // Debug: structured pipeline events (disable in production)
-        debug: process.env.NODE_ENV !== 'production'
-            ? createDebugObserver()
-            : undefined,
-
-        // State Sync: prevent stale data
-        stateSync: {
-            defaults: { cacheControl: 'no-store' },
-            policies: [
-                { match: 'tasks.update', invalidates: ['tasks.*', 'projects.get'] },
-                { match: 'billing.*', invalidates: ['billing.*'] },
-            ],
-        },
-    });
-
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('🚀 Server running');
-}
-
-main();
-```
-:::
-
----
-
-## 16. HMR Dev Server <Badge type="tip" text="NEW v2.7" />
+## 16. HMR Dev Server 
 
 Hot-reload tools on file change during development — the LLM client stays connected.
 
@@ -1593,14 +1111,12 @@ await server.connect(transport);
 console.error('🔥 Dev server running with HMR');
 ```
 
----
 
-## 17. Functional Groups — Standalone Modules <Badge type="tip" text="NEW v2.7" />
+## 17. Functional Groups — Standalone Modules 
 
 Build self-contained tool modules with pre-composed middleware.
 
-::: code-group
-```typescript [No Zod 🚀]
+```typescript
 import { createGroup, success } from '@vinkius-core/mcp-fusion';
 
 const billingGroup = createGroup<AppContext>({
@@ -1634,48 +1150,3 @@ const billingGroup = createGroup<AppContext>({
 
 registry.register(billingGroup);
 ```
-```typescript [With Zod]
-import { createGroup, success } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-const billingGroup = createGroup<AppContext>({
-    name: 'billing',
-    description: 'Payment processing',
-    middleware: [authMiddleware, auditLog],
-    tools: [
-        {
-            name: 'charge',
-            description: 'Charge an invoice',
-            input: z.object({ invoice_id: z.string(), amount: z.number() }),
-            handler: async ({ input, ctx }) => {
-                await ctx.billing.charge(input.invoice_id, input.amount);
-                return success({ charged: true });
-            },
-        },
-        {
-            name: 'refund',
-            description: 'Refund a payment',
-            input: z.object({ payment_id: z.string() }),
-            handler: async ({ input, ctx }) => {
-                await ctx.billing.refund(input.payment_id);
-                return success({ refunded: true });
-            },
-        },
-    ],
-});
-
-registry.register(billingGroup);
-```
-:::
-
----
-
-## Next Steps
-
-- [DX Guide →](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
-- [Quickstart →](/quickstart) — Your first tool in 5 minutes
-- [Building Tools →](/building-tools) — `f.tool()`, `defineTool()`, `createTool()` in depth
-- [Presenter (MVA View) →](/presenter) — Full Presenter API reference
-- [Middleware →](/middleware) — Authentication, logging, rate limiting
-- [Testing →](/testing) — Test strategies and patterns
-- [API Reference →](/api-reference) — Every export documented

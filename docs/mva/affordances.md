@@ -1,32 +1,14 @@
 # Agentic Affordances & HATEOAS for AI
 
-> In REST, HATEOAS tells the browser what links are available. In MVA, **Agentic Affordances** tell the AI agent what actions are available — computed from the current data state, not from a static list.
-
 After receiving data, every AI agent faces the same question: *"What should I do next?"*
 
 Without guidance, agents hallucinate tool names. They call tools that don't exist. They skip valid actions because they don't know those actions are available. Each wrong decision is a wasted round-trip — tokens spent, latency added, accuracy degraded.
 
 **Agentic Affordances** solve this by embedding explicit, state-driven next-action hints directly in the response. The agent doesn't guess. It reads the affordances and acts.
 
----
-
 ## The HATEOAS Lineage
 
 The concept originates from REST's **HATEOAS** (Hypermedia as the Engine of Application State) — the principle that the server should tell the client what it can do next by embedding links in the response.
-
-```text
-REST HATEOAS (2000):                    MVA Agentic Affordances (2025):
-─────────────────────                   ────────────────────────────────
-{                                       {
-  "id": "INV-001",                        "id": "INV-001",
-  "amount": 450.00,                       "amount_cents": 45000,
-  "_links": {                             // ...data...
-    "pay": "/api/invoices/INV-001/pay",   // Affordances in the response:
-    "archive": "/api/invoices/INV-001/archive"
-  }                                       // [SYSTEM HINT]:
-}                                         //   → billing.pay: Process payment
-                                          //   → billing.send_reminder: Send reminder
-```
 
 The principle is identical: **the server tells the client what's possible.** But the implementation is fundamentally different:
 
@@ -39,17 +21,13 @@ The principle is identical: **the server tells the client what's possible.** But
 | **Protocol** | HTTP | MCP (Model Context Protocol) |
 | **Discovery** | Client follows links | Agent reads `[SYSTEM HINT]` block |
 
----
-
 ## The API: `.suggestActions()`
 
 `.suggestActions()` is a method on the Presenter that receives the current data (and optionally the request context) and returns an array of suggested actions.
 
 ### Basic Usage
 
-::: code-group
-
-```typescript [Recommended (v2.7+)]
+```typescript
 const InvoicePresenter = definePresenter({
     name: 'Invoice',
     schema: invoiceSchema,
@@ -76,34 +54,6 @@ const InvoicePresenter = definePresenter({
     },
 });
 ```
-
-```typescript [Classic builder]
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)
-    .suggestActions((invoice) => {
-        if (invoice.status === 'pending') {
-            return [
-                { tool: 'billing.pay', reason: 'Process immediate payment' },
-                { tool: 'billing.send_reminder', reason: 'Send payment reminder to client' },
-            ];
-        }
-        if (invoice.status === 'overdue') {
-            return [
-                { tool: 'billing.escalate', reason: 'Escalate to collections' },
-                { tool: 'billing.send_final_notice', reason: 'Send final payment notice' },
-            ];
-        }
-        if (invoice.status === 'paid') {
-            return [
-                { tool: 'billing.archive', reason: 'Archive completed invoice' },
-                { tool: 'reports.generate_receipt', reason: 'Generate payment receipt' },
-            ];
-        }
-        return [];
-    });
-```
-
-:::
 
 The agent receives one of these blocks depending on the invoice's state:
 
@@ -162,8 +112,6 @@ Affordances can use the request context for RBAC-aware suggestions:
 
 A regular user sees: `→ billing.pay`. An admin sees: `→ billing.pay` + `→ billing.apply_discount`. The affordances adapt to the actor's permissions.
 
----
-
 ## Emergent Workflows
 
 The most powerful property of affordances is that **multi-step workflows emerge from individual data-driven hints**. You don't need to hardcode a workflow engine. The agent follows affordances one step at a time, and the correct workflow materializes.
@@ -191,27 +139,7 @@ Consider an AI agent tasked with resolving overdue invoices. The workflow is not
 // ...cycle continues for next overdue invoice
 ```
 
-```text
-The emergent workflow:
-
-   list_invoices(overdue)
-         │
-         ▼
-   ┌─ escalate(INV-001) ────→ notify(manager) ──┐
-   │                                               │
-   │  escalate(INV-002) ────→ send_notice ────────┤
-   │                                               │
-   │  escalate(INV-003) ────→ notify(manager) ──┤
-   │                                               │
-   └───────────────────────────────────────────────┘
-         │
-         ▼
-   All overdue invoices processed.
-```
-
 No workflow engine. No state machine. No orchestration layer. The agent simply follows the affordances, and the correct workflow emerges from the data state transitions.
-
----
 
 ## Affordances vs. Static Tool Lists
 
@@ -245,8 +173,6 @@ Agent: "I'll call billing.pay."
 
 **The cost difference compounds.** Every avoided retry saves input tokens (tool schemas + prompt) + output tokens (agent reasoning) + latency. In a 10-step workflow, avoiding even one retry per step saves 10 full round-trips.
 
----
-
 ## The Affordance Contract
 
 Each affordance is a simple object:
@@ -271,8 +197,6 @@ interface ActionSuggestion {
 { tool: 'billing.pay', reason: 'Process immediate payment for this pending invoice' }
 { tool: 'billing.send_reminder', reason: 'Send email reminder to client before escalating' }
 ```
-
----
 
 ## Patterns
 
@@ -331,12 +255,3 @@ Use the data to compute precise affordances:
     return actions;
 })
 ```
-
----
-
-## Continue Reading
-
-- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT domain rules that replace global system prompts
-- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, validation, self-healing
-- [Perception Package](/mva/perception-package) — Where affordances fit in the response structure
-- [Presenter API](/presenter) — Complete `.suggestActions()` reference

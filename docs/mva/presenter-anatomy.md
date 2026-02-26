@@ -1,67 +1,22 @@
 # Anatomy of the Presenter
 
-> The Presenter is the **View** in MVA. It is the structural contract between your domain data and the AI agent's perception. It is not a formatting utility — it is the architecture's central component.
-
 In MVA, every other layer exists to serve the Presenter. The Model validates data *for* the Presenter. The Agent consumes data *through* the Presenter. The Presenter is the single component that structures raw data into a format an AI agent can parse, interpret, and act on consistently.
 
 This page documents the Presenter's internal anatomy — its six responsibilities, its lifecycle, its composition model, and the patterns that emerge from its use at scale.
 
-::: tip New in v2.7
 The recommended API is `definePresenter({ ... })` — a declarative object-config alternative to the fluent `createPresenter()` builder. Both APIs produce identical `Presenter` instances. See [Presenter Guide](/presenter) for side-by-side comparison.
-:::
-
----
 
 ## The Six Responsibilities
 
 A Presenter encapsulates six distinct responsibilities. Each maps to a specific method in the `createPresenter()` API and a specific concern in the Structured Perception Package.
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Presenter Anatomy                              │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────────────┐  ① Schema Validation                        │
-│  │  .schema()           │  Zod schema + .strict() — security boundary │
-│  └─────────────────────┘                                              │
-│                                                                       │
-│  ┌─────────────────────┐  ② System Rules                             │
-│  │  .systemRules()      │  Domain interpretation directives           │
-│  └─────────────────────┘  Static or dynamic (with ctx)               │
-│                                                                       │
-│  ┌─────────────────────┐  ③ UI Blocks                                │
-│  │  .uiBlocks()         │  Server-rendered charts, diagrams, tables   │
-│  │  .collectionUiBlocks()│  Aggregated blocks for arrays              │
-│  └─────────────────────┘                                              │
-│                                                                       │
-│  ┌─────────────────────┐  ④ Cognitive Guardrails                     │
-│  │  .agentLimit()       │  Smart truncation + teaching blocks         │
-│  └─────────────────────┘                                              │
-│                                                                       │
-│  ┌─────────────────────┐  ⑤ Agentic Affordances                     │
-│  │  .suggestActions()   │  HATEOAS-style next-action hints            │
-│  └─────────────────────┘  Computed from data state                   │
-│                                                                       │
-│  ┌─────────────────────┐  ⑥ Presenter Composition                   │
-│  │  .embed()            │  Nested child Presenters for relational     │
-│  └─────────────────────┘  data. Rules/UI merge automatically.        │
-│                                                                       │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
----
-
 ### ① Schema Validation — The Security Contract
 
 The schema defines the shape of data the agent sees. When you use Zod's `.strict()` mode, it becomes a **Data Loss Prevention** (DLP) boundary — undeclared fields are rejected with actionable errors.
 
-::: warning Developer Responsibility
 The Presenter validates with whatever Zod schema you provide. If you want strict field filtering, you must call `.strict()` on your schema explicitly. The framework auto-applies `.strict()` on **input** validation (tool parameters), but the Presenter's output schema is yours to define.
-:::
 
-::: code-group
-
-```typescript [Recommended (v2.7+)]
+```typescript
 import { definePresenter } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
@@ -81,23 +36,6 @@ const InvoicePresenter = definePresenter({
 });
 ```
 
-```typescript [Classic builder]
-import { createPresenter } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-const invoiceSchema = z.object({
-    id: z.string(),
-    amount_cents: z.number(),
-    status: z.enum(['paid', 'pending', 'overdue']),
-    client_name: z.string(),
-}).strict();
-
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema);
-```
-
-:::
-
 When the handler returns data with undeclared fields:
 
 ```typescript
@@ -114,11 +52,7 @@ handler: async (ctx, args) => {
 
 With `.strict()`, the undeclared fields are **rejected** with an actionable `PresenterValidationError`. They never enter the agent's context window. The agent receives only `{ id, amount_cents, status, client_name }`.
 
-::: warning Security Boundary
 This is the single most important security mechanism in MVA. Use `.strict()` on your Presenter schemas to prevent internal data from leaking into the LLM's context. Without `.strict()`, Zod's default behavior silently strips unknown keys — but `.strict()` turns this into an explicit error, catching data shape mismatches early.
-:::
-
----
 
 ### ② System Rules — JIT Context Injection
 
@@ -157,8 +91,6 @@ const InvoicePresenter = createPresenter('Invoice')
 `null` values are automatically filtered. Rules only appear when relevant.
 
 **Why this matters:** In traditional MCP servers, domain rules live in a global system prompt. The agent receives invoice formatting rules when it's working on tasks. Sprint velocity formulas when it's listing users. This is **Context Pollution** — irrelevant rules waste tokens and can cause misapplication errors. MVA's JIT approach sends rules only when the corresponding domain is active — a pattern called **Context Tree-Shaking**.
-
----
 
 ### ③ UI Blocks — Server-Rendered Visualizations
 
@@ -214,8 +146,6 @@ The Presenter auto-detects whether the data is a single object or an array. `.ui
 | `ui.json(data)` | Formatted JSON | Raw data inspection |
 | `ui.summary(text)` | Summary text | Collection summaries, warnings |
 
----
-
 ### ④ Cognitive Guardrails — Smart Truncation
 
 Large datasets can overwhelm the agent's context window. `.agentLimit()` automatically truncates and teaches the agent to use pagination.
@@ -248,8 +178,6 @@ Use filters (status, assignee, sprint_id) to narrow results.
 ```
 
 The agent self-corrects: *"Let me filter by status: pending and assignee: john."*
-
----
 
 ### ⑤ Agentic Affordances — HATEOAS for AI
 
@@ -291,8 +219,6 @@ The agent receives:
 
 This is the AI equivalent of REST's HATEOAS principle: the server tells the client what's possible, rather than leaving the client to guess. See the [Agentic Affordances →](/mva/affordances) deep dive.
 
----
-
 ### ⑥ Presenter Composition — The Context Tree
 
 Real domain models have relationships. Invoices have clients. Orders have products. Projects have sprints. MVA handles this through **Presenter Composition** — the `.embed()` method.
@@ -332,8 +258,6 @@ InvoicePresenter
 │       └── CountryPresenter
 └── PaymentMethodPresenter
 ```
-
----
 
 ## The Presenter Lifecycle
 
@@ -397,8 +321,6 @@ builder.llmHint('This is a high-priority invoice.');
 return builder.build();
 ```
 
----
-
 ## Patterns for Production
 
 ### Pattern 1: The Presenter Library
@@ -454,8 +376,6 @@ const CountryPresenter = createPresenter('Country')
     .systemRules(['Country codes follow ISO 3166-1 alpha-2.']);
 ```
 
----
-
 ## Anti-Patterns
 
 ### ❌ Tool-Level Presenters
@@ -508,12 +428,3 @@ handler: async (ctx, args) => {
     // InvoicePresenter handles formatting via systemRules and uiBlocks
 }
 ```
-
----
-
-## Continue Reading
-
-- [Perception Package](/mva/perception-package) — The 6-block response the agent receives
-- [Agentic Affordances](/mva/affordances) — Deep dive into `.suggestActions()` and HATEOAS
-- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT rules vs global system prompts
-- [Presenter API](/presenter) — Complete configuration reference

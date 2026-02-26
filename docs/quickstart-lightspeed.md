@@ -1,0 +1,288 @@
+# Quickstart — Lightspeed
+
+From zero to a running MCP server in under 30 seconds. The CLI scaffolds a production-ready project with `autoDiscover()` file-based routing, typed context, Presenters, middleware, testing, and pre-configured connections for Cursor, Claude Desktop, and Claude Code — no boilerplate.
+
+## Scaffold {#scaffold}
+
+```bash
+npx fusion create my-server
+```
+
+The interactive wizard runs:
+
+```
+  Project name?  (my-mcp-server) › my-server
+  Transport?     [stdio, sse]    › stdio
+  Vector?        [vanilla, prisma, n8n, openapi, oauth] › vanilla
+  Include testing?               › yes
+
+  ● Scaffolding project — 14 files (6ms)
+  ● Installing dependencies...
+  ✔ Done
+
+  $ cd my-server
+  $ npm run dev
+  $ npm test
+```
+
+Skip the wizard with `--yes` for defaults, or pass flags directly:
+
+```bash
+npx fusion create my-api --vector prisma --transport sse --yes
+```
+
+## What you get {#structure}
+
+```text
+my-server/
+├── src/
+│   ├── fusion.ts          # initFusion<AppContext>()
+│   ├── context.ts         # AppContext type + factory
+│   ├── server.ts          # Bootstrap with autoDiscover
+│   ├── tools/
+│   │   └── system/
+│   │       ├── health.ts  # Health check with Presenter
+│   │       └── echo.ts    # Echo for connectivity testing
+│   ├── presenters/
+│   │   └── SystemPresenter.ts
+│   ├── prompts/
+│   │   └── greet.ts
+│   └── middleware/
+│       └── auth.ts
+├── tests/
+│   ├── setup.ts
+│   └── system.test.ts
+├── .cursor/mcp.json       # Pre-configured for Cursor
+├── .env.example
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
+```
+
+Every file is real code — not stubs. The server boots, the tests pass, Cursor connects.
+
+## Run & Connect {#run}
+
+```bash
+cd my-server
+npm run dev
+```
+
+The server starts on stdio. Connect it to your MCP client:
+
+### Cursor
+
+Already configured. The CLI generates `.cursor/mcp.json` — open the project in Cursor and the MCP connection is live. Zero setup.
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add my-server npx tsx src/server.ts
+```
+
+### SSE transport
+
+For network-accessible servers (multi-client, remote deployment):
+
+```bash
+npx fusion create my-api --transport sse
+cd my-api
+npm start
+# Server running on http://localhost:3001/sse
+```
+
+## autoDiscover — file-based routing {#autodiscover}
+
+This is the scaffolded project's superpower. No `index.ts` with 50 imports. No manual `registry.register()` calls. Drop a file in `src/tools/` and it's a live MCP tool.
+
+### How it works
+
+The generated `server.ts` calls `autoDiscover()` at startup:
+
+```typescript
+// src/server.ts (scaffolded)
+import { ToolRegistry, autoDiscover } from '@vinkius-core/mcp-fusion';
+
+const registry = f.registry();
+const discovered = await autoDiscover(registry, new URL('./tools', import.meta.url).pathname);
+console.error(`📦 Discovered ${discovered.length} tool file(s)`);
+```
+
+`autoDiscover` scans the entire `src/tools/` tree, imports every `.ts`/`.js` file, extracts the tool builder, and registers it. `.test.ts`, `.spec.ts`, and `.d.ts` files are skipped automatically.
+
+### Naming convention
+
+The directory structure becomes the tool namespace:
+
+```text
+src/tools/
+├── billing/
+│   ├── get_invoice.ts    → billing.get_invoice
+│   └── pay.ts            → billing.pay
+├── users/
+│   ├── list.ts           → users.list
+│   └── ban.ts            → users.ban
+└── system/
+    └── health.ts         → system.health
+```
+
+The tool's `name` field in the code is the source of truth — the directory just groups related files. Git diffs stay clean because adding a tool never touches a shared import file.
+
+### Export resolution
+
+`autoDiscover` resolves exports in priority order:
+
+| Priority | What it looks for | Example |
+|----------|-------------------|---------|
+| 1 | `export default` | `export default f.tool({ ... })` |
+| 2 | Named `tool` export | `export const tool = f.tool({ ... })` |
+| 3 | Any exported builder | Scans all exports for objects with `getName()` |
+
+The recommended pattern is `export default`:
+
+```typescript
+// src/tools/weather/get.ts
+import { f } from '../../fusion.js';
+import { z } from 'zod';
+
+export default f.tool({
+  name: 'weather.get',
+  description: 'Get current weather for a city',
+  input: z.object({
+    city: z.string().describe('City name'),
+  }),
+  readOnly: true,
+  handler: async ({ input }) => {
+    return { city: input.city, temp_c: 18, condition: 'Clear' };
+  },
+});
+```
+
+Restart the dev server. `weather_get` is now callable by any MCP client.
+
+### Multiple tools in one file
+
+Priority 3 enables exporting multiple tools from a single file:
+
+```typescript
+// src/tools/billing/crud.ts
+import { f } from '../../fusion.js';
+import { z } from 'zod';
+
+export const listInvoices = f.tool({
+  name: 'billing.list_invoices',
+  description: 'List all invoices',
+  input: z.object({}),
+  readOnly: true,
+  handler: async () => ({ invoices: [] }),
+});
+
+export const createInvoice = f.tool({
+  name: 'billing.create_invoice',
+  description: 'Create an invoice',
+  input: z.object({ amount: z.number() }),
+  handler: async ({ input }) => ({ id: 'inv_1', amount: input.amount }),
+});
+```
+
+Both tools are discovered and registered — no extra wiring.
+
+### Advanced options
+
+`autoDiscover` accepts an options object for fine-grained control:
+
+```typescript
+await autoDiscover(registry, './src/tools', {
+  pattern: /\.tool\.ts$/,   // only files ending in .tool.ts
+  recursive: true,          // scan subdirectories (default: true)
+  loader: 'esm',            // 'esm' (default) or 'cjs'
+  resolve: (mod) => {       // custom export resolver
+    return mod.myTool as ToolBuilderLike;
+  },
+});
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `pattern` | `/\.(ts\|js\|mjs\|mts)$/` | Regex filter for file names |
+| `recursive` | `true` | Scan subdirectories |
+| `loader` | `'esm'` | Module system — `'esm'` uses `import()`, `'cjs'` uses `require()` |
+| `resolve` | Priority cascade (default → tool → any) | Custom function to extract builders from module exports |
+
+## Test {#test}
+
+The scaffolded project includes Vitest with a system test that verifies tool registration:
+
+```bash
+npm test
+```
+
+The test harness uses `MVA_META_SYMBOL` to call tools in-memory — no transport layer, no network. Add your own:
+
+```typescript
+// tests/weather.test.ts
+import { describe, it, expect } from 'vitest';
+import { ToolRegistry, autoDiscover } from '@vinkius-core/mcp-fusion';
+
+describe('weather.get', () => {
+  it('returns temperature for a city', async () => {
+    const registry = new ToolRegistry();
+    await autoDiscover(registry, new URL('../src/tools', import.meta.url).pathname);
+
+    const result = await registry.callTool('weather_get', { city: 'Tokyo' });
+    expect(result.content[0].text).toContain('Tokyo');
+  });
+});
+```
+
+## Vectors {#vectors}
+
+The `--vector` flag changes what gets scaffolded:
+
+| Vector | What it adds |
+|---|---|
+| `vanilla` | `autoDiscover()` file-based routing. Zero external deps |
+| `prisma` | `prisma/schema.prisma` + DB tool stubs + `mcp-fusion-prisma-gen` generator |
+| `n8n` | `src/n8n.ts` — `N8nConnector` auto-discovers webhook workflows as MCP tools |
+| `openapi` | `openapi.yaml` + `SETUP.md` — generates Models/Views/Agents from spec |
+| `oauth` | `src/auth.ts` + `src/middleware/auth.ts` — RFC 8628 Device Flow with `requireAuth()` |
+
+```bash
+# Database-driven MCP server
+npx fusion create inventory-api --vector prisma --transport sse
+
+# n8n workflow bridge
+npx fusion create ops-bridge --vector n8n
+
+# Authenticated API
+npx fusion create secure-api --vector oauth
+```
+
+Each vector adds its dependencies to `package.json` and environment variables to `.env.example` automatically.
+
+## Next steps {#next}
+
+| What | Where |
+|---|---|
+| Understand tool definitions, annotations, Zod schemas | [Building Tools](/building-tools) |
+| Shape what the LLM sees with Presenters | [Presenter Guide](/presenter) |
+| Add auth, rate limiting, logging | [Middleware](/middleware) |
+| Register prompts and dynamic manifests | [Prompt Engine](/prompts) |
+| Run the full test harness | [Testing](/testing) |
+| Lock your capability surface | [Capability Governance](/governance/) |
+| Manual setup without the CLI | [Quickstart — Traditional](/quickstart) |

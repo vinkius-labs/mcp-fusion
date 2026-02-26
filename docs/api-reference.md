@@ -1,12 +1,8 @@
 # API Reference
 
-A highly dense reference manual for every public class, function, type, and interface exported by the **MCP Fusion** framework.
-
----
+Every public function, class, and type exported by `@vinkius-core/mcp-fusion`.
 
 ## Response Helpers
-
-Because MCP dictates strict return structures, rather than sending complex JSON array trees by hand, use the Fusion helper libraries for instant payload mappings.
 
 ### `success(data)`
 
@@ -87,11 +83,10 @@ return toonSuccess(users);                        // Pipe-delimited natively
 return toonSuccess(users, { delimiter: ',' });    // Custom delimiter
 ```
 
----
 
 ## Tool Builders
 
-### `initFusion<TContext>()` <Badge type="tip" text="NEW v2.7" />
+### `initFusion<TContext>()` 
 
 Creates a tRPC-style context initializer. Define the context type **once** — every method inherits it.
 
@@ -122,7 +117,7 @@ Returns a `FusionInstance<TContext>` with the following methods:
 | `handler` | `({ input, ctx }) => Promise<T>` | Handler — receives destructured `{ input, ctx }` |
 | `returns` | `Presenter?` | MVA Presenter — handler returns raw data |
 
-### `definePresenter(config)` <Badge type="tip" text="NEW v2.7" />
+### `definePresenter(config)` 
 
 Object-config API for creating Presenters with auto-extracted Zod descriptions.
 
@@ -154,7 +149,7 @@ const P = definePresenter({
 | `suggestActions` | `(item) => Action[]` | HATEOAS affordances |
 | `embeds` | `{ key, presenter }[]?` | Child Presenter composition |
 
-### `createGroup<TContext>(config)` <Badge type="tip" text="NEW v2.7" />
+### `createGroup<TContext>(config)` 
 
 Functional closure-based tool groups with pre-composed middleware and O(1) dispatch.
 
@@ -182,7 +177,7 @@ const group = createGroup<AppContext>({
 | `middleware` | `MiddlewareFn[]?` | Middleware chain — pre-composed at build time |
 | `tools` | `ToolConfig[]` | Array of tool configs with `{ name, input, handler }` |
 
-### `autoDiscover(registry, dir, options?)` <Badge type="tip" text="NEW v2.7" />
+### `autoDiscover(registry, dir, options?)` 
 
 File-based routing — scans a directory and auto-registers all exported tools.
 
@@ -203,7 +198,7 @@ await autoDiscover(registry, './src/tools');
 
 **Naming convention:** File path becomes tool name — `src/tools/billing/pay.ts` → `billing.pay`.
 
-### `createDevServer(config)` <Badge type="tip" text="NEW v2.7" />
+### `createDevServer(config)` 
 
 HMR dev server — watches tool files and hot-reloads on change without restarting the LLM client.
 
@@ -232,7 +227,7 @@ await devServer.start();
 | `.stop()` | `Promise<void>` | Stop watching |
 | `.reload()` | `Promise<void>` | Force a manual reload |
 
-### Standard Schema Support <Badge type="tip" text="NEW v2.7" />
+### Standard Schema Support 
 
 Decouple from Zod — use any Standard Schema v1 validator (Valibot, ArkType, TypeBox).
 
@@ -247,7 +242,7 @@ import { toStandardValidator, isStandardSchema, autoValidator } from '@vinkius-c
 | `fromZodSchema(zodSchema)` | Converts a Zod schema to Standard Schema format |
 | `autoValidator(schema)` | Auto-detects schema type (Zod, Standard Schema) and returns validator |
 
-### Subpath Exports <Badge type="tip" text="NEW v2.7" />
+### Subpath Exports 
 
 10 granular entry points for minimal bundle size:
 
@@ -264,7 +259,6 @@ import { toStandardValidator, isStandardSchema, autoValidator } from '@vinkius-c
 | `@vinkius-core/mcp-fusion/schema` | Standard Schema utilities |
 | `@vinkius-core/mcp-fusion/testing` | `createTestHarness`, `createInlineServer` |
 
----
 
 ### `createTool(name)` — Builder Pattern
 
@@ -366,11 +360,10 @@ const tool = defineTool<AppContext>('projects', {
 | `'boolean'` | `{ type: 'boolean' }` |
 | `{ type, min, max, regex, optional, array, enum }` | Full descriptor |
 
----
 
 ## Middleware
 
-### `f.middleware(deriveFn)` <Badge type="tip" text="NEW v2.7" />
+### `f.middleware(deriveFn)` 
 
 Creates a context-deriving middleware via `initFusion()` — zero generics:
 
@@ -411,7 +404,6 @@ Type guard to check if a value is a `MiddlewareDefinition`.
 
 Converts either a `MiddlewareDefinition` or a plain `MiddlewareFn` to a `MiddlewareFn`.
 
----
 
 ## Streaming Progress
 
@@ -454,7 +446,6 @@ type ProgressSink = (event: ProgressEvent) => void;
 
 Pass a `ProgressSink` to `builder.execute()` or `registry.routeCall()` as the optional last parameter.
 
----
 
 ## Result Monad
 
@@ -490,7 +481,6 @@ const result = fail(error('User not found'));
 | `Failure` | `ok: false`, `response: ToolResponse` | Failed result |
 | `Result<T>` | — | `Success<T> \| Failure` discriminated union |
 
----
 
 ## FusionClient
 
@@ -521,7 +511,6 @@ interface FusionTransport {
 
 The client splits dotted action paths: `'projects.list'` → tool `'projects'` + arg `{ action: 'list' }`.
 
----
 
 ## ToolRegistry
 
@@ -602,7 +591,6 @@ interface ExpositionConfig {
 
 See the full [Tool Exposition Guide](/tool-exposition) for details.
 
----
 
 ## Observability
 
@@ -665,7 +653,6 @@ const tool = createTool<AppContext>('projects')
     .action({ name: 'list', handler: listProjects });
 ```
 
----
 
 ## State Sync
 
@@ -738,7 +725,6 @@ matchGlob('sprints.**', 'sprints.tasks.get'); // true
 matchGlob('**',         'anything.at.all');   // true
 ```
 
----
 
 ## Prompt Engine
 
@@ -774,9 +760,7 @@ const SummarizePrompt = definePrompt<AppContext>('summarize', {
 | `config.handler` | `(ctx, args) => Promise<PromptResult>` | Hydration handler |
 | **Returns** | `PromptBuilder<TContext>` | Ready for `PromptRegistry.register()` |
 
-::: warning Flat Schema Constraint
-Prompt arguments must be flat primitives (string, number, boolean, enum). MCP clients render them as visual forms — complex structures cannot be represented. Fetch complex data server-side inside the handler.
-:::
+Prompt arguments must be flat primitives (string, number, boolean, enum). MCP clients render them as forms — complex structures cannot be represented. Fetch complex data server-side inside the handler.
 
 ### `PromptMessage`
 
@@ -792,7 +776,7 @@ Factory methods for creating MCP-compliant prompt messages:
 | `.resource(role, uri, options?)` | `(Role, string, Options?) => PromptMessagePayload` | Embedded resource |
 | `.fromView(builder)` | `(ResponseBuilder) => PromptMessagePayload[]` | **MVA-Driven Prompts** — decompose a Presenter view |
 
-### `PromptMessage.fromView(builder)` <Badge type="tip" text="NEW" />
+### `PromptMessage.fromView(builder)` 
 
 Decomposes a `ResponseBuilder` (from `Presenter.make()` or `response()`) into XML-tagged prompt messages optimized for frontier LLMs:
 
@@ -849,7 +833,6 @@ prompts.register(SummarizePrompt);
 | `PromptParamsMap` | `Record<string, PromptParamDef>` |
 | `PromptFilter` | `{ tags?, anyTag?, exclude? }` |
 
----
 
 ## Domain Model Classes
 
@@ -873,3 +856,4 @@ The strictly evaluated LLM parameter payload logic.
 |---|---|---|
 | `inputSchema` | `string` | Fully expanded JSON Schema string definitions natively. |
 | `toolAnnotations` | `Annotations` | Bound behavior hint blocks evaluated by language models. |
+

@@ -5,23 +5,7 @@ description: "Content-addressed behavioral fingerprinting, temporal comparison, 
 
 # Surface Integrity
 
-::: tip One-Liner
-A SHA-256 digest that changes when behavior changes — even if the tool name, schema, and description stay identical.
-:::
-
----
-
-## Overview
-
-The MCP protocol surfaces tool identity through names, descriptions, and JSON Schema. But behaviorally identical tools should produce identical fingerprints, and behaviorally different tools should produce different fingerprints — regardless of how their declarations look.
-
-**BehaviorDigest** is a content-addressed fingerprinting module that produces a single SHA-256 hash over the complete behavioral contract of a tool. This digest is the identity primitive that the [Capability Lockfile](/governance/capability-lockfile), [Contract Diffing](/governance/contract-diffing), and [Zero-Trust Attestation](/governance/zero-trust-attestation) modules depend on.
-
----
-
-## The Problem
-
-Consider a tool with two snapshots taken at different times:
+Two snapshots of the same tool, taken a week apart:
 
 | Field | Snapshot $T_0$ | Snapshot $T_1$ |
 |---|---|---|
@@ -30,21 +14,19 @@ Consider a tool with two snapshots taken at different times:
 | Input Schema | `{ key: string }` | `{ key: string }` |
 | System Rules | `["Never log secrets"]` | `[]` |
 
-From the MCP protocol's perspective, these are the **same tool**. From a behavioral perspective, they are **different tools** — in $T_1$, the system rule protecting secrets was removed.
+From the MCP protocol's perspective, these are the **same tool** — the name, description, and schema are identical. From a behavioral perspective, they are **different tools** — in $T_1$, the system rule protecting secrets was removed. The agent will now log secrets because nothing tells it not to.
 
-BehaviorDigest detects this. The digest at $T_0$ differs from the digest at $T_1$ because `systemRulesFingerprint` is a component of the hash computation.
+`BehaviorDigest` catches this. It produces a single SHA-256 hash over the complete behavioral contract — not just the declared surface. The digest at $T_0$ differs from the digest at $T_1$ because `systemRulesFingerprint` is part of the computation.
 
----
 
-## Computing a Digest
+## Computing a Digest {#compute}
 
-### Single Tool
+For a single tool:
 
 ```typescript
-import { computeDigest } from 'mcp-fusion/introspection';
-import type { BehaviorDigestResult } from 'mcp-fusion/introspection';
+import { computeDigest } from '@vinkius-core/mcp-fusion/introspection';
 
-const result: BehaviorDigestResult = computeDigest(contract);
+const result = computeDigest(contract);
 
 console.log(result.digest);
 // "a1b2c3d4e5f67890..."
@@ -58,106 +40,70 @@ console.log(result.components);
 // }
 ```
 
-### Server-Level Digest
+The `components` object is the key insight. When the overall digest changes, comparing components reveals exactly *which section* changed — without running the full diff engine. If only `behavior` changed, you know the schema is stable but the rules, middleware, or guardrails shifted.
+
+For the entire server:
 
 ```typescript
-import { computeServerDigest } from 'mcp-fusion/introspection';
+import { computeServerDigest } from '@vinkius-core/mcp-fusion/introspection';
 
 const serverDigest = computeServerDigest(contracts);
 
 console.log(serverDigest.digest);
 // SHA-256 over all per-tool digests, sorted by name
-
-console.log(Object.keys(serverDigest.tools));
-// ["invoices", "payments", "refunds"]
 ```
 
----
 
-## Digest Components
+## The Four Digest Components {#components}
 
-The digest is a **composite hash** over four independently hashable sections. This enables granular change detection: when the overall digest changes, comparing components reveals exactly *which section* changed.
+The digest is a composite hash: `sha256(S:B:T:E)`. Each section is hashed independently, then the four hashes are combined into the final digest.
 
-```
-                    ┌───────────────────────────┐
-                    │     Composite Digest       │
-                    │  sha256(S:B:T:E)           │
-                    └─────────┬─────────────────┘
-                              │
-            ┌────────┬────────┼────────┬─────────┐
-            ▼        ▼        ▼        ▼         │
-       ┌─────────┐ ┌──────┐ ┌──────┐ ┌───────┐  │
-       │ Surface │ │Behav.│ │Token │ │Entitl.│  │
-       │  (S)    │ │ (B)  │ │ (T)  │ │ (E)   │  │
-       └─────────┘ └──────┘ └──────┘ └───────┘  │
-```
+### Surface — What the agent sees
 
-### Surface Component
+Input: tool name, description, tags (sorted), input schema digest, per-action contracts (sorted by key).
 
-Inputs: tool name, description, tags (sorted), input schema digest, per-action contracts (sorted by key).
+Changes when actions are added or removed, the schema changes, tags change, or descriptions change. This is the structural layer — the part the MCP protocol already exposes.
 
-Changes when: actions are added/removed, schema changes, tags change, descriptions change.
+### Behavior — What the tool actually does
 
-### Behavior Component
+Input: egress schema digest, system rules fingerprint, cognitive guardrails, middleware chain, state-sync fingerprint, concurrency fingerprint, affordance topology, embedded Presenters.
 
-Inputs: egress schema digest, system rules fingerprint, cognitive guardrails, middleware chain, state-sync fingerprint, concurrency fingerprint, affordance topology, embedded presenters.
+Changes when system rules are modified, guardrails are loosened, middleware is added or removed, or affordance links change. This is the layer the MCP protocol cannot see — the behavioral contract beyond declarations.
 
-Changes when: Presenter egress shape changes, system rules are modified, guardrails are loosened/tightened, middleware is added/removed, affordance links change.
+### Token Economics — How much context it consumes
 
-### Token Economics Component
+Input: schema field count, unbounded collection flag, base overhead tokens, inflation risk classification.
 
-Inputs: schema field count, unbounded collection flag, base overhead tokens, inflation risk classification.
+Changes when the response shape changes in ways that affect token density. A tool that goes from 5 fields to 25 fields will produce a different economics hash, even if the schema is technically valid.
 
-Changes when: the response shape changes in ways that affect token density.
+### Entitlements — What I/O the handler uses
 
-### Entitlements Component
+Input: filesystem, network, subprocess, crypto flags, raw entitlement identifiers (sorted).
 
-Inputs: filesystem, network, subprocess, crypto flags, raw entitlement identifiers (sorted).
+Changes when static analysis detects new I/O capabilities in handler source code. A `readOnly` tool that starts importing `child_process` will produce a different entitlements hash.
 
-Changes when: static analysis detects new I/O capabilities in handler source code.
 
----
+## Determinism Guarantees {#guarantees}
 
-## Content-Addressed Guarantees
-
-The digest system provides three critical guarantees:
-
-### 1. Determinism
-
-Given the same `ToolContract`, `computeDigest()` always returns the same digest — regardless of:
-
-- Object key insertion order
-- Platform (Node.js, Bun, Deno)
-- Timestamp
-- Process ID
-
-This is achieved through **canonical JSON serialization**: all objects are serialized with sorted keys before hashing.
+Given the same `ToolContract`, `computeDigest()` always returns the same digest — regardless of object key insertion order, platform (Node.js, Bun, Deno), timestamp, or process ID. This is achieved through canonical JSON serialization: all objects are serialized with sorted keys before hashing.
 
 ```typescript
-import { canonicalize, sha256 } from 'mcp-fusion/introspection';
+import { canonicalize, sha256 } from '@vinkius-core/mcp-fusion/introspection';
 
 const hash = sha256(canonicalize({ b: 2, a: 1 }));
-// Always identical to:
 const hash2 = sha256(canonicalize({ a: 1, b: 2 }));
-// hash === hash2
+// hash === hash2 — always
 ```
 
-### 2. Content Address
+Two tools with identical behavioral contracts produce identical digests, even if created independently in different files. Any change to any behavioral field produces a different digest — the hash distributes uniformly across the output space.
 
-Two tools with identical behavioral contracts produce identical digests, even if they were created independently in different files, different packages, or different projects.
 
-### 3. Sensitivity
+## Comparing Server Digests Over Time {#comparison}
 
-Any change to any behavioral field produces a different digest. The hash function distributes uniformly — no two distinct inputs are expected to collide.
-
----
-
-## Temporal Comparison
-
-### Comparing Server Digests
+When you have two snapshots — from a lockfile and the current surface, or from two different branches — compare them:
 
 ```typescript
-import { compareServerDigests } from 'mcp-fusion/introspection';
+import { compareServerDigests } from '@vinkius-core/mcp-fusion/introspection';
 
 const comparison = compareServerDigests(beforeDigest, afterDigest);
 
@@ -170,33 +116,12 @@ if (comparison.serverDigestChanged) {
 }
 ```
 
-### `DigestComparison` Result
+This is the fast path for drift detection. `compareServerDigests()` runs in $O(k)$ where $k$ is the tool count — no per-field comparison, just digest matching. When you need the semantic details of *what* changed, pass the results to [Contract Diffing](/governance/contract-diffing).
 
-| Field | Type | Description |
-|---|---|---|
-| `serverDigestChanged` | `boolean` | Whether the overall server digest changed |
-| `added` | `string[]` | Tools present now but not in the baseline |
-| `removed` | `string[]` | Tools in the baseline but not present now |
-| `changed` | `string[]` | Tools whose behavioral digest changed |
-| `unchanged` | `string[]` | Tools with identical digests |
 
----
+## System Rules Fingerprinting {#rules}
 
-## Integration With Other Modules
-
-BehaviorDigest is the foundation layer. Other governance modules consume it:
-
-| Consumer | How It Uses BehaviorDigest |
-|---|---|
-| [Capability Lockfile](/governance/capability-lockfile) | Stores per-tool `integrityDigest` and server-level digest |
-| [Contract Diffing](/governance/contract-diffing) | Compares `digestChanged` before running semantic diff |
-| [Zero-Trust Attestation](/governance/zero-trust-attestation) | Signs the server digest, verifies at startup |
-
----
-
-## System Rules Fingerprinting
-
-System rules deserve special attention because they are the primary mechanism for controlling LLM behavior in the MVA pattern.
+System rules deserve special attention because they are the primary mechanism for controlling LLM behavior.
 
 ```typescript
 // Static rules → deterministic fingerprint
@@ -208,20 +133,24 @@ const rules = (ctx) => [`User ${ctx.userId} rules`];
 // fingerprint: "dynamic:sha256(function-source)"
 ```
 
-The lockfile captures the fingerprint, and any change — whether adding a rule, removing a rule, or switching from static to dynamic — produces a different digest and triggers a lockfile update.
+Any change — adding a rule, removing a rule, or switching from static to dynamic — produces a different fingerprint and triggers a lockfile update. [Contract Diffing](/governance/contract-diffing) classifies a static-to-dynamic transition as `BREAKING` severity because the behavioral contract becomes non-deterministic.
 
-::: danger Static → Dynamic is a BREAKING change
-If system rules change from static (deterministic) to dynamic (context-dependent), the behavioral contract becomes non-deterministic. [ContractDiff](/governance/contract-diffing) classifies this as `BREAKING` severity.
-:::
 
----
+## How Other Modules Use BehaviorDigest {#integration}
 
-## Performance
+BehaviorDigest is the identity primitive. Everything else builds on it:
+
+- The [Capability Lockfile](/governance/capability-lockfile) stores per-tool `integrityDigest` and the server-level digest
+- [Contract Diffing](/governance/contract-diffing) checks `digestChanged` before running the expensive semantic diff — if the digest didn't change, the contract didn't change
+- [Zero-Trust Attestation](/governance/zero-trust-attestation) signs the server digest at build time and verifies it at startup
+
+
+## Performance {#performance}
 
 | Operation | Complexity | Typical Latency |
 |---|---|---|
-| `computeDigest()` (single tool) | $O(n)$ where $n$ = contract field count | < 1ms |
-| `computeServerDigest()` (all tools) | $O(k \cdot n)$ where $k$ = tool count | < 10ms for 100 tools |
+| `computeDigest()` (single tool) | $O(n)$ — $n$ = contract field count | < 1ms |
+| `computeServerDigest()` (all tools) | $O(k \cdot n)$ — $k$ = tool count | < 10ms for 100 tools |
 | `compareServerDigests()` | $O(k)$ | < 1ms |
 
 All hashing uses Node.js built-in `crypto.createHash('sha256')` — hardware-accelerated on modern CPUs.

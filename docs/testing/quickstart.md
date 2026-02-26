@@ -59,7 +59,6 @@ export const tester = createFusionTester(registry, {
 });
 ```
 
-::: tip Async Context
 `contextFactory` supports `async` — useful for resolving test tokens from a database or environment:
 
 ```typescript
@@ -68,7 +67,6 @@ contextFactory: async () => {
     return { prisma: mockPrisma, tenantId: token.tenantId, role: token.role };
 },
 ```
-:::
 
 ## Step 3: Write Your First Test
 
@@ -131,12 +129,6 @@ npx vitest run tests/
 ```
 
 **5ms. Zero tokens. Zero servers. Deterministic proof that PII never reaches the LLM.**
-
-::: tip Fun Fact
-If your Tool returns perfectly clean XML in the tests, the blame for hallucinating in production shifts to your LLM Provider — not your company's backend.
-:::
-
----
 
 ## Running Tests — Command Reference
 
@@ -249,9 +241,7 @@ jobs:
       - run: npx vitest run --reporter=verbose
 ```
 
-::: info Zero Tokens in CI/CD
 The FusionTester runs entirely in RAM. Your CI/CD pipeline **never** calls an LLM API. No `OPENAI_API_KEY` required. No `ANTHROPIC_API_KEY` required. No rate limits. No flaky tests from API outages.
-:::
 
 ### Combining Filters
 
@@ -265,8 +255,6 @@ npx vitest run tests/guards/ -t "ADMIN"
 # Run firewall + rules tests together
 npx vitest run tests/firewall/ tests/rules/
 ```
-
----
 
 ## Step 5: Add More Audits
 
@@ -409,8 +397,6 @@ describe('Error Handling', () => {
 });
 ```
 
----
-
 ## API Reference
 
 ### `createFusionTester(registry, options)`
@@ -438,8 +424,6 @@ describe('Error Handling', () => {
 | `uiBlocks` | `unknown[]` | SSR UI blocks (charts, summaries, markdown) |
 | `isError` | `boolean` | `true` if pipeline returned an error |
 | `rawResponse` | `unknown` | Raw MCP `ToolResponse` for protocol inspection |
-
----
 
 ## Recommended Folder Structure
 
@@ -476,16 +460,3 @@ npx vitest run tests/rules/
 # "Show me proof that UI blocks render correctly"
 npx vitest run tests/blocks/
 ```
-
-## Next Steps
-
-| Guide | What you'll learn |
-|---|---|
-| [Egress Firewall](/testing/egress-firewall) | Assert PII stripping for SOC2 compliance |
-| [System Rules](/testing/system-rules) | Verify LLM governance directives |
-| [Middleware Guards](/testing/middleware-guards) | Test RBAC and auth gates |
-| [OOM Guard](/testing/oom-guard) | Validate input boundaries and agent limits |
-| [UI Blocks](/testing/ui-blocks) | Assert SSR blocks and truncation warnings |
-| [Error Handling](/testing/error-handling) | Test all error paths |
-| [Raw Response](/testing/raw-response) | Protocol-level MCP inspection |
-| [Convention](/testing/convention) | `tests/` folder structure |

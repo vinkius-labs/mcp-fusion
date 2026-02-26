@@ -1,77 +1,35 @@
 # The MVA Pattern
 
-**Model-View-Agent (MVA)** is a software architecture for AI-native applications over the Model Context Protocol. It replaces the human-centric View of MVC with a **Presenter** — a deterministic perception layer that tells the agent exactly how to interpret, display, and act on domain data.
-
-::: tip Deep Dive Available
-This page is the overview. For the complete reference, visit the [MVA Architecture Section →](/mva/) with in-depth guides on theory, paradigm comparison, presenter anatomy, perception packages, affordances, context tree-shaking, and cognitive guardrails.
-:::
-
----
+**Model-View-Agent (MVA)** replaces the human-centric View of MVC with a **Presenter** — a deterministic perception layer that tells the agent how to interpret, display, and act on domain data. For the full reference, see the [MVA Architecture Section](/mva/).
 
 ## Why MVC Fails for Agents {#why-mvc-fails}
 
-MVC was designed for humans. Humans can interpret ambiguous data, navigate inconsistent interfaces, and apply domain knowledge that the View never had to provide. An AI agent cannot do any of this.
+MVC was designed for humans who interpret ambiguous data and apply domain knowledge the View never provided. An agent cannot.
 
-When a tool returns raw JSON:
+When a tool returns `{ "amount_cents": 45000, "status": "pending" }`, the agent guesses: cents or dollars? Offer a payment action? What visualization? Every guess is a potential hallucination.
 
-```json
-{ "id": "INV-001", "amount_cents": 45000, "status": "pending" }
-```
-
-The agent must guess:
-- Is `amount_cents` in cents or dollars?
-- Should it offer a payment action?
-- Can this user see financial data?
-- What visualization makes sense?
-
-Every guess is a potential hallucination. The three failure modes:
-
-| Failure Mode | What Happens | Cost |
-|---|---|---|
-| **Context Starvation** | Data arrives without domain rules | Agent displays `45000` as dollars instead of cents |
-| **Action Blindness** | Agent doesn't know what to do next | Hallucinates tool names or skips valid actions |
-| **Perception Inconsistency** | Same entity presented differently by different tools | Contradictory behavior across workflows |
-
----
+**Context Starvation** — data without rules means `45000` displays as dollars. **Action Blindness** — no affordances means hallucinated tool names. **Perception Inconsistency** — same entity presented differently by different tools means contradictory behavior.
 
 ## The Solution: MVA {#solution}
 
-MVA replaces the human-centric View with an agent-centric **Presenter**:
-
 ```text
-┌─────────────────────────────────────────────────┐
-│                 MVA Architecture                 │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│   Model              View              Agent     │
-│   ─────              ────              ─────     │
-│   Domain Data   →   Presenter    →   LLM/AI     │
-│   (Zod Schema)      (Rules +          (Claude,   │
-│                      UI Blocks +       GPT, etc.) │
-│                      Affordances)                │
-│                                                  │
-└─────────────────────────────────────────────────┘
+Model              View              Agent
+─────              ────              ─────
+Domain Data   →   Presenter    →   LLM/AI
+(Zod Schema)      (Rules +          (Claude,
+                   UI Blocks +       GPT, etc.)
+                   Affordances)
 ```
 
-| MVC Layer | MVA Layer | Purpose |
-|---|---|---|
-| Model | **Model** (Zod Schema) | Validates and filters domain data |
-| View (HTML/CSS) | **View** (Presenter) | Structures data with rules, UI blocks, and action hints |
-| Controller | **Agent** (LLM) | Autonomous consumer that acts on the structured response |
+The Presenter is **domain-level, not tool-level.** Define `InvoicePresenter` once — every tool that returns invoices uses the same Presenter. The agent always perceives invoices identically.
 
-The key insight: **the Presenter is domain-level, not tool-level.** You define `InvoicePresenter` once. Every tool that returns invoices uses the same Presenter. The agent always perceives invoices identically — regardless of which tool produced them.
+## The Presenter {#presenter-responsibilities}
 
----
+Three APIs produce the same internal builder: `definePresenter({})` (declarative), `createPresenter('Name').schema(s).systemRules(r)` (fluent), `f.presenter({})` (context-aware). Pick one.
 
-## The Presenter: Six Responsibilities {#presenter-responsibilities}
+### Schema Validation {#schema-validation}
 
-::: tip Three APIs, same result
-MCP Fusion offers three equivalent ways to create a Presenter: `definePresenter({ ... })` (declarative config), `createPresenter('Name').schema(s).systemRules(r)` (fluent builder), and `f.presenter({ ... })` (context-aware via `initFusion`). All three produce the same internal builder. This page mixes them to show different styles — pick whichever matches your codebase.
-:::
-
-### 1. Schema Validation — The Security Contract {#schema-validation}
-
-The Zod schema acts as a security boundary. Only declared fields pass through — internal fields like `tenant_id` or `password_hash` are rejected. The `autoRules` option auto-extracts `.describe()` annotations as system rules for the agent:
+The Zod schema is a security boundary. Only declared fields pass through:
 
 ```typescript
 import { definePresenter } from '@vinkius-core/mcp-fusion';
@@ -81,21 +39,20 @@ const invoiceSchema = z.object({
   id: z.string(),
   amount_cents: z.number().describe('Amount in cents — divide by 100 for display'),
   status: z.enum(['paid', 'pending', 'overdue']),
-  // password_hash, tenant_id → not in schema, not in output
 });
 
 export const InvoicePresenter = definePresenter({
   name: 'Invoice',
   schema: invoiceSchema,
-  autoRules: true, // extracts .describe() annotations as system rules
+  autoRules: true,
 });
 ```
 
-Why this matters: without schema filtering, every field on the database model reaches the LLM context — including sensitive data the handler author didn't intend to expose.
+`autoRules: true` extracts `.describe()` annotations as system rules. Fields like `password_hash` or `tenant_id` are never in the schema, so they never reach the agent.
 
-### 2. System Rules — JIT Context Injection {#system-rules}
+### System Rules {#system-rules}
 
-Rules travel **with the data**, not in a global system prompt. The agent only receives rules relevant to the domain it's currently working with — this is Context Tree-Shaking:
+Rules travel with the data, not in a global system prompt:
 
 ```typescript
 export const InvoicePresenter = definePresenter({
@@ -109,15 +66,11 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-The agent receives these rules inline with the data. No global prompt bloat. When the agent works with a different domain (users, orders), those rules aren't loaded.
+When the agent works with users or orders, invoice rules aren't loaded. This is Context Tree-Shaking.
 
-::: info
-Rules are plain strings passed as system context to the agent. The `CRITICAL:` prefix and emoji conventions in these examples are stylistic choices — format them however your target LLM responds best.
-:::
+### Context-Aware Rules {#context-aware-rules}
 
-### 3. Context-Aware Rules — Dynamic RBAC {#context-aware-rules}
-
-Rules can receive the data and the request context. Return `null` to conditionally exclude a rule:
+Rules receive data and request context. Return `null` to exclude conditionally:
 
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
@@ -131,11 +84,9 @@ const InvoicePresenter = createPresenter('Invoice')
   ]);
 ```
 
-Non-admin users see the masking rule. Admins don't. The Presenter adapts its perception per-request without any `if/else` in the handler.
+### UI Blocks {#ui-blocks}
 
-### 4. UI Blocks — Deterministic Visualizations {#ui-blocks}
-
-Presenters generate UI blocks — charts, diagrams, tables — that the agent renders directly. No guessing about what visualization fits:
+Presenters generate charts and visualizations the agent renders directly:
 
 ```typescript
 import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
@@ -160,11 +111,11 @@ export const InvoicePresenter = definePresenter({
 });
 ```
 
-`.ui()` fires for single items. `.collectionUi()` fires for arrays. The Presenter auto-detects which to apply.
+`.ui()` fires for single items. `.collectionUi()` fires for arrays. Auto-detected.
 
-### 5. Cognitive Guardrails — Smart Truncation {#cognitive-guardrails}
+### Cognitive Guardrails {#cognitive-guardrails}
 
-Large datasets overwhelm the agent's context window. `agentLimit` automatically truncates and teaches the agent to use pagination or filters:
+`agentLimit` truncates large datasets and teaches the agent to filter:
 
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
@@ -177,11 +128,11 @@ const InvoicePresenter = createPresenter('Invoice')
   );
 ```
 
-Without this, a query returning 10,000 rows dumps everything into the context window. With `agentLimit`, the agent receives 50 rows plus a clear instruction to filter — it learns to make specific queries instead of broad ones.
+Without this, 10,000 rows dump into the context window. With it, the agent receives 50 rows plus an instruction to refine.
 
-### 6. Agentic Affordances — HATEOAS for AI {#affordances}
+### Affordances {#affordances}
 
-Like REST's HATEOAS principle, `suggestActions` tells the agent what it **can do next** based on the current data state:
+`suggestActions` tells the agent what it can do next based on state:
 
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
@@ -200,21 +151,11 @@ const InvoicePresenter = createPresenter('Invoice')
   });
 ```
 
-The agent receives:
-
-```text
-[SYSTEM HINT]: Based on the current state, recommended next tools:
-  → billing.pay: Process immediate payment
-  → billing.send_reminder: Send payment reminder
-```
-
-Without this, the agent guesses tool names. With affordances, it follows a deterministic path — no hallucinated actions, no skipped workflows.
-
----
+The agent receives `→ billing.pay: Process immediate payment` as a system hint. No hallucinated tool names, no skipped workflows.
 
 ## Presenter Composition {#composition}
 
-Real domain models have relationships. Invoices have clients. Orders have products. The `.embed()` method composes Presenters:
+`.embed()` composes Presenters across relationships:
 
 ```typescript
 const ClientPresenter = createPresenter('Client')
@@ -227,13 +168,11 @@ const InvoicePresenter = createPresenter('Invoice')
   .embed('client', ClientPresenter);
 ```
 
-When an invoice includes `client` data, the `ClientPresenter`'s rules and UI blocks are automatically merged into the response. Define `ClientPresenter` once — reuse it in `InvoicePresenter`, `OrderPresenter`, `ContractPresenter`. Every tool that returns client data gets the same rules.
-
----
+`ClientPresenter`'s rules and UI blocks merge into the invoice response automatically. Define once — reuse in `InvoicePresenter`, `OrderPresenter`, `ContractPresenter`.
 
 ## Pipeline Integration {#pipeline}
 
-The Presenter integrates into the tool definition through the `returns` field. The handler returns raw data; the Presenter handles everything else:
+The `returns` field connects the Presenter to a tool. The handler returns raw data; the Presenter does everything else:
 
 ```typescript
 const getInvoice = f.tool({
@@ -246,38 +185,10 @@ const getInvoice = f.tool({
       where: { id: input.invoice_id },
       include: { client: true },
     });
-    // ← raw data. Presenter validates, attaches rules, generates UI blocks.
   },
 });
 ```
 
-This is the MVA separation: the handler (Model) produces raw data. The Presenter (View) shapes perception. The LLM (Agent) acts on structured context — not guesswork.
+The handler (Model) produces raw data. The Presenter (View) shapes perception. The LLM (Agent) acts on structured context.
 
----
-
-::: info ResponseBuilder — escape hatch for one-off responses
-Not every response maps to a reusable domain entity. For dashboards, summaries, or ad-hoc outputs, use `response(data).uiBlock(...).systemRules([...]).build()` — see the [Presenter Guide](/presenter) for the full `ResponseBuilder` API.
-:::
-
----
-
-## What This Changes {#what-changes}
-
-| Without MVA | With MVA |
-|---|---|
-| Agent guesses `45000` is dollars | Agent reads rule: "divide by 100" |
-| Agent hallucinates tool names | Agent receives `suggestActions()` hints |
-| Same entity displayed differently by different tools | One Presenter, consistent perception |
-| Sensitive data leaks to LLM context | Zod schema rejects undeclared fields |
-| 10,000 rows overwhelm context | `agentLimit()` truncates and teaches |
-| Rules bloat global system prompt | Context Tree-Shaking: rules travel with data |
-| UI blocks are afterthoughts | Presenter renders deterministic charts |
-
----
-
-## Next Steps {#next-steps}
-
-- [MVA At a Glance](/mva/) — The complete MVA architecture reference
-- [Presenter Guide](/presenter) — Full Presenter configuration with `definePresenter()`
-- [Perception Package](/mva/perception-package) — What the agent actually receives
-- [Building Tools](/building-tools) — Define tools with `f.tool()`, `defineTool()`, or `createTool()`
+For one-off responses that don't map to a reusable entity, use `response(data).uiBlock(...).systemRules([...]).build()` — see the [Presenter Guide](/presenter) for the `ResponseBuilder` API.

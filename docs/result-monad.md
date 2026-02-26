@@ -1,10 +1,6 @@
 # Result Monad
 
-MCP handlers often need to look up a record that might not exist, validate data that might be invalid, and compose several of these steps before returning. Without a consistent pattern, this leads to deeply nested `if/else` blocks or ambiguous `try/catch` chains where it's unclear which step failed.
-
-MCP Fusion exports a lightweight `Result<T>` type that follows the Railway-Oriented Programming pattern used in Rust, Haskell, and F#. Every step returns either `Success<T>` or `Failure`, and TypeScript narrows the type at each checkpoint.
-
----
+A lightweight `Result<T>` type following Railway-Oriented Programming. Every step returns `Success<T>` or `Failure`, and TypeScript narrows the type at each checkpoint.
 
 ## The Type {#type}
 
@@ -20,59 +16,37 @@ interface Success<T> {
 
 interface Failure {
   readonly ok: false;
-  readonly response: ToolResponse;  // Ready to return from a handler
+  readonly response: ToolResponse;
 }
 ```
-
-Check `result.ok` to narrow the type:
 
 ```typescript
 const result: Result<User> = findUser(id);
 
-if (!result.ok) return result.response;  // Early return — Failure
+if (!result.ok) return result.response;  // Early return
 const user = result.value;               // Narrowed to User
 ```
 
-The `Failure` variant carries a `ToolResponse` (the same type that `error()` and `toolError()` return), so you can return it directly from a handler without any transformation.
-
----
+`Failure` carries a `ToolResponse` (same type that `error()` and `toolError()` return), so you can return it directly from a handler.
 
 ## Constructors {#constructors}
 
-### `succeed(value)` {#succeed}
-
-Wraps a value into `Success<T>`:
-
 ```typescript
-import { succeed } from '@vinkius-core/mcp-fusion';
+import { succeed, fail, error, toolError } from '@vinkius-core/mcp-fusion';
 
-return succeed(42);
-return succeed({ id: 'user_1', name: 'Alice' });
-```
+succeed(42);
+succeed({ id: 'user_1', name: 'Alice' });
 
-### `fail(response)` {#fail}
-
-Wraps a `ToolResponse` into `Failure`:
-
-```typescript
-import { fail, error, toolError } from '@vinkius-core/mcp-fusion';
-
-return fail(error('User not found'));
-return fail(toolError('NOT_FOUND', {
+fail(error('User not found'));
+fail(toolError('NOT_FOUND', {
   message: 'User not found.',
   availableActions: ['users.list'],
 }));
 ```
 
-::: tip Why `fail(error(...))` instead of just `error()`?
-`error()` returns a `ToolResponse` — it's meant for handlers that return immediately. `fail()` wraps it into a `Result`, so you can compose it with other `Result`-returning functions in a pipeline. Use `error()` in handlers, `fail(error(...))` in reusable service functions.
-:::
-
----
+`error()` returns a `ToolResponse` for direct handler returns. `fail()` wraps it into a `Result` for composition in pipelines. Use `error()` in handlers, `fail(error(...))` in reusable service functions.
 
 ## Database Lookup {#lookup}
-
-The most common pattern. Wrap a database query in a function that returns `Result<T>`, then use it in a handler with a one-line guard:
 
 ```typescript
 import { succeed, fail, error, success, type Result } from '@vinkius-core/mcp-fusion';
@@ -86,18 +60,12 @@ handler: async ({ input, ctx }) => {
   const result = findProject(ctx.db, input.project_id);
   if (!result.ok) return result.response;
 
-  const project = result.value;  // TypeScript knows this is Project
+  const project = result.value;
   return success(project);
 }
 ```
 
-The handler reads linearly — fetch, check, use. No nesting. If `findProject` fails, the error response is returned directly. If it succeeds, `result.value` is narrowed to `Project`.
-
----
-
 ## Validation Chain {#validation}
-
-Compose multiple validation steps where each can independently fail. Each step either succeeds and passes its value forward, or short-circuits with an error:
 
 ```typescript
 function validateEmail(email: string): Result<string> {
@@ -128,13 +96,9 @@ handler: async ({ input, ctx }) => {
 }
 ```
 
-Each validation function is reusable across handlers. The pattern scales to any number of steps — each adds one `if (!result.ok)` guard line.
-
----
+Each validation function is reusable across handlers. The pattern scales to any number of steps — each adds one `if (!result.ok)` guard.
 
 ## Service Layer Composition {#service}
-
-Build reusable service classes that return `Result<T>`. Each method encapsulates one fallible operation:
 
 ```typescript
 class ProjectService {
@@ -159,8 +123,6 @@ class ProjectService {
 }
 ```
 
-The handler composes them into a pipeline:
-
 ```typescript
 handler: async ({ input, ctx }) => {
   const svc = new ProjectService(ctx.db);
@@ -178,13 +140,7 @@ handler: async ({ input, ctx }) => {
 }
 ```
 
-Three steps — find, validate ownership, archive — each with its own error message. The handler reads as a sequence of business operations, not a tangle of `try/catch` blocks.
-
----
-
-## Combining with `toolError()` {#tool-error}
-
-For self-healing errors that include recovery instructions, use `fail()` with `toolError()`:
+## Self-Healing Errors {#tool-error}
 
 ```typescript
 function resolveUser(db: Database, id: string): Result<User> {
@@ -200,10 +156,6 @@ function resolveUser(db: Database, id: string): Result<User> {
 }
 ```
 
-The agent receives structured XML with recovery instructions, and the calling handler gets a clean early-return path.
-
----
-
 ## API Reference {#api}
 
 | Export | Type | Description |
@@ -213,10 +165,3 @@ The agent receives structured XML with recovery instructions, and the calling ha
 | `Failure` | `interface` | `{ ok: false, response: ToolResponse }` |
 | `succeed(value)` | `function` | Creates `Success<T>` |
 | `fail(response)` | `function` | Creates `Failure` from a `ToolResponse` |
-
----
-
-## Where to Go Next {#next-steps}
-
-- [Error Handling](/error-handling) — `error()`, `required()`, `toolError()`, automatic validation errors
-- [Building Tools](/building-tools) — tool APIs where `Result<T>` is used in handlers

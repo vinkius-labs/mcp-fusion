@@ -96,13 +96,30 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
-  // QUICKSTART
+  // QUICKSTART — LIGHTSPEED (CLI)
+  // ═══════════════════════════════════════════════════════
+  'quickstart-lightspeed.md': {
+    title: 'Quickstart Lightspeed — CLI Scaffold in 30 Seconds',
+    description: 'From zero to a running MCP server in under 30 seconds. The CLI scaffolds a production-ready project with autoDiscover file-based routing, typed context, Presenters, middleware, testing, and pre-configured connections for Cursor, Claude Desktop, and Claude Code.',
+    faqs: [
+      { q: 'How do I create an MCP server with npx fusion create?', a: 'Run npx fusion create my-server. The interactive wizard asks for transport (stdio or sse), vector (vanilla, prisma, n8n, openapi, oauth), and whether to include testing. It scaffolds 14+ files including tools, presenters, middleware, tests, and Cursor integration. Skip the wizard with --yes for defaults or pass flags directly: npx fusion create my-api --vector prisma --transport sse --yes.' },
+      { q: 'What is autoDiscover in mcp-fusion?', a: 'autoDiscover() is file-based routing for MCP tools. It scans src/tools/ at startup, imports every .ts/.js file (skipping .test.ts, .spec.ts, .d.ts), extracts tool builders via duck-typing, and registers them automatically. No central index.ts with 50 imports, no manual registry.register() calls. Drop a file in src/tools/ and it becomes a live MCP tool.' },
+      { q: 'How does autoDiscover resolve tool exports?', a: 'autoDiscover resolves exports in priority order: (1) export default — recommended pattern. (2) Named export called tool. (3) Any exported object with a getName() method (duck-typed ToolBuilder). Priority 3 enables multiple tools from a single file — export several named builders and all are discovered and registered.' },
+      { q: 'What vectors are available in fusion create?', a: 'Five vectors: vanilla (autoDiscover file-based routing, zero external deps), prisma (schema.prisma + DB tool stubs + mcp-fusion-prisma-gen generator), n8n (N8nConnector auto-discovers webhook workflows as MCP tools), openapi (openapi.yaml + SETUP.md — generates Models/Views/Agents from spec), and oauth (src/auth.ts + src/middleware/auth.ts — RFC 8628 Device Flow with requireAuth middleware).' },
+      { q: 'Does the CLI generate working tests?', a: 'Yes. When testing is enabled, the scaffold generates vitest.config.ts, tests/setup.ts, and tests/system.test.ts. The system test uses autoDiscover to load tools in-memory and verifies tool registration via MVA_META_SYMBOL — no transport layer, no network, no API tokens. Run with npm test.' },
+      { q: 'How do I connect my MCP server to Cursor, Claude Desktop, or Claude Code?', a: 'Cursor: already configured — the CLI generates .cursor/mcp.json, open the project in Cursor and the connection is live. Claude Desktop: add the server entry to your claude_desktop_config.json with command npx tsx src/server.ts. Claude Code: run claude mcp add my-server npx tsx src/server.ts. For SSE transport, point any client to http://localhost:3001/sse.' },
+      { q: 'Can I customize autoDiscover behavior?', a: 'Yes. autoDiscover accepts an options object: pattern (regex to filter file names, default: .ts/.js/.mjs/.mts), recursive (scan subdirectories, default: true), loader (esm or cjs, default: esm), and resolve (custom function to extract builders from module exports). Example: await autoDiscover(registry, "./src/tools", { pattern: /\\.tool\\.ts$/ }) scans only files ending in .tool.ts.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // QUICKSTART — TRADITIONAL (MANUAL)
   // ═══════════════════════════════════════════════════════
   'quickstart.md': {
-    title: 'Quickstart — mcp-fusion in 5 Minutes',
-    description: 'Build your first MVA-powered MCP server in 5 minutes with mcp-fusion. Step-by-step guide with code examples.',
+    title: 'Quickstart Traditional — Manual MCP Server Setup',
+    description: 'Build your first MVA-powered MCP server manually with full control over every file. Step-by-step guide: install, init, define a tool, register, and start.',
     faqs: [
-      { q: 'How long does it take to build an MCP server with mcp-fusion?', a: 'You can have a production-ready MCP server running in under 5 minutes. Define a tool with defineTool(), register it with ToolRegistry, and attach to an MCP server. The framework handles validation, routing, and response formatting automatically.' },
+      { q: 'How long does it take to build an MCP server with mcp-fusion?', a: 'You can have a production-ready MCP server running in under 5 minutes. Define a tool with f.tool(), register it with ToolRegistry, and attach to an MCP server. The framework handles validation, routing, and response formatting automatically. For an even faster path, use npx fusion create which scaffolds a complete project in 30 seconds.' },
       { q: 'Do I need to use Zod with mcp-fusion?', a: 'No. mcp-fusion offers two APIs: defineTool() for JSON-first definitions without Zod imports, and createTool() for full Zod power. With defineTool(), you can use simple strings like { id: "string" } instead of z.object({ id: z.string() }).' },
       { q: 'How do I add a Presenter to my tool?', a: 'Create a Presenter with createPresenter("Name").schema(...).systemRules([...]).suggestActions(...), then assign it to your action with the "returns" property: { returns: InvoicePresenter, handler: async (ctx, args) => rawData }. The framework wraps raw data in the Presenter automatically.' },
       { q: 'How do I register and attach tools to an MCP server?', a: 'Create a ToolRegistry, register your builders with registry.register(tool), then call registry.attachToServer(server, { contextFactory: (extra) => createContext(extra) }). The registry automatically configures the MCP server with list_tools and call_tool handlers.' },

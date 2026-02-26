@@ -91,7 +91,8 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Introduction', link: '/introduction' },
-          { text: 'Quickstart', link: '/quickstart' },
+          { text: 'Quickstart — Lightspeed', link: '/quickstart-lightspeed' },
+          { text: 'Quickstart — Traditional', link: '/quickstart' },
           { text: 'Enterprise Quickstart', link: '/enterprise-quickstart' },
           { text: 'DX Guide', link: '/dx-guide' },
           { text: 'Migration Guide', link: '/migration' },

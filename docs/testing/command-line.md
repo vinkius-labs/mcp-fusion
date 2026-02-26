@@ -294,6 +294,4 @@ node --test tests/firewall/user.firewall.test.ts
 node --test --test-name-pattern="passwordHash" tests/
 ```
 
-::: info No API Keys Required
 Notice what's missing from every command above: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `CLAUDE_API_KEY`. The FusionTester runs 100% in RAM. No LLM calls. No token costs. No rate limits. No flaky tests from API outages.
-:::

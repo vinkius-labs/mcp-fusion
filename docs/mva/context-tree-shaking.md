@@ -1,10 +1,6 @@
 # Context Tree-Shaking
 
-> In traditional MCP servers, domain rules live in a global system prompt — sent on every turn, regardless of relevance. In MVA, rules travel **with the data** — appearing in the agent's context only when their domain is active. This pattern is called **Context Tree-Shaking**.
-
 The term is borrowed from JavaScript bundlers. In webpack and Rollup, tree-shaking removes unused code from the final bundle. In MVA, Context Tree-Shaking removes irrelevant domain rules from the agent's context window. The principle is identical: **include only what's needed, exactly when it's needed.**
-
----
 
 ## The Problem: Global System Prompts
 
@@ -64,8 +60,6 @@ The LLM's context window is finite. Every token spent on irrelevant rules is a t
 
 As the system prompt grows, the agent's effective reasoning capacity shrinks. This manifests as degraded accuracy on complex multi-step tasks.
 
----
-
 ## The Solution: JIT Rules via `.systemRules()`
 
 MVA's `.systemRules()` attaches domain rules to the **Presenter**, not to the system prompt. Rules appear in the agent's context only when the corresponding domain entity is being processed.
@@ -124,8 +118,6 @@ Agent calls billing.get_invoice:
 
 Each tool call gets exactly the rules it needs — nothing more.
 
----
-
 ## Dynamic Rules with Context
 
 Static rules handle most cases, but some rules depend on who's asking and what they're looking at. The function form of `.systemRules()` receives both the data and the request context:
@@ -169,8 +161,6 @@ This enables:
 | **Data-driven urgency** | Inject warnings based on data values (overdue, high-value) |
 | **Feature flags** | Conditionally include rules based on `ctx.features` |
 
----
-
 ## Token Economics
 
 Let's quantify the savings. Consider a SaaS product with 15 domain entities.
@@ -207,39 +197,9 @@ But the savings extend beyond token cost. Fewer irrelevant rules means:
 - **Fewer retries** — no misapplication errors from wrong-domain rules
 - **Faster reasoning** — less context to process on each turn
 
----
-
 ## The Compounding Effect
 
-Context Tree-Shaking doesn't operate in isolation. It compounds with other MVA mechanisms:
-
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                     The Compounding Effect                            │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Context Tree-Shaking (JIT rules)                                    │
-│    Removes: ~87% of irrelevant domain rules per turn                 │
-│                                                                       │
-│  + Action Consolidation (grouped tools)                              │
-│    Removes: ~85% of tool schema tokens                               │
-│                                                                       │
-│  + Cognitive Guardrails (.agentLimit)                                │
-│    Removes: ~99% of records in large datasets                        │
-│                                                                       │
-│  + TOON Encoding                                                     │
-│    Removes: ~40% of structural tokens in descriptions                │
-│                                                                       │
-│  ═══════════════════════════════════════════════════════              │
-│  = Combined: significant reduction in total context overhead          │
-│                                                                       │
-│  The savings are not additive — they are multiplicative.             │
-│  Each mechanism reduces the base on which others operate.            │
-│                                                                       │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
----
+Context Tree-Shaking doesn't operate in isolation. It compounds with other MVA mechanisms.
 
 ## Pattern: Organizing Rules by Domain
 
@@ -263,8 +223,6 @@ src/
 ```
 
 Each Presenter file owns the domain rules for its entity. When a developer needs to update how invoices are interpreted, they go to `InvoicePresenter.ts` — not to a 200-line system prompt.
-
----
 
 ## Anti-Patterns
 
@@ -306,12 +264,3 @@ handler: async (ctx, args) => {
 const InvoicePresenter = createPresenter('Invoice')
     .systemRules(['amount_cents is in CENTS. Divide by 100.']);
 ```
-
----
-
-## Continue Reading
-
-- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, strict validation, self-healing errors
-- [Perception Package](/mva/perception-package) — Where rules fit in the response structure
-- [Agentic Affordances](/mva/affordances) — HATEOAS-style next-action hints
-- [Cost & Hallucination](/cost-and-hallucination) — Token economics deep dive

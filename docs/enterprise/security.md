@@ -1,44 +1,7 @@
 # Security & Authentication
 
-## The Problem
+MCP Fusion enforces security through four pipeline layers — `contextFactory`, middleware, tag filtering, and Presenters — each executing in strict order, where any failure skips all subsequent stages.
 
-The MCP protocol specifies how tools are listed and invoked. It says nothing about _who_ is calling, _what_ they should see, or _whether_ the request should proceed. Every MCP server in production today handles security ad-hoc — token validation, role checks, and field filtering all tangled inside handler functions. Miss one check in one handler and you have a gap no linter catches.
-
-MCP Fusion solves this with four pipeline layers that execute in strict order. Each layer has one job, and each operates independently of the others:
-
-| Layer | Job | Fails If |
-|---|---|---|
-| [`contextFactory`](#context-factory) | Extract identity material | No token present |
-| [Middleware](#middleware) | Verify identity, resolve tenant | Invalid JWT, deleted user |
-| [Tag filtering](#tag-filtering) | Control tool visibility | Tool has excluded tag |
-| [Presenter](#presenter-security) | Bound agent perception | Field not in schema |
-
-If any layer throws, everything after it is skipped. The handler cannot run if middleware rejects. The agent cannot see fields the Presenter doesn't declare. This is not a convention — it's the execution model.
-
-::: info
-To see all four layers working together in a real project, start with the [Enterprise Quickstart](/enterprise-quickstart). This page goes deeper into each layer — edge cases, composition, and deployment patterns.
-:::
-
----
-
-## The Security Gap in Raw MCP
-
-Consider what security looks like without a framework. A raw MCP handler must manually extract the token, verify it, check permissions, query data, and filter sensitive fields — all in one function:
-
-```typescript
-server.tool('users.get', { id: z.string() }, async (args) => {
-  const token = ???; // MCP doesn't define where auth tokens live
-  const user = await verifyAndLookup(token);
-  if (user.role !== 'admin') return { content: [{ type: 'text', text: 'Forbidden' }] };
-  const record = await db.users.findOne({ id: args.id });
-  const { password_hash, ssn, ...safe } = record;
-  return { content: [{ type: 'text', text: JSON.stringify(safe) }] };
-});
-```
-
-Three security decisions are mixed into one function. Every handler repeats them. Forget one destructuring and `password_hash` reaches the agent. Add a new database column and you must audit every handler. MCP Fusion makes these problems structurally impossible — let's see how.
-
----
 
 ## Layer 1: contextFactory — Identity Extraction {#context-factory}
 
@@ -72,11 +35,8 @@ contextFactory: (extra: any) => {
 
 This one-line check prevents the entire pipeline from running without a token. No middleware code even loads. Think of `contextFactory` as the bouncer checking you have a ticket — middleware is the scanner verifying the ticket is valid.
 
-::: warning
 The location of auth tokens in MCP requests is not standardized. `extra._meta.token` is a common convention but not universal. Check your client's documentation. For OAuth-based flows, see the [OAuth guide](/oauth).
-:::
 
----
 
 ## Layer 2: Middleware — Authorization Enforcement {#middleware}
 
@@ -137,9 +97,7 @@ const timing: MiddlewareFn<AppContext> = async (ctx, args, next) => {
 
 Code _after_ `await next()` runs _after_ the handler completes. This is the only API that gives you post-execution access — ideal for timing, logging, and circuit breakers.
 
-::: tip
 **When to use which?** `f.middleware()` for 90% of cases (auth, tenant). `defineMiddleware()` for npm packages. `MiddlewareFn` when you need `next()`.
-:::
 
 ### The Pipeline Guarantee {#pipeline-guarantee}
 
@@ -161,11 +119,8 @@ const enterpriseStack = [rateLimiter, authMiddleware, tenantResolver];
 
 Three stages, each building on the previous. The handler receives the accumulated context from all three. Add a middleware to the array — it runs at that position. Remove it — it doesn't. The handler's `ctx` type updates automatically.
 
-::: warning
 Order matters. If `tenantResolver` reads `ctx.user.tenantId`, it must appear _after_ `authMiddleware`. Place it before and `ctx.user` won't exist yet.
-:::
 
----
 
 ## Layer 3: Tag-Based Access Control {#tag-filtering}
 
@@ -235,11 +190,8 @@ The agent never wastes tokens calling tools it can't use. Its planning uses only
 
 This enables a useful deployment pattern: one registry, multiple servers with different filters. Same codebase, same tests — different capability surfaces per deployment target.
 
-::: info
 Tag filtering uses `Set`-based O(1) lookups. The performance impact is negligible even with thousands of tools.
-:::
 
----
 
 ## Layer 4: Presenter as Defense-in-Depth {#presenter-security}
 
@@ -262,9 +214,7 @@ const UserPresenter = f.presenter({
 
 The database row has `password_hash`, `ssn`, `internal_notes`, `billing_rate`. The agent receives `id`, `name`, `role`. The other fields never reach the wire. When a migration adds a new column, it doesn't leak unless explicitly added to the schema. The default is _invisible_.
 
-::: danger
-Do not use `z.passthrough()` on the Presenter schema. It defeats the security model by allowing undeclared fields through.
-:::
+**Do not** use `z.passthrough()` on the Presenter schema. It defeats the security model by allowing undeclared fields through.
 
 ### Per-Caller Perception
 
@@ -282,11 +232,8 @@ rules: (order, ctx) => {
 
 A `viewer` receives a note explaining the omission. A `finance` user receives the values directly. Same tool, same handler, same Presenter — different perception.
 
-::: tip
 Rules are perception guidance, not access control. If you need to _prevent_ a field from reaching non-finance users, make the schema conditional or use two Presenters. Rules explain; schemas enforce.
-:::
 
----
 
 ## Structured Error Recovery {#error-recovery}
 
@@ -315,7 +262,6 @@ The agent receives four pieces of information in one response:
 
 Instead of guessing, the agent updates its plan. The user sees a coherent recovery instead of repeated failures. `toolError()` also accepts `severity`, `details`, and `retryAfter` for rate limiting. See [Error Handling](/error-handling) for the full API.
 
----
 
 ## Security Invariants {#invariants}
 
@@ -333,17 +279,4 @@ Every guarantee below is enforced by the framework, not by convention:
 
 Each layer is independent. Use only middleware — authentication still enforces. Use only Presenters — field stripping still protects. But the full stack creates defense-in-depth where each layer covers the others' gaps.
 
-::: info
 The registry freeze occurs at `attachToServer()`. After that, no tools can be registered or modified for the server's lifetime — preventing runtime injection attacks.
-:::
-
----
-
-## Next Steps
-
-- **[Enterprise Quickstart](/enterprise-quickstart)** — build a complete server with all 4 layers in 15 minutes
-- **[Middleware Guide](/middleware)** — pre-compiled chains, scopes, advanced composition
-- **[Observability & Audit](/enterprise/observability)** — structured debug events for SOC 2 audit trails
-- **[Multi-Tenancy](/enterprise/multi-tenancy)** — tenant isolation using middleware, tags, and Presenters
-- **[Presenter Guide](/presenter)** — schema design, rules, UI blocks, affordances
-- **[Error Handling](/error-handling)** — `toolError()` codes, recovery patterns, self-healing

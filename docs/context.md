@@ -1,15 +1,11 @@
 # State & Context
 
-Every tool handler needs access to external state — database clients, authenticated users, tenant info, loggers. MCP Fusion handles this via typed context injection: define your context type once and it flows through every tool, middleware, and Presenter.
+## Defining Context {#define}
 
----
+Pass a generic to `initFusion` and every tool, middleware, and Presenter inherits the type:
 
-## Define Your Context {#define}
-
-::: code-group
-```typescript [initFusion — Recommended ✨]
+```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
 
 interface AppContext {
   userId: string;
@@ -17,52 +13,26 @@ interface AppContext {
 }
 
 const f = initFusion<AppContext>();
+```
 
+Handlers receive `ctx` fully typed — no annotations, no casting:
+
+```typescript
 const tasks = f.tool({
   name: 'tasks.list',
   input: z.object({}),
   readOnly: true,
   handler: async ({ input, ctx }) => {
-    // ctx is typed as AppContext — no generic annotations needed
     return ctx.db.tasks.findMany({ where: { ownerId: ctx.userId } });
   },
 });
 ```
-```typescript [defineTool]
-import { defineTool, success } from '@vinkius-core/mcp-fusion';
 
-interface AppContext {
-  userId: string;
-  db: PrismaClient;
-}
+## The Context Factory {#factory}
 
-const tasks = defineTool<AppContext>('tasks', {
-  actions: {
-    list: {
-      readOnly: true,
-      handler: async (ctx, args) => {
-        return success(await ctx.db.tasks.findMany({ where: { ownerId: ctx.userId } }));
-      },
-    },
-  },
-});
-```
-:::
-
-::: tip Why `initFusion`?
-With `initFusion<AppContext>()`, you define the context type **once**. Every `f.tool()`, `f.middleware()`, `f.prompt()`, and `f.presenter()` inherits it — zero generic annotations, zero type drift across files.
-:::
-
----
-
-## Supply the Context Factory {#factory}
-
-When you attach your `ToolRegistry` to the MCP server, you provide a `contextFactory` callback. This function runs **on every tool invocation**, so the context is always fresh:
+The `contextFactory` runs on every tool invocation. Attach it when connecting the registry to the server:
 
 ```typescript
-const registry = f.registry();
-registry.register(tasks);
-
 registry.attachToServer(server, {
   contextFactory: async (extra) => ({
     userId: extra.session?.userId ?? 'anonymous',
@@ -71,20 +41,13 @@ registry.attachToServer(server, {
 });
 ```
 
-The `extra` parameter is the native MCP `RequestHandlerExtra` from the SDK. It contains transport-level metadata:
+`extra` is the MCP SDK's `RequestHandlerExtra` — it carries `session` (from SSE/WebSocket transports) and `signal` (the cancellation `AbortSignal`).
 
-| Property | Type | Description |
-|---|---|---|
-| `extra.session` | `object \| undefined` | Session data from SSE/WebSocket transports |
-| `extra.signal` | `AbortSignal` | Cancellation signal for the request |
-
-Because `contextFactory` is async and runs per-request, it's safe to resolve dynamically renewing values — refreshed OAuth tokens, database connection pools, per-tenant config lookups.
-
----
+Because the factory is async and runs per-request, you can resolve dynamically renewing values: refreshed OAuth tokens, connection pools, per-tenant config.
 
 ## Multi-Tenant Context {#multi-tenant}
 
-For multi-tenant applications, resolve the tenant in the context factory. Every handler downstream receives isolated tenant state:
+Resolve the tenant in the factory. Every handler downstream receives isolated state:
 
 ```typescript
 registry.attachToServer(server, {
@@ -103,13 +66,9 @@ registry.attachToServer(server, {
 });
 ```
 
-Handlers never see cross-tenant data — the `db` instance is scoped to the resolved tenant.
+## Middleware Derivation {#middleware}
 
----
-
-## Middleware Context Derivation {#middleware}
-
-Middleware can derive additional context properties. The returned object is merged into `ctx` for all downstream handlers:
+Middleware can add properties to `ctx`. The returned object merges into context for all downstream handlers:
 
 ```typescript
 const requireAuth = f.middleware(async (ctx) => {
@@ -121,12 +80,4 @@ const requireAuth = f.middleware(async (ctx) => {
 });
 ```
 
-After this middleware runs, handlers receive `ctx.role` and `ctx.email` in addition to the base `AppContext` properties. See [Middleware](/middleware) for composition patterns.
-
----
-
-## Next Steps {#next-steps}
-
-- [Middleware](/middleware) — Context derivation, RBAC, composition
-- [Building Tools](/building-tools) — `f.tool()`, `defineTool()`, `createTool()`
-- [Enterprise Quickstart](/enterprise-quickstart) — Full multi-tenant example with JWT auth
+After this middleware runs, handlers see `ctx.role` and `ctx.email` alongside the base `AppContext` properties. See [Middleware](/middleware) for composition.

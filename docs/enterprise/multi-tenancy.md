@@ -1,22 +1,7 @@
 # Multi-Tenancy
 
-## The Three Isolation Challenges
+MCP Fusion solves data, capability, and perception isolation using middleware (tenant resolution), tags (capability visibility), and Presenters (perception control) — no special module required.
 
-The MCP protocol has no concept of a "tenant." Every tool invocation is a flat function call with input and output — no session, no headers, no middleware. If your server serves multiple organizations, you face three isolation problems, and the protocol gives you zero tools to address them.
-
-**Data isolation.** Tenant A's agent must never see Tenant B's records. Miss one `WHERE` clause in one handler and you have a cross-tenant leak. The agent doesn't need to be malicious — it just calls `users.list` and gets records it shouldn't see.
-
-**Capability isolation.** Tenant A pays for analytics. Tenant B is on the free plan. Both see the same `tools/list` response. The free-plan agent calls `analytics.cohort`, gets "forbidden", wastes tokens, and may have already told the user "I can run a cohort analysis for you."
-
-**Perception isolation.** Tenant A sees cost and margin data. Tenant B sees only prices. Without a framework, you need conditional field-filtering logic in every handler — duplicated, untested, easy to get wrong.
-
-MCP Fusion solves all three with primitives you already know: **middleware** (tenant resolution), **tags** (capability visibility), and **Presenters** (perception control). No special module required.
-
-::: info
-If you're new to these primitives, see the [Enterprise Quickstart](/enterprise-quickstart) first. This page goes deep into composition patterns.
-:::
-
----
 
 ## Data Isolation: Tenant Resolution {#tenant-resolution}
 
@@ -60,11 +45,8 @@ handler: async ({ input, ctx }) => {
 
 An enterprise tenant might allow 1,000 rows per query. A free tenant gets 50. Same handler, different behavior from middleware context.
 
-::: warning
 Never accept a `tenantId` parameter in the tool's `input` schema. If you do, an agent could request any tenant's data. The tenant ID must always come from middleware.
-:::
 
----
 
 ## Capability Isolation: Tag-Based Visibility {#tag-based-visibility}
 
@@ -102,11 +84,8 @@ On the free server, `analytics.cohort` is **invisible**. Not "forbidden" — the
 
 This is fundamentally different from checking the plan inside the handler. With handler checks: the agent sees the tool → calls it → gets "forbidden" → wastes tokens → needs error recovery. With tag filtering: the tool doesn't exist → nothing to call → perfect plan.
 
-::: info
 Tag filtering uses `Set`-based O(1) lookups. See [Security & Authentication](/enterprise/security#tag-filtering) for the full filter reference.
-:::
 
----
 
 ## Perception Isolation: Tenant-Aware Presenters {#tenant-aware-presenters}
 
@@ -161,11 +140,8 @@ handler: async ({ input, ctx }) => {
 },
 ```
 
-::: tip
 Rules are perception guidance, not access control. If a field must _never_ reach a specific tenant, use a separate Presenter with a different schema. Rules explain; schemas enforce.
-:::
 
----
 
 ## Putting It Together {#complete-architecture}
 
@@ -203,11 +179,8 @@ Request arrives with JWT
 
 No special multi-tenancy module. No row-level security plugin. No policy DSL. The same primitives that handle authentication, field stripping, and tool registration compose to solve tenant isolation. If you already understand middleware, Presenters, and tags, you already understand multi-tenancy.
 
-::: info
 For runtime resource isolation beyond query limits (concurrent request limiting, egress byte capping, payload size guards), see the [Runtime Guards](/runtime-guards) documentation.
-:::
 
----
 
 ## Common Patterns {#patterns}
 
@@ -262,16 +235,4 @@ const observer = createDebugObserver((event) => {
 });
 ```
 
-::: tip
 The debug observer fires at every pipeline stage. For `error` events with `step: 'middleware'`, the tenant may not be resolved yet (if the auth middleware is what failed). Design your audit schema to handle nullable tenant IDs for pre-auth failures.
-:::
-
----
-
-## Next Steps
-
-- **[Security & Authentication](/enterprise/security)** — middleware pipeline, contextFactory, tag-based access control (the primitives used in this page)
-- **[Enterprise Quickstart](/enterprise-quickstart)** — build a tenant-aware server in 15 minutes
-- **[Observability & Audit](/enterprise/observability)** — per-tenant event logging, SIEM forwarding, SOC 2 alignment
-- **[Runtime Guards](/runtime-guards)** — concurrency semaphore, egress byte limiter, payload size guards
-- **[Presenter Guide](/presenter)** — dynamic rules, conditional field visibility, schema composition
