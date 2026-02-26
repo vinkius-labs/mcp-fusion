@@ -67,6 +67,7 @@ function createContract(name = 'test-tool'): ToolContract {
             network: false,
             subprocess: false,
             crypto: false,
+            codeEvaluation: false,
             raw: [],
         },
     };

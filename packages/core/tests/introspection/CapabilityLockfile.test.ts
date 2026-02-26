@@ -85,6 +85,7 @@ function createContract(overrides: Partial<{
             network: overrides.network ?? false,
             subprocess: false,
             crypto: false,
+            codeEvaluation: false,
             raw: [],
         },
     };

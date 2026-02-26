@@ -163,6 +163,8 @@ export interface LockfileEntitlements {
     readonly subprocess: boolean;
     /** Cryptographic operations */
     readonly crypto: boolean;
+    /** Dynamic code evaluation (eval, Function, vm) */
+    readonly codeEvaluation: boolean;
 }
 
 // ============================================================================
@@ -590,6 +592,7 @@ function snapshotTool(
             network: contract.entitlements.network,
             subprocess: contract.entitlements.subprocess,
             crypto: contract.entitlements.crypto,
+            codeEvaluation: contract.entitlements.codeEvaluation,
         },
     };
 }

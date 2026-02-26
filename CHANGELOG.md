@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-02-26
+
+### 🛡️ Hardened Blast Radius — Code Evaluation Detection & Anti-Evasion Heuristics
+
+Multi-layer defense upgrade for the EntitlementScanner. The regex-based pattern library was intentionally conservative but blind to `eval()`, dynamic `require()`, and obfuscated code. Any actor aware of the regex patterns could bypass detection. This release closes that gap with three complementary detection layers.
+
+### Added
+
+- **Code Evaluation Category** — new `codeEvaluation` entitlement category with 14 detection patterns:
+  - `eval()`, indirect eval `(0, eval)()`, `globalThis.eval()`
+  - `new Function()`, `Reflect.construct(Function, ...)`
+  - `vm` module: `runInNewContext`, `runInThisContext`, `compileFunction`, `new vm.Script`
+  - `process.binding()`, `process.dlopen()`
+  - Code evaluation always produces `error` severity — blast radius is unbounded
+  - `readOnly: true` + `codeEvaluation` is always an error, even with `allowed: ['codeEvaluation']`
+
+- **Evasion Heuristic Detection** — `scanEvasionIndicators()` detects techniques used to bypass static analysis:
+  - **String construction**: `String.fromCharCode()`, `String.raw`, `atob()`, `Buffer.from(…, 'base64')`
+  - **Indirect access**: `globalThis['eval']`, `globalThis['ev'+'al']`, `process['binding']`
+  - **Computed imports**: `require(variable)`, `import(variable)` — non-literal module names
+  - **Encoding density**: high ratio of `\x??`/`\u????` escapes in source
+  - **Entropy anomaly**: Shannon entropy > 5.0 in string literals (statistically unlikely in normal code)
+  - Three confidence levels: `high` (makes handler UNSAFE), `medium`, `low`
+
+- **`EvasionIndicator` type** — structured evasion report with `type`, `confidence`, `description`, `context`, `line`
+- **`EvasionType`** — `'string-construction' | 'indirect-access' | 'computed-import' | 'encoding-density' | 'entropy-anomaly'`
+- **`EntitlementReport.evasionIndicators`** — evasion indicators included in full scan reports
+- **`HandlerEntitlements.codeEvaluation`** — new boolean flag across `ToolContract`, `BehaviorDigest`, `ContractDiff`, `CapabilityLockfile`
+- **`LockfileEntitlements.codeEvaluation`** — lockfile captures code evaluation entitlement
+- **`ContractDiff`** — gaining `codeEvaluation` is a `BREAKING` severity change
+
+### Changed
+
+- `EntitlementReport.safe` now considers both error-severity violations AND high-confidence evasion indicators
+- `EntitlementReport.summary` includes evasion indicator count when present
+- `EntitlementCategory` union expanded: `'filesystem' | 'network' | 'subprocess' | 'crypto' | 'codeEvaluation'`
+
+### Documentation
+
+- [Blast Radius docs](docs/governance/blast-radius.md) rewritten with defense-in-depth architecture, evasion heuristics section, `EvasionIndicator` API reference, adversarial examples
+- [Governance index](docs/governance/index.md) updated: lockfile example includes `codeEvaluation`, blast radius description updated
+
+### Test Suite
+
+- **43 new hardened tests** covering code evaluation detection, evasion heuristics, adversarial evasion scenarios, and contract diff integration
+- **2630 total tests**, 0 failures, 109 test files
+
 ## [2.8.0] - 2026-02-26
 
 ### 🛡️ Governance Stack — Deterministic Contract Auditing, Behavioral Fingerprinting & CI Lockfile Gating

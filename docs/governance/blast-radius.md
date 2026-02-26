@@ -1,12 +1,12 @@
 ---
 title: "Blast Radius Analysis"
-description: "Static entitlement scanning and declaration-vs-detection violation reporting for MCP tool handlers."
+description: "Multi-layer static analysis with entitlement scanning, code evaluation detection, and evasion heuristics for MCP tool handlers."
 ---
 
 # Blast Radius Analysis
 
 ::: tip One-Liner
-A tool declared as `readOnly: true` that imports `child_process` is lying. The EntitlementScanner catches it.
+A tool declared as `readOnly: true` that imports `child_process` is lying. A tool that uses `String.fromCharCode()` to build `"require"` at runtime is hiding. The EntitlementScanner catches both.
 :::
 
 ---
@@ -15,7 +15,21 @@ A tool declared as `readOnly: true` that imports `child_process` is lying. The E
 
 Every MCP tool handler has an implicit **blast radius** — the set of I/O capabilities it *actually* uses, regardless of what it *declares*. A tool declared as read-only that imports `fs.writeFile` can write to disk. A tool described as "query your database" that imports `child_process` can execute arbitrary commands.
 
-**EntitlementScanner** performs static analysis of handler source code to detect I/O capabilities and compare them against declared claims. When the declared contract says one thing and the code does another, it reports a **violation**.
+**EntitlementScanner** performs multi-layer static analysis of handler source code to detect I/O capabilities, dynamic code evaluation, and evasion techniques — then compares findings against declared claims. When the declared contract says one thing and the code does another, it reports a **violation**. When the code tries to hide its intent, it reports an **evasion indicator**.
+
+---
+
+## Defense in Depth
+
+The scanner uses three complementary detection layers:
+
+| Layer | What It Catches | Examples |
+|---|---|---|
+| **Pattern Detection** | Known I/O APIs across 5 categories | `fs.writeFile`, `fetch`, `exec`, `eval` |
+| **Code Evaluation Detection** | Dynamic code execution vectors | `eval()`, `new Function()`, `vm.runInNewContext`, `process.binding` |
+| **Evasion Heuristics** | Techniques that bypass static analysis | `String.fromCharCode()`, `globalThis['ev'+'al']`, `require(variable)` |
+
+The evasion layer does NOT try to determine what obfuscated code does — it flags the *presence of obfuscation itself* as a security concern. Code that hides its intent is inherently untrustworthy.
 
 ---
 
@@ -31,7 +45,7 @@ This means a server can declare a tool as read-only while the handler writes fil
 
 ## Entitlement Categories
 
-The scanner detects four categories of I/O capabilities:
+The scanner detects five categories of capabilities:
 
 | Category | What It Detects | Risk Example |
 |---|---|---|
@@ -39,6 +53,7 @@ The scanner detects four categories of I/O capabilities:
 | **network** | `fetch`, `axios`, `http`, `WebSocket`, `undici`, etc. | A "format text" tool that exfiltrates data |
 | **subprocess** | `child_process.exec`, `spawn`, `fork`, `worker_threads` | A "list users" tool that runs shell commands |
 | **crypto** | `crypto.createSign`, `createCipher`, `privateEncrypt` | A "hello world" tool that signs arbitrary data |
+| **codeEvaluation** | `eval()`, `new Function()`, `vm` module, `process.binding` | Any tool with runtime code execution — blast radius is unbounded |
 
 ---
 
@@ -76,6 +91,7 @@ const entitlements = buildEntitlements(matches);
 //   network: false,
 //   subprocess: true,
 //   crypto: false,
+//   codeEvaluation: false,
 //   raw: ['child_process', 'exec', 'fs', 'readFile', 'writeFile']
 // }
 ```
@@ -125,6 +141,35 @@ console.log(report.summary);
 // "Entitlements: [filesystem, subprocess] | 2 violation(s) (2 errors) | UNSAFE"
 ```
 
+### Scan for Evasion
+
+```typescript
+import { scanEvasionIndicators } from 'mcp-fusion/introspection';
+
+const suspiciousSource = `
+  const m = String.fromCharCode(114, 101, 113, 117, 105, 114, 101);
+  const cp = globalThis[m]('child_process');
+`;
+
+const indicators = scanEvasionIndicators(suspiciousSource);
+// [
+//   {
+//     type: 'string-construction',
+//     confidence: 'high',
+//     description: 'String.fromCharCode() can build API names at runtime...',
+//     line: 2
+//   },
+//   {
+//     type: 'indirect-access',
+//     confidence: 'medium',
+//     description: 'Bracket-notation access on global object...',
+//     line: 3
+//   }
+// ]
+```
+
+`scanAndValidate()` integrates evasion detection automatically — high-confidence evasion makes the handler `UNSAFE`.
+
 ---
 
 ## Violation Rules
@@ -137,6 +182,8 @@ The violation engine uses a **declarative rule table** instead of imperative bra
 | `readOnly: true` | subprocess APIs | `error` | Read-only tool can execute commands |
 | `readOnly: true` | network APIs | `warning` | Read-only tool makes network calls (possible side effects) |
 | `destructive: false` | subprocess APIs | `warning` | Non-destructive tool can execute commands |
+| *(any)* | codeEvaluation APIs | `error` | Handler uses dynamic code evaluation — blast radius is unbounded |
+| `readOnly: true` + `allowed: ['codeEvaluation']` | codeEvaluation APIs | `error` | Even when allowed, readOnly conflicts with eval |
 
 ### Allowed Entitlements
 
@@ -150,6 +197,51 @@ const violations = validateClaims(matches, {
 
 // Network violations are suppressed — only filesystem/subprocess violations remain
 ```
+
+::: warning
+`codeEvaluation` cannot be safely allowed with `readOnly: true`. Even if you add `'codeEvaluation'` to the `allowed` list, the readOnly + codeEvaluation conflict rule still fires an error. Eval can perform writes.
+:::
+
+---
+
+## Evasion Heuristics
+
+The evasion detection layer catches techniques commonly used to bypass regex-based static analysis. These fire **evasion indicators** — separate from entitlement matches — that flag *how* code hides its intent rather than *what* it does.
+
+### Evasion Types
+
+| Type | Confidence | Description |
+|---|---|---|
+| `string-construction` | high | `String.fromCharCode()` — builds identifiers at runtime |
+| `string-construction` | medium | `String.raw` template — encodes obfuscated identifiers |
+| `string-construction` | low | `atob()` — base64 decode (common for legitimate use) |
+| `string-construction` | low | `Buffer.from(…, 'base64')` — payload decoding |
+| `indirect-access` | high | `globalThis['ev' + 'al']` — computed property with concatenation |
+| `indirect-access` | medium | `globalThis['eval']` — bracket notation on globals |
+| `indirect-access` | high | `process['binding']` — bracket notation on `process` |
+| `computed-import` | high | `require(variable)` — non-literal module name |
+| `computed-import` | high | `import(variable)` — non-literal dynamic import |
+| `encoding-density` | high | High ratio of `\x??`/`\u????` escapes in source |
+| `entropy-anomaly` | medium | String literals with Shannon entropy > 5.0 |
+
+### Confidence and Safety
+
+- **High confidence** evasion indicators make the handler `UNSAFE` (same as error-severity violations)
+- **Medium/low confidence** indicators are reported but do not alone affect `safe` status
+- Indicators are included in `EntitlementReport.evasionIndicators` for programmatic inspection
+
+### Example: Catch What Regex Cannot
+
+A malicious handler can evade the pattern library with string concatenation:
+
+```typescript
+// This bypasses ALL regex-based entitlement patterns:
+const m = 'child' + '_process';
+const cp = require(m);  // ← No static string literal to match
+cp.exec('rm -rf /');
+```
+
+The evasion heuristic catches `require(m)` as a **computed import** (high confidence) and flags the handler as `UNSAFE`.
 
 ---
 
@@ -187,6 +279,15 @@ crypto, createSign, createVerify, createCipher, createDecipher,
 privateEncrypt, privateDecrypt
 ```
 
+### Code Evaluation Patterns
+
+```
+eval, eval-indirect (0,eval)(), new Function, vm module,
+vm.runInNewContext, vm.runInThisContext, vm.compileFunction,
+new vm.Script, globalThis.eval, Reflect.construct(Function, ...),
+process.binding, process.dlopen
+```
+
 ---
 
 ## Performance
@@ -211,7 +312,9 @@ interface EntitlementReport {
   readonly matches: readonly EntitlementMatch[];
   /** Policy violations (declared vs detected) */
   readonly violations: readonly EntitlementViolation[];
-  /** true if no error-severity violations exist */
+  /** Evasion indicators — patterns suggesting intentional bypass */
+  readonly evasionIndicators: readonly EvasionIndicator[];
+  /** true if no error-severity violations AND no high-confidence evasion */
   readonly safe: boolean;
   /** Human-readable summary line */
   readonly summary: string;
@@ -224,7 +327,7 @@ interface EntitlementReport {
 
 ```typescript
 interface EntitlementMatch {
-  /** Which category (filesystem, network, subprocess, crypto) */
+  /** Which category (filesystem, network, subprocess, crypto, codeEvaluation) */
   readonly category: EntitlementCategory;
   /** Specific API/import name that matched */
   readonly identifier: string;
@@ -235,6 +338,32 @@ interface EntitlementMatch {
   /** Line number in source (1-based) */
   readonly line: number;
 }
+```
+
+---
+
+## `EvasionIndicator`
+
+```typescript
+interface EvasionIndicator {
+  /** Evasion technique type */
+  readonly type: EvasionType;
+  /** Confidence level — high confidence makes handler UNSAFE */
+  readonly confidence: 'low' | 'medium' | 'high';
+  /** Human-readable description */
+  readonly description: string;
+  /** Source context around the match */
+  readonly context: string;
+  /** Line number (1-based) */
+  readonly line: number;
+}
+
+type EvasionType =
+  | 'string-construction'   // Building identifiers at runtime
+  | 'indirect-access'       // Bracket notation on globals/process
+  | 'computed-import'       // require(variable), import(variable)
+  | 'encoding-density'      // High hex/unicode escape ratio
+  | 'entropy-anomaly';      // High-entropy string literals
 ```
 
 ---
@@ -284,6 +413,9 @@ if (!report.safe) {
   for (const v of report.violations) {
     console.error(`  [${v.severity}] ${v.category}: ${v.description}`);
   }
+  for (const e of report.evasionIndicators) {
+    console.error(`  [evasion:${e.confidence}] ${e.type}: ${e.description}`);
+  }
   process.exit(1);
 }
 ```
@@ -294,8 +426,12 @@ if (!report.safe) {
 
 | Decision | Rationale |
 |---|---|
-| **Regex-based, not AST-based** | No `typescript` dependency required. Works on any JavaScript/TypeScript source. |
+| **Regex-based pattern detection** | No `typescript` dependency required. Works on any JavaScript/TypeScript source. |
+| **Multi-layer defense** | Pattern detection alone is bypassable. Evasion heuristics catch what patterns miss. |
+| **Evasion flags intent, not capability** | We don't try to decode what `String.fromCharCode()` builds — we flag the obfuscation itself. |
 | **Conservative matching** | May flag patterns in comments/strings. Security analysis should err on the side of caution. |
+| **codeEvaluation always error** | `eval()` makes blast radius unbounded. No safe way to use it in a declared-readOnly tool. |
 | **Declarative rule table** | Violation rules are pure data, not imperative branches. New rules require only a table entry. |
 | **`allowed` whitelist** | Developers can explicitly acknowledge expected entitlements without suppressing the entire scan. |
 | **Binary search for line numbers** | $O(\log n)$ instead of $O(n)$ — meaningful for large handler files. |
+| **Shannon entropy for obfuscation** | High-entropy string literals (> 5.0 bits) are statistically unlikely in normal code. |

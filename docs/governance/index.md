@@ -111,7 +111,7 @@ The declared surface — schema, name, description — can remain structurally i
 | [Contract Diffing](/governance/contract-diffing) | Semantic delta engine with severity classification | "What exactly changed?" |
 | [Surface Integrity](/governance/surface-integrity) | Content-addressed digest + temporal comparison | "When did it change?", "Can I prove it?" |
 | [Zero-Trust Attestation](/governance/zero-trust-attestation) | Cryptographic signing + capability pinning | "Has the server been tampered with?" |
-| [Blast Radius Analysis](/governance/blast-radius) | Static entitlement scanning + violation detection | "Which tools can write to disk?" |
+| [Blast Radius Analysis](/governance/blast-radius) | Multi-layer static analysis with evasion detection | "Which tools can write to disk?", "Is this code hiding its intent?" |
 | [Token Economics](/governance/token-economics) | Cognitive overload profiling + guardrail verification | "Will this tool flood the context window?" |
 | [Semantic Probing](/governance/semantic-probe) | LLM-as-a-Judge behavioral drift detection | "Does the handler still *mean* the same thing?" |
 | [Self-Healing Context](/governance/self-healing) | Contract delta injection into validation errors | "Why is the LLM repeating the same mistake?" |
@@ -171,7 +171,8 @@ This produces `mcp-fusion.lock` — a deterministic, git-diffable artifact that 
           "filesystem": false,
           "network": true,
           "subprocess": false,
-          "crypto": false
+          "crypto": false,
+          "codeEvaluation": false
         }
       }
     }
@@ -224,7 +225,7 @@ Commit this file. Every pull request diff now shows exactly which behavioral sur
 | Schema mutation detection | ❌ | ⚠️ hash comparison | ✅ per-tool `inputSchemaDigest` |
 | Behavioral drift detection | ❌ | ❌ | ✅ egress schema + rules fingerprint |
 | Cryptographic attestation | ❌ | ❌ | ✅ HMAC-SHA256 / pluggable KMS |
-| Blast radius analysis | ❌ | ❌ | ✅ static entitlement scanner |
+| Blast radius analysis | ❌ | ❌ | ✅ multi-layer entitlement scanner + evasion heuristics |
 | Token economics profiling | ❌ | ❌ | ✅ cognitive overload classification |
 | CI/CD gate | ❌ | ⚠️ manual | ✅ `fusion lock --check` |
 | Zero developer effort | N/A | ❌ requires setup | ✅ materializes from existing code |
@@ -279,7 +280,7 @@ When observability is not configured, `createNoopObserver()` provides a zero-ove
   Cryptographic signing, capability pinning, and runtime verification.
 
 - **[Blast Radius Analysis →](/governance/blast-radius)**
-  Static entitlement scanning and declaration-vs-detection violation reporting.
+  Multi-layer entitlement scanning with code evaluation detection and evasion heuristics.
 
 - **[Token Economics →](/governance/token-economics)**
   Cognitive overload detection and context window budget profiling.

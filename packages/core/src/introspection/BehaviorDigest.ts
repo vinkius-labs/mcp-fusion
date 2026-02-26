@@ -120,6 +120,7 @@ export function computeDigest(contract: ToolContract): BehaviorDigestResult {
         network: contract.entitlements.network,
         subprocess: contract.entitlements.subprocess,
         crypto: contract.entitlements.crypto,
+        codeEvaluation: contract.entitlements.codeEvaluation,
         raw: [...contract.entitlements.raw].sort(),
     });
 

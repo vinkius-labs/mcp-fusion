@@ -532,7 +532,7 @@ function diffEntitlements(
     after: HandlerEntitlements,
     out: ContractDelta[],
 ): void {
-    const entitlementFlags = ['filesystem', 'network', 'subprocess', 'crypto'] as const;
+    const entitlementFlags = ['filesystem', 'network', 'subprocess', 'crypto', 'codeEvaluation'] as const;
 
     for (const flag of entitlementFlags) {
         if (!before[flag] && after[flag]) {

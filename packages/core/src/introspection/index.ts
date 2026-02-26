@@ -120,6 +120,7 @@ export {
     buildEntitlements,
     validateClaims,
     scanAndValidate,
+    scanEvasionIndicators,
 } from './EntitlementScanner.js';
 export type {
     EntitlementReport,
@@ -127,6 +128,8 @@ export type {
     EntitlementViolation,
     EntitlementCategory,
     EntitlementClaims,
+    EvasionIndicator,
+    EvasionType,
 } from './EntitlementScanner.js';
 
 // ── Semantic Probing (LLM-as-Judge) ──────────────────────

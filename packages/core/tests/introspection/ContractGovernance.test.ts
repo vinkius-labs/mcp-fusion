@@ -215,6 +215,7 @@ describe('ContractDiff', () => {
                 network: false,
                 subprocess: false,
                 crypto: false,
+                codeEvaluation: false,
                 raw: [],
             },
         };
@@ -448,6 +449,7 @@ describe('BehaviorDigest', () => {
                 network: false,
                 subprocess: false,
                 crypto: false,
+                codeEvaluation: false,
                 raw: [],
             },
         };

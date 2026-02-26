@@ -146,6 +146,8 @@ export interface HandlerEntitlements {
     readonly subprocess: boolean;
     /** Whether any handler references crypto/signing APIs */
     readonly crypto: boolean;
+    /** Whether any handler uses dynamic code evaluation (eval, Function, vm) */
+    readonly codeEvaluation: boolean;
     /** Raw entitlement identifiers for granular diff */
     readonly raw: readonly string[];
 }
@@ -205,6 +207,7 @@ export function materializeContract<TContext>(
         network: false,
         subprocess: false,
         crypto: false,
+        codeEvaluation: false,
         raw: [],
     };
 

@@ -126,6 +126,7 @@ function makeEntitlements(overrides: Partial<HandlerEntitlements> = {}): Handler
         network: false,
         subprocess: false,
         crypto: false,
+        codeEvaluation: false,
         raw: [],
         ...overrides,
     };

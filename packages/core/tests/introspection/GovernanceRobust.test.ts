@@ -69,6 +69,7 @@ import {
     buildEntitlements,
     validateClaims,
     scanAndValidate,
+    scanEvasionIndicators,
 } from '../../src/introspection/EntitlementScanner.js';
 import {
     estimateTokens,
@@ -138,6 +139,7 @@ function makeContract(overrides: Partial<{
     network: boolean;
     subprocess: boolean;
     crypto: boolean;
+    codeEvaluation: boolean;
     unboundedCollection: boolean;
     middlewareChain: string[];
     affordanceTopology: string[];
@@ -172,6 +174,7 @@ function makeContract(overrides: Partial<{
             network: overrides.network ?? false,
             subprocess: overrides.subprocess ?? false,
             crypto: overrides.crypto ?? false,
+            codeEvaluation: overrides.codeEvaluation ?? false,
             raw: [],
         },
     };
@@ -408,14 +411,12 @@ describe('Security: EntitlementScanner false positive resistance', () => {
         expect(matches.some(m => m.category === 'subprocess')).toBe(true);
     });
 
-    it('detects eval and new Function as subprocess-like risk', () => {
-        // eval and Function are not subprocess, but having them is still a security signal
-        // The scanner focuses on I/O categories, so these may not match
+    it('detects eval and new Function as codeEvaluation risk', () => {
         const source = `const result = eval('1+1');\nconst fn = new Function('return 42');`;
         const matches = scanSource(source);
-        // eval/Function are NOT in the current scanner's regex patterns
-        // This validates the scanner's documented scope
-        expect(Array.isArray(matches)).toBe(true);
+        // eval and Function are now detected as codeEvaluation entitlements
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'eval')).toBe(true);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Function')).toBe(true);
     });
 
     it('detects fetch and XMLHttpRequest as network', () => {
@@ -2033,5 +2034,331 @@ describe('LockfileCheckResult: structural guarantees', () => {
         expect(result.ok).toBe(false);
         expect(result.added).toContain('newTool');
         expect(result.changedPrompts).toContain('p1');
+    });
+});
+
+// ============================================================================
+// 12. HARDENED BLAST RADIUS — CODE EVALUATION & EVASION DETECTION
+// ============================================================================
+
+describe('Hardened: Code Evaluation Detection', () => {
+    it('detects eval() as codeEvaluation', () => {
+        const source = `const result = eval('require("child_process").exec("rm -rf /")');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'eval')).toBe(true);
+    });
+
+    it('detects indirect eval (0, eval)()', () => {
+        const source = `const result = (0, eval)('dangerous code');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'eval-indirect')).toBe(true);
+    });
+
+    it('detects new Function()', () => {
+        const source = `const factory = new Function('a', 'b', 'return a + b');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Function')).toBe(true);
+    });
+
+    it('detects vm module import', () => {
+        const source = `import { runInNewContext } from 'node:vm';`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm')).toBe(true);
+    });
+
+    it('detects vm.runInNewContext()', () => {
+        const source = `vm.runInNewContext('1+1', {});`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.runInNewContext')).toBe(true);
+    });
+
+    it('detects vm.runInThisContext()', () => {
+        const source = `const result = runInThisContext('code');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.runInThisContext')).toBe(true);
+    });
+
+    it('detects new vm.Script()', () => {
+        const source = `const script = new vm.Script('console.log(42)');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.Script')).toBe(true);
+    });
+
+    it('detects globalThis.eval()', () => {
+        const source = `const r = globalThis.eval('x');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'globalThis.eval')).toBe(true);
+    });
+
+    it('detects Reflect.construct(Function, ...)', () => {
+        const source = `const fn = Reflect.construct(Function, ['return 42']);`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Reflect.construct-Function')).toBe(true);
+    });
+
+    it('detects process.binding()', () => {
+        const source = `const binding = process.binding('spawn_sync');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'process.binding')).toBe(true);
+    });
+
+    it('detects process.dlopen()', () => {
+        const source = `process.dlopen(module, '/path/to/native.node');`;
+        const matches = scanSource(source);
+        expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'process.dlopen')).toBe(true);
+    });
+
+    it('buildEntitlements includes codeEvaluation flag', () => {
+        const source = `eval('x'); const fs = require('fs');`;
+        const matches = scanSource(source);
+        const entitlements = buildEntitlements(matches);
+        expect(entitlements.codeEvaluation).toBe(true);
+        expect(entitlements.filesystem).toBe(true);
+    });
+
+    it('codeEvaluation is false for sandboxed code', () => {
+        const source = `function add(a, b) { return a + b; }`;
+        const entitlements = buildEntitlements(scanSource(source));
+        expect(entitlements.codeEvaluation).toBe(false);
+    });
+});
+
+describe('Hardened: Violation Rules for Code Evaluation', () => {
+    it('codeEvaluation always produces error violation', () => {
+        const source = `const r = eval('1');`;
+        const matches = scanSource(source);
+        const violations = validateClaims(matches, {});
+        expect(violations.some(v => v.category === 'codeEvaluation' && v.severity === 'error')).toBe(true);
+    });
+
+    it('codeEvaluation violation describes unbounded blast radius', () => {
+        const source = `const r = eval('1');`;
+        const matches = scanSource(source);
+        const violations = validateClaims(matches, {});
+        const evalViolation = violations.find(v => v.category === 'codeEvaluation');
+        expect(evalViolation).toBeDefined();
+        expect(evalViolation!.description).toContain('unbounded');
+    });
+
+    it('readOnly + codeEvaluation (even if allowed) is still error', () => {
+        const source = `eval('something');`;
+        const matches = scanSource(source);
+        const violations = validateClaims(matches, {
+            readOnly: true,
+            allowed: ['codeEvaluation'],
+        });
+        // The allowed bypasses the general codeEvaluation rule,
+        // but readOnly + codeEvaluation still fires
+        expect(violations.some(v => v.severity === 'error')).toBe(true);
+    });
+
+    it('codeEvaluation can be explicitly allowed (no general violation)', () => {
+        const source = `eval('safe');`;
+        const matches = scanSource(source);
+        const violations = validateClaims(matches, {
+            allowed: ['codeEvaluation'],
+        });
+        // General codeEvaluation rule is bypassed by allowed
+        const generalViolation = violations.find(
+            v => v.category === 'codeEvaluation' && v.declared === 'no code evaluation expected',
+        );
+        expect(generalViolation).toBeUndefined();
+    });
+});
+
+describe('Hardened: Evasion Indicator Detection', () => {
+    it('detects String.fromCharCode (high confidence)', () => {
+        const source = `const r = String.fromCharCode(114, 101, 113);`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'high')).toBe(true);
+    });
+
+    it('detects atob (low confidence)', () => {
+        const source = `const decoded = atob('Y2hpbGRfcHJvY2Vzcw==');`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'low')).toBe(true);
+    });
+
+    it('detects Buffer.from base64 (low confidence)', () => {
+        const source = `const buf = Buffer.from('Y2hpbGRfcHJvY2Vzcw==', 'base64');`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'low')).toBe(true);
+    });
+
+    it('detects bracket-notation on globalThis with string (medium)', () => {
+        const source = `const fn = globalThis['eval'];`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'medium')).toBe(true);
+    });
+
+    it('detects bracket-notation on globalThis with expression (high)', () => {
+        const source = `const fn = globalThis['ev' + 'al'];`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'high')).toBe(true);
+    });
+
+    it('detects bracket-notation on process (high)', () => {
+        const source = `const b = process['binding']('spawn_sync');`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'high')).toBe(true);
+    });
+
+    it('detects computed require (high)', () => {
+        const source = `const mod = require(moduleName);`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'computed-import' && i.confidence === 'high')).toBe(true);
+    });
+
+    it('detects computed dynamic import (high)', () => {
+        const source = `const mod = await import(getModuleName());`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'computed-import' && i.confidence === 'high')).toBe(true);
+    });
+
+    it('does NOT flag static require as computed import', () => {
+        const source = `const fs = require('fs');`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'computed-import')).toBe(false);
+    });
+
+    it('does NOT flag static dynamic import as computed import', () => {
+        const source = `const mod = await import('fs');`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'computed-import')).toBe(false);
+    });
+
+    it('returns empty for clean code', () => {
+        const source = `function add(a, b) { return a + b; }`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators).toHaveLength(0);
+    });
+
+    it('detects high encoding density', () => {
+        // Generate source with high density of hex escapes
+        const hex = '\\x63'.repeat(50);
+        const source = `const s = "${hex}";`;
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'encoding-density')).toBe(true);
+    });
+
+    it('detects String.raw template', () => {
+        const source = 'const s = String.raw`\\x63\\x68\\x69`;';
+        const indicators = scanEvasionIndicators(source);
+        expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'medium')).toBe(true);
+    });
+});
+
+describe('Hardened: scanAndValidate integration with evasion', () => {
+    it('evasionIndicators are included in report', () => {
+        const source = `const fn = globalThis['eval'];\nfn('code');`;
+        const report = scanAndValidate(source);
+        expect(report.evasionIndicators).toBeDefined();
+        expect(Array.isArray(report.evasionIndicators)).toBe(true);
+    });
+
+    it('high-confidence evasion makes handler UNSAFE', () => {
+        const source = `const mod = require(getModule());`;
+        const report = scanAndValidate(source);
+        expect(report.safe).toBe(false);
+        expect(report.evasionIndicators.some(e => e.confidence === 'high')).toBe(true);
+    });
+
+    it('low-confidence evasion alone does NOT make handler UNSAFE', () => {
+        const source = `const decoded = atob('SGVsbG8=');`;
+        const report = scanAndValidate(source);
+        // atob is low confidence — should not alone make unsafe
+        const hasErrors = report.violations.some(v => v.severity === 'error');
+        const hasHighEvasion = report.evasionIndicators.some(e => e.confidence === 'high');
+        if (!hasErrors && !hasHighEvasion) {
+            expect(report.safe).toBe(true);
+        }
+    });
+
+    it('summary includes evasion indicator count', () => {
+        const source = `const fn = String.fromCharCode(114, 101, 113);`;
+        const report = scanAndValidate(source);
+        expect(report.summary).toContain('evasion');
+    });
+
+    it('sandboxed code with no evasion is safe with correct summary', () => {
+        const source = `function pure(x) { return x * 2; }`;
+        const report = scanAndValidate(source);
+        expect(report.safe).toBe(true);
+        expect(report.summary).toContain('sandboxed');
+        expect(report.evasionIndicators).toHaveLength(0);
+    });
+
+    it('eval produces both match AND violation', () => {
+        const source = `const r = eval('payload');`;
+        const report = scanAndValidate(source);
+        expect(report.matches.some(m => m.category === 'codeEvaluation')).toBe(true);
+        expect(report.violations.some(v => v.category === 'codeEvaluation')).toBe(true);
+        expect(report.entitlements.codeEvaluation).toBe(true);
+        expect(report.safe).toBe(false);
+    });
+});
+
+describe('Hardened: Adversarial evasion scenarios', () => {
+    it('string concatenation to build module name detected as computed require', () => {
+        const source = `const m = 'child' + '_process'; const cp = require(m);`;
+        const report = scanAndValidate(source);
+        // require(m) is computed require — high confidence evasion
+        expect(report.evasionIndicators.some(i => i.type === 'computed-import')).toBe(true);
+        expect(report.safe).toBe(false);
+    });
+
+    it('bracket notation global access to hide eval', () => {
+        const source = `globalThis['ev' + 'al']('rm -rf /');`;
+        const report = scanAndValidate(source);
+        expect(report.evasionIndicators.some(i => i.type === 'indirect-access')).toBe(true);
+        expect(report.safe).toBe(false);
+    });
+
+    it('process bracket notation to access binding', () => {
+        const source = `process['binding']('spawn_sync');`;
+        const report = scanAndValidate(source);
+        expect(report.evasionIndicators.some(i => i.type === 'indirect-access')).toBe(true);
+        expect(report.safe).toBe(false);
+    });
+
+    it('fromCharCode to build require string', () => {
+        const source = `const r = String.fromCharCode(114,101,113,117,105,114,101);\nglobalThis[r]('child_process');`;
+        const report = scanAndValidate(source);
+        expect(report.evasionIndicators.length).toBeGreaterThanOrEqual(1);
+        expect(report.safe).toBe(false);
+    });
+
+    it('combined evasion: multiple techniques in single handler', () => {
+        const source = `
+            const a = String.fromCharCode(101, 118, 97, 108);
+            const b = globalThis[a];
+            const c = atob('cmVxdWlyZQ==');
+            const d = require(c);
+        `;
+        const report = scanAndValidate(source);
+        // Multiple evasion indicators should fire
+        expect(report.evasionIndicators.length).toBeGreaterThanOrEqual(3);
+        expect(report.safe).toBe(false);
+    });
+});
+
+describe('Hardened: ContractDiff detects codeEvaluation changes', () => {
+    it('gaining codeEvaluation is BREAKING', () => {
+        const before = makeContract({ codeEvaluation: false });
+        const after = makeContract({ codeEvaluation: true });
+        const diff = diffContracts(before, after);
+        const delta = diff.deltas.find(d => d.field === 'codeEvaluation');
+        expect(delta).toBeDefined();
+        expect(delta!.severity).toBe('BREAKING');
+        expect(delta!.description).toContain('blast radius');
+    });
+
+    it('losing codeEvaluation is SAFE', () => {
+        const before = makeContract({ codeEvaluation: true });
+        const after = makeContract({ codeEvaluation: false });
+        const diff = diffContracts(before, after);
+        const delta = diff.deltas.find(d => d.field === 'codeEvaluation');
+        expect(delta).toBeDefined();
+        expect(delta!.severity).toBe('SAFE');
     });
 });
