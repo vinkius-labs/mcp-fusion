@@ -1,10 +1,6 @@
 # Cognitive Guardrails
 
-<div class="mva-manifesto-header">
-
 > A raw MCP server is a fire hose pointed at a context window. **Cognitive Guardrails** are the valves that control flow, filter noise, and protect the agent's reasoning capacity.
-
-</div>
 
 Cognitive Guardrails are the protective mechanisms in MVA that prevent the three most expensive failure modes in agent-based systems: **context overflow** (too much data), **parameter injection** (hallucinated fields), and **error spirals** (agents retrying blindly).
 
@@ -332,11 +328,7 @@ The guardrails don't just protect — they **educate**. Each interaction makes t
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Context Tree-Shaking →**](/mva/context-tree-shaking) — JIT rules vs global system prompts
-- [**Perception Package →**](/mva/perception-package) — The full response structure
-- [**Agentic Affordances →**](/mva/affordances) — HATEOAS-style next-action hints
-- [**Cost & Hallucination →**](/cost-and-hallucination) — Deep dive into the token economics
-
-</div>
+- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT rules vs global system prompts
+- [Perception Package](/mva/perception-package) — The full response structure
+- [Agentic Affordances](/mva/affordances) — HATEOAS-style next-action hints
+- [Cost & Hallucination](/cost-and-hallucination) — Deep dive into the token economics

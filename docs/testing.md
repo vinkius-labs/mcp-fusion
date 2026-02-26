@@ -6,17 +6,17 @@ description: "The end of Vibes-Based Testing. Audit every MVA layer in CI/CD —
 # Testing
 
 ::: danger PII Protection as Code-Assertable Invariants
-**MCP Fusion** enables sensitive data protection (PII Drop) to be **asserted in code** and **formally audited in CI/CD**:
+MCP Fusion enables sensitive data protection (PII Drop) to be **asserted in code** and **verified in CI/CD**:
 
 ```typescript
-// This is not a hope. This is not a visual check. This is a mathematical proof.
+// Structurally enforceable invariants — not vibes, not visual checks.
 expect(result.data).not.toHaveProperty('passwordHash');  // SOC2 CC6.1
 expect(result.data).not.toHaveProperty('tenantId');       // Multi-tenant isolation
 expect(result.isError).toBe(true);                        // SOC2 CC6.3 — GUEST blocked
 expect(result.systemRules).toContain('PII policy');       // Governance directive present
 ```
 
-The field is **physically absent** from `result.data` — not hidden, not masked, but removed by the Presenter's Zod schema in RAM. `JSON.stringify` cannot leak what doesn't exist. This runs in **2ms**, costs **$0.00**, and produces the **same result on every CI run, on every machine, forever.**
+The field is **physically absent** from `result.data` — not hidden, not masked, but removed by the Presenter's Zod schema in RAM. `JSON.stringify` cannot leak what doesn't exist. This runs in 2ms, costs $0.00, and produces the same result on every CI run, on every machine.
 :::
 
 ## The End of Vibes-Based Testing
@@ -107,7 +107,7 @@ Every assertion above is **deterministic** — it does not depend on what any AI
 | **Cost per test** | ~$0.01–0.05 in API tokens | $0.00 |
 | **Duration** | 5–15 seconds (LLM round-trip) | 2ms (in-memory) |
 | **CI/CD compatible** | ❌ | ✅ `npx vitest run` |
-| **SOC2 auditable** | ❌ | ✅ Mathematical proof |
+| **SOC2 auditable** | ❌ | ✅ Structurally enforceable |
 | **Reproducible** | ❌ LLM responses vary | ✅ Deterministic |
 
 ## Install

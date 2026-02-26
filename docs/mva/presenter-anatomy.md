@@ -1,10 +1,6 @@
 # Anatomy of the Presenter
 
-<div class="mva-manifesto-header">
-
 > The Presenter is the **View** in MVA. It is the structural contract between your domain data and the AI agent's perception. It is not a formatting utility — it is the architecture's central component.
-
-</div>
 
 In MVA, every other layer exists to serve the Presenter. The Model validates data *for* the Presenter. The Agent consumes data *through* the Presenter. The Presenter is the single component that structures raw data into a format an AI agent can parse, interpret, and act on consistently.
 
@@ -517,11 +513,7 @@ handler: async (ctx, args) => {
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Perception Package →**](/mva/perception-package) — The 6-block response the agent receives
-- [**Agentic Affordances →**](/mva/affordances) — Deep dive into `.suggestActions()` and HATEOAS
-- [**Context Tree-Shaking →**](/mva/context-tree-shaking) — JIT rules vs global system prompts
-- [**Presenter API →**](/presenter) — Complete configuration reference
-
-</div>
+- [Perception Package](/mva/perception-package) — The 6-block response the agent receives
+- [Agentic Affordances](/mva/affordances) — Deep dive into `.suggestActions()` and HATEOAS
+- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT rules vs global system prompts
+- [Presenter API](/presenter) — Complete configuration reference

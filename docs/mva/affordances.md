@@ -1,10 +1,6 @@
 # Agentic Affordances & HATEOAS for AI
 
-<div class="mva-manifesto-header">
-
 > In REST, HATEOAS tells the browser what links are available. In MVA, **Agentic Affordances** tell the AI agent what actions are available — computed from the current data state, not from a static list.
-
-</div>
 
 After receiving data, every AI agent faces the same question: *"What should I do next?"*
 
@@ -340,11 +336,7 @@ Use the data to compute precise affordances:
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Context Tree-Shaking →**](/mva/context-tree-shaking) — JIT domain rules that replace global system prompts
-- [**Cognitive Guardrails →**](/mva/cognitive-guardrails) — Truncation, validation, self-healing
-- [**Perception Package →**](/mva/perception-package) — Where affordances fit in the response structure
-- [**Presenter API →**](/presenter) — Complete `.suggestActions()` reference
-
-</div>
+- [Context Tree-Shaking](/mva/context-tree-shaking) — JIT domain rules that replace global system prompts
+- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, validation, self-healing
+- [Perception Package](/mva/perception-package) — Where affordances fit in the response structure
+- [Presenter API](/presenter) — Complete `.suggestActions()` reference

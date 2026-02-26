@@ -536,7 +536,7 @@ const registry = new ToolRegistry<AppContext>();
 | Method | Returns | Description |
 |---|---|---|
 | `.register(builder)` | `void` | Mounts a single builder and implicitly fires compilation natively. |
-| `.registerAll(...)` | `void` | Maps variable array of builders seamlessly into memory. |
+| `.registerAll(...)` | `void` | Registers a variable array of builders into memory. |
 | `.getAllTools()` | `McpTool[]` | Returns all registered tool definitions. |
 | `.getTools(filter)` | `McpTool[]` | Filters payload dumps based strictly on inclusion/exclusion tags. |
 | `.routeCall(ctx, name, args, progressSink?)` | `Promise` | Proxies execution requests deeply into the assigned `Builder`. Optional `progressSink` forwards generator `ProgressEvent`s. |

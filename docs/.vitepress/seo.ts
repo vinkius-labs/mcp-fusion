@@ -112,6 +112,58 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
+  // ENTERPRISE QUICKSTART
+  // ═══════════════════════════════════════════════════════
+  'enterprise-quickstart.md': {
+    title: 'Enterprise Quickstart — Production MCP Server in 15 Minutes',
+    description: 'Build a production-grade MCP server with typed context, middleware authentication, Presenter-based field stripping, and structured observability.',
+    faqs: [
+      { q: 'How do I build a production MCP server with mcp-fusion?', a: 'Define typed context with initFusion<AppContext>(), add authentication middleware with f.middleware(), create Presenters with Zod schemas that strip sensitive fields, and attach to the MCP server with contextFactory and createDebugObserver for audit logging.' },
+      { q: 'How does mcp-fusion handle authentication?', a: 'Authentication is implemented through middleware. f.middleware() accepts a derive function that receives the current context and returns user identity properties. These are merged into ctx via Object.assign. If middleware throws, the handler never executes.' },
+      { q: 'How does field stripping work in mcp-fusion?', a: 'The Presenter declares a Zod schema with only the fields the agent should perceive. When .make(data) is called, Zod parse() validates and strips any fields not in the schema. Database columns like password_hash and ssn are automatically removed.' },
+      { q: 'How does mcp-fusion implement tenant isolation?', a: 'Middleware resolves the caller tenant from their identity and adds tenantId to ctx. Every handler uses ctx.user.tenantId as a mandatory database filter. The agent cannot query another tenant data because tenantId comes from the resolved identity, not from agent input.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // SECURITY & AUTH
+  // ═══════════════════════════════════════════════════════
+  'enterprise/security.md': {
+    title: 'Security & Authentication — MCP Fusion Enterprise',
+    description: 'Middleware pipelines, context derivation, tag-based access control, and Presenter-based field stripping for production MCP servers.',
+    faqs: [
+      { q: 'How does mcp-fusion enforce authentication?', a: 'contextFactory runs first on every request, creating seed context from the MCP SDK extra object. Middleware functions then resolve identity and merge user properties into ctx. If contextFactory or middleware throws, the handler is never executed.' },
+      { q: 'How does tag-based access control work in mcp-fusion?', a: 'Tools declare tags via the tags property. attachToServer accepts a filter with AND/OR/Exclude logic. Filtered tools are invisible — they do not appear in the tool list and cannot be called by the agent.' },
+      { q: 'How does mcp-fusion prevent sensitive data leaks to AI agents?', a: 'The Presenter Zod schema declares only the fields the agent should perceive. Zod parse() strips undeclared fields. Even if the handler returns all database columns, only schema-declared fields reach the agent context window.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // OBSERVABILITY & AUDIT
+  // ═══════════════════════════════════════════════════════
+  'enterprise/observability.md': {
+    title: 'Observability & Audit — MCP Fusion Enterprise',
+    description: 'Structured debug events, OpenTelemetry tracing, and SOC 2-aligned audit logging for production MCP servers.',
+    faqs: [
+      { q: 'How do I add audit logging to mcp-fusion?', a: 'Use createDebugObserver() with a custom handler. It receives typed DebugEvent objects with discriminated types: route, validate, middleware, execute, error, and governance. Log execute events for audit trails and error events for incident response.' },
+      { q: 'Does mcp-fusion support OpenTelemetry?', a: 'Yes. Pass any FusionTracer-compatible object (including OpenTelemetry Tracer) to attachToServer via the tracing option. Each tool call creates a span with tool name, action, tags, duration, and semantic error classification.' },
+      { q: 'How does mcp-fusion align with SOC 2?', a: 'Middleware pipelines provide logical access controls (CC6.1), contextFactory handles authentication (CC6.2), createDebugObserver provides access monitoring (CC6.3), Presenter schema enforces data boundaries (CC6.6), and enableTracing provides system monitoring (CC7.2).' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // MULTI-TENANCY
+  // ═══════════════════════════════════════════════════════
+  'enterprise/multi-tenancy.md': {
+    title: 'Multi-Tenancy — MCP Fusion Enterprise',
+    description: 'Tenant isolation patterns using middleware, context derivation, Presenter rules, and tag-based tool filtering in MCP Fusion.',
+    faqs: [
+      { q: 'How does mcp-fusion implement multi-tenancy?', a: 'Through existing primitives: middleware resolves the tenant from caller identity, handlers filter queries by ctx.user.tenantId, dynamic Presenter rules adapt output per tenant plan, and tag-based filtering can expose different tool sets per deployment.' },
+      { q: 'Can different tenants see different tools?', a: 'Yes. Tag tools by capability tier (e.g., core, enterprise) and use attachToServer filter to expose only the relevant tags per deployment. Filtered tools are invisible to the agent.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
   // PRESENTER
   // ═══════════════════════════════════════════════════════
   'presenter.md': {

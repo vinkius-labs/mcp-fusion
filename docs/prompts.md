@@ -1,8 +1,8 @@
 # Prompt Engine
 
-MCP Fusion's Prompt Engine brings the same **enterprise-ready DX** to MCP Prompts — server-side hydrated templates that prepare context for LLMs. Define prompts with `f.prompt()` (recommended) or `definePrompt()`, and the framework handles coercion, validation, middleware, and lifecycle sync.
+The Prompt Engine provides typed, server-side hydrated templates for MCP Prompts. Define prompts with `f.prompt()` (recommended) or `definePrompt()`, and the framework handles coercion, validation, middleware, and lifecycle sync.
 
-**100% MCP Spec Compliant** — supports all `ContentBlock` types (text, image, audio, resource), `BaseMetadata` fields (`title`, `icons`), and full lifecycle notifications.
+Supports all MCP `ContentBlock` types (text, image, audio, resource), `BaseMetadata` fields (`title`, `icons`), and full lifecycle notifications.
 
 ::: tip Zero Overhead
 The Prompt Engine is fully opt-in. When not configured, **no code runs** — no handlers registered, no notifications sent. The engine only activates when you pass `prompts` to `attachToServer()`.
@@ -509,7 +509,7 @@ When a timeout or error occurs, the framework returns an XML-structured alert:
 ```
 
 ::: info Why XML?
-The same pattern used by `<tool_error>` and `<validation_error>` — frontier LLMs (Claude, GPT-4, Gemini) parse XML semantic boundaries deterministically. The LLM knows exactly what happened and how to proceed.
+The same pattern used by `<tool_error>` and `<validation_error>` — frontier LLMs (Claude, GPT-4, Gemini) parse XML semantic boundaries reliably. The LLM knows exactly what happened and how to proceed.
 :::
 
 ### Interceptors Still Run
@@ -695,7 +695,7 @@ const OnboardingPrompt = definePrompt<AppContext>('onboarding', {
 
 ## MVA-Driven Prompts — `fromView()` <Badge type="tip" text="NEW" />
 
-The most powerful DX feature in **MCP Fusion**: **reuse your entire Presenter layer inside Prompts** — zero text assembly, zero duplication.
+Reuse your entire Presenter layer inside Prompts — data, rules, UI blocks, and affordances — without manual text assembly or duplication.
 
 ### The Problem
 

@@ -77,9 +77,9 @@ export default defineConfig({
     },
 
     nav: [
-      { text: 'MVA Architecture', link: '/mva/' },
       { text: 'Documentation', link: '/introduction' },
-      { text: 'Examples', link: '/examples' },
+      { text: 'Enterprise', link: '/enterprise-quickstart' },
+      { text: 'MVA Architecture', link: '/mva/' },
       { text: 'API', link: '/api-reference' },
       { text: 'GitHub', link: 'https://github.com/vinkius-labs/mcp-fusion' }
     ],
@@ -92,8 +92,8 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/introduction' },
           { text: 'Quickstart', link: '/quickstart' },
-          { text: 'Architecture', link: '/architecture' },
-          { text: 'Cookbook & Examples', link: '/examples' },
+          { text: 'Enterprise Quickstart', link: '/enterprise-quickstart' },
+          { text: 'DX Guide', link: '/dx-guide' },
           { text: 'Migration Guide', link: '/migration' },
         ]
       },
@@ -103,84 +103,16 @@ export default defineConfig({
         text: 'MVA Architecture',
         collapsed: true,
         items: [
-          { text: 'The MVA Manifesto', link: '/mva-pattern' },
+          { text: 'The MVA Pattern', link: '/mva-pattern' },
           { text: 'MVA At a Glance', link: '/mva/' },
-          { text: 'The Theory Behind MVA', link: '/mva/theory' },
+          { text: 'Theory & Axioms', link: '/mva/theory' },
           { text: 'MVA vs MVC', link: '/mva/mva-vs-mvc' },
-          { text: 'Without MVA vs With MVA', link: '/comparison' },
-          { text: 'Cost & Hallucination', link: '/cost-and-hallucination' },
+          { text: 'Comparison', link: '/comparison' },
+          { text: 'Architecture Internals', link: '/architecture' },
         ]
       },
 
-      // ── MCP Primitives ─────────────────────────────────
-      {
-        text: 'Tools',
-        collapsed: true,
-        items: [
-          { text: 'Building Tools', link: '/building-tools' },
-          { text: 'Routing & Groups', link: '/routing' },
-          { text: 'Tool Exposition', link: '/tool-exposition' },
-          { text: 'Error Handling', link: '/error-handling' },
-          { text: 'Result Monad', link: '/result-monad' },
-        ]
-      },
-      {
-        text: 'Prompts',
-        collapsed: true,
-        items: [
-          { text: 'Prompt Engine', link: '/prompts' },
-          { text: 'MVA-Driven Prompts (fromView)', link: '/prompts#mva-driven-prompts-—-fromview' },
-          { text: 'PromptRegistry & Routing', link: '/prompts#promptregistry-—-registration-routing' },
-          { text: 'Schema-Informed Coercion', link: '/prompts#schema-informed-coercion' },
-          { text: 'Server Integration', link: '/prompts#server-integration' },
-        ]
-      },
-
-      // ── Presenter (MVA View) ───────────────────────────
-      {
-        text: 'Presenter',
-        collapsed: true,
-        items: [
-          { text: 'Presenter (MVA View)', link: '/presenter' },
-          { text: 'Anatomy of the Presenter', link: '/mva/presenter-anatomy' },
-          { text: 'Perception Package', link: '/mva/perception-package' },
-          { text: 'Agentic Affordances', link: '/mva/affordances' },
-          { text: 'Context Tree-Shaking', link: '/mva/context-tree-shaking' },
-          { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
-          { text: 'MVA Convention', link: '/mva-convention' },
-        ]
-      },
-
-      // ── Framework ──────────────────────────────────────
-      {
-        text: 'Framework',
-        collapsed: true,
-        items: [
-          { text: 'State & Context', link: '/context' },
-          { text: 'Middleware', link: '/middleware' },
-          { text: 'FusionClient', link: '/fusion-client' },
-          { text: 'Dynamic Manifest', link: '/dynamic-manifest' },
-          { text: 'Advanced Configuration', link: '/advanced-configuration' },
-        ]
-      },
-
-      // ── Production ─────────────────────────────────────
-      {
-        text: 'Production',
-        collapsed: true,
-        items: [
-          { text: 'State Sync', link: '/state-sync' },
-          { text: 'Cancellation', link: '/cancellation' },
-          { text: 'Runtime Guards', link: '/runtime-guards' },
-          { text: 'Observability', link: '/observability' },
-          { text: 'Tracing', link: '/tracing' },
-          { text: 'Introspection', link: '/introspection' },
-          { text: 'Scaling & Optimization', link: '/scaling' },
-          { text: 'Performance', link: '/performance' },
-        ]
-      },
-
-      // ── Capability Governance ─────────────────────────────
+      // ── Capability Governance ──────────────────────────
       {
         text: 'Capability Governance',
         collapsed: true,
@@ -198,12 +130,99 @@ export default defineConfig({
         ]
       },
 
-      // ── Testing ──────────────────────────────────────────
+      // ── Tools & Routing ────────────────────────────────
+      {
+        text: 'Tools & Routing',
+        collapsed: true,
+        items: [
+          { text: 'Building Tools', link: '/building-tools' },
+          { text: 'Routing & Groups', link: '/routing' },
+          { text: 'Tool Exposition', link: '/tool-exposition' },
+          { text: 'Error Handling', link: '/error-handling' },
+          { text: 'Result Monad', link: '/result-monad' },
+        ]
+      },
+
+      // ── Presenter ──────────────────────────────────────
+      {
+        text: 'Presenter',
+        collapsed: true,
+        items: [
+          { text: 'Presenter Guide', link: '/presenter' },
+          { text: 'Anatomy & Lifecycle', link: '/mva/presenter-anatomy' },
+          { text: 'Perception Package', link: '/mva/perception-package' },
+          { text: 'Affordances', link: '/mva/affordances' },
+          { text: 'Context Tree-Shaking', link: '/mva/context-tree-shaking' },
+          { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
+          { text: 'Convention', link: '/mva-convention' },
+        ]
+      },
+
+      // ── Prompts & Resources ────────────────────────────
+      {
+        text: 'Prompts & Resources',
+        collapsed: true,
+        items: [
+          { text: 'Prompt Engine', link: '/prompts' },
+          { text: 'Dynamic Manifest', link: '/dynamic-manifest' },
+          { text: 'State Sync', link: '/state-sync' },
+        ]
+      },
+
+      // ── Framework ──────────────────────────────────────
+      {
+        text: 'Framework',
+        collapsed: true,
+        items: [
+          { text: 'Context & State', link: '/context' },
+          { text: 'Middleware', link: '/middleware' },
+          { text: 'FusionClient', link: '/fusion-client' },
+          { text: 'Cancellation', link: '/cancellation' },
+          { text: 'Runtime Guards', link: '/runtime-guards' },
+          { text: 'Advanced Configuration', link: '/advanced-configuration' },
+        ]
+      },
+
+      // ── Cookbook ────────────────────────────────────────
+      {
+        text: 'Cookbook',
+        collapsed: true,
+        items: [
+          { text: 'Examples', link: '/examples' },
+          { text: 'Cost & Hallucination', link: '/cost-and-hallucination' },
+        ]
+      },
+
+      // ── Production ─────────────────────────────────────
+      {
+        text: 'Production',
+        collapsed: true,
+        items: [
+          { text: 'Observability', link: '/observability' },
+          { text: 'Tracing', link: '/tracing' },
+          { text: 'Introspection', link: '/introspection' },
+          { text: 'Performance', link: '/performance' },
+          { text: 'Scaling', link: '/scaling' },
+        ]
+      },
+
+      // ── Enterprise ─────────────────────────────────────
+      {
+        text: 'Enterprise',
+        collapsed: true,
+        items: [
+          { text: 'Security & Auth', link: '/enterprise/security' },
+          { text: 'Observability & Audit', link: '/enterprise/observability' },
+          { text: 'Multi-Tenancy', link: '/enterprise/multi-tenancy' },
+        ]
+      },
+
+      // ── Testing ────────────────────────────────────────
       {
         text: 'Testing',
         collapsed: true,
         items: [
-          { text: 'Deterministic AI Governance', link: '/testing' },
+          { text: 'Overview', link: '/testing' },
           { text: 'Quick Start', link: '/testing/quickstart' },
           { text: 'Command-Line Runner', link: '/testing/command-line' },
           { text: 'Fixtures', link: '/testing/fixtures' },
@@ -221,15 +240,14 @@ export default defineConfig({
         ]
       },
 
-      // ── Packages ────────────────────────────────────────
+      // ── Generators ─────────────────────────────────────
       {
-        text: 'Packages',
+        text: 'Generators',
         collapsed: true,
         items: [
           { text: 'OpenAPI Generator', link: '/openapi-gen' },
           { text: 'Prisma Generator', link: '/prisma-gen' },
           { text: 'n8n Connector', link: '/n8n-connector' },
-          { text: 'Testing Package', link: '/testing' },
           { text: 'OAuth', link: '/oauth' },
         ]
       },

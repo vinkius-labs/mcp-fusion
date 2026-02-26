@@ -5,13 +5,9 @@ description: "Cryptographic surface integrity, behavioral lockfiles, and zero-tr
 
 # Capability Governance
 
-::: danger The Missing Primitive in AI Tool Infrastructure
-Every MCP server today has the same unresolved problem: after you review and trust a server's declared capabilities, **nothing in the protocol can prove that those capabilities haven't changed.**
+After you review and trust an MCP server's declared capabilities, nothing in the protocol can prove that those capabilities haven't changed. There is no snapshot, no diff, no continuity proof — the protocol provides the current state, and only the current state.
 
-There is no snapshot. No diff. No continuity proof. The protocol provides the current state — and only the current state.
-
-**MCP Fusion** addresses this with a complete governance stack: deterministic lockfiles, cryptographic attestation, behavioral diffing, blast radius analysis, and cognitive overload detection — all built into the framework, all zero-overhead when not configured.
-:::
+MCP Fusion's governance stack fills this gap: deterministic lockfiles, cryptographic attestation, behavioral diffing, blast radius analysis, and cognitive overload detection. All modules are zero-overhead when not configured.
 
 ---
 
@@ -71,7 +67,7 @@ The declared surface — schema, name, description — can remain structurally i
 
 ## The Governance Stack
 
-**MCP Fusion** provides six modules that together form a comprehensive governance primitive for AI tool infrastructure:
+The governance stack consists of nine modules:
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
@@ -214,21 +210,20 @@ Commit this file. Every pull request diff now shows exactly which behavioral sur
 
 ---
 
-## Comparison With Existing Approaches
+## What the Protocol Provides vs. What Governance Adds
 
-| Capability | Protocol-native | External scanner tools | **MCP Fusion** |
-|---|---|---|---|
-| Current tool list | ✅ `tools/list` | ✅ polls `tools/list` | ✅ `tools/list` + `fusion://manifest.json` |
-| Change notification | ✅ `notifications/tools/list_changed` | ❌ | ✅ |
-| Durable snapshot | ❌ | ⚠️ hash-based tool pinning | ✅ `mcp-fusion.lock` in VCS |
-| Behavioral diff | ❌ | ❌ | ✅ semantic deltas with severity |
-| Schema mutation detection | ❌ | ⚠️ hash comparison | ✅ per-tool `inputSchemaDigest` |
-| Behavioral drift detection | ❌ | ❌ | ✅ egress schema + rules fingerprint |
-| Cryptographic attestation | ❌ | ❌ | ✅ HMAC-SHA256 / pluggable KMS |
-| Blast radius analysis | ❌ | ❌ | ✅ multi-layer entitlement scanner + evasion heuristics |
-| Token economics profiling | ❌ | ❌ | ✅ cognitive overload classification |
-| CI/CD gate | ❌ | ⚠️ manual | ✅ `fusion lock --check` |
-| Zero developer effort | N/A | ❌ requires setup | ✅ materializes from existing code |
+| Capability | MCP Protocol | Governance Stack |
+|---|---|---|
+| Current tool list | `tools/list` | `tools/list` + `fusion://manifest.json` |
+| Change notification | `notifications/tools/list_changed` | Same |
+| Durable snapshot | Not available | `mcp-fusion.lock` in VCS |
+| Behavioral diff | Not available | Semantic deltas with severity |
+| Schema mutation detection | Not available | Per-tool `inputSchemaDigest` |
+| Behavioral drift detection | Not available | Egress schema + rules fingerprint |
+| Cryptographic attestation | Not available | HMAC-SHA256 / pluggable KMS |
+| Blast radius analysis | Not available | Multi-layer entitlement scanner |
+| Token economics profiling | Not available | Cognitive overload classification |
+| CI/CD gate | Not available | `fusion lock --check` |
 
 ---
 
@@ -265,33 +260,12 @@ When observability is not configured, `createNoopObserver()` provides a zero-ove
 
 ## Next Steps
 
-<div class="governance-cards">
-
-- **[Capability Lockfile →](/governance/capability-lockfile)**
-  Generate, verify, and integrate `mcp-fusion.lock` into your CI/CD pipeline.
-
-- **[Surface Integrity →](/governance/surface-integrity)**
-  Content-addressed behavioral fingerprinting and temporal comparison.
-
-- **[Contract Diffing →](/governance/contract-diffing)**
-  Semantic delta engine with BREAKING / RISKY / SAFE / COSMETIC classification.
-
-- **[Zero-Trust Attestation →](/governance/zero-trust-attestation)**
-  Cryptographic signing, capability pinning, and runtime verification.
-
-- **[Blast Radius Analysis →](/governance/blast-radius)**
-  Multi-layer entitlement scanning with code evaluation detection and evasion heuristics.
-
-- **[Token Economics →](/governance/token-economics)**
-  Cognitive overload detection and context window budget profiling.
-
-- **[Semantic Probing →](/governance/semantic-probe)**
-  LLM-as-a-Judge evaluation for detecting semantic drift invisible to structural diffing.
-
-- **[Self-Healing Context →](/governance/self-healing)**
-  Contract delta injection into validation errors for automated LLM self-correction.
-
-- **[CLI Reference →](/governance/cli)**
-  `fusion lock` command-line interface, registry discovery, and CI/CD integration.
-
-</div>
+- [Capability Lockfile](/governance/capability-lockfile) — Generate, verify, and integrate `mcp-fusion.lock` into CI/CD
+- [Surface Integrity](/governance/surface-integrity) — Content-addressed behavioral fingerprinting
+- [Contract Diffing](/governance/contract-diffing) — Semantic delta engine with severity classification
+- [Zero-Trust Attestation](/governance/zero-trust-attestation) — Cryptographic signing and runtime verification
+- [Blast Radius Analysis](/governance/blast-radius) — Entitlement scanning with evasion heuristics
+- [Token Economics](/governance/token-economics) — Cognitive overload detection and budget profiling
+- [Semantic Probing](/governance/semantic-probe) — LLM-as-a-Judge for semantic drift detection
+- [Self-Healing Context](/governance/self-healing) — Contract delta injection into validation errors
+- [CLI Reference](/governance/cli) — `fusion lock` command-line interface

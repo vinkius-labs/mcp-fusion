@@ -1,6 +1,6 @@
 # Advanced Configuration
 
-Beyond simple actions and Zod schemas, **MCP Fusion** exports powerful native configuration methods that allow you to precisely control how Language Models perceive and interact with your tools at a deep architectural level.
+Beyond simple actions and Zod schemas, MCP Fusion exports configuration methods that control how LLMs perceive and interact with your tools at the wire level.
 
 ---
 
@@ -38,7 +38,7 @@ const admin = createTool('admin')
 :::
 
 **How it works:**
-The framework intercepts the internal compiler and switches from Markdown to Token-Oriented Object Notation ([TOON](https://github.com/toon-format/toon)). The metadata for all actions within the tool is structured into a dense, pipe-delimited data table with zero JSON repetition. This preserves 100% of the LLM's structural perception while dropping description token consumption by ~30–50%.
+The framework intercepts the internal compiler and switches from Markdown to Token-Oriented Object Notation ([TOON](https://github.com/toon-format/toon)). The metadata for all actions within the tool is structured into a dense, pipe-delimited data table with no JSON repetition. This preserves the LLM's structural perception while reducing description token consumption.
 
 ---
 
@@ -66,7 +66,7 @@ const billing = createTool('billing').tags('internal', 'payments');
 ```
 :::
 
-When attaching your standard `ToolRegistry` to the MCP Server, you invoke the tag filter to aggressively prune the payload sent to `tools/list` on connection:
+When attaching your `ToolRegistry` to the MCP Server, use the tag filter to prune the payload sent to `tools/list` on connection:
 
 ```typescript
 registry.attachToServer(server, {
@@ -85,7 +85,7 @@ This guarantees that an AI assistant deployed in a public chat interface never e
 
 When combining multiple operations into a single endpoint via Namespaces, the default routing payload schema instructs the LLM to pass its target designation under the `action` JSON property.
 
-You can seamlessly override this string to fit strictly specific domain workflows:
+You can override this string to fit specific domain workflows:
 
 ::: code-group
 ```typescript [f.tool() — Recommended ✨]
@@ -120,7 +120,7 @@ The LLM is now structurally compiled and constrained to send:
 
 Model Context Protocol offers native UI hints via [Annotations](https://modelcontextprotocol.io/specification/2025-03-26/server/tools#annotations). These flags let the AI client (such as Claude Desktop or Cursor) adjust its behavior natively to prompt the human user in different ways.
 
-While Fusion automatically detects and flags standard mutations (via `readOnly` or `destructive` arguments inside your actions), you can forcibly inject arbitrary MCP Annotations across an entire Tool boundary seamlessly:
+While Fusion automatically detects and flags standard mutations (via `readOnly` or `destructive` arguments inside your actions), you can inject arbitrary MCP Annotations across an entire Tool boundary:
 
 ::: code-group
 ```typescript [f.tool() — Recommended ✨]
@@ -148,4 +148,4 @@ const database = createTool('database')
 ```
 :::
 
-All annotations injected this way are perfectly passed down the pipeline directly to the standard `@modelcontextprotocol/sdk` instance.
+All annotations injected this way are passed down the pipeline directly to the `@modelcontextprotocol/sdk` instance.

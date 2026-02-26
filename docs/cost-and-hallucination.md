@@ -138,9 +138,7 @@ No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-
 
 ## The Design Thesis
 
-<div class="equation-header">
-
-> **The equation behind every design decision in **MCP Fusion**:**
+> **The equation behind every design decision in MCP Fusion:**
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -155,8 +153,6 @@ No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-</div>
 
 Cost and hallucination are not separate problems — they are **two symptoms of the same root cause**: too many tokens flowing through the LLM context window, and too many requests being made because the agent did not receive adequate context on the initial call.
 

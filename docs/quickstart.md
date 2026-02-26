@@ -1,12 +1,8 @@
 # Quickstart
 
-Let's build your very first **MCP Fusion** server in less than 5 minutes. We will create a simple "Calculator" tool that an AI can use to add or subtract numbers.
+Your first MCP server with validated input, structured output, and a running transport — in under 5 minutes.
 
----
-
-## 1. Installation
-
-First, install `mcp-fusion`, the official `@modelcontextprotocol/sdk`, and `zod` into your Node.js project.
+## Install {#install}
 
 ::: code-group
 ```bash [npm]
@@ -15,389 +11,158 @@ npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 ```bash [pnpm]
 pnpm add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 ```
-```bash [yarn]
-yarn add @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
-```
-:::
-
-::: tip Zod is Optional
-Since v2.7, MCP Fusion supports any [Standard Schema v1](https://github.com/standard-schema/standard-schema) validator — Valibot, ArkType, TypeBox. Zod remains the recommended default. See [Standard Schema](/dx-guide#standard-schema-decouple-from-zod).
 :::
 
 ---
 
-## 2. Write the Server
+## Create a Fusion Instance {#init}
 
-Create an `index.ts` file. **MCP Fusion** offers **three API styles** — choose the one that fits your team:
-
-::: code-group
-```typescript [initFusion — No Zod 🚀]
-// index.ts — ZERO Zod imports!
-import { initFusion, ToolRegistry } from '@vinkius-core/mcp-fusion';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
-// 1. Initialize Fusion — define context type ONCE
-const f = initFusion<void>();
-
-// 2. Define tools with plain JSON descriptors — no Zod needed!
-const add = f.tool({
-    name: 'calculator.add',
-    description: 'Adds two numbers together',
-    input: {
-        a: { type: 'number', description: 'The first number' },
-        b: { type: 'number', description: 'The second number' },
-    },
-    handler: async ({ input }) => {
-        return { result: input.a + input.b };
-    },
-});
-
-const subtract = f.tool({
-    name: 'calculator.subtract',
-    description: 'Subtracts the second number from the first',
-    input: { a: 'number', b: 'number' },
-    handler: async ({ input }) => {
-        return { result: input.a - input.b };
-    },
-});
-
-// 3. Register and start
-const registry = f.registry();
-registry.register(add);
-registry.register(subtract);
-
-async function start() {
-    const server = new Server(
-        { name: 'my-calculator', version: '1.0.0' },
-        { capabilities: { tools: {} } }
-    );
-    registry.attachToServer(server);
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Calculator Server is running!');
-}
-
-start();
-```
-```typescript [initFusion — Zod]
-// index.ts
+```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-// 1. Initialize Fusion — define context type ONCE
-const f = initFusion<void>();
-
-// 2. Define tools with f.tool() — zero generics, { input, ctx } handler
-const add = f.tool({
-    name: 'calculator.add',
-    description: 'Adds two numbers together',
-    input: z.object({
-        a: z.number().describe('The first number'),
-        b: z.number().describe('The second number'),
-    }),
-    handler: async ({ input }) => {
-        return { result: input.a + input.b };
-    },
-});
-
-const subtract = f.tool({
-    name: 'calculator.subtract',
-    description: 'Subtracts the second number from the first',
-    input: z.object({ a: z.number(), b: z.number() }),
-    handler: async ({ input }) => {
-        return { result: input.a - input.b };
-    },
-});
-
-// 3. Register and start
-const registry = f.registry();
-registry.register(add);
-registry.register(subtract);
-
-async function start() {
-    const server = new Server(
-        { name: 'my-calculator', version: '1.0.0' },
-        { capabilities: { tools: {} } }
-    );
-    registry.attachToServer(server);
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Calculator Server is running!');
-}
-
-start();
+const f = initFusion();
 ```
-```typescript [defineTool — No Zod]
-// index.ts
-import { defineTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-// 1. Define a tool with plain JSON descriptors — no Zod needed!
-const calculatorTool = defineTool<void>('calculator', {
-    description: 'A basic calculator tool for math operations',
-    actions: {
-        add: {
-            description: 'Adds two numbers together',
-            params: {
-                a: { type: 'number', description: 'The first number' },
-                b: { type: 'number', description: 'The second number' },
-            },
-            handler: async (ctx, args) => {
-                const total = args.a + args.b;
-                return success({ result: total });
-            },
-        },
-        subtract: {
-            description: 'Subtracts the second number from the first',
-            params: { a: 'number', b: 'number' },
-            handler: async (ctx, args) => {
-                const total = args.a - args.b;
-                return success({ result: total });
-            },
-        },
-    },
-});
+`initFusion()` without a generic parameter creates a `void` context — no authentication, no shared state. This is the simplest starting point. When you need to pass database connections or user identity to handlers, you'll add a generic parameter (`initFusion<AppContext>()`), but not today.
 
-// 2. Register and start
-const registry = new ToolRegistry<void>();
-registry.register(calculatorTool);
-
-async function start() {
-    const server = new Server(
-        { name: 'my-calculator', version: '1.0.0' }, 
-        { capabilities: { tools: {} } }
-    );
-    registry.attachToServer(server);
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Calculator Server is running!');
-}
-
-start();
-```
-```typescript [createTool — Full Zod]
-// index.ts
-import { createTool, ToolRegistry, success } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
-// 1. Create a tool group with Zod schemas
-const calculatorTool = createTool<void>('calculator')
-    .description('A basic calculator tool for math operations')
-    .action({
-        name: 'add',
-        description: 'Adds two numbers together',
-        schema: z.object({
-            a: z.number().describe('The first number'),
-            b: z.number().describe('The second number'),
-        }),
-        handler: async (ctx, args) => {
-            const total = args.a + args.b;
-            return success({ result: total });
-        }
-    })
-    .action({
-        name: 'subtract',
-        description: 'Subtracts the second number from the first',
-        schema: z.object({
-            a: z.number(),
-            b: z.number(),
-        }),
-        handler: async (ctx, args) => {
-            const total = args.a - args.b;
-            return success({ result: total });
-        }
-    });
-
-// 2. Register and start
-const registry = new ToolRegistry<void>();
-registry.register(calculatorTool);
-
-async function start() {
-    const server = new Server(
-        { name: 'my-calculator', version: '1.0.0' }, 
-        { capabilities: { tools: {} } }
-    );
-    registry.attachToServer(server);
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Calculator Server is running!');
-}
-
-start();
-```
-:::
+The `f` object is your entry point for everything: `f.tool()`, `f.presenter()`, `f.middleware()`. All type inference flows from this single call.
 
 ---
 
-## 3. What just happened?
+## Define a Tool {#first-tool}
 
-If you were interacting directly with the native MCP SDK, you would have had to manually write JSON logic, create switch statements, manually check if `a` and `b` existed, and handle errors.
+```typescript
+const getWeather = f.tool({
+  name: 'weather.get',
+  description: 'Get current weather for a city',
+  input: z.object({
+    city: z.string().describe('City name, e.g. "San Francisco"'),
+  }),
+  readOnly: true,
+  handler: async ({ input }) => {
+    return { city: input.city, temp_c: 18, condition: 'Partly cloudy' };
+  },
+});
+```
 
-With **MCP Fusion**:
-1. You just passed simple descriptors (`'number'`, `{ type: 'number', description: '...' }`).
-2. If the LLM tries to call your `add` tool and forgets to send `b`, Fusion instantly catches it and tells the LLM `"Error: b is required"` without your handler code ever running.
-3. **No Hallucinations:** If the LLM tries to send a `c` value, Fusion rejects it with an actionable error telling the LLM exactly which fields are valid. Your handler is perfectly safe.
+The `name` follows MCP Fusion's `domain.action` convention — `weather` becomes the tool group, `get` becomes the action. When [tool exposition](/tool-exposition) is set to `flat` (the default), the MCP client sees a single tool called `weather_get`. When set to `grouped`, it sees a `weather` tool with a discriminator parameter.
 
-::: tip JSON Descriptors or Zod — Your Choice
-You can use plain JSON descriptors (`'string'`, `{ type: 'number' }`, `{ enum: [...] }`) or Zod schemas. MCP Fusion internally converts JSON descriptors to Zod at runtime — you get the same validation guarantees either way. Use what feels natural.
-:::
+`input` is a Zod schema. Every field gets validated before the handler runs — if the agent sends `{ city: 42 }`, the handler never executes. The agent receives a structured validation error with the exact field that failed and what was expected.
 
-::: tip initFusion() Pattern
-Notice how `initFusion()` eliminates the `<void>` generic parameter — you define the context type once and every `f.tool()`, `f.presenter()`, and `f.registry()` inherits it automatically. When your context grows to include `db`, `user`, etc., you change it in exactly **one place**.
-:::
+`readOnly: true` tells the MCP client this tool doesn't modify state. This is an [MCP annotation](https://spec.modelcontextprotocol.io/specification/2024-11-05/server/tools/) — agents and clients use it to decide which tools are safe to call without user confirmation.
+
+The handler returns a plain object. MCP Fusion wraps it in a `success()` response automatically — you don't need to construct `{ content: [{ type: 'text', text: JSON.stringify(...) }] }` yourself.
 
 ---
 
-## 3b. Add a Prompt <Badge type="tip" text="NEW v2.7" />
+## Register and Attach to a Server {#server}
 
-Tools do work. **Prompts** are reusable templates that pre-fill context for the LLM. Use `f.prompt()` to define prompts the same way you define tools:
+```typescript
+import { ToolRegistry } from '@vinkius-core/mcp-fusion';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-::: code-group
-```typescript [f.prompt() — No Zod 🚀]
-import { PromptMessage } from '@vinkius-core/mcp-fusion';
+const registry = new ToolRegistry();
+registry.register(getWeather);
+```
 
-const codeReview = f.prompt({
-    name: 'code-review',
-    description: 'Review code and suggest improvements',
-    args: {
-        language: { enum: ['typescript', 'python', 'go'] as const },
-        focus: {
-            type: 'string',
-            description: 'Area to focus on (e.g., performance, security)',
-            optional: true,
-        },
-    } as const,
-    handler: async ({ args }) => {
-        const focusHint = args.focus ? ` Focus on ${args.focus}.` : '';
-        return [
-            PromptMessage.user(
-                `Review the following ${args.language} code.${focusHint} ` +
-                `Suggest concrete improvements with code examples.`
-            ),
-        ];
-    },
+`ToolRegistry` is the central catalog. Every tool you build gets registered here. The registry handles routing — when an MCP call arrives for `weather_get`, it resolves the builder, validates input, runs middleware (if configured), executes the handler, and applies the Presenter (if defined).
+
+```typescript
+const server = new McpServer({
+  name: 'my-first-server',
+  version: '1.0.0',
 });
 
-// Register it alongside your tools
-const registry = f.registry();
-registry.registerPrompt(codeReview);
+registry.attachToServer(server);
 ```
-```typescript [f.prompt() — Zod]
+
+`attachToServer()` wires MCP Fusion's registry into the MCP SDK's server. It registers a `tools/list` handler that exposes your tools, and a `tools/call` handler that routes incoming calls through the pipeline. One line replaces all the manual `server.tool()` registrations you'd write in a raw MCP server.
+
+```typescript
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+main().catch(console.error);
+```
+
+This starts the server on stdio — the transport that Claude Desktop, Cursor, and most MCP clients expect. The server reads JSON-RPC messages from stdin and writes responses to stdout.
+
+---
+
+## The Complete File {#complete}
+
+Here's everything together — a single file you can copy and run:
+
+```typescript
+import { initFusion, ToolRegistry } from '@vinkius-core/mcp-fusion';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { PromptMessage } from '@vinkius-core/mcp-fusion';
 
-const codeReview = f.prompt({
-    name: 'code-review',
-    description: 'Review code and suggest improvements',
-    args: z.object({
-        language: z.enum(['typescript', 'python', 'go']),
-        focus: z.string().describe('Area to focus on').optional(),
-    }),
-    handler: async ({ args }) => {
-        const focusHint = args.focus ? ` Focus on ${args.focus}.` : '';
-        return [
-            PromptMessage.user(
-                `Review the following ${args.language} code.${focusHint} ` +
-                `Suggest concrete improvements with code examples.`
-            ),
-        ];
-    },
+const f = initFusion();
+
+const getWeather = f.tool({
+  name: 'weather.get',
+  description: 'Get current weather for a city',
+  input: z.object({
+    city: z.string().describe('City name, e.g. "San Francisco"'),
+  }),
+  readOnly: true,
+  handler: async ({ input }) => {
+    return { city: input.city, temp_c: 18, condition: 'Partly cloudy' };
+  },
 });
+
+const registry = new ToolRegistry();
+registry.register(getWeather);
+
+const server = new McpServer({
+  name: 'my-first-server',
+  version: '1.0.0',
+});
+
+registry.attachToServer(server);
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+main().catch(console.error);
 ```
-:::
 
-::: info Prompts vs Tools
-| | Tools | Prompts |
-|---|---|---|
-| **Purpose** | Execute actions | Provide context templates |
-| **Input** | `input:` (supports arrays) | `args:` (form-friendly, no arrays) |
-| **Returns** | `{ result }` or `{ error }` | `PromptMessage[]` |
-| **When** | LLM calls them | User selects from a menu |
-:::
+That's 30 lines. You have input validation, structured responses, tool annotations, and a running MCP server.
 
-### How the LLM sees it
-Because of Fusion's structured builder, the AI automatically sees a perfectly condensed tool definition like this:
+---
+
+## Test It {#test}
+
+Configure your MCP client to connect to the server. For Claude Desktop, add this to your config:
 
 ```json
 {
-  "name": "calculator",
-  "description": "A basic calculator tool for math operations. Actions: add, subtract",
-  "inputSchema": {
-    "properties": {
-      "action": { "type": "string", "enum": ["add", "subtract"] },
-      "a": { "type": "number", "description": "The first number. Required for: add, subtract" },
-      "b": { "type": "number", "description": "The second number. Required for: add, subtract" }
+  "mcpServers": {
+    "my-first-server": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"]
     }
   }
 }
 ```
 
-The AI just sets `"action": "add"` and passes the numbers. It's that easy.
+Ask the agent: _"What's the weather in San Francisco?"_ — it will call `weather_get` with `{ city: "San Francisco" }` and receive the structured response.
 
 ---
 
-## 4. Scale with File-Based Routing <Badge type="tip" text="NEW v2.7" />
+## Where to Go Next {#next-steps}
 
-As your project grows, use `autoDiscover()` instead of manually importing every tool:
+You have a running MCP server with validated input and structured responses. Here's what to add:
 
-```typescript
-import { initFusion, autoDiscover } from '@vinkius-core/mcp-fusion';
-
-const f = initFusion<AppContext>();
-const registry = f.registry();
-
-// Scan src/tools/ and auto-register everything
-await autoDiscover(registry, './src/tools');
-```
-
-File structure becomes your routing table:
-```
-src/tools/
-├── billing/
-│   ├── get_invoice.ts  → billing.get_invoice
-│   └── pay.ts          → billing.pay
-└── users/
-    ├── list.ts         → users.list
-    └── ban.ts          → users.ban
-```
-
-→ [File-Based Routing Guide](/dx-guide#file-based-routing-autodiscover)
-
----
-
-## 5. Enable HMR for Development <Badge type="tip" text="NEW v2.7" />
-
-Stop restarting your LLM client every time you change a tool:
-
-```typescript
-import { createDevServer, autoDiscover } from '@vinkius-core/mcp-fusion/dev';
-
-const devServer = createDevServer({
-    dir: './src/tools',
-    setup: async (registry) => await autoDiscover(registry, './src/tools'),
-    onReload: (file) => console.log(`♻️ Reloaded: ${file}`),
-    server: mcpServer,
-});
-await devServer.start();
-```
-
-→ [HMR Dev Server Guide](/dx-guide#hmr-dev-server-createdevserver)
-
----
-
-## Next Steps
-
-<div class="next-steps">
-
-- [**DX Guide →**](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
-- [**Namespaces & Routing →**](/routing) — Structure real-world APIs using groups
-- [**Presenter →**](/presenter) — Add domain rules, UI blocks, and agent affordances
-- [**Building Tools →**](/building-tools) — `defineTool()`, `createTool()`, and `f.tool()` in depth
-
-</div>
+- [Enterprise Quickstart](/enterprise-quickstart) — add authentication, Presenters, and observability in 15 minutes
+- [Building Tools](/building-tools) — multiple tools, `defineTool()`, `createTool()`, error handling, validation constraints
+- [Presenter Guide](/presenter) — control exactly what the agent sees and what it's told to do next
+- [Middleware](/middleware) — authentication, rate limiting, audit logging

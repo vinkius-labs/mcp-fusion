@@ -1,6 +1,6 @@
 # Dynamic Manifest
 
-**MCP Fusion** can expose a **live capabilities manifest** as a native MCP Resource. Orchestrators, admin dashboards, and AI agents can read `fusion://manifest.json` to discover every tool, action, and presenter registered on the server — dynamically filtered by the requesting user's role and permissions.
+MCP Fusion can expose a live capabilities manifest as a native MCP Resource. Orchestrators, admin dashboards, and AI agents can read `fusion://manifest.json` to discover every tool, action, and presenter registered on the server — dynamically filtered by the requesting user's role and permissions.
 
 ::: tip Zero Overhead
 The Dynamic Manifest is fully opt-in. When not configured, **no code runs** — no handlers registered, no resource advertised. The feature only activates when you set `introspection.enabled: true` in `attachToServer()`.
@@ -24,7 +24,7 @@ In multi-tenant environments, different users should see different capabilities.
 
 ### The Insight
 
-The MCP protocol already has a native Resource system (`resources/list`, `resources/read`). **MCP Fusion** uses this existing protocol layer to expose the manifest — no custom HTTP endpoints, no external dependencies.
+The MCP protocol already has a native Resource system (`resources/list`, `resources/read`). MCP Fusion uses this existing protocol layer to expose the manifest — no custom HTTP endpoints, no external dependencies.
 
 > **Security model:** Unauthorized agents don't even know hidden tools exist — they're removed from the manifest tree entirely, not just disabled.
 
@@ -126,7 +126,7 @@ The manifest is a structured JSON document describing every capability registere
 | Field | Type | Description |
 |---|---|---|
 | `server` | `string` | Server name from `AttachOptions.serverName` |
-| `mcp_fusion_version` | `string` | Version of the **MCP Fusion** framework |
+| `mcp_fusion_version` | `string` | Version of the MCP Fusion framework |
 | `architecture` | `string` | Always `'MVA (Model-View-Agent)'` |
 | `capabilities.tools` | `Record<string, ManifestTool>` | All registered tools, keyed by name |
 | `capabilities.presenters` | `Record<string, ManifestPresenter>` | All referenced Presenters, keyed by name |
@@ -433,7 +433,7 @@ All features compose orthogonally — each operates at a different layer of the 
 
 ## Difference from Builder Introspection
 
-**MCP Fusion** provides two complementary introspection systems:
+MCP Fusion provides two complementary introspection systems:
 
 | Feature | Builder Introspection | Dynamic Manifest |
 |---|---|---|

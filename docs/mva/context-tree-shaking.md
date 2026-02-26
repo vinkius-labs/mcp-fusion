@@ -1,10 +1,6 @@
 # Context Tree-Shaking
 
-<div class="mva-manifesto-header">
-
 > In traditional MCP servers, domain rules live in a global system prompt — sent on every turn, regardless of relevance. In MVA, rules travel **with the data** — appearing in the agent's context only when their domain is active. This pattern is called **Context Tree-Shaking**.
-
-</div>
 
 The term is borrowed from JavaScript bundlers. In webpack and Rollup, tree-shaking removes unused code from the final bundle. In MVA, Context Tree-Shaking removes irrelevant domain rules from the agent's context window. The principle is identical: **include only what's needed, exactly when it's needed.**
 
@@ -315,11 +311,7 @@ const InvoicePresenter = createPresenter('Invoice')
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Cognitive Guardrails →**](/mva/cognitive-guardrails) — Truncation, strict validation, self-healing errors
-- [**Perception Package →**](/mva/perception-package) — Where rules fit in the response structure
-- [**Agentic Affordances →**](/mva/affordances) — HATEOAS-style next-action hints
-- [**Cost & Hallucination →**](/cost-and-hallucination) — Token economics deep dive
-
-</div>
+- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, strict validation, self-healing errors
+- [Perception Package](/mva/perception-package) — Where rules fit in the response structure
+- [Agentic Affordances](/mva/affordances) — HATEOAS-style next-action hints
+- [Cost & Hallucination](/cost-and-hallucination) — Token economics deep dive

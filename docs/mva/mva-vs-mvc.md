@@ -1,10 +1,6 @@
 # MVA vs MVC: Architectural Comparison
 
-<div class="mva-manifesto-header">
-
 > MVC was designed for a consumer that navigates by sight. MVA was designed for a consumer that navigates by structural perception.
-
-</div>
 
 This page provides a formal, layer-by-layer comparison between MVC and MVA. The goal is not to criticize MVC — it has served brilliantly for four decades. The goal is to demonstrate why a new architecture is required when the consumer changes from human to AI agent.
 
@@ -277,11 +273,7 @@ Each shift was driven by the same principle: **the existing architecture assumed
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Anatomy of the Presenter →**](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
-- [**Perception Package →**](/mva/perception-package) — The exact structure the agent receives
-- [**The Theory →**](/mva/theory) — First-principles derivation of MVA
-- [**Without MVA vs With MVA →**](/comparison) — Code-level comparison with examples
-
-</div>
+- [Anatomy of the Presenter](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
+- [Perception Package](/mva/perception-package) — The exact structure the agent receives
+- [The Theory](/mva/theory) — First-principles derivation of MVA
+- [Without MVA vs With MVA](/comparison) — Code-level comparison with examples

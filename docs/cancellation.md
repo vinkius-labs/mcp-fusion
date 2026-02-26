@@ -2,7 +2,7 @@
 
 <Badge type="tip" text="v1.7.0" />
 
-**MCP Fusion** intercepts the AbortSignal from the MCP SDK protocol layer and propagates it through the **entire execution pipeline** — middleware, handlers, and generators. When a user clicks "Stop" in the client, or the transport connection drops, all in-flight operations are terminated immediately.
+MCP Fusion intercepts the AbortSignal from the MCP SDK protocol layer and propagates it through the entire execution pipeline — middleware, handlers, and generators. When a user clicks "Stop" in the client, or the transport connection drops, all in-flight operations are terminated immediately.
 
 ## The Problem
 

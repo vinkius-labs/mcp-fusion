@@ -1,486 +1,417 @@
 # Building Tools
 
-**MCP Fusion** provides **four complementary APIs** for defining tools. Choose the one that fits your use case — all produce identical MCP tool definitions and can coexist in the same registry.
+In a raw MCP server, you register tools with `server.tool()` — a name, a schema, a callback. It works, but every handler becomes a monolith: validation, auth checks, data fetching, response formatting, and error handling mixed into one function. Add 30 tools and you have 30 monoliths.
+
+MCP Fusion provides four APIs to define tools. All four produce identical MCP tool definitions and coexist in the same registry. The difference is how much ceremony each API requires — and what it gives you in return.
 
 ---
 
-## API Comparison
+## Your First Tool with `f.tool()` {#f-tool}
 
-| Feature | `f.tool()` ✨ | `createGroup()` | `defineTool()` | `createTool()` |
-|---|---|---|---|---|
-| **Style** | tRPC-style `{ input, ctx }` | Functional closure | Declarative config | Fluent builder |
-| **Generics** | None — inherited from `initFusion` | None — passed to factory | `<Context>` on every call | `<Context>` on every call |
-| **Params** | Any Standard Schema | Any Standard Schema | Plain strings / JSON | Full Zod |
-| **Middleware** | Via `f.middleware()` on registry | Pre-composed at build | `middleware` array | `.middleware()` chain |
-| **Auto `success()`** | Yes — plain return auto-wraps | No | No | No |
-| **Best for** | New projects, teams | Standalone modules | Quick prototyping | Complex Zod transforms |
-
----
-
-## Recommended: `f.tool()` <Badge type="tip" text="NEW v2.7" />
-
-The tRPC-style API. Initialize once with `initFusion()`, then build tools with zero generics and `{ input, ctx }` destructured handlers.
+The recommended API. After calling `initFusion<AppContext>()`, every tool inherits your context type automatically — no generic annotations on individual tools.
 
 ```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// 1. Define context type ONCE
 const f = initFusion<{ db: Database; user: User }>();
+```
 
-// 2. Define tools — zero generics, auto success() wrapping
+With `f` in hand, define a tool by passing a configuration object. The handler receives `{ input, ctx }` — fully typed by inference:
+
+```typescript
 const listTasks = f.tool({
-    name: 'tasks.list',
-    description: 'Lists all tasks',
-    input: z.object({
-        status: z.enum(['open', 'closed']).optional(),
-    }),
-    handler: async ({ input, ctx }) => {
-        const tasks = await ctx.db.tasks.findMany({ status: input.status });
-        return tasks; // ← auto-wrapped in success() 
-    },
-});
-
-const createTask = f.tool({
-    name: 'tasks.create',
-    description: 'Creates a new task',
-    input: z.object({
-        title: z.string().min(1).max(200),
-        priority: z.enum(['low', 'medium', 'high']).optional(),
-    }),
-    handler: async ({ input, ctx }) => {
-        const task = await ctx.db.tasks.create(input);
-        return { status: 'created', id: task.id };
-    },
-});
-
-// 3. Register all tools
-const registry = f.registry();
-registry.register(listTasks);
-registry.register(createTask);
-```
-
-### Key features of `f.tool()`:
-
-1. **Zero generics** — context type flows from `initFusion<AppContext>()` to every tool
-2. **`{ input, ctx }` handler** — destructured, fully typed, no positional args
-3. **Auto `success()` wrapping** — return plain data and it's automatically wrapped in `success()`
-4. **Auto name splitting** — `'tasks.create'` automatically creates domain `tasks` + action `create`
-5. **Standard Schema support** — use Zod, Valibot, ArkType, or any Standard Schema v1 validator
-
-### MVA Integration with Presenter
-
-```typescript
-import { InvoicePresenter } from './presenters/InvoicePresenter';
-
-const getInvoice = f.tool({
-    name: 'billing.get_invoice',
-    description: 'Gets an invoice by ID',
-    input: z.object({ id: z.string() }),
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.invoices.findUnique(input.id);
-        // Raw data → Presenter validates, attaches rules, renders UI
-    },
+  name: 'tasks.list',
+  description: 'Lists all tasks for the current user',
+  input: z.object({
+    status: z.enum(['open', 'closed']).optional(),
+  }),
+  readOnly: true,
+  handler: async ({ input, ctx }) => {
+    return ctx.db.tasks.findMany({ status: input.status });
+  },
 });
 ```
 
-### Server Setup
+Three things happened here that differ from raw MCP:
+
+1. **Input is validated before the handler runs.** If the agent sends `{ status: 42 }`, validation rejects it and the handler never executes. The agent receives a structured error with the exact field that failed.
+2. **The handler returns plain data.** No `{ content: [{ type: 'text', text: JSON.stringify(...) }] }` wrapping — `f.tool()` auto-wraps the return value in `success()`.
+3. **The dotted name `tasks.list`** splits into domain `tasks` + action `list`. This feeds into [tool exposition](/tool-exposition) and [routing](/routing).
+
+### Registering and Starting the Server {#register}
 
 ```typescript
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { ToolRegistry } from '@vinkius-core/mcp-fusion';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-const server = new Server(
-    { name: 'my-api', version: '1.0.0' },
-    { capabilities: { tools: {} } }
-);
+const registry = new ToolRegistry();
+registry.register(listTasks);
+
+const server = new McpServer({ name: 'my-api', version: '1.0.0' });
 registry.attachToServer(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
 
+`registry.attachToServer()` wires MCP Fusion's pipeline into the MCP SDK. It registers `tools/list` and `tools/call` handlers. One line replaces all the manual `server.tool()` registrations you'd write in a raw server.
+
 ---
 
-## `createGroup()` — Functional Closures <Badge type="tip" text="NEW v2.7" />
+## Tool Annotations {#annotations}
 
-Build standalone tool modules with pre-composed middleware and O(1) dispatch. Ideal for NPM packages or independent modules.
+MCP defines [annotations](https://modelcontextprotocol.io/specification/2025-03-26/server/tools#annotations) that tell the agent (and the human supervising it) what kind of side effects a tool has. In a raw server you'd manually construct the annotation object. In MCP Fusion, set boolean flags:
+
+```typescript
+const getUser = f.tool({
+  name: 'users.get',
+  description: 'Retrieve a user profile',
+  input: z.object({ id: z.string() }),
+  readOnly: true,
+  handler: async ({ input, ctx }) => {
+    return ctx.db.users.findUnique({ where: { id: input.id } });
+  },
+});
+```
+
+`readOnly: true` tells the MCP client this tool doesn't modify state. Agents and clients use this to decide which tools are safe to call without user confirmation.
+
+For operations that permanently delete or mutate data, set `destructive: true`:
+
+```typescript
+const deleteUser = f.tool({
+  name: 'users.delete',
+  description: 'Permanently delete a user account',
+  input: z.object({ id: z.string() }),
+  destructive: true,
+  handler: async ({ input, ctx }) => {
+    await ctx.db.users.delete({ where: { id: input.id } });
+    return { deleted: true };
+  },
+});
+```
+
+The framework does two things with `destructive: true`: it sets `destructiveHint: true` in the MCP annotations, and the `DescriptionGenerator` appends a `⚠️ DESTRUCTIVE` marker to the tool description. LLMs trained on safety data recognize this and request user confirmation before executing.
+
+::: info
+The MCP spec defaults `destructiveHint` to `true` for all tools. MCP Fusion explicitly emits `destructiveHint: false` on non-destructive actions so clients like Claude Desktop and Cursor don't show unnecessary confirmation dialogs.
+:::
+
+---
+
+## Connecting a Presenter {#presenter}
+
+Without a Presenter, your handler's return value goes straight to the agent — every field, every column. With the `returns` field, you attach a [Presenter](/presenter) that controls exactly what the agent sees:
+
+```typescript
+import { InvoicePresenter } from './presenters/InvoicePresenter';
+
+const getInvoice = f.tool({
+  name: 'billing.get',
+  description: 'Retrieve an invoice by ID',
+  input: z.object({ id: z.string() }),
+  returns: InvoicePresenter,
+  handler: async ({ input, ctx }) => {
+    return ctx.db.invoices.findUnique({ where: { id: input.id } });
+  },
+});
+```
+
+The handler returns the raw database row — 15+ columns. The Presenter strips it to the declared fields, attaches domain rules, and suggests next actions. The handler's only job is to fetch data. Everything else is separated into the Presenter layer.
+
+This is the **MVA (Model-View-Agent)** pattern: the handler produces the Model, the Presenter shapes the View, and middleware governs Agent access. See [Presenter Guide](/presenter) for the full configuration API.
+
+---
+
+## Structured Errors with `toolError()` {#tool-error}
+
+When a tool call fails, the agent needs more than a stack trace. It needs to know _what went wrong_ and _what to try next_. `toolError()` provides structured recovery instructions:
+
+```typescript
+import { toolError } from '@vinkius-core/mcp-fusion';
+
+const getProject = f.tool({
+  name: 'projects.get',
+  description: 'Retrieve a project by ID',
+  input: z.object({ id: z.string() }),
+  handler: async ({ input, ctx }) => {
+    const project = await ctx.db.projects.findUnique({ where: { id: input.id } });
+    if (!project) {
+      return toolError('ProjectNotFound', {
+        message: `Project '${input.id}' does not exist.`,
+        suggestion: 'Call projects.list to see available projects.',
+        availableActions: ['projects.list'],
+      });
+    }
+    return project;
+  },
+});
+```
+
+The agent receives a structured error with a recovery path:
+
+```xml
+<tool_error code="ProjectNotFound">
+  <message>Project 'xyz' does not exist.</message>
+  <recovery>Call projects.list to see available projects.</recovery>
+  <available_actions>projects.list</available_actions>
+</tool_error>
+```
+
+Instead of giving up or hallucinating a workaround, the agent follows the `availableActions` hint and calls `projects.list`. This is self-healing behavior — the error contains the instructions to recover from it.
+
+---
+
+## Streaming Progress {#streaming}
+
+Some operations take seconds or minutes — repository cloning, batch processing, report generation. Without progress feedback, the agent and the user stare at a spinner. Generator handlers with `progress()` solve this:
+
+```typescript
+import { progress, success } from '@vinkius-core/mcp-fusion';
+
+const deploy = f.tool({
+  name: 'infra.deploy',
+  description: 'Deploy the application to staging',
+  input: z.object({ env: z.enum(['staging', 'production']) }),
+  handler: async function* ({ input, ctx }) {
+    yield progress(10, 'Cloning repository...');
+    await cloneRepo(ctx.repoUrl);
+
+    yield progress(50, 'Installing dependencies...');
+    await installDeps();
+
+    yield progress(90, 'Running tests...');
+    const results = await runTests();
+
+    return success(results);
+  },
+});
+```
+
+When the MCP client includes a `progressToken` in its request metadata, each `yield progress()` is forwarded as a `notifications/progress` message. The client shows real-time progress to the user. When no token is present, progress events are silently consumed — no overhead, no code changes.
+
+---
+
+## Response Shortcuts {#response-shortcuts}
+
+For handlers that don't use a Presenter but need more than a plain return value, MCP Fusion provides response builders:
+
+```typescript
+import { response, ui } from '@vinkius-core/mcp-fusion';
+
+// Plain text response
+return response.ok('Task created successfully');
+```
+
+`response.ok()` wraps a string into a valid MCP response. For richer output, attach domain rules that travel with the data:
+
+```typescript
+return response.withRules(invoiceData, [
+  'CRITICAL: amounts are in CENTS — divide by 100 for display.',
+  'Use emojis: ✅ Paid, ⚠️ Pending, ❌ Overdue.',
+]);
+```
+
+Domain rules are text instructions injected into the response. The agent reads them alongside the data — it doesn't guess that `amount_cents` needs division, the data tells it. For full control, use the builder chain:
+
+```typescript
+return response(stats)
+  .uiBlock(ui.echarts(chartConfig))
+  .llmHint('Revenue in USD, not cents.')
+  .systemRules(['Always show % change vs. last month.'])
+  .build();
+```
+
+---
+
+## Alternative API: `createGroup()` {#create-group}
+
+When you're building a standalone module — an NPM package, a plugin, a self-contained domain — `createGroup()` bundles related tools with pre-composed middleware. It doesn't require `initFusion()`, so consuming projects don't need to share a Fusion instance.
 
 ```typescript
 import { createGroup, success } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 const billingGroup = createGroup<AppContext>({
-    name: 'billing',
-    description: 'Billing operations',
-    middleware: [authMiddleware, rateLimitMiddleware],
-    tools: [
-        {
-            name: 'get_invoice',
-            description: 'Gets an invoice by ID',
-            input: z.object({ id: z.string() }),
-            handler: async ({ input, ctx }) => {
-                return success(await ctx.db.invoices.find(input.id));
-            },
-        },
-        {
-            name: 'pay',
-            description: 'Processes payment for an invoice',
-            input: z.object({ invoice_id: z.string(), amount: z.number() }),
-            handler: async ({ input, ctx }) => {
-                await ctx.billing.charge(input.invoice_id, input.amount);
-                return success({ paid: true });
-            },
-        },
-    ],
+  name: 'billing',
+  description: 'Billing operations',
+  middleware: [authMiddleware, rateLimitMiddleware],
+  tools: [
+    {
+      name: 'get_invoice',
+      description: 'Retrieve an invoice by ID',
+      input: z.object({ id: z.string() }),
+      handler: async ({ input, ctx }) => {
+        return success(await ctx.db.invoices.find(input.id));
+      },
+    },
+    {
+      name: 'pay',
+      description: 'Process payment for an invoice',
+      input: z.object({ invoice_id: z.string(), amount: z.number() }),
+      handler: async ({ input, ctx }) => {
+        await ctx.billing.charge(input.invoice_id, input.amount);
+        return success({ paid: true });
+      },
+    },
+  ],
 });
 
-// Register the entire group at once
 registry.register(billingGroup);
 ```
 
-### Key features of `createGroup()`:
-
-- **Pre-composed middleware** — middleware chain is composed once at build time via `reduceRight`, not on every request
-- **O(1) dispatch** — tools are stored in a `Map<string, handler>` for constant-time lookup
-- **Frozen by default** — the group is `Object.freeze()`'d after construction
-- **Standalone** — no `initFusion()` needed; great for library authors
+The middleware chain is composed once at build time via `reduceRight`, not on every request. Tools are stored in a `Map<string, handler>` for constant-time dispatch. The group is `Object.freeze()`'d after construction — no accidental mutation at runtime.
 
 ---
 
-## Option B: `defineTool()` — JSON-First
+## Alternative API: `defineTool()` {#define-tool}
 
-The simplest way to define tools. No Zod imports required.
+The JSON-first API. No Zod imports required — parameters are plain objects with string shorthands. Ideal for rapid prototyping or when your inputs are simple primitives:
 
 ```typescript
-import { defineTool, success, error } from '@vinkius-core/mcp-fusion';
+import { defineTool, success } from '@vinkius-core/mcp-fusion';
 
 const tasks = defineTool<void>('tasks', {
-    description: 'Manage tasks across the system',
-    actions: {
-        list: {
-            readOnly: true,
-            handler: async (ctx, args) => {
-                return success([{ id: 1, name: 'Setup repo' }]);
-            },
-        },
-        create: {
-            params: {
-                title: { type: 'string', min: 1, max: 200 },
-                priority: { enum: ['low', 'medium', 'high'] as const, optional: true },
-            },
-            handler: async (ctx, args) => {
-                return success({ status: 'created', title: args.title });
-            },
-        },
-        delete: {
-            destructive: true,
-            params: { task_id: 'number' },
-            handler: async (ctx, args) => success('Deleted'),
-        },
+  description: 'Manage tasks across the system',
+  actions: {
+    list: {
+      readOnly: true,
+      handler: async (ctx, args) => {
+        return success([{ id: 1, name: 'Setup repo' }]);
+      },
     },
+    create: {
+      params: {
+        title: { type: 'string', min: 1, max: 200 },
+        priority: { enum: ['low', 'medium', 'high'] as const, optional: true },
+      },
+      handler: async (ctx, args) => {
+        return success({ status: 'created', title: args.title });
+      },
+    },
+  },
 });
 ```
 
-### Parameter Shorthand
+The shorthand `{ type: 'string', min: 1, max: 200 }` is equivalent to `z.string().min(1).max(200)`. The framework converts descriptors to Zod internally — same validation, same error messages. For the full descriptor reference, see the [DX Guide](/dx-guide#json-descriptors).
 
-For simple parameters, use string shorthands instead of full descriptors:
+`defineTool()` handlers receive `(ctx, args)` as positional parameters and must return `success()` or `toolError()` explicitly — there's no auto-wrapping.
 
-```typescript
-// These are equivalent:
-params: { name: 'string' }
-params: { name: { type: 'string' } }
+### Shared Parameters {#shared}
 
-// Full descriptor with constraints:
-params: {
-    name: { type: 'string', min: 1, max: 100 },
-    age: { type: 'number', min: 0, max: 150 },
-    role: { enum: ['admin', 'user'] as const },
-    tags: { type: 'string', array: true },
-    email: { type: 'string', regex: '^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$' },
-    nickname: { type: 'string', optional: true },
-}
-```
-
-### Shared Parameters
-
-Use `shared` to inject common fields into **every** action:
+When every action in a tool needs the same field (e.g., `workspace_id`), use `shared` to inject it once:
 
 ```typescript
 const projects = defineTool<AppContext>('projects', {
-    shared: { workspace_id: 'string' },
-    actions: {
-        list: { handler: async (ctx, args) => success(/* args.workspace_id is here */) },
-        create: {
-            params: { name: 'string' },
-            handler: async (ctx, args) => success(/* args.workspace_id + args.name */),
-        },
+  shared: { workspace_id: 'string' },
+  actions: {
+    list: {
+      readOnly: true,
+      handler: async (ctx, args) => {
+        // args.workspace_id is available here
+        return success(await ctx.db.projects.findMany({ workspaceId: args.workspace_id }));
+      },
     },
+    create: {
+      params: { name: 'string' },
+      handler: async (ctx, args) => {
+        // args.workspace_id + args.name — both available
+        return success(await ctx.db.projects.create({ workspaceId: args.workspace_id, name: args.name }));
+      },
+    },
+  },
 });
 ```
 
-### Groups (Hierarchical Namespacing)
+### Hierarchical Groups {#groups}
 
-Organize large API surfaces into groups:
+For large API surfaces, organize actions into groups. Each group can have its own middleware:
 
 ```typescript
 const platform = defineTool<AppContext>('platform', {
-    shared: { org_id: 'string' },
-    middleware: [authMiddleware],
-    groups: {
-        users: {
-            description: 'User management',
-            middleware: [requireAdmin],
-            actions: {
-                list: { readOnly: true, handler: listUsers },
-                ban: { destructive: true, params: { user_id: 'string' }, handler: banUser },
-            },
-        },
-        billing: {
-            description: 'Billing operations',
-            actions: {
-                invoices: { readOnly: true, handler: listInvoices },
-            },
-        },
+  shared: { org_id: 'string' },
+  middleware: [authMiddleware],
+  groups: {
+    users: {
+      description: 'User management',
+      middleware: [requireAdmin],
+      actions: {
+        list: { readOnly: true, handler: listUsers },
+        ban: { destructive: true, params: { user_id: 'string' }, handler: banUser },
+      },
     },
+    billing: {
+      description: 'Billing operations',
+      actions: {
+        invoices: { readOnly: true, handler: listInvoices },
+      },
+    },
+  },
 });
-// Actions become: users.list | users.ban | billing.invoices
+// Actions: users.list | users.ban | billing.invoices
 ```
 
-### Compile-Time Handler Validation
-
-If your handler returns the wrong type, `defineTool()` shows a **readable** TypeScript error:
-
-```text
-❌ Type Error: handler must return ToolResponse. Use return success(data) or return error(msg).
-```
-
-Instead of the usual multi-line recursive generic explosion.
+The `authMiddleware` runs for all actions. `requireAdmin` runs only for `users.*`. This gives you per-namespace access control without duplicating middleware in every action.
 
 ---
 
-## Option C: `createTool()` — Builder Pattern (Full Zod)
+## Alternative API: `createTool()` {#create-tool}
 
-The builder pattern gives you full access to Zod's `.regex()`, `.refine()`, `.transform()`, and advanced validation:
+The builder pattern. Use it when you need Zod's full power — `.regex()`, `.refine()`, `.transform()`, custom error maps:
 
 ```typescript
 import { createTool, success } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 const tasks = createTool<void>('tasks')
-    .description('Manage tasks across the system')
-    .action({
-        name: 'list',
-        description: 'List all available tasks',
-        readOnly: true,
-        handler: async (ctx, args) => {
-            return success([{ id: 1, name: 'Setup repo' }]);
-        },
-    })
-    .action({
-        name: 'create',
-        description: 'Creates a new task',
-        schema: z.object({
-            title: z.string().min(1).describe('The name of the task to create'),
-            priority: z.enum(['low', 'medium', 'high']).optional(),
-        }),
-        handler: async (ctx, args) => {
-            // args: { title: string, priority?: 'low' | 'medium' | 'high' }
-            return success({ status: 'created', title: args.title });
-        },
-    })
-```
-
-### Why Zod is Powerful Here:
-1. **Descriptions are auto-mapped:** Providing `.describe('...')` on your Zod string passes that exact description clearly to the AI model.
-2. **Infinite Runtime Safety:** If the Model guesses an incorrect input (e.g., trying to pass `priority: "ultra"`), Fusion's `.strict()` engine rejects the input automatically and returns an actionable error directly back to the AI. Your handler code **never fires** with bad data.
-3. **TypeScript Inference:** You never have to manually cast outputs or write secondary TypeScript interfaces.
-
----
-
-## Destructive Actions
-
-When dealing with operations that permanently delete or mutate data, inform the AI model clearly.
-
-Both APIs support `destructive: true`:
-
-::: code-group
-```typescript [defineTool]
-delete: {
-    destructive: true,
-    params: { taskId: 'number' },
-    handler: async (ctx, args) => success(`Task ${args.taskId} deleted.`),
-}
-```
-```typescript [createTool]
-.action({
-    name: 'delete',
-    destructive: true,
-    schema: z.object({ taskId: z.number() }),
-    handler: async (ctx, args) => success(`Task ${args.taskId} deleted.`),
-})
-```
-:::
-
-Setting `destructive: true` accomplishes two things:
-1. The framework marks the entire tool definition with flags warning connected systems that mutation is occurring.
-2. The `DescriptionGenerator` appends a `⚠️ DESTRUCTIVE` warning. LLMs trained on safety data recognize this and automatically request user confirmation.
-
----
-
-## Self-Healing Errors
-
-Use `toolError()` to provide structured recovery instructions to LLM agents:
-
-```typescript
-import { toolError } from '@vinkius-core/mcp-fusion';
-
-handler: async (ctx, args) => {
-    const project = await db.findProject(args.id);
-    if (!project) {
-        return toolError('ProjectNotFound', {
-            message: `Project '${args.id}' does not exist.`,
-            suggestion: 'Call projects.list to see available projects.',
-            availableActions: ['projects.list'],
-        });
-    }
-    return success(project);
-}
-```
-
-The LLM receives a structured error with recovery hints:
-```xml
-<tool_error code="ProjectNotFound">
-<message>Project 'xyz' does not exist.</message>
-<recovery>Call projects.list to see available projects.</recovery>
-<available_actions>projects.list</available_actions>
-</tool_error>
-```
-
----
-
-## Streaming Progress
-
-For long-running operations, use generator handlers with `progress()`:
-
-```typescript
-import { progress, success } from '@vinkius-core/mcp-fusion';
-
-handler: async function* (ctx, args) {
-    yield progress(10, 'Cloning repository...');
-    await cloneRepo(args.url);
-    
-    yield progress(50, 'Installing dependencies...');
-    await installDeps();
-    
-    yield progress(90, 'Running tests...');
-    const results = await runTests();
-    
-    return success(results);
-}
-```
-
-Progress events are automatically forwarded to the MCP client as `notifications/progress` when the client includes a `progressToken` in its request metadata. **Zero configuration required** — the framework detects the token and wires the notifications transparently.
-
-| Internal Event | MCP Wire Format |
-|---|---|
-| `yield progress(50, 'Building...')` | `notifications/progress { progressToken, progress: 50, total: 100, message: 'Building...' }` |
-
-When no `progressToken` is present (the client didn't opt in), progress events are silently consumed — **zero overhead**.
-
----
-
-## MVA Integration — `returns: Presenter`
-
-Attach a [Presenter](/presenter) to any action with the `returns` field. When set, your handler returns **raw data** instead of `ToolResponse`. The framework pipes it through the Presenter automatically.
-
-::: code-group
-```typescript [f.tool() — Recommended ✨]
-import { initFusion } from '@vinkius-core/mcp-fusion';
-import { InvoicePresenter } from './presenters/InvoicePresenter';
-
-const f = initFusion<AppContext>();
-
-const getInvoice = f.tool({
-    name: 'billing.get',
-    description: 'Gets an invoice by ID',
-    input: z.object({ id: z.string() }),
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
-        // Raw data → Presenter validates, attaches rules, renders UI
+  .description('Manage tasks across the system')
+  .action({
+    name: 'list',
+    description: 'List all available tasks',
+    readOnly: true,
+    handler: async (ctx, args) => {
+      return success([{ id: 1, name: 'Setup repo' }]);
     },
-});
-```
-```typescript [defineTool]
-import { defineTool } from '@vinkius-core/mcp-fusion';
-import { InvoicePresenter } from './presenters/InvoicePresenter';
-
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get: {
-            readOnly: true,
-            params: { id: 'string' },
-            returns: InvoicePresenter,
-            handler: async (ctx, args) => {
-                return await ctx.db.invoices.findUnique({ where: { id: args.id } });
-            },
-        },
+  })
+  .action({
+    name: 'create',
+    description: 'Create a new task',
+    schema: z.object({
+      title: z.string().min(1).describe('The name of the task to create'),
+      priority: z.enum(['low', 'medium', 'high']).optional(),
+    }),
+    handler: async (ctx, args) => {
+      return success({ status: 'created', title: args.title });
     },
-});
+  });
 ```
-```typescript [createTool]
-import { createTool } from '@vinkius-core/mcp-fusion';
-import { InvoicePresenter } from './presenters/InvoicePresenter';
 
-const billing = createTool<AppContext>('billing')
-    .action({
-        name: 'get',
-        readOnly: true,
-        schema: z.object({ id: z.string() }),
-        returns: InvoicePresenter,
-        handler: async (ctx, args) => {
-            return await ctx.db.invoices.findUnique({ where: { id: args.id } });
-        },
-    });
-```
-:::
-
-> **See:** [Presenter →](/presenter) for the full configuration API.
+Zod `.describe()` strings are extracted and passed to the LLM as parameter descriptions — the agent knows what each field expects without reading external documentation. Handler arguments are inferred from the schema — no manual type casts.
 
 ---
 
-## Response Shortcuts
+## API Comparison {#comparison}
 
-For handlers that don't use a Presenter but need more than `success()`:
+All four APIs produce identical MCP tool definitions. The differences are ergonomic:
 
-```typescript
-import { response, ui } from '@vinkius-core/mcp-fusion';
+| | `f.tool()` | `createGroup()` | `defineTool()` | `createTool()` |
+|---|---|---|---|---|
+| **Style** | tRPC-style `{ input, ctx }` | Functional closure | Declarative config | Fluent builder |
+| **Generics** | Inherited from `initFusion` | Passed to factory | Per-call `<Context>` | Per-call `<Context>` |
+| **Input format** | Any Standard Schema | Any Standard Schema | JSON descriptors | Zod schemas |
+| **Auto `success()`** | Yes | No | No | No |
+| **Best for** | New projects, large teams | NPM packages, plugins | Quick prototyping | Complex Zod transforms |
 
-// Quick one-liner response
-return response.ok('Task created successfully');
-
-// Response with domain rules (no chaining needed)
-return response.withRules(invoiceData, [
-    'CRITICAL: amounts are in CENTS — divide by 100.',
-    'Use emojis: ✅ Paid, ⚠️ Pending.',
-]);
-
-// Full builder chain for maximum control
-return response(stats)
-    .uiBlock(ui.echarts(chartConfig))
-    .llmHint('Revenue in USD, not cents.')
-    .systemRules(['Always show % change vs. last month.'])
-    .build();
-```
+Start with `f.tool()`. Switch to `defineTool()` when you want zero Zod imports, `createTool()` when you need transforms/refines, or `createGroup()` when building distributable modules.
 
 ---
 
-## Next Steps
+## Where to Go Next {#next-steps}
 
-- [DX Guide →](/dx-guide) — `initFusion()`, `definePresenter()`, `autoDiscover()`, Standard Schema
-- [Presenter (MVA View) →](/presenter) — Domain-level Presenters for consistent agent perception
-- [Context & Dependency Injection →](/context)
-- [Middleware & Context Derivation →](/middleware)
-- [Hierarchical Routing →](/routing)
+- [Routing & Namespaces](/routing) — file-based routing, discriminators, hierarchical namespacing
+- [Tool Exposition](/tool-exposition) — flat vs. grouped MCP wire format
+- [Presenter Guide](/presenter) — control exactly what the agent sees
+- [Middleware](/middleware) — authentication, rate limiting, context derivation
+- [Error Handling](/error-handling) — error categories, recovery patterns, validation errors

@@ -1,18 +1,16 @@
-# Namespaces & Routing (Scaling)
+# Namespaces & Routing
 
-As your application grows, you will inevitably have dozens or hundreds of API routes you want to expose to your AI. 
+As your MCP server grows beyond a handful of tools, two problems appear. First, every tool definition consumes tokens in the agent's context window — 100 flat tools can burn thousands of tokens before the agent starts reasoning about the user's request. Second, the agent struggles to choose between semantically similar names like `user_preferences_update` and `system_preferences_update`.
 
-If you expose 100 individual flat tools to an LLM, two negative things happen:
-1. **Context Bloat:** You eat thousands of tokens of context space just sending instructions about the tools.
-2. **Semantic Hallucination:** The AI gets confused between `user_preferences_update` and `system_preferences_update`.
-
-**MCP Fusion** solves this through **Grouped Routing**, **Discriminators**, and **File-Based Auto-Discovery**.
+MCP Fusion solves both problems by separating how you _author_ tools from how the agent _discovers_ them. You organize tools as files in a directory tree. The framework maps that tree into MCP tool definitions with clear naming, discriminators, and shared schemas.
 
 ---
 
-## 0. File-Based Routing — `autoDiscover()` <Badge type="tip" text="NEW v2.7" />
+## File-Based Routing with `autoDiscover()` {#auto-discover}
 
-The simplest way to scale. Your file structure **becomes** your routing table.
+The manual pattern — importing every tool file and calling `registry.register()` — doesn't scale. With 30 tool files, you maintain a 30-line import list that breaks every time you add, rename, or delete a file.
+
+`autoDiscover()` scans a directory and registers all exported tools automatically:
 
 ```typescript
 import { initFusion, autoDiscover } from '@vinkius-core/mcp-fusion';
@@ -20,11 +18,12 @@ import { initFusion, autoDiscover } from '@vinkius-core/mcp-fusion';
 const f = initFusion<AppContext>();
 const registry = f.registry();
 
-// Scan src/tools/ and auto-register everything
 await autoDiscover(registry, './src/tools');
 ```
 
-```
+Your file structure becomes your routing table:
+
+```text
 src/tools/
 ├── billing/
 │   ├── get_invoice.ts  → billing.get_invoice
@@ -38,187 +37,183 @@ src/tools/
     └── dashboard.ts    → analytics.dashboard
 ```
 
-**Resolution chain:** Each file must export a tool — `default export` → named `tool` export → first `GroupedToolBuilder` export.
+Add a new file, export a tool from it — it's registered on the next server start. Delete a file — it's gone. No import lists to maintain.
+
+Each tool file needs to export a builder. `autoDiscover()` checks three things in order:
+
+1. **Default export** — `export default f.tool({ ... })`
+2. **Named `tool` export** — `export const tool = f.tool({ ... })`
+3. **Any exported builder** — any value with `.getName()` and `.buildToolDefinition()`
+
+Here's what a tool file looks like:
 
 ```typescript
 // src/tools/billing/pay.ts
-import { initFusion } from '@vinkius-core/mcp-fusion';
+import { f } from '../../fusion';
 import { z } from 'zod';
 
-const f = initFusion<AppContext>();
-
 export default f.tool({
-    name: 'billing.pay',
-    description: 'Process a payment',
-    input: z.object({ invoice_id: z.string(), amount: z.number() }),
-    handler: async ({ input, ctx }) => {
-        return await ctx.billing.charge(input.invoice_id, input.amount);
-    },
+  name: 'billing.pay',
+  description: 'Process a payment for an invoice',
+  input: z.object({ invoice_id: z.string(), amount: z.number() }),
+  handler: async ({ input, ctx }) => {
+    return await ctx.billing.charge(input.invoice_id, input.amount);
+  },
 });
 ```
 
 ::: tip HMR Dev Server
-Pair `autoDiscover()` with `createDevServer()` for hot-reload during development — edit a tool file and the LLM client picks up the change instantly. See the [DX Guide](/dx-guide#hmr-dev-server-createdevserver).
+Pair `autoDiscover()` with `createDevServer()` for hot-reload during development — edit a tool file and the LLM client picks up the change without restarting the server. See the [DX Guide](/dx-guide#hmr-dev-server-createdevserver).
 :::
 
 ---
 
-## 1. What is a Discriminator?
+## Discriminators {#discriminators}
 
-If you followed the [Building Tools](/building-tools) guide, you may have noticed that an `add` action and a `subtract` action were added to a single `calculator` tool.
-
-When Fusion compiled that tool, it created **one single endpoint** using an `enum` discriminator field.
+When a tool has multiple actions (e.g., `list`, `create`, `delete`), the framework compiles them behind a single MCP endpoint with an `enum` discriminator field. This is what the agent sees:
 
 ```jsonc
-// How the LLM views your tool:
 {
   "properties": {
-    // The model must choose which sub-tool to use!
-    "action": { "type": "string", "enum": ["add", "subtract"] }, 
-    "a": { "type": "number" },
+    "action": { "type": "string", "enum": ["list", "create", "delete"] },
+    "workspace_id": { "type": "string" },
+    "name": { "type": "string" }
   }
 }
 ```
 
-By default, Fusion uses `action` as the discriminator key. This approach forces the LLM to select an explicit path, severely minimizing hallucinations.
+The `action` field forces the agent to select an explicit path. Instead of guessing between `projects_list` and `projects_create`, the agent picks a value from a constrained enum — reducing routing ambiguity.
+
+By default, MCP Fusion uses `action` as the discriminator key. This happens automatically when you use `defineTool()` or `createTool()` with multiple actions. With `f.tool()`, each tool is already a single action, so discriminators only apply when you use [grouped exposition](/tool-exposition).
 
 ---
 
-## 2. Shared Common Schemas
+## Shared Schemas {#shared-schemas}
 
-Often, operations share common requirements. For example, if you are building a SaaS platform, practically every executed action requires a `workspaceId`.
+In a SaaS application, most operations need a `workspace_id`. Without shared schemas, you repeat the same field in every tool's input:
 
-Instead of repeating `workspaceId` in every specific Zod schema, Fusion provides shared parameters.
-
-::: code-group
-```typescript [f.tool() — Recommended ✨]
-const f = initFusion<void>();
-
-// Share schema via a common Zod base
-const base = z.object({ workspaceId: z.string().describe('The active SaaS Workspace ID') });
-
+```typescript
+// Without shared schemas — workspace_id repeated in every tool
+const listProjects = f.tool({
+  name: 'projects.list',
+  input: z.object({ workspace_id: z.string() }),
+  handler: async ({ input }) => { /* ... */ },
+});
 const createProject = f.tool({
-    name: 'projects.create',
-    description: 'Create a new project',
-    input: base.extend({ projectName: z.string() }),
-    handler: async ({ input }) => {
-        // input.workspaceId + input.projectName — both typed
-        return { created: true };
-    },
+  name: 'projects.create',
+  input: z.object({ workspace_id: z.string(), name: z.string() }),
+  handler: async ({ input }) => { /* ... */ },
 });
 ```
-```typescript [defineTool]
-const projects = defineTool<void>('projects', {
-    description: 'Project management tool',
-    shared: { workspaceId: 'string' },  // Injected into ALL actions
-    actions: {
-        create: {
-            params: { projectName: 'string' },
-            handler: async (ctx, args) => {
-                // args: { workspaceId: string, projectName: string }
-                return success('Created');
-            },
-        },
+
+With `defineTool()`, the `shared` field injects common parameters into every action:
+
+```typescript
+const projects = defineTool<AppContext>('projects', {
+  description: 'Manage workspace projects',
+  shared: { workspace_id: 'string' },
+  actions: {
+    list: {
+      readOnly: true,
+      handler: async (ctx, args) => {
+        // args.workspace_id is available — injected by shared
+        return success(await ctx.db.projects.findMany({ workspaceId: args.workspace_id }));
+      },
     },
+    create: {
+      params: { name: 'string' },
+      handler: async (ctx, args) => {
+        // args.workspace_id + args.name — both typed
+        return success(await ctx.db.projects.create({
+          workspaceId: args.workspace_id,
+          name: args.name,
+        }));
+      },
+    },
+  },
 });
 ```
-```typescript [createTool]
+
+The `workspace_id` field appears once in the compiled schema, not once per action. The agent sends it once per call, and every handler receives it. With `createTool()`, the equivalent is `.commonSchema()`:
+
+```typescript
 const projects = createTool<void>('projects')
-    .description('Project management tool')
-    .commonSchema(z.object({
-        workspaceId: z.string().describe('The active SaaS Workspace ID'),
-    }))
-    .action({
-        name: 'create',
-        schema: z.object({
-            projectName: z.string(),
-        }),
-        handler: async (ctx, args) => {
-            // args: { workspaceId: string, projectName: string }
-            return success('Created');
-        },
-    });
+  .commonSchema(z.object({
+    workspaceId: z.string().describe('The active SaaS workspace ID'),
+  }))
+  .action({ name: 'list', readOnly: true, handler: listProjects })
+  .action({
+    name: 'create',
+    schema: z.object({ name: z.string() }),
+    handler: createProject,
+  });
 ```
-:::
-When this schema hydrates, Fusion intelligently handles telling the LLM which field belongs to which endpoint.
 
 ---
 
-## 3. Hierarchical Routing (Namespaces)
+## Hierarchical Groups {#hierarchical}
 
-When dealing with a massive "Platform" API, having 50 flat actions inside the builder becomes messy. Fusion allows you to create **Hierarchical Namespaces** using groups.
+When a single domain (e.g., "platform admin") has 30+ actions, flat lists become unwieldy. Groups let you organize actions into namespaces, each with its own description and middleware:
 
-::: code-group
-```typescript [defineTool]
-import { defineTool, success } from '@vinkius-core/mcp-fusion';
-
-const platform = defineTool<void>('platform', {
-    description: 'Central API for the Platform',
-    shared: { workspaceId: 'string' },
-    groups: {
-        users: {
-            description: 'User management features',
-            actions: {
-                invite: {
-                    params: { email: 'string' },
-                    handler: async (ctx, args) => { /* ... */ },
-                },
-            },
+```typescript
+const platform = defineTool<AppContext>('platform', {
+  description: 'Central API for the Platform',
+  shared: { workspace_id: 'string' },
+  middleware: [authMiddleware],
+  groups: {
+    users: {
+      description: 'User management',
+      middleware: [requireAdmin],
+      actions: {
+        invite: {
+          params: { email: 'string' },
+          handler: async (ctx, args) => { /* ... */ },
         },
-        billing: {
-            description: 'Billing operations',
-            actions: {
-                refund: {
-                    params: { invoiceId: 'string' },
-                    handler: async (ctx, args) => { /* ... */ },
-                },
-            },
+        ban: {
+          destructive: true,
+          params: { user_id: 'string' },
+          handler: async (ctx, args) => { /* ... */ },
         },
+      },
     },
+    billing: {
+      description: 'Billing operations',
+      actions: {
+        refund: {
+          destructive: true,
+          params: { invoice_id: 'string' },
+          handler: async (ctx, args) => { /* ... */ },
+        },
+      },
+    },
+  },
 });
-// Actions become: users.invite | billing.refund
 ```
-```typescript [createTool]
-import { createTool, success } from '@vinkius-core/mcp-fusion';
 
-const platform = createTool<void>('platform')
-    .description('Central API for the Platform')
-    .commonSchema(z.object({ workspaceId: z.string() }))
-    
-    // Namespace A: Users
-    .group('users', 'User management features', g => {
-        g.action({
-            name: 'invite', // Deeply evaluated as -> users.invite
-            schema: z.object({ email: z.string() }),
-            handler: async (ctx, args) => { /* ... */ }
-        })
-    })
-
-    // Namespace B: Invoices
-    .group('billing', 'Billing operations', g => {
-        g.action({
-            name: 'refund', // Deeply evaluated as -> billing.refund
-            schema: z.object({ invoiceId: z.string() }),
-            handler: async (ctx, args) => { /* ... */ }
-        });
-    });
-```
-:::
-
-When you use groups, the discriminator value expected from the AI smoothly converts to a dot-notation payload (`users.invite` or `billing.refund`). 
-
-The LLM still only sees **ONE MCP Tool** named `platform` containing all routes. 
+The discriminator values become dot-notation paths: `users.invite`, `users.ban`, `billing.refund`. The agent still sees one MCP tool named `platform`, but the actions are namespaced. The `authMiddleware` runs for all actions; `requireAdmin` runs only for `users.*`.
 
 ::: warning Exclusive Mode
-To ensure internal type safety, you cannot mix `.action()` and `.group()` flatly on the exact same root builder. If a builder triggers `.group()`, it expects exclusively nested namespaces.
+You cannot mix `.action()` and `.group()` on the same root builder. Once you use `.group()`, all actions must live inside groups — this prevents namespace collisions at the type level.
 :::
 
 ---
 
-## 4. Tool Exposition — Wire Format Control
+## Tool Exposition {#exposition}
 
-By default, Fusion now **expands** all grouped actions into independent, flat MCP tools (e.g. `projects_list`, `projects_create`). This gives each action its own schema, annotations, and descriptions — improving privilege isolation and LLM routing accuracy.
+By default, MCP Fusion expands grouped actions into independent flat tools on the MCP wire — `projects.list` becomes `projects_list`, `projects.create` becomes `projects_create`. Each action gets its own schema, annotations, and description.
 
-To keep grouped behavior, set `toolExposition: 'grouped'` in `attachToServer()`.
+To keep grouped behavior (one MCP tool, discriminator enum), set `toolExposition: 'grouped'` in `attachToServer()`:
 
-📖 **[Read the full Tool Exposition Guide →](/tool-exposition)**
+```typescript
+registry.attachToServer(server, { toolExposition: 'grouped' });
+```
+
+The choice between flat and grouped affects how many tools the agent sees and how much schema information each carries. For the full comparison, decision guide, and wire-format examples, see the [Tool Exposition Guide](/tool-exposition).
+
+---
+
+## Where to Go Next {#next-steps}
+
+- [Tool Exposition](/tool-exposition) — flat vs. grouped wire format, token trade-offs, O(1) dispatch
+- [Building Tools](/building-tools) — `f.tool()`, `defineTool()`, `createTool()`, `createGroup()` in detail
+- [DX Guide](/dx-guide) — `autoDiscover()` options, `createDevServer()` HMR, JSON descriptors

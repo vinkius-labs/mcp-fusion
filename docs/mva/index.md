@@ -1,20 +1,12 @@
 # MVA Architecture
 
-<div class="mva-hub-header">
-
 > **Model-View-Agent** is not a variation of MVC. It is a new architectural pattern, purpose-built for the age of autonomous AI consumers.
-
-</div>
 
 Every software architecture in history assumes a human at the end of the pipeline. MVC renders HTML for browsers. MVVM binds state to visual components. REST exposes resources for mobile apps. All of them rely on a consumer that can **interpret ambiguity**, **navigate inconsistency**, and **apply domain knowledge** that the interface never provided.
 
 AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }`, it does not *know* it's cents. It does not *know* to divide by 100. It does not *know* that the next action is `billing.pay`. It guesses — and when it guesses wrong, it hallucinates.
 
 **MVA solves this by replacing the human-centric View with the Presenter** — a deterministic perception layer that tells the agent exactly what the data means, how to display it, and what to do next.
-
-::: info Attribution
-**MVA (Model-View-Agent)** was created by [Renato Marinho](https://github.com/renatomarinho) at [Vinkius Labs](https://github.com/vinkius-labs) and first implemented in [**MCP Fusion**](https://github.com/vinkius-labs/mcp-fusion). It is not a fork, extension, or "variation" of MVC — it is a fundamentally new architecture designed for a fundamentally new consumer class.
-:::
 
 ---
 
@@ -46,14 +38,12 @@ AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }
 | Layer | Role | Implemented As |
 |---|---|---|
 | **Model** | Defines the shape and constraints of domain data. Acts as a security boundary when using `.strict()` — only declared fields pass through. | `z.object({ ... }).strict()` |
-| **View (Presenter)** | Transforms raw data into a **Structured Perception Package** — data + rules + UI blocks + affordances + guardrails. Domain-level, not tool-level. | `createPresenter()` |
+| **View (Presenter)** | Transforms raw data into a **Structured Perception Package** — data + rules + UI blocks + affordances + guardrails. Domain-level, not tool-level. | `definePresenter()` / `createPresenter()` |
 | **Agent** | The autonomous consumer. Receives the perception package and acts deterministically based on the structured context it was given. | Any MCP-compatible LLM (Claude, GPT, Gemini series, or open-weight models) |
 
 ---
 
 ## The Core Thesis
-
-<div class="thesis-box">
 
 **An AI agent should never have to guess.**
 
@@ -65,8 +55,6 @@ Every piece of data should arrive with:
 5. **Cognitive limits** — bounded results with filter guidance
 
 When all five are present, the agent perceives the domain consistently. Hallucination risk is reduced at the architecture level, not patched at the prompt level.
-
-</div>
 
 ---
 
@@ -134,11 +122,7 @@ The handler returns **raw data**. The Presenter intercepts it in the execution p
 
 ## Start Reading
 
-<div class="next-steps">
-
-- [**The Theory Behind MVA →**](/mva/theory) — Why this architecture exists and what problem it solves at the deepest level
-- [**MVA vs MVC →**](/mva/mva-vs-mvc) — Formal paradigm comparison, layer by layer
-- [**The MVA Pattern →**](/mva-pattern) — The original overview (concise introduction)
-- [**Quickstart →**](/quickstart) — Build your first MVA tool in 5 minutes
-
-</div>
+- [The Theory Behind MVA](/mva/theory) — Why this architecture exists and what problem it solves
+- [MVA vs MVC](/mva/mva-vs-mvc) — Formal paradigm comparison, layer by layer
+- [The MVA Pattern](/mva-pattern) — The concise overview
+- [Quickstart](/quickstart) — Build your first MVA tool in 5 minutes

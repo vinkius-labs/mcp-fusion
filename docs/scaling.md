@@ -1,6 +1,6 @@
 # Scaling
 
-This document perfectly explains the technical mechanisms that allow **MCP Fusion** to support thousands of internal API endpoints without causing LLM hallucination or exceeding model token limits. Every claim maps to actual native framework behavior.
+This document explains the technical mechanisms that allow MCP Fusion to support thousands of internal API endpoints without causing LLM hallucination or exceeding model token limits.
 
 ---
 
@@ -116,7 +116,7 @@ update|Update project|id,data|
 delete|Delete project permanently|id|true
 ```
 
-Column names appear once as a header. Values are pipe-delimited. **There is no JSON key repetition per row.** This dramatically lowers the token density of complex API surfaces while retaining 100% of the semantic meaning for the LLM.
+Column names appear once as a header. Values are pipe-delimited. **There is no JSON key repetition per row.** This dramatically lowers the token density of complex API surfaces while preserving the semantic meaning for the LLM.
 
 ---
 

@@ -1,10 +1,6 @@
 # The Theory Behind MVA
 
-<div class="mva-manifesto-header">
-
 > Every software architecture in history was designed for a consumer that can tolerate ambiguity. AI agents cannot. MVA is an architecture designed for a consumer that **hallucinates when given incomplete context**.
-
-</div>
 
 ## The Consumer Has Changed
 
@@ -333,11 +329,7 @@ This is not speculative. Every company building "AI-native" features on top of e
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**MVA vs MVC →**](/mva/mva-vs-mvc) — Formal layer-by-layer comparison
-- [**Anatomy of the Presenter →**](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
-- [**Perception Package →**](/mva/perception-package) — What the agent actually receives
-- [**Quickstart →**](/quickstart) — Build your first MVA tool in 5 minutes
-
-</div>
+- [MVA vs MVC](/mva/mva-vs-mvc) — Formal layer-by-layer comparison
+- [Anatomy of the Presenter](/mva/presenter-anatomy) — The 6 responsibilities of the MVA View layer
+- [Perception Package](/mva/perception-package) — What the agent actually receives
+- [Quickstart](/quickstart) — Build your first MVA tool in 5 minutes

@@ -1,109 +1,132 @@
 # State & Context
 
-In realistic applications, your tool execution handlers need access to external states: database clients, active HTTP sessions, active user contexts, or logging architectures.
+Every tool handler needs access to external state — database clients, authenticated users, tenant info, loggers. MCP Fusion handles this via typed context injection: define your context type once and it flows through every tool, middleware, and Presenter.
 
-You should not rely on global variables for this. **MCP Fusion** handles this elegantly via typed context injection — define your context type once and it flows through every tool, middleware, and presenter.
+---
 
-## 1. Define Your Context
+## Define Your Context {#define}
 
 ::: code-group
 ```typescript [initFusion — Recommended ✨]
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// Define your context type ONCE — every f.tool(), f.middleware(), f.presenter() inherits it
 interface AppContext {
-    userId: string;
-    db: any; // e.g. PrismaClient, PostgresPool, etc.
+  userId: string;
+  db: PrismaClient;
 }
 
 const f = initFusion<AppContext>();
 
-// Context flows automatically — no generic annotations needed
 const tasks = f.tool({
-    name: 'tasks.list',
-    description: 'List user tasks',
-    input: z.object({}),
-    handler: async ({ input, ctx }) => {
-        // `ctx` is perfectly typed as `AppContext`
-        const myTasks = await ctx.db.tasks.findMany({
-            where: { ownerId: ctx.userId },
-        });
-        return myTasks; // auto-wrapped in success()
-    },
+  name: 'tasks.list',
+  input: z.object({}),
+  readOnly: true,
+  handler: async ({ input, ctx }) => {
+    // ctx is typed as AppContext — no generic annotations needed
+    return ctx.db.tasks.findMany({ where: { ownerId: ctx.userId } });
+  },
 });
 ```
 ```typescript [defineTool]
 import { defineTool, success } from '@vinkius-core/mcp-fusion';
 
 interface AppContext {
-    userId: string;
-    db: any; // e.g. PrismaClient, PostgresPool, etc.
+  userId: string;
+  db: PrismaClient;
 }
 
 const tasks = defineTool<AppContext>('tasks', {
-    description: 'Manage tasks',
-    actions: {
-        list: {
-            readOnly: true,
-            handler: async (ctx, args) => {
-                // `ctx` is perfectly typed as `AppContext`
-                const myTasks = await ctx.db.tasks.findMany({ 
-                    where: { ownerId: ctx.userId } 
-                });
-                return success(myTasks);
-            },
-        },
+  actions: {
+    list: {
+      readOnly: true,
+      handler: async (ctx, args) => {
+        return success(await ctx.db.tasks.findMany({ where: { ownerId: ctx.userId } }));
+      },
     },
+  },
 });
-```
-```typescript [createTool]
-import { createTool, success } from '@vinkius-core/mcp-fusion';
-
-interface AppContext {
-    userId: string;
-    db: any; // e.g. PrismaClient, PostgresPool, etc.
-}
-
-const tasks = createTool<AppContext>('tasks')
-    .description('Manage tasks')
-    .action({
-        name: 'list',
-        handler: async (ctx, args) => {
-            const myTasks = await ctx.db.tasks.findMany({ 
-                where: { ownerId: ctx.userId } 
-            });
-            return success(myTasks);
-        }
-    })
 ```
 :::
 
 ::: tip Why `initFusion`?
-With `initFusion<AppContext>()`, you define the context type **once**. Every `f.tool()`, `f.middleware()`, `f.prompt()`, and `f.presenter()` call inherits the context type automatically — zero generic annotations, zero type drift.
+With `initFusion<AppContext>()`, you define the context type **once**. Every `f.tool()`, `f.middleware()`, `f.prompt()`, and `f.presenter()` inherits it — zero generic annotations, zero type drift across files.
 :::
 
-## 2. Supply the Factory Context
+---
 
-When you attach your `ToolRegistry` to the official MCP server, you provide a `contextFactory` callback function. 
+## Supply the Context Factory {#factory}
 
-This hydration function will be executed **per-request** whenever a tool is invoked by the LLM client, guaranteeing your context is always perfectly fresh.
+When you attach your `ToolRegistry` to the MCP server, you provide a `contextFactory` callback. This function runs **on every tool invocation**, so the context is always fresh:
 
 ```typescript
-const registry = f.registry(); // or new ToolRegistry<AppContext>()
+const registry = f.registry();
 registry.register(tasks);
 
-// Attach to MCP SDK and supply the resolver
 registry.attachToServer(server, {
-    contextFactory: (extra) => {
-        // `extra` contains native MCP session metadata from the connection transport
-        
-        return {
-            userId: 'usr_12345',         // Assume we calculated this from headers
-            db: getDatabaseInstance(),   // Return active db connection
-        };
-    },
+  contextFactory: async (extra) => ({
+    userId: extra.session?.userId ?? 'anonymous',
+    db: getDatabaseInstance(),
+  }),
 });
 ```
 
-Because the Context is re-evaluated sequentially upon every invocation, it is perfectly safe to house dynamically renewing variables (such as refreshed oAuth API access tokens mapping to upstream services) safely.
+The `extra` parameter is the native MCP `RequestHandlerExtra` from the SDK. It contains transport-level metadata:
+
+| Property | Type | Description |
+|---|---|---|
+| `extra.session` | `object \| undefined` | Session data from SSE/WebSocket transports |
+| `extra.signal` | `AbortSignal` | Cancellation signal for the request |
+
+Because `contextFactory` is async and runs per-request, it's safe to resolve dynamically renewing values — refreshed OAuth tokens, database connection pools, per-tenant config lookups.
+
+---
+
+## Multi-Tenant Context {#multi-tenant}
+
+For multi-tenant applications, resolve the tenant in the context factory. Every handler downstream receives isolated tenant state:
+
+```typescript
+registry.attachToServer(server, {
+  contextFactory: async (extra) => {
+    const token = extra.session?.authToken;
+    const claims = await verifyJwt(token);
+    const tenant = await loadTenant(claims.tenantId);
+
+    return {
+      userId: claims.sub,
+      tenantId: claims.tenantId,
+      db: getTenantDatabase(tenant.databaseUrl),
+      permissions: claims.permissions,
+    };
+  },
+});
+```
+
+Handlers never see cross-tenant data — the `db` instance is scoped to the resolved tenant.
+
+---
+
+## Middleware Context Derivation {#middleware}
+
+Middleware can derive additional context properties. The returned object is merged into `ctx` for all downstream handlers:
+
+```typescript
+const requireAuth = f.middleware(async (ctx) => {
+  if (!ctx.userId || ctx.userId === 'anonymous') {
+    throw new Error('Authentication required');
+  }
+  const user = await ctx.db.users.findUnique({ where: { id: ctx.userId } });
+  return { role: user.role, email: user.email };
+});
+```
+
+After this middleware runs, handlers receive `ctx.role` and `ctx.email` in addition to the base `AppContext` properties. See [Middleware](/middleware) for composition patterns.
+
+---
+
+## Next Steps {#next-steps}
+
+- [Middleware](/middleware) — Context derivation, RBAC, composition
+- [Building Tools](/building-tools) — `f.tool()`, `defineTool()`, `createTool()`
+- [Enterprise Quickstart](/enterprise-quickstart) — Full multi-tenant example with JWT auth

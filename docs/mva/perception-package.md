@@ -1,10 +1,6 @@
 # The Structured Perception Package
 
-<div class="mva-manifesto-header">
-
 > In traditional architectures, a response is data. In MVA, a response is a **perception event** — a multi-layered package that tells the agent what the data is, what it means, how to display it, what to do next, and what the limits are.
-
-</div>
 
 When a tool handler returns raw data and a Presenter is attached, mcp-fusion's execution pipeline transforms that data into a **Structured Perception Package** — a multi-block MCP response where each block carries a specific semantic purpose. This page documents the exact structure, the block ordering, and why each layer exists.
 
@@ -310,11 +306,7 @@ This produces the same Structured Perception Package format — the Presenter ju
 
 ## Continue Reading
 
-<div class="next-steps">
-
-- [**Agentic Affordances →**](/mva/affordances) — Deep dive into the action suggestion system
-- [**Context Tree-Shaking →**](/mva/context-tree-shaking) — Why JIT rules beat global prompts
-- [**Cognitive Guardrails →**](/mva/cognitive-guardrails) — Truncation, validation, self-healing
-- [**Presenter API →**](/presenter) — Configuration reference for all Presenter methods
-
-</div>
+- [Agentic Affordances](/mva/affordances) — Deep dive into the action suggestion system
+- [Context Tree-Shaking](/mva/context-tree-shaking) — Why JIT rules beat global prompts
+- [Cognitive Guardrails](/mva/cognitive-guardrails) — Truncation, validation, self-healing
+- [Presenter API](/presenter) — Configuration reference for all Presenter methods

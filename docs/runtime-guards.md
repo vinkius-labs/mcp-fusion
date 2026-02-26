@@ -2,7 +2,7 @@
 
 <Badge type="tip" text="v1.8.0" />
 
-**MCP Fusion** implements two built-in runtime guards that fulfill the MCP specification requirement: *"Servers MUST rate limit tool invocations"*. These guards prevent cascading failures in production without requiring external infrastructure.
+MCP Fusion implements two built-in runtime guards that fulfill the MCP specification requirement: *"Servers MUST rate limit tool invocations"*. These guards prevent cascading failures in production without requiring external infrastructure.
 
 ## The Problem
 
@@ -11,7 +11,7 @@ AI agents create failure modes that don't exist in human-driven systems:
 | Failure Mode | Root Cause | Impact |
 |---|---|---|
 | **Thundering Herd** | LLM fires 50 `process_invoice` calls simultaneously | Stripe rate-limits your account for 24h |
-| **Context DDoS** | Handler returns `SELECT * FROM logs` (30MB) | Node.js OOM crash, $15 wasted per request |
+| **Context DDoS** | Handler returns `SELECT * FROM logs` (30MB) | Node.js OOM crash, wasted compute per request |
 | **Cascade Failure** | One slow downstream → all slots occupied → all tools blocked | Entire server becomes unresponsive |
 
 ## The Solution

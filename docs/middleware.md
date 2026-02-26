@@ -1,6 +1,6 @@
 # Middleware
 
-Middleware conceptually intercepts every action call before or after your route handler resolves. **MCP Fusion** supports three specific middleware scopes, pre-compiles chains entirely at build time, and perfectly composes them deeply right-to-left.
+Middleware intercepts every action call before or after your route handler resolves. MCP Fusion supports three middleware scopes and pre-compiles chains at build time.
 
 ---
 
@@ -247,9 +247,7 @@ Global MW 1 → Global MW 2 → Group MW 1 → Group MW 2 → Handler
 ```
 
 ::: info Why Pre-Compilation Matters
-Traditional Javascript middleware engines (like Express.js or Koa) compose execution arrays at request time—iterating arrays, constructing closures dynamically, and invoking sequentially on every single incoming ping.
-
-**MCP Fusion compiles completely at build time.**
+Instead of composing middleware arrays at request time, MCP Fusion compiles the full chain at build time:
 
 ```typescript
 // What the compiler builds internally:
@@ -260,7 +258,7 @@ const chain = (ctx, args) =>
         )
     );
 ```
-At runtime, the `.execute()` command runs one single exact `Map.get()`. There is zero iteration overhead and zero runtime array allocation. Your middleware chain runs exactly as fast as bare-metal nested functions.
+At runtime, `.execute()` runs a single `Map.get()` lookup and calls the pre-compiled function. No iteration overhead, no runtime array allocation.
 :::
 
 ---

@@ -130,7 +130,7 @@ for (const tool of n8n.tools()) {
 }
 ```
 
-**The impact:** The n8n workflow hits Salesforce and returns a 2MB JSON payload packed with internal IPs, password hashes, and debug tokens. Your Node.js server intercepts this **in RAM** — the Zod Presenter strips every sensitive key (PII Drop) — and the LLM receives only the 5KB of clean, shaped data. The 1.995MB of toxic bytes never cross a network boundary, never reach the AI, never leave your process. **Absolute data governance.**
+**The impact:** The n8n workflow hits Salesforce and returns a 2MB JSON payload packed with internal IPs, password hashes, and debug tokens. Your Node.js server intercepts this **in RAM** — the Zod Presenter strips every sensitive key (PII Drop) — and the LLM receives only the 5KB of clean, shaped data. The 1.995MB of toxic bytes never cross a network boundary, never reach the AI, never leave your process.
 
 ---
 
@@ -205,11 +205,9 @@ process.on('SIGTERM', () => { n8n.stop(); process.exit(0); });
 
 ## What You Deliver
 
-You deliver a **fiber-optic cable** between the low-code world (n8n) and the pro-code world (**MCP Fusion**).
+You deliver a bridge between the low-code world (n8n) and the pro-code world (MCP Fusion).
 
-The package resolves HTTP I/O, route discovery, state synchronization, and LLM semantics. But it returns **100% of the control** over Routing, Protocol, and Security (MVA) to the developer in `server.ts`.
-
-The perfect balance between the insane agility of low-code integrations and hardcore software engineering.
+The package resolves HTTP I/O, route discovery, state synchronization, and LLM semantics. But it returns full control over Routing, Protocol, and Security (MVA) to the developer in `server.ts`.
 
 ---
 

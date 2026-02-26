@@ -90,7 +90,7 @@ The `SemanticProbeAdapter` interface requires a single method:
 import type { SemanticProbeAdapter } from '@vinkius-core/mcp-fusion/introspection';
 
 const claudeAdapter: SemanticProbeAdapter = {
-    name: 'claude-3.5-sonnet',
+    name: 'claude-sonnet',
     async evaluate(prompt: string): Promise<string> {
         const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',

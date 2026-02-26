@@ -229,16 +229,14 @@ Without MVA:                          With MVA:
 |---|---|---|
 | **Lines of code per tool** | 20-50 (routing + validation + formatting) | 3-5 (handler only — framework handles the rest) |
 | **Security** | Hope you didn't forget to strip fields | Schema IS the boundary. `.strict()` rejects. Automatic. |
-| **Agent accuracy** | ~60-70% on complex tasks | ~95%+ with deterministic rules and affordances |
+| **Agent accuracy** | Degrades with ambiguous context | Deterministic rules and affordances reduce guesswork |
 | **Token cost per call** | High (raw dumps, large payloads) | Low (guardrails, TOON encoding, truncation) |
 | **Maintenance** | Every tool re-implements rendering | Presenter defined once, reused across all tools |
 
 ---
 
-<div class="next-steps">
+## Next Steps
 
-- [**The MVA Pattern →**](/mva-pattern) — The full architectural theory
-- [**Presenter Deep Dive →**](/presenter) — Schema, rules, UI, affordances
-- [**Cookbook & Examples →**](/examples) — 14 copy-pasteable patterns
-
-</div>
+- [The MVA Pattern](/mva-pattern) — The full architectural theory
+- [Presenter Deep Dive](/presenter) — Schema, rules, UI, affordances
+- [Cookbook & Examples](/examples) — Copy-pasteable patterns

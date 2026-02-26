@@ -1,6 +1,6 @@
 # FusionClient
 
-**MCP Fusion** provides a **tRPC-style type-safe client** for calling MCP tools with full autocomplete and compile-time argument validation. Define your router type once on the server, and every client call is fully typed — wrong action names or missing arguments are caught at build time.
+MCP Fusion provides a tRPC-style type-safe client for calling MCP tools with full autocomplete and compile-time argument validation. Define your router type once on the server, and every client call is fully typed — wrong action names or missing arguments are caught at build time.
 
 ---
 
@@ -119,7 +119,7 @@ const client = createFusionClient<AppRouter>(transport);
 // ✅ Full autocomplete — TypeScript knows every valid action
 const result = await client.execute('projects.create', {
     workspace_id: 'ws_1',
-    name: 'Vinkius V2',
+    name: 'Project V2',
 });
 
 // ❌ TS Error: 'projects.nonexistent' is not a valid action
