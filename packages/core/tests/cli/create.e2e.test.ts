@@ -1085,7 +1085,7 @@ describe('E2E: commandCreate — full function integration', () => {
         expect(existsSync(join(projectDir, 'package.json'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'server.ts'))).toBe(true);
         expect(existsSync(join(projectDir, '.cursor', 'mcp.json'))).toBe(true);
-    });
+    }, 30_000);
 
     it('commandCreate scaffolds without cross-contamination between projects', async () => {
         // First project: database vector

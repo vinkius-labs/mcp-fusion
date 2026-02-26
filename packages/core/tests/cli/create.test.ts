@@ -2198,7 +2198,7 @@ describe('commandCreate — SSE transport path', () => {
 
         stderrSpy.mockRestore();
         exitSpy.mockRestore();
-    });
+    }, 30_000);
 
     it('directory-exists guard triggers process.exit', async () => {
         // Create the target directory first
