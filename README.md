@@ -36,9 +36,9 @@ Every wrong guess costs you a full retry—burning input tokens, output tokens, 
 
 ---
 
-### The Paradigm Shift: Model-View-Agent (MVA)
+### Model-View-Agent (MVA)
 
-**MCP Fusion** is a rigorous TypeScript framework that elevates Model Context Protocol (MCP) to an Enterprise Engineering discipline. It introduces the **Model-View-Agent (MVA)** paradigm, giving LLMs their first dedicated Presentation Layer.
+**MCP Fusion** is a rigorous TypeScript framework that elevates Model Context Protocol (MCP) to an Enterprise Engineering discipline. It introduces the **Model-View-Agent (MVA)** architecture, providing LLMs with a dedicated Presentation Layer.
 
 You don't just wrap the MCP protocol; you govern the agent.
 
@@ -669,7 +669,7 @@ handler: async function* (ctx, args) {
 
 ### Testing — Deterministic AI Governance
 
-The only AI framework where PII protection is **code-assertable** and **SOC2-auditable in CI/CD**:
+PII protection is **code-assertable** and **SOC2-auditable in CI/CD**:
 
 ```typescript
 import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';

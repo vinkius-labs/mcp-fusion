@@ -65,7 +65,7 @@ Pair `autoDiscover()` with `createDevServer()` for hot-reload during development
 
 ## 1. What is a Discriminator?
 
-If you followed the [Building Tools](/building-tools) guide, you might have noticed we added an `add` action and a `subtract` action to a single `calculator` tool.
+If you followed the [Building Tools](/building-tools) guide, you may have noticed that an `add` action and a `subtract` action were added to a single `calculator` tool.
 
 When Fusion compiled that tool, it created **one single endpoint** using an `enum` discriminator field.
 

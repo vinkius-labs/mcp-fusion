@@ -160,7 +160,7 @@ const InvoicePresenter = createPresenter('Invoice')
 
 `null` values are automatically filtered. Rules only appear when relevant.
 
-**Why this matters:** In traditional MCP servers, domain rules live in a global system prompt. The agent receives invoice formatting rules when it's working on tasks. Sprint velocity formulas when it's listing users. This is **Context Pollution** — irrelevant rules waste tokens and can cause misapplication errors. MVA's JIT approach sends rules only when the corresponding domain is active. We call this **Context Tree-Shaking**.
+**Why this matters:** In traditional MCP servers, domain rules live in a global system prompt. The agent receives invoice formatting rules when it's working on tasks. Sprint velocity formulas when it's listing users. This is **Context Pollution** — irrelevant rules waste tokens and can cause misapplication errors. MVA's JIT approach sends rules only when the corresponding domain is active — a pattern called **Context Tree-Shaking**.
 
 ---
 

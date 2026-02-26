@@ -37,13 +37,14 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
 - **Tool Exposition**: Compile-time topology compiler — choose flat (one tool per action) or grouped (one tool per builder with discriminator enum) at attach time. Same handlers, different wire format.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
-- **initFusion()**: tRPC-style context initialization — define context once, every f.tool/f.presenter/f.prompt inherits it
-- **definePresenter()**: Declarative object-config API replacing the fluent builder, with auto-rules from Zod `.describe()`
 - **createGroup()**: Functional closure-based tool groups — pre-composed middleware, frozen by default, minifies 30-40% better
 - **autoDiscover()**: File-based routing — scan directory, auto-register tools from file structure
 - **createDevServer()**: HMR dev server — file changes reload tools, sends MCP notifications/tools/list_changed
 - **Standard Schema**: Decouple from Zod — `autoValidator()` supports Valibot, ArkType, TypeBox via Standard Schema v1
 - **Subpath Exports**: Tree-shakeable imports — `mcp-fusion/client`, `/ui`, `/presenter`, `/schema`, `/dev`, `/prompt`
+- **Governance Stack**: 8-module introspection layer — ToolContract materialization, ContractDiff, BehaviorDigest (SHA-256), CapabilityLockfile (`mcp-fusion.lock`), CryptoAttestation (HMAC-SHA-256), TokenEconomics profiling, EntitlementScanner (blast radius), SemanticProbe (LLM-as-Judge)
+- **GovernanceObserver**: Observability bridge — wraps governance operations with DebugEvent emission and optional OTel tracing spans
+- **CLI**: `fusion lock` / `fusion lock --check` — generate, update, and CI-gate the capability lockfile
 
 ## Quick Start — initFusion() (Recommended)
 
@@ -853,7 +854,13 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 
 ### Observability
 - `createDebugObserver(options?)` → Observer for runtime debugging
-- Event types: tool:start, tool:end, tool:error, middleware:start, middleware:end
+- Event types: route, validate, middleware, execute, error, governance
+- `GovernanceEvent` — { type: 'governance', operation: GovernanceOperation, label: string, outcome: 'ok' | 'fail', detail?: string, durationMs: number, timestamp: number }
+- `GovernanceOperation` — `'contract.compile' | 'contract.diff' | 'digest.compute' | 'lockfile.generate' | 'lockfile.check' | 'lockfile.write' | 'lockfile.read' | 'attestation.sign' | 'attestation.verify' | 'entitlement.scan' | 'token.profile'`
+- `createGovernanceObserver(config)` → GovernanceObserver — wraps governance operations with debug events and optional tracing spans
+- `createNoopObserver()` → GovernanceObserver — zero-overhead passthrough
+- `GovernanceObserverConfig` — { debug?: DebugObserverFn, tracer?: FusionTracer }
+- `GovernanceObserver` — .observe(operation, label, fn), .observeAsync(operation, label, fn)
 
 ### Tracing (OpenTelemetry-Compatible)
 - `FusionTracer` / `FusionSpan` — structural subtyping interfaces matching OpenTelemetry (no `@opentelemetry/api` dependency)
@@ -888,6 +895,95 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `PromptContentBlock` — PromptTextContent | PromptImageContent | PromptAudioContent | PromptResourceContent
 - `PromptBuilder<TContext>` — DIP interface: .name, .getDefinition(), .handleGet(), .tags
 - `PromptConfig<TContext>` — { title?, description?, args?, tags?, middleware?, hydrationTimeout?, handler }
+
+### Governance (from '@vinkius-core/mcp-fusion/introspection')
+
+8-module governance stack for deterministic contract auditing, behavioral fingerprinting, and CI/CD lockfile gating.
+
+#### Tool Contracts — Schema Materialization
+- `materializeContract<TContext>(builder, options?)` → ToolContract — extracts the complete behavioral surface (schema, entitlements, guardrails, token profile)
+- `compileContracts<TContext>(builders)` → ToolContract[] — batch materialization for all registered builders
+- `ToolContract` — { tool, surface, behavior, cognitiveGuardrails, tokenProfile, handlerEntitlements, integrityDigest }
+- `ToolSurface` — { actions: ActionContract[], commonFields: string[], discriminator: string }
+- `ActionContract` — { name, description, destructive, readOnly, idempotent, requiredFields, optionalFields, presenterName? }
+- `ToolBehavior` — { hasMiddleware, middlewareCount, hasConcurrencyLimit, concurrencyConfig?, hasEgressGuard, egressMaxBytes?, tags, annotations }
+- `CognitiveGuardrailsContract` — { hasAgentLimit, agentLimitMax?, hasSystemRules, hasDynamicRules, hasUiBlocks, hasSuggestActions }
+- `TokenEconomicsProfile` — { estimatedTokens, fieldBreakdown: FieldTokenEstimate[], risk: TokenRisk }
+- `HandlerEntitlements` — { filesystem, network, subprocess, crypto }
+
+#### Contract Diffing — Structural Change Detection
+- `diffContracts(before, after)` → ContractDiffResult — semantic diff between two contract snapshots
+- `formatDiffReport(result)` → string — human-readable diff report
+- `formatDeltasAsXml(deltas)` → string — XML-encoded diff for agent consumption (injection-safe)
+- `ContractDelta` — { path, severity, category, before?, after?, description }
+- `DeltaSeverity` — `'BREAKING' | 'RISKY' | 'SAFE' | 'COSMETIC'`
+- `DeltaCategory` — `'schema' | 'behavior' | 'security' | 'guardrails' | 'performance' | 'entitlements' | 'tool-lifecycle'`
+
+#### Behavioral Fingerprinting — SHA-256 Digests
+- `computeDigest(contract)` → BehaviorDigestResult — deterministic SHA-256 fingerprint of a tool's behavioral surface
+- `computeServerDigest(contracts)` → ServerDigest — aggregate digest over all tool contracts
+- `compareServerDigests(a, b)` → DigestComparison — compares two server snapshots for drift detection
+- `BehaviorDigestResult` — { digest: string, components: DigestComponents }
+- `ServerDigest` — { digest: string, toolCount: number, contracts: BehaviorDigestResult[] }
+- `DigestComparison` — { match: boolean, added: string[], removed: string[], changed: string[] }
+
+#### Capability Lockfile — Git-Diffable CI Gate
+- `generateLockfile(options)` → CapabilityLockfile — generates a complete lockfile from registry + prompts
+- `serializeLockfile(lockfile)` → string — deterministic JSON serialization
+- `parseLockfile(content)` → CapabilityLockfile | null — safe deserialization
+- `checkLockfile(current, stored)` → LockfileCheckResult — structural comparison with diff details
+- `writeLockfile(lockfile, dir?)` → void — writes `mcp-fusion.lock` to disk
+- `readLockfile(dir?)` → CapabilityLockfile | null — reads lockfile from disk
+- `LOCKFILE_NAME` — `'mcp-fusion.lock'`
+- `CapabilityLockfile` — { version, generatedAt, serverDigest, capabilities: LockfileCapabilities }
+- `LockfileCapabilities` — { tools: LockfileTool[], prompts: LockfilePrompt[] }
+- `LockfileTool` — { name, surface: LockfileToolSurface, behavior: LockfileToolBehavior, tokenEconomics: LockfileTokenEconomics, entitlements: LockfileEntitlements }
+- `LockfileCheckResult` — { upToDate: boolean, differences: string[], newDigest: string, storedDigest: string }
+
+#### Zero-Trust Runtime — Cryptographic Attestation
+- `createHmacSigner(secret)` → AttestationSigner — HMAC-SHA-256 signer for server digests
+- `attestServerDigest(digest, signer)` → AttestationResult — sign a digest with timestamp and nonce
+- `verifyAttestation(result, signer)` → boolean — verify attestation signature
+- `verifyCapabilityPin(attestation, knownDigest)` → boolean — verify against a pinned digest
+- `buildTrustCapability(attestation)` → FusionTrustCapability — MCP capability payload for trust negotiation
+- `AttestationError` — thrown on verification failures
+- `ZeroTrustConfig` — { signer, digest, attestation }
+- `AttestationResult` — { digest, signature, timestamp, nonce }
+
+#### Token Economics — Cost Profiling
+- `estimateTokens(text)` → number — approximate token count (GPT-4 heuristic: chars/4)
+- `profileBlock(block)` → BlockTokenProfile — token profile for a single response block
+- `profileResponse(response, config?)` → TokenAnalysis — full response token analysis
+- `computeStaticProfile(contract)` → StaticTokenProfile — static token estimate from contract schema
+- `aggregateProfiles(profiles)` → ServerTokenSummary — server-wide token economics summary
+- `TokenAnalysis` — { estimatedTokens, fieldBreakdown, risk, blocks }
+- `TokenRisk` — `'low' | 'medium' | 'high' | 'critical'`
+
+#### Entitlement Scanner — Blast Radius Analysis
+- `scanSource(source)` → EntitlementMatch[] — static analysis of handler source for capability usage (fs, net, subprocess, crypto)
+- `buildEntitlements(matches)` → HandlerEntitlements — aggregate matches into entitlement categories
+- `validateClaims(report, claims)` → EntitlementViolation[] — verify declared entitlements match actual usage
+- `scanAndValidate(source, claims)` → { report, violations } — combined scan + validate
+- `EntitlementCategory` — `'filesystem' | 'network' | 'subprocess' | 'crypto'`
+
+#### Semantic Probing — LLM-as-Judge Drift Detection
+- `createProbe(config)` → SemanticProbe — creates a semantic probe for contract comparison via LLM
+- `buildJudgePrompt(probe)` → string — generates the LLM judge prompt
+- `parseJudgeResponse(response)` → SemanticProbeResult — parses the judge's response
+- `evaluateProbe(probe, adapter)` → SemanticProbeResult — end-to-end probe evaluation
+- `evaluateProbes(probes, adapter)` → SemanticProbeReport — batch evaluation with aggregate scoring
+- `aggregateResults(results)` → SemanticProbeReport — aggregate probe results
+- `DriftLevel` — `'none' | 'low' | 'medium' | 'high'`
+
+#### Contract-Aware Self-Healing
+- `enrichValidationError(error, contract)` → SelfHealingResult — enriches validation errors with contract context for agent self-correction
+- `createToolEnhancer(contracts)` → function — creates a contract-aware error enhancer for the pipeline
+
+### CLI — `fusion lock`
+- `fusion lock [--server <entrypoint>] [--name <serverName>]` — generate or update `mcp-fusion.lock`
+- `fusion lock --check [--server <entrypoint>]` — verify lockfile matches current server (CI gate, exits 0 or 1)
+- Progress output with timing per step (Composer/Yarn-style status icons)
+- Auto-discovers registry + prompts from server entrypoint via ESM dynamic import
 
 ### Testing (from '@vinkius-core/mcp-fusion-testing')
 - `createFusionTester<TContext>(registry, options)` → FusionTester — in-memory MVA lifecycle emulator

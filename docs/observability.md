@@ -395,19 +395,139 @@ const summary = {
 
 ---
 
+## Governance Observability
+
+The [Capability Governance](/governance/) stack integrates with the debug observer system. Governance operations — lockfile generation, contract diffing, attestation signing — emit structured `GovernanceEvent` objects through the same `DebugObserverFn` pipeline.
+
+### GovernanceEvent
+
+Emitted during governance operations (lockfile, diffing, attestation, entitlement scanning, token profiling).
+
+```typescript
+{
+    type: 'governance',
+    operation: 'lockfile.generate',
+    label: 'Generate lockfile for payments-api',
+    outcome: 'success',           // 'success' | 'failure'
+    detail: '12 tools, 3 prompts',
+    durationMs: 4.2,
+    timestamp: 1740195418000
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `'governance'` | Discriminator |
+| `operation` | `GovernanceOperation` | One of 11 operation kinds (see below) |
+| `label` | `string` | Human-readable description of the operation |
+| `outcome` | `'success' \| 'failure'` | Whether the operation completed or threw |
+| `detail` | `string?` | Optional context (e.g., error message on failure) |
+| `durationMs` | `number` | Wall-clock duration of the operation |
+| `timestamp` | `number` | Unix epoch (ms) |
+
+### GovernanceOperation
+
+```typescript
+type GovernanceOperation =
+    | 'contract.compile'    // Materialize ToolContract from builders
+    | 'contract.diff'       // Semantic diff between two contracts
+    | 'digest.compute'      // SHA-256 behavioral fingerprint
+    | 'lockfile.generate'   // Generate mcp-fusion.lock
+    | 'lockfile.check'      // Verify lockfile against live contracts
+    | 'lockfile.write'      // Write lockfile to disk
+    | 'lockfile.read'       // Read lockfile from disk
+    | 'attestation.sign'    // Cryptographic signing
+    | 'attestation.verify'  // Signature verification
+    | 'entitlement.scan'    // Static entitlement analysis
+    | 'token.profile';      // Token economics profiling
+```
+
+### Default Console Output
+
+When a governance event flows through the default `createDebugObserver()`, it produces:
+
+```
+[mcp-fusion] gov  lockfile.generate ✓ Generate lockfile for payments-api  4.2ms
+[mcp-fusion] gov  attestation.sign  ✓ Sign server digest                 1.1ms
+[mcp-fusion] gov  lockfile.check    ✗ Surface drift detected             0.8ms
+```
+
+### GovernanceObserver Bridge
+
+`createGovernanceObserver()` wraps governance operations with both debug events and OpenTelemetry-compatible tracing spans:
+
+```typescript
+import {
+    createGovernanceObserver,
+    createNoopObserver,
+} from '@vinkius-core/mcp-fusion/introspection';
+import { createDebugObserver } from '@vinkius-core/mcp-fusion/observability';
+
+// With debug events
+const observer = createGovernanceObserver({
+    debug: createDebugObserver(),
+});
+
+// With both debug events and tracing spans
+const observer = createGovernanceObserver({
+    debug: createDebugObserver(),
+    tracer: myOtelTracer,
+});
+
+// Zero-overhead passthrough (when observability is not configured)
+const noop = createNoopObserver();
+```
+
+#### Usage
+
+The observer wraps synchronous or asynchronous governance operations:
+
+```typescript
+// Synchronous
+const lockfile = observer.observe(
+    'lockfile.generate',
+    'Generate lockfile for payments-api',
+    () => generateLockfile('payments-api', contracts, version),
+);
+
+// Asynchronous
+const attestation = await observer.observeAsync(
+    'attestation.sign',
+    'Sign server digest',
+    () => attestServerDigest(digest, signer),
+);
+```
+
+Each call emits a `GovernanceEvent` to the debug observer and (if configured) creates a tracing span named `mcp.governance.<operation>`. On failure, the span records the exception and sets status to `ERROR`.
+
+#### GovernanceObserver API
+
+| Type | Description |
+|---|---|
+| `GovernanceObserverConfig` | `{ debug?: DebugObserverFn, tracer?: FusionTracer }` |
+| `GovernanceObserver` | Observer instance with `observe()` and `observeAsync()` methods |
+| `createGovernanceObserver(config)` | Factory — creates an observer that emits events and spans |
+| `createNoopObserver()` | Factory — zero-overhead passthrough, no events emitted |
+
+---
+
 ## API Reference
 
 ### Types
 
 | Type | Description |
 |---|---|
-| `DebugEvent` | Discriminated union: `RouteEvent \| ValidateEvent \| MiddlewareEvent \| ExecuteEvent \| ErrorEvent` |
+| `DebugEvent` | Discriminated union: `RouteEvent \| ValidateEvent \| MiddlewareEvent \| ExecuteEvent \| ErrorEvent \| GovernanceEvent` |
 | `DebugObserverFn` | `(event: DebugEvent) => void` — the observer function signature |
 | `RouteEvent` | `{ type: 'route', tool, action, timestamp }` |
 | `ValidateEvent` | `{ type: 'validate', tool, action, valid, error?, durationMs, timestamp }` |
 | `MiddlewareEvent` | `{ type: 'middleware', tool, action, chainLength, timestamp }` |
 | `ExecuteEvent` | `{ type: 'execute', tool, action, durationMs, isError, timestamp }` |
 | `ErrorEvent` | `{ type: 'error', tool, action, error, step, timestamp }` |
+| `GovernanceEvent` | `{ type: 'governance', operation, label, outcome, detail?, durationMs, timestamp }` |
+| `GovernanceOperation` | Union of 11 governance operation identifiers |
+| `GovernanceObserver` | Observer interface: `observe<T>(op, label, fn)`, `observeAsync<T>(op, label, fn)` |
+| `GovernanceObserverConfig` | `{ debug?: DebugObserverFn, tracer?: FusionTracer }` |
 
 ### Functions
 
@@ -415,6 +535,8 @@ const summary = {
 |---|---|
 | `createDebugObserver()` | Factory — returns a `DebugObserverFn` with default console output |
 | `createDebugObserver(handler)` | Factory — returns the custom handler directly |
+| `createGovernanceObserver(config)` | Factory — wraps governance ops with debug events + tracing spans |
+| `createNoopObserver()` | Factory — zero-overhead passthrough for production without observability |
 
 ### Builder Methods
 

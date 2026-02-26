@@ -15,7 +15,7 @@ const pages: Record<string, PageSEO> = {
   // ═══════════════════════════════════════════════════════
   'index.md': {
     title: 'mcp-fusion — The MVA Framework for MCP Servers',
-    description: 'The first framework where AI agents perceive, understand, and act on your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.',
+    description: 'A TypeScript framework with a Structured Perception Layer for AI agents. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.',
     faqs: [
       { q: 'What is mcp-fusion?', a: 'mcp-fusion is a TypeScript framework for the Model Context Protocol (MCP) that introduces the MVA (Model-View-Agent) architectural pattern. It replaces raw JSON responses with structured perception packages — validated data, domain rules, server-rendered charts, and explicit action affordances — so AI agents perceive and act on data deterministically instead of guessing.' },
       { q: 'What is MVA (Model-View-Agent)?', a: 'MVA is a new architectural pattern created by Renato Marinho at Vinkius Labs. It replaces MVC\'s human-centric View with a Presenter — an agent-centric perception layer. The Model validates with Zod, the Presenter adds domain rules, UI blocks, affordances, and guardrails, and the Agent (LLM) consumes structured output to act deterministically.' },

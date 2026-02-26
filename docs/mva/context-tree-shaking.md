@@ -2,7 +2,7 @@
 
 <div class="mva-manifesto-header">
 
-> In traditional MCP servers, domain rules live in a global system prompt — sent on every turn, regardless of relevance. In MVA, rules travel **with the data** — appearing in the agent's context only when their domain is active. We call this **Context Tree-Shaking**.
+> In traditional MCP servers, domain rules live in a global system prompt — sent on every turn, regardless of relevance. In MVA, rules travel **with the data** — appearing in the agent's context only when their domain is active. This pattern is called **Context Tree-Shaking**.
 
 </div>
 
@@ -49,7 +49,7 @@ At 100,000 calls/day:
 
 ### Problem 2: Misapplication
 
-When the agent sees invoice rules while working on tasks, it may accidentally apply those rules to the wrong domain. We've observed:
+When the agent sees invoice rules while working on tasks, it may accidentally apply those rules to the wrong domain. Observed failure modes include:
 
 - Sprint velocity displayed as currency (`$23.5` instead of `23.5 points/sprint`)
 - Task counts divided by 100 (the agent applied the "divide by 100" invoice rule to task data)

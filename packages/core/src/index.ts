@@ -101,6 +101,7 @@ export { createDebugObserver, SpanStatusCode } from './observability/index.js';
 export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
+    GovernanceEvent, GovernanceOperation,
     FusionSpan, FusionTracer, FusionAttributeValue,
 } from './observability/index.js';
 
@@ -161,3 +162,162 @@ export type {
 export { MVA_META_SYMBOL } from './testing/MvaMetaSymbol.js';
 /** @category Testing */
 export type { MvaMeta } from './testing/MvaMetaSymbol.js';
+
+// ── Governance (Contract + Attestation + Probing) ────────
+/** @category Governance */
+export {
+    materializeContract,
+    compileContracts,
+    sha256,
+    canonicalize,
+} from './introspection/ToolContract.js';
+/** @category Governance */
+export type {
+    ToolContract,
+    ToolSurface,
+    ActionContract,
+    ToolBehavior,
+    CognitiveGuardrailsContract,
+    TokenEconomicsProfile,
+    HandlerEntitlements,
+} from './introspection/ToolContract.js';
+/** @category Governance */
+export {
+    diffContracts,
+    formatDiffReport,
+    formatDeltasAsXml,
+} from './introspection/ContractDiff.js';
+/** @category Governance */
+export type {
+    ContractDelta,
+    ContractDiffResult,
+    DeltaSeverity,
+    DeltaCategory,
+} from './introspection/ContractDiff.js';
+/** @category Governance */
+export {
+    computeDigest,
+    computeServerDigest,
+    compareServerDigests,
+} from './introspection/BehaviorDigest.js';
+/** @category Governance */
+export type {
+    BehaviorDigestResult,
+    DigestComponents,
+    ServerDigest,
+    DigestComparison,
+} from './introspection/BehaviorDigest.js';
+// ── Capability Lockfile ──────────────────────────────────
+/** @category Governance */
+export {
+    generateLockfile,
+    serializeLockfile,
+    checkLockfile,
+    parseLockfile,
+    writeLockfile,
+    readLockfile,
+    LOCKFILE_NAME,
+} from './introspection/CapabilityLockfile.js';
+/** @category Governance */
+export type {
+    CapabilityLockfile,
+    LockfileCapabilities,
+    LockfileTool,
+    LockfileToolSurface,
+    LockfileToolBehavior,
+    LockfileTokenEconomics,
+    LockfileEntitlements,
+    LockfileCheckResult,
+    LockfilePrompt,
+    LockfilePromptArgument,
+    PromptBuilderLike,
+    GenerateLockfileOptions,
+} from './introspection/CapabilityLockfile.js';
+/** @category Governance */
+export {
+    createHmacSigner,
+    attestServerDigest,
+    verifyAttestation,
+    verifyCapabilityPin,
+    buildTrustCapability,
+    AttestationError,
+} from './introspection/CryptoAttestation.js';
+/** @category Governance */
+export type {
+    ZeroTrustConfig,
+    AttestationSigner,
+    AttestationResult,
+    FusionTrustCapability,
+} from './introspection/CryptoAttestation.js';
+/** @category Governance */
+export {
+    estimateTokens,
+    profileBlock,
+    profileResponse,
+    computeStaticProfile,
+    aggregateProfiles,
+} from './introspection/TokenEconomics.js';
+/** @category Governance */
+export type {
+    TokenAnalysis,
+    BlockTokenProfile,
+    TokenRisk,
+    TokenThresholds,
+    TokenEconomicsConfig,
+    StaticTokenProfile,
+    FieldTokenEstimate,
+    ServerTokenSummary,
+} from './introspection/TokenEconomics.js';
+/** @category Governance */
+export {
+    scanSource,
+    buildEntitlements,
+    validateClaims,
+    scanAndValidate,
+} from './introspection/EntitlementScanner.js';
+/** @category Governance */
+export type {
+    EntitlementReport,
+    EntitlementMatch,
+    EntitlementViolation,
+    EntitlementCategory,
+    EntitlementClaims,
+} from './introspection/EntitlementScanner.js';
+/** @category Governance */
+export {
+    createProbe,
+    buildJudgePrompt,
+    parseJudgeResponse,
+    evaluateProbe,
+    evaluateProbes,
+    aggregateResults,
+} from './introspection/SemanticProbe.js';
+/** @category Governance */
+export type {
+    SemanticProbeConfig,
+    SemanticProbeAdapter,
+    SemanticProbe,
+    SemanticProbeResult,
+    DriftLevel,
+    SemanticProbeReport,
+} from './introspection/SemanticProbe.js';
+/** @category Governance */
+export {
+    enrichValidationError,
+    createToolEnhancer,
+} from './introspection/ContractAwareSelfHealing.js';
+/** @category Governance */
+export type {
+    SelfHealingConfig,
+    SelfHealingResult,
+} from './introspection/ContractAwareSelfHealing.js';
+/** @category Governance */
+export {
+    createGovernanceObserver,
+    createNoopObserver,
+} from './introspection/GovernanceObserver.js';
+/** @category Governance */
+export type {
+    GovernanceObserverConfig,
+    GovernanceObserver,
+} from './introspection/GovernanceObserver.js';

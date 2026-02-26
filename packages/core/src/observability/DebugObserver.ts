@@ -106,6 +106,46 @@ export interface ErrorEvent {
     readonly timestamp: number;
 }
 
+// ── Governance Events ────────────────────────────────────
+
+/**
+ * Emitted during governance operations (contract materialization,
+ * lockfile generation, integrity verification, attestation).
+ *
+ * Connects the introspection/governance modules to observability,
+ * enabling debug logging and telemetry for CI/CD pipeline steps.
+ */
+export interface GovernanceEvent {
+    readonly type: 'governance';
+    /** Which governance operation ran */
+    readonly operation: GovernanceOperation;
+    /** Human-readable label */
+    readonly label: string;
+    /** Outcome of the operation */
+    readonly outcome: 'success' | 'failure' | 'drift';
+    /** Optional details (e.g. "3 tools compiled", "lockfile stale") */
+    readonly detail?: string;
+    /** Milliseconds spent in this operation */
+    readonly durationMs: number;
+    readonly timestamp: number;
+}
+
+/**
+ * Named governance operations that emit debug/tracing events.
+ */
+export type GovernanceOperation =
+    | 'contract.compile'
+    | 'contract.diff'
+    | 'digest.compute'
+    | 'lockfile.generate'
+    | 'lockfile.check'
+    | 'lockfile.write'
+    | 'lockfile.read'
+    | 'attestation.sign'
+    | 'attestation.verify'
+    | 'entitlement.scan'
+    | 'token.profile';
+
 /**
  * Union of all debug event types.
  *
@@ -127,7 +167,8 @@ export type DebugEvent =
     | ValidateEvent
     | MiddlewareEvent
     | ExecuteEvent
-    | ErrorEvent;
+    | ErrorEvent
+    | GovernanceEvent;
 
 /**
  * Observer function that receives debug events.
@@ -172,7 +213,16 @@ export function createDebugObserver(handler?: DebugObserverFn): DebugObserverFn 
 
     return (event: DebugEvent): void => {
         const prefix = '[mcp-fusion]';
-        const path = 'action' in event && event.action
+
+        // GovernanceEvent has no tool/action — handle separately
+        if (event.type === 'governance') {
+            const outcomeIcon = event.outcome === 'success' ? '✓' : event.outcome === 'drift' ? '⚠' : '✗';
+            const detail = event.detail ? ` ${event.detail}` : '';
+            console.debug(`${prefix} gov       ${event.operation} ${outcomeIcon}${detail} ${event.durationMs.toFixed(1)}ms`);
+            return;
+        }
+
+        const path = event.action
             ? `${event.tool}/${event.action}`
             : event.tool;
 

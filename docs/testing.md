@@ -5,8 +5,8 @@ description: "The end of Vibes-Based Testing. Audit every MVA layer in CI/CD —
 
 # Testing
 
-::: danger The Only Framework Where PII Protection is Code-Assertable
-**MCP Fusion** is the only solution in the market where sensitive data protection (PII Drop) can be **asserted in code** and **formally audited in CI/CD**:
+::: danger PII Protection as Code-Assertable Invariants
+**MCP Fusion** enables sensitive data protection (PII Drop) to be **asserted in code** and **formally audited in CI/CD**:
 
 ```typescript
 // This is not a hope. This is not a visual check. This is a mathematical proof.
@@ -46,9 +46,9 @@ MCP responses are flat `ToolResponse` objects — an array of `{ type: 'text', t
 
 That's fragile, format-dependent, and breaks every time the response format evolves. It's not testable. It's not auditable. It's not engineering.
 
-### The Paradigm Shift: Deterministic MVA Auditing
+### Deterministic MVA Auditing
 
-**MCP Fusion** introduces `@vinkius-core/mcp-fusion-testing` — the first and only framework capable of **mathematically auditing AI Data Governance (SOC2)** in a CI/CD pipeline.
+**MCP Fusion** provides `@vinkius-core/mcp-fusion-testing` — a testing framework for **deterministic AI Data Governance auditing (SOC2)** in a CI/CD pipeline.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -203,7 +203,7 @@ response[Symbol.for('mcp-fusion.mva-meta')] = {
 
 **No XML regex. No string parsing. No pipeline reimplementation.**
 
-The FusionTester calls `ToolRegistry.routeCall()` — the same function your production server uses. If we reimplemented the pipeline, tests would pass in the tester but fail in production. Full fidelity means:
+The FusionTester calls `ToolRegistry.routeCall()` — the same function your production server uses. A reimplemented pipeline would allow tests to pass in the tester but fail in production. Full fidelity means:
 
 - ✅ Zod input validation
 - ✅ Compiled middleware chain

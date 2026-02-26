@@ -9,6 +9,7 @@ export { createDebugObserver } from './DebugObserver.js';
 export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
+    GovernanceEvent, GovernanceOperation,
 } from './DebugObserver.js';
 
 // ── Tracing (OpenTelemetry-compatible) ───────────────────

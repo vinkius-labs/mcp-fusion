@@ -628,11 +628,32 @@ Discriminated union of all pipeline events. Use `event.type` for exhaustive hand
 
 | Event Type | Fields | When Emitted |
 |---|---|---|
-| `route` | `tool, action, timestamp` | First event — incoming call matched |
+| `route` | `tool, action, timestamp` | Incoming call matched to a tool and action |
 | `validate` | `tool, action, valid, error?, durationMs, timestamp` | After Zod validation |
 | `middleware` | `tool, action, chainLength, timestamp` | Before middleware chain (only if middleware exists) |
 | `execute` | `tool, action, durationMs, isError, timestamp` | After handler completes |
 | `error` | `tool, action, error, step, timestamp` | On unrecoverable pipeline errors |
+| `governance` | `operation, label, outcome, detail?, durationMs, timestamp` | During governance operations (lockfile, attestation, diffing) |
+
+### `GovernanceOperation`
+
+Union of governance operation identifiers: `contract.compile`, `contract.diff`, `digest.compute`, `lockfile.generate`, `lockfile.check`, `lockfile.write`, `lockfile.read`, `attestation.sign`, `attestation.verify`, `entitlement.scan`, `token.profile`.
+
+### `createGovernanceObserver(config)`
+
+Creates an observer bridge that wraps governance operations with debug events and optional tracing spans:
+
+```typescript
+import { createGovernanceObserver, createNoopObserver } from '@vinkius-core/mcp-fusion/introspection';
+
+const observer = createGovernanceObserver({ debug: createDebugObserver() });
+const noop = createNoopObserver(); // zero-overhead passthrough
+```
+
+| Config Field | Type | Description |
+|---|---|---|
+| `debug` | `DebugObserverFn?` | Debug observer for structured event emission |
+| `tracer` | `FusionTracer?` | OpenTelemetry-compatible tracer for span creation |
 
 ### Builder `.debug(observer)`
 

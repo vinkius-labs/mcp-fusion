@@ -12,17 +12,15 @@
 This page is the MVA overview — a concise introduction to the pattern. For the complete architectural reference, visit the **[MVA Architecture Section →](/mva/)** with 7 in-depth guides covering theory, formal paradigm comparison, presenter anatomy, perception packages, agentic affordances, context tree-shaking, and cognitive guardrails.
 :::
 
-## Why We Created MVA
+## Why MVA Exists
 
 For four decades, **Model-View-Controller** has been the unquestioned standard for interactive software. It works — for humans. Humans can interpret ambiguous data, navigate inconsistent interfaces, and tolerate presentation errors. They bring domain knowledge that the View never had to provide.
 
 **AI agents cannot do any of this.** They need deterministic structure, domain-scoped instructions, and explicit affordances — or they hallucinate. MVC was never designed for this consumer.
 
-We looked at every MCP server in the ecosystem. They all share the same fatal flaw: **they dump raw JSON and hope the AI figures it out.** No domain rules. No action guidance. No security boundary. No perception layer.
+A survey of existing MCP servers reveals a common structural gap: **raw JSON is returned without domain rules, action guidance, security boundaries, or a perception layer.** The agent is left to infer context from field names alone.
 
-So we built one.
-
-**MVA replaces the human-centric View with the Presenter** — an agent-centric perception layer that tells the AI exactly how to interpret, display, and act on domain data. This is not a feature. This is a new architectural paradigm.
+**MVA replaces the human-centric View with the Presenter** — an agent-centric perception layer that tells the AI exactly how to interpret, display, and act on domain data. This is not a feature — it is a distinct architectural paradigm.
 
 ::: info Created by Renato Marinho · Vinkius Labs
 **MVA (Model-View-Agent)** is an original architectural pattern designed by [Renato Marinho](https://github.com/renatomarinho) and implemented at [Vinkius Labs](https://github.com/vinkius-labs). First introduced in **mcp-fusion**, it represents the foundational architecture for building scalable Agentic APIs where the AI consumer is treated as a first-class citizen — not as a dumb HTTP client.

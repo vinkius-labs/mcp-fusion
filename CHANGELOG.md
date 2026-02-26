@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-02-26
+
+### 🛡️ Governance Stack — Deterministic Contract Auditing, Behavioral Fingerprinting & CI Lockfile Gating
+
+8-module governance layer for compile-time and runtime introspection of MCP server behavioral surfaces. Addresses gaps in contract auditability, drift detection, blast-radius analysis, and token cost profiling — originally identified by [@jordanstarrk](https://github.com/jordanstarrk).
+
+### Added
+
+- **Tool Contract Materialization**
+  - `materializeContract(builder)` → `ToolContract` — extracts the full behavioral surface: schema, entitlements, cognitive guardrails, token economics, and SHA-256 integrity digest
+  - `compileContracts(builders)` → `ToolContract[]` — batch materialization for all registered builders
+  - `ToolContract`, `ToolSurface`, `ActionContract`, `ToolBehavior`, `CognitiveGuardrailsContract`, `TokenEconomicsProfile`, `HandlerEntitlements` types
+
+- **Contract Diffing**
+  - `diffContracts(before, after)` → `ContractDiffResult` — semantic structural diff with severity classification (`BREAKING`, `RISKY`, `SAFE`, `COSMETIC`)
+  - `formatDiffReport(result)` → human-readable diff report
+  - `formatDeltasAsXml(deltas)` → injection-safe XML for agent consumption
+  - 7 delta categories: `schema`, `behavior`, `security`, `guardrails`, `performance`, `entitlements`, `tool-lifecycle`
+
+- **Behavioral Fingerprinting (SHA-256)**
+  - `computeDigest(contract)` → `BehaviorDigestResult` — deterministic behavioral fingerprint via canonicalized JSON + SHA-256
+  - `computeServerDigest(contracts)` → `ServerDigest` — aggregate server-wide digest
+  - `compareServerDigests(a, b)` → `DigestComparison` — drift detection with added/removed/changed tool lists
+
+- **Capability Lockfile (`mcp-fusion.lock`)**
+  - `generateLockfile(options)` — captures tools, prompts, digests, entitlements, token economics in a git-diffable JSON lockfile
+  - `checkLockfile(current, stored)` → `LockfileCheckResult` — structural comparison with detailed diff messages
+  - `writeLockfile()` / `readLockfile()` / `parseLockfile()` / `serializeLockfile()` — full I/O lifecycle
+  - Prompt lockfile support: argument schemas, tags, hydration timeout
+
+- **Zero-Trust Cryptographic Attestation**
+  - `createHmacSigner(secret)` → HMAC-SHA-256 signer
+  - `attestServerDigest(digest, signer)` → `AttestationResult` — signed digest with timestamp + nonce
+  - `verifyAttestation()` / `verifyCapabilityPin()` — signature and digest pin verification
+  - `buildTrustCapability()` → MCP capability payload for trust negotiation
+  - `AttestationError` class for verification failures
+
+- **Token Economics Profiling**
+  - `estimateTokens(text)` — GPT-4 heuristic token estimation
+  - `profileResponse(response)` → `TokenAnalysis` — per-block token breakdown with risk classification
+  - `computeStaticProfile(contract)` → `StaticTokenProfile` — schema-level cost estimate
+  - `aggregateProfiles()` → `ServerTokenSummary` — server-wide token economics
+
+- **Entitlement Scanner (Blast Radius)**
+  - `scanSource(source)` — static analysis detecting filesystem, network, subprocess, and crypto API usage in handler source
+  - `buildEntitlements(matches)` → `HandlerEntitlements` — aggregate into entitlement categories
+  - `validateClaims(report, claims)` → `EntitlementViolation[]` — verify declared vs. actual capabilities
+  - `scanAndValidate()` — combined scan + validation
+
+- **Semantic Probing (LLM-as-Judge)**
+  - `createProbe(config)` → `SemanticProbe` — contract-based semantic drift probes
+  - `buildJudgePrompt()` / `parseJudgeResponse()` — LLM judge prompt generation and response parsing
+  - `evaluateProbe()` / `evaluateProbes()` → batch evaluation with aggregate scoring
+  - `DriftLevel` — `'none' | 'low' | 'medium' | 'high'`
+
+- **Contract-Aware Self-Healing**
+  - `enrichValidationError(error, contract)` — enriches validation errors with contract context for improved agent self-correction
+  - `createToolEnhancer(contracts)` — pipeline-level error enhancer factory
+
+- **Governance Observer (Observability Bridge)**
+  - `createGovernanceObserver(config)` — wraps governance operations with `DebugEvent` emission (`type: 'governance'`) and optional OTel tracing spans
+  - `createNoopObserver()` — zero-overhead passthrough for production
+  - `GovernanceEvent` added to the `DebugEvent` discriminated union — `{ type: 'governance', operation, label, outcome, detail?, durationMs, timestamp }`
+  - `GovernanceOperation` — 11 operation identifiers: `contract.compile`, `contract.diff`, `digest.compute`, `lockfile.generate`, `lockfile.check`, `lockfile.write`, `lockfile.read`, `attestation.sign`, `attestation.verify`, `entitlement.scan`, `token.profile`
+
+- **CLI — `fusion lock`**
+  - `fusion lock [--server <entrypoint>] [--name <serverName>]` — generate or update `mcp-fusion.lock`
+  - `fusion lock --check [--server <entrypoint>]` — verify lockfile matches current server (CI gate, exits 0 or 1)
+  - Composer/Yarn-style progress output with step timing and status icons
+  - `bin.fusion` added to `package.json` — `npx fusion lock` works out of the box
+
+### Fixed
+
+- **[SECURITY] XML injection via `formatDeltasAsXml()`** — delta `description`, `path`, `before`, and `after` fields are now XML-escaped before interpolation into `<delta>` elements, preventing injection of arbitrary XML via crafted contract values
+
+### Documentation
+
+- **7 governance documentation pages** — `docs/governance/` section with index, contract-diffing, blast-radius, lockfile, observability integration, and cross-references
+- **Observability docs updated** — `GovernanceEvent`, `GovernanceOperation`, `GovernanceObserver` API reference added to `docs/observability.md` and `docs/api-reference.md`
+- **Documentation tone review** — all marketing/superlative language removed across 12+ files; replaced with technical, factual phrasing throughout
+
+### Test Suite
+
+- **428 new governance tests** across 8 test files:
+  - `ToolContract.test.ts` — contract materialization, schema extraction, entitlements, guardrails
+  - `ContractDiff.test.ts` — structural diffing, severity classification, XML output
+  - `BehaviorDigest.test.ts` — SHA-256 fingerprinting, server digest comparison
+  - `CapabilityLockfile.test.ts` — lockfile generation, serialization, checking, prompt support
+  - `CryptoAttestation.test.ts` — HMAC signing, attestation verification, capability pin
+  - `TokenEconomics.test.ts` — token estimation, response profiling, risk classification
+  - `EntitlementScanner.test.ts` — source scanning, entitlement validation, blast radius
+  - `GovernanceRobust.test.ts` — 150 enterprise E2E tests covering cross-module integration, edge cases, security invariants
+  - `FusionCLI.test.ts` — 27 CLI tests (argument parsing, progress tracking, error handling)
+- All **2587 tests** passing across 109 test files — zero regressions
+
 ## [2.7.0] - 2026-02-25
 
 ### 🚀 DX Overhaul — Zero-Friction APIs, Functional Core, Standard Schema

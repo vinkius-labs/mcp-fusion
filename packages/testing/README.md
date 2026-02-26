@@ -426,7 +426,7 @@ response[Symbol.for('mcp-fusion.mva-meta')] = {
 
 ### Why not reimplement the pipeline?
 
-The tester calls `ToolRegistry.routeCall()` — the same function your production server uses. If we reimplemented the pipeline, tests would pass in the tester but fail in production. Full fidelity means:
+The tester calls `ToolRegistry.routeCall()` — the same function your production server uses. A reimplemented pipeline would allow tests to pass in the tester but fail in production. Full fidelity means:
 
 - ✅ Concurrency semaphore limits
 - ✅ Mutation serialization

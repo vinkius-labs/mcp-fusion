@@ -175,7 +175,7 @@ const getInvoice = f.tool({
 <!-- ═══ Section 2.7: Three Core Problems ═══ -->
 <div class="ms-problems">
 <div class="ms-problems-header">
-<div class="ms-label">WHAT WE SOLVE</div>
+<div class="ms-label">PROBLEM SPACE</div>
 <h2 class="ms-headline">Three problems.<br>Framework-level solutions.</h2>
 <p class="ms-sub">Every claim below maps to real code in the repository. Not a roadmap. Not a promise.</p>
 </div>
@@ -288,7 +288,7 @@ const InvoicePresenter = definePresenter({
 <div class="ms-authority">
 <div class="ms-authority-left">
 <div class="ms-label">TECHNICAL AUTHORITY</div>
-<h2 class="ms-headline">What we<br>built.</h2>
+<h2 class="ms-headline">Architecture<br>overview.</h2>
 <p class="ms-sub">Every capability designed for autonomous AI agents operating over the Model Context Protocol.</p>
 </div>
 <div class="ms-grid">

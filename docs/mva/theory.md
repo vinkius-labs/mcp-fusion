@@ -47,7 +47,7 @@ The agent receives data without interpretation rules.
 { "id": "INV-001", "amount_cents": 45000, "status": "pending" }
 ```
 
-The field `amount_cents` is named with a hint — but LLMs don't reliably parse field-name conventions. In production, we observe:
+The field `amount_cents` is named with a hint — but LLMs don't reliably parse field-name conventions. In production, observed failure modes include:
 
 - `45000` displayed as `$45,000` instead of `$450.00`
 - Currency assumed to be EUR when it's USD
@@ -306,7 +306,7 @@ RPC provides typed function calls with schema validation.
 
 ## The Convergence Hypothesis
 
-We believe the future of software architecture is **dual-interface**: products will need both MVC (for human consumers) and MVA (for agent consumers), often serving the same domain model.
+The trajectory of software architecture points toward **dual-interface** systems: products will need both MVC (for human consumers) and MVA (for agent consumers), often serving the same domain model.
 
 ```text
                         ┌─────────────────────┐

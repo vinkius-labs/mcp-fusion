@@ -11,7 +11,7 @@ export default defineConfig({
   head: [
     // ── Open Graph ──
     ['meta', { property: 'og:title', content: 'mcp-fusion — The MVA Framework for MCP Servers' }],
-    ['meta', { property: 'og:description', content: 'The first framework with a Structured Perception Layer for your data — not guess. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
+    ['meta', { property: 'og:description', content: 'A TypeScript framework with a Structured Perception Layer for AI agents. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:url', content: 'https://mcp-fusion.vinkius.com/' }],
     ['meta', { property: 'og:site_name', content: 'mcp-fusion' }],
@@ -177,6 +177,24 @@ export default defineConfig({
           { text: 'Introspection', link: '/introspection' },
           { text: 'Scaling & Optimization', link: '/scaling' },
           { text: 'Performance', link: '/performance' },
+        ]
+      },
+
+      // ── Capability Governance ─────────────────────────────
+      {
+        text: 'Capability Governance',
+        collapsed: true,
+        items: [
+          { text: 'Overview', link: '/governance/' },
+          { text: 'Capability Lockfile', link: '/governance/capability-lockfile' },
+          { text: 'Surface Integrity', link: '/governance/surface-integrity' },
+          { text: 'Contract Diffing', link: '/governance/contract-diffing' },
+          { text: 'Zero-Trust Attestation', link: '/governance/zero-trust-attestation' },
+          { text: 'Blast Radius Analysis', link: '/governance/blast-radius' },
+          { text: 'Token Economics', link: '/governance/token-economics' },
+          { text: 'Semantic Probing', link: '/governance/semantic-probe' },
+          { text: 'Self-Healing Context', link: '/governance/self-healing' },
+          { text: 'CLI Reference', link: '/governance/cli' },
         ]
       },
 

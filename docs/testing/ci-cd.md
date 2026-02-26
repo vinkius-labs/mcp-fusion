@@ -5,7 +5,7 @@ description: "GitHub Actions, GitLab CI, and Azure Pipelines — deterministic A
 
 # CI/CD Integration
 
-The FusionTester runs entirely in RAM with **zero external dependencies**. No LLM API keys. No servers. No network. This makes it the first AI governance tool that fits natively into any CI/CD pipeline.
+The FusionTester runs entirely in RAM with **zero external dependencies**. No LLM API keys. No servers. No network. It integrates natively into any CI/CD pipeline without external services.
 
 ## GitHub Actions
 

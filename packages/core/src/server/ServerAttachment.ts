@@ -25,6 +25,10 @@ import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
 import { type StateSyncConfig } from '../state-sync/types.js';
 import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
+import { type ZeroTrustConfig, AttestationError } from '../introspection/CryptoAttestation.js';
+import { type SelfHealingConfig } from '../introspection/ContractAwareSelfHealing.js';
+import { compileContracts } from '../introspection/ToolContract.js';
+import { computeServerDigest } from '../introspection/BehaviorDigest.js';
 import { type ToolExposition } from '../exposition/types.js';
 import { compileExposition, type FlatRoute, type ExpositionResult } from '../exposition/ExpositionCompiler.js';
 import { type PromptRegistry, type PromptFilter } from '../prompt/PromptRegistry.js';
@@ -251,6 +255,51 @@ export interface AttachOptions<TContext> {
      * @see {@link definePrompt} for creating prompts
      */
     prompts?: PromptRegistry<TContext>;
+
+    // ── Zero-Trust Runtime ───────────────────────────────
+
+    /**
+     * Enable Zero-Trust runtime verification for behavioral contracts.
+     *
+     * When configured, the framework:
+     * 1. Materializes ToolContracts from all registered builders
+     * 2. Computes a server-level behavioral digest
+     * 3. Optionally verifies against a known-good digest (capability pinning)
+     * 4. Exposes the trust capability via MCP server metadata
+     *
+     * Zero overhead when omitted — no cryptographic operations run.
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     zeroTrust: {
+     *         signer: 'hmac',
+     *         secret: process.env.FUSION_SIGNING_SECRET,
+     *         expectedDigest: process.env.FUSION_EXPECTED_DIGEST,
+     *         failOnMismatch: process.env.NODE_ENV === 'production',
+     *     },
+     * });
+     * ```
+     *
+     * @see {@link ZeroTrustConfig} for configuration options
+     */
+    zeroTrust?: ZeroTrustConfig;
+
+    // ── Self-Healing Context ─────────────────────────────
+
+    /**
+     * Enable contract-aware self-healing for validation errors.
+     *
+     * When configured, Zod validation errors are enriched with
+     * contract change context, helping the LLM self-correct
+     * when the tool's behavioral contract has changed.
+     *
+     * Zero overhead when omitted or when no contract deltas exist.
+     *
+     * @see {@link SelfHealingConfig} for configuration options
+     */
+    selfHealing?: SelfHealingConfig;
 }
 
 /** Function to detach the registry from the server */
@@ -500,7 +549,7 @@ export function attachToServer<TContext>(
         filter, contextFactory, debug, tracing, stateSync,
         introspection, serverName,
         toolExposition = 'flat', actionSeparator = '_',
-        prompts,
+        prompts, zeroTrust,
     } = options;
 
     // 1. Propagate observability to all registered builders
@@ -518,6 +567,31 @@ export function attachToServer<TContext>(
             { values: () => registry.getBuilders() },
             contextFactory,
         );
+    }
+
+    // 3b. Zero-Trust: compile contracts, compute digest, verify attestation
+    //     Zero overhead when not configured — no crypto operations run.
+    if (zeroTrust) {
+        const contracts = compileContracts(registry.getBuilders());
+        const serverDigest = computeServerDigest(contracts);
+
+        // Synchronous digest comparison (no signer needed for pinning)
+        if (zeroTrust.expectedDigest && serverDigest.digest !== zeroTrust.expectedDigest) {
+            if (zeroTrust.failOnMismatch ?? true) {
+                throw new AttestationError(
+                    `[MCP Fusion] Zero-Trust attestation failed: computed digest ${serverDigest.digest} does not match expected ${zeroTrust.expectedDigest}`,
+                    {
+                        valid: false,
+                        computedDigest: serverDigest.digest,
+                        expectedDigest: zeroTrust.expectedDigest,
+                        signature: null,
+                        signerName: typeof zeroTrust.signer === 'string' ? zeroTrust.signer : zeroTrust.signer.name,
+                        attestedAt: new Date().toISOString(),
+                        error: `Digest mismatch: ${serverDigest.digest} !== ${zeroTrust.expectedDigest}`,
+                    },
+                );
+            }
+        }
     }
 
     // 4. Build handler context (shared state for all handler factories)

@@ -158,13 +158,13 @@ No guessing. Undeclared fields rejected. Domain rules scoped. Next actions data-
 
 </div>
 
-We believe cost and hallucination are not separate problems — they are **two symptoms of the same root cause**: too many tokens flowing through the LLM context window, and too many requests being made because the agent didn't get what it needed the first time.
+Cost and hallucination are not separate problems — they are **two symptoms of the same root cause**: too many tokens flowing through the LLM context window, and too many requests being made because the agent did not receive adequate context on the initial call.
 
-Every design decision in **MCP Fusion** is guided by this principle. This page documents the mechanisms we've implemented so far to attack both sides of the equation.
+Every design decision in **MCP Fusion** is guided by this principle. This page documents the mechanisms implemented to address both sides of the equation.
 
 ---
 
-## The Problem We're Solving
+## Problem Statement
 
 Every interaction with an LLM has a direct cost:
 
@@ -184,13 +184,13 @@ But the **hidden cost** — the one that multiplies everything — comes from re
 | **Stale Data** | Agent uses cached results after mutation | Wrong answer → user notices → re-call |
 | **Context DDoS** | Thousands of rows returned unbounded | Massive token bill + context overflow |
 
-Each retry is a full round-trip: input tokens + output tokens + latency + API cost. Our goal is to reduce these retries as close to zero as practical.
+Each retry is a full round-trip: input tokens + output tokens + latency + API cost. The goal is to reduce these retries as close to zero as practical.
 
 ---
 
-## Our Approach: 8 Mechanisms
+## Approach: 8 Mechanisms
 
-We attack cost and hallucination through eight interconnected mechanisms. Each maps directly to code in the repository.
+The framework attacks cost and hallucination through eight interconnected mechanisms. Each maps directly to code in the repository.
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -217,7 +217,7 @@ We attack cost and hallucination through eight interconnected mechanisms. Each m
 
 **The problem:** Standard MCP servers create one tool per operation. 50 tools = 50 JSON schemas injected into the LLM's system prompt. The context window fills with schema metadata before the agent even sees the user's question.
 
-**Our approach:**
+**Implementation:**
 
 Operations are grouped behind a single tool with a discriminator enum. The schema surface area shrinks significantly:
 
@@ -241,7 +241,7 @@ Under the hood, `SchemaGenerator.ts` compiles all actions into **one** `inputSch
 annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`);
 ```
 
-**What we're aiming for:**
+**Target metrics:**
 
 | Metric | Without Consolidation | With Consolidation |
 |---|---|---|
@@ -255,7 +255,7 @@ annotateField(properties, key, `Required for: ${tracking.requiredIn.join(', ')}`
 
 **The problem:** Tool descriptions and responses use verbose JSON, spending tokens on structural characters (`{`, `}`, `"`, `:`) that carry no semantic information.
 
-**Our approach:**
+**Implementation:**
 
 TOON (Token-Oriented Object Notation) replaces JSON structure with compact pipe-delimited tabular data — both in tool descriptions and in response payloads:
 
@@ -281,7 +281,7 @@ export function toonSuccess(data: unknown, options?: EncodeOptions): ToolRespons
 }
 ```
 
-Based on our testing, TOON achieves roughly **40-50% token reduction** over equivalent JSON for tabular data (source: `toonSuccess()` JSDoc). The savings compound across every call in a conversation.
+Based on internal benchmarks, TOON achieves roughly **40-50% token reduction** over equivalent JSON for tabular data (source: `toonSuccess()` JSDoc). The savings compound across every call in a conversation.
 
 ---
 
@@ -289,7 +289,7 @@ Based on our testing, TOON achieves roughly **40-50% token reduction** over equi
 
 **The problem:** LLMs frequently invent parameter names. Without strict validation, these ghost fields can leak into handlers, causing silent bugs or unexpected behavior.
 
-**Our approach:**
+**Implementation:**
 
 Every action's Zod schema is compiled with `.strict()` at build time. Undeclared fields are **explicitly rejected** with an actionable error telling the LLM exactly which fields are invalid:
 
@@ -319,7 +319,7 @@ const result = validationSchema.safeParse(argsWithoutDiscriminator);
 
 **The problem:** When validation fails, a generic error like `"Validation failed: email: Invalid"` gives the LLM no guidance on what format is expected. The agent tries blind variations — each costing a full round-trip.
 
-**Our approach:**
+**Implementation:**
 
 `ValidationErrorFormatter.ts` translates Zod errors into directive correction prompts that aim to help the agent self-correct on the first retry:
 
@@ -353,7 +353,7 @@ The design goal is to bring the average retries-per-error as close to 1 as possi
 
 **The problem:** A single `list_all` operation can return thousands of records. At ~500 tokens per record, that can mean millions of tokens in a single response — overwhelming the context window and generating significant API costs.
 
-**Our approach:**
+**Implementation:**
 
 The Presenter's `.agentLimit()` truncates data **before** it reaches the LLM and injects a teaching block that guides the agent toward filters and pagination:
 
@@ -395,9 +395,9 @@ Beyond cost, the truncated response stays within the context window, which shoul
 
 **The problem:** After receiving data, the agent must decide what to do next. Without guidance, it may hallucinate tool names or skip valid actions — each wrong decision is an avoidable API call.
 
-**Our approach:**
+**Implementation:**
 
-`.suggestActions()` provides HATEOAS-style next-action hints based on data state, which we hope reduces wrong-tool selection:
+`.suggestActions()` provides HATEOAS-style next-action hints based on data state, reducing wrong-tool selection:
 
 ```typescript
 // From: packages/core/src/presenter/Presenter.ts
@@ -428,9 +428,9 @@ The principle is borrowed from REST's HATEOAS — the server tells the client wh
 
 **The problem:** Global system prompts tend to grow into bloated documents with rules for every domain entity. The agent receives invoice rules when working with tasks. Context space is wasted, and misapplied rules can cause errors.
 
-**Our approach:**
+**Implementation:**
 
-Rules travel **with the data**, not in the system prompt. We call this **Context Tree-Shaking** — domain rules only appear in the LLM's context when that specific domain is active:
+Rules travel **with the data**, not in the system prompt. This pattern — **Context Tree-Shaking** — ensures domain rules only appear in the LLM's context when that specific domain is active:
 
 ```typescript
 // From: packages/core/src/presenter/Presenter.ts — _attachRules()
@@ -458,7 +458,7 @@ This should reduce both wasted tokens (irrelevant rules in the system prompt) an
 
 **The problem:** After the agent calls `sprints.update`, its cached view of `sprints.list` is stale. Without a signal, the agent may use old data — producing incorrect answers. The user notices, asks again, and triggers an avoidable re-read.
 
-**Our approach:**
+**Implementation:**
 
 State Sync injects causal invalidation signals at the protocol layer, inspired by [RFC 7234](https://tools.ietf.org/html/rfc7234) cache-control semantics:
 
@@ -503,7 +503,7 @@ registry.attachToServer(server, {
 
 ## The Structured Perception Package — Exact Context for the LLM
 
-Reducing tokens is only half of the equation. The other half is about **signal quality** — making sure every token that *does* reach the LLM carries maximum information density. We believe this is what makes the agent smarter: not just fewer tokens, but the *right* tokens at the *right* time.
+Reducing tokens is only half of the equation. The other half is about **signal quality** — making sure every token that *does* reach the LLM carries maximum information density. The design thesis: not just fewer tokens, but the *right* tokens at the *right* time.
 
 **MCP Fusion** structures context at two layers. Everything described below is implemented in real code.
 
@@ -663,13 +663,13 @@ Consider the AI agent from the Before & After section — 50 operations across u
 | Error guidance | Generic message | Directed correction prompt |
 | Stale-data awareness | None | `[Cache-Control]` directives |
 
-The exact savings depend on the workload, model, and use case. Our design goal is to make the difference meaningful at scale.
+The exact savings depend on the workload, model, and use case. The design goal is to make the difference meaningful at scale.
 
 ---
 
 ## Token Budget Awareness
 
-We believe developers should be able to measure their token footprint before deployment. **MCP Fusion** includes a preview tool for this:
+Developers should be able to measure their token footprint before deployment. **MCP Fusion** includes a preview tool for this:
 
 ```typescript
 // From: packages/core/src/core/builder/GroupedToolBuilder.ts
@@ -708,12 +708,12 @@ Every mechanism in **MCP Fusion** is guided by one equation:
 │  ═══════════════════════════════════════════════════════════════════     │
 │                                                                         │
 │      Fewer tokens. Fewer requests. Faster answers. Lower bills.         │
-│      This is the goal we're building toward.                            │
+│      This is the design target.                                        │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-We're not claiming perfection — we're sharing the design principles and mechanisms that guide our work. The code is open, the results are measurable, and we welcome scrutiny.
+These mechanisms represent design principles — not perfection claims. The code is open-source, the results are measurable, and external scrutiny is welcome.
 
 ---
 
