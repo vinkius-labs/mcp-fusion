@@ -159,6 +159,7 @@ export default defineConfig({
           { text: 'Affordances', link: '/mva/affordances' },
           { text: 'Context Tree-Shaking', link: '/mva/context-tree-shaking' },
           { text: 'Cognitive Guardrails', link: '/mva/cognitive-guardrails' },
+          { text: 'Select Reflection', link: '/mva/select-reflection' },
           { text: 'Convention', link: '/mva-convention' },
         ]
       },
