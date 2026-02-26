@@ -27,3 +27,6 @@ export { PresenterValidationError } from './PresenterValidationError.js';
 
 // ── Post-Processing ──────────────────────────────────────
 export { postProcessResult, isToolResponse } from './PostProcessor.js';
+
+// ── Select Reflection (Context Window Optimization) ──────
+export { extractZodKeys, pickFields, applySelectFilter } from './SelectUtils.js';

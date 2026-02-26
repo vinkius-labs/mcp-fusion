@@ -82,6 +82,8 @@ export interface ToolBuilder<TContext = void> {
     getDiscriminator?(): string;
     /** Get the common schema shared across all actions. */
     getCommonSchema?(): ZodObject<ZodRawShape> | undefined;
+    /** Check if `_select` reflection is enabled for context window optimization. */
+    getSelectEnabled?(): boolean;
 }
 
 // ── Action Metadata (Observability) ──────────────────────

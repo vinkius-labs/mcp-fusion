@@ -12,8 +12,6 @@ import { type ToolResponse } from '../core/response.js';
 import { isResponseBuilder, type ResponseBuilder } from './ResponseBuilder.js';
 import { type Presenter } from './Presenter.js';
 
-// ── Post-Processing ──────────────────────────────────────
-
 /**
  * Post-process a handler's return value through the MVA priority hierarchy.
  *
@@ -25,6 +23,8 @@ import { type Presenter } from './Presenter.js';
  *
  * @param result - The handler's return value
  * @param presenter - The action's Presenter (from `returns` field), if any
+ * @param ctx - Optional request context
+ * @param selectFields - Optional `_select` field names for context window optimization
  * @returns A valid MCP ToolResponse
  *
  * @internal
@@ -33,6 +33,7 @@ export function postProcessResult(
     result: unknown,
     presenter: Presenter<unknown> | undefined,
     ctx?: unknown,
+    selectFields?: string[],
 ): ToolResponse {
     // Priority 1: Already a ToolResponse (has content array)
     if (isToolResponse(result)) {
@@ -46,7 +47,7 @@ export function postProcessResult(
 
     // Priority 3: Raw data + Presenter → pipe through MVA
     if (presenter) {
-        return presenter.make(result, ctx).build();
+        return presenter.make(result, ctx, selectFields).build();
     }
 
     // Priority 4: Raw data without Presenter → fallback success

@@ -25,6 +25,7 @@ export interface CompilerInput<TContext> {
     readonly description: string | undefined;
     readonly discriminator: string;
     readonly toonMode: boolean;
+    readonly selectEnabled: boolean;
     readonly hasGroup: boolean;
     readonly actions: readonly InternalAction<TContext>[];
     readonly middlewares: readonly MiddlewareFn<TContext>[];
@@ -55,7 +56,7 @@ export function compileToolDefinition<TContext>(
     // ── Build-time strategies ────────────────────────────
     const descriptionFn = input.toonMode ? generateToonDescription : generateDescription;
     const description = descriptionFn(actions, name, input.description, input.hasGroup);
-    const inputSchema = generateInputSchema(actions, discriminator, input.hasGroup, commonSchema);
+    const inputSchema = generateInputSchema(actions, discriminator, input.hasGroup, commonSchema, input.selectEnabled);
     const annotations = aggregateAnnotations(actions, explicitAnnotations);
 
     const tool: McpTool = { name, description, inputSchema };

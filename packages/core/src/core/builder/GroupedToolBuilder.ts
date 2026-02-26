@@ -164,6 +164,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _hasFlat = false;
     private _hasGroup = false;
     private _toonMode = false;
+    private _selectEnabled = false;
     private _frozen = false;
     private _debug?: DebugObserverFn;
     private _tracer?: FusionTracer;
@@ -335,6 +336,49 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     toonDescription(): this {
         this._assertNotFrozen();
         this._toonMode = true;
+        return this;
+    }
+
+    /**
+     * Enable `_select` reflection for context window optimization.
+     *
+     * When enabled, actions that use a Presenter with a Zod schema
+     * expose an optional `_select` parameter in the input schema.
+     * The AI can send `_select: ['status', 'amount']` to receive
+     * only the specified top-level fields in the data payload,
+     * reducing context window usage without developer effort.
+     *
+     * **Disabled by default** — opt-in to avoid changing existing
+     * tool schemas.
+     *
+     * **Late Guillotine**: UI blocks, system rules, and action
+     * suggestions are always computed with the **full** validated
+     * data. Only the wire-facing data block is filtered.
+     *
+     * **Shallow (top-level only)**: Nested objects are returned
+     * whole. If the AI selects `'user'`, it gets the entire `user`
+     * object. No recursive GraphQL-style traversal.
+     *
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool<AppContext>('invoices')
+     *     .enableSelect()  // Expose _select in input schema
+     *     .action({
+     *         name: 'get',
+     *         returns: InvoicePresenter,
+     *         handler: async (ctx, args) => ctx.db.invoices.findUnique(args.id),
+     *     });
+     * // AI sends: { action: 'get', id: '123', _select: ['status'] }
+     * // Returns: { status: 'paid' } instead of full invoice
+     * ```
+     *
+     * @see {@link Presenter.getSchemaKeys} for introspection
+     */
+    enableSelect(): this {
+        this._assertNotFrozen();
+        this._selectEnabled = true;
         return this;
     }
 
@@ -611,6 +655,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             description: this._description,
             discriminator: this._discriminator,
             toonMode: this._toonMode,
+            selectEnabled: this._selectEnabled,
             hasGroup: this._hasGroup,
             actions: this._actions,
             middlewares: this._middlewares,
@@ -850,14 +895,16 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
         // Step 3: Validate
         const validateStart = performance.now();
-        const validated = validateArgs(execCtx, resolved.value, args);
+        const validationResult = validateArgs(execCtx, resolved.value, args);
         const validateMs = performance.now() - validateStart;
 
-        if (!validated.ok) {
+        if (!validationResult.ok) {
             hooks?.onValidateError?.(actionName, validateMs);
-            return hooks?.wrapResponse?.(validated.response) ?? validated.response;
+            return hooks?.wrapResponse?.(validationResult.response) ?? validationResult.response;
         }
         hooks?.onValidateOk?.(actionName, validateMs);
+
+        const { validated, selectFields } = validationResult.value;
 
         // Step 4: Middleware info
         const actionMwCount = resolved.value.action.middlewares?.length ?? 0;
@@ -871,9 +918,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         // If the action is destructive and a MutationSerializer exists,
         // wrap the execution in a per-key mutex to prevent concurrent
         // mutations (LLM hallucination anti-race-condition guard).
+        //
+        // _select is forwarded only when enableSelect() was called.
+        const effectiveSelect = this._selectEnabled ? selectFields : undefined;
         const executeChain = () => runChain(
-            execCtx, resolved.value, ctx, validated.value,
-            progressSink, hooks?.rethrow, signal,
+            execCtx, resolved.value, ctx, validated,
+            progressSink, hooks?.rethrow, signal, effectiveSelect,
         );
 
         try {
@@ -1041,6 +1091,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @returns The common Zod schema, or undefined if not set
      */
     getCommonSchema(): ZodObject<ZodRawShape> | undefined { return this._commonSchema; }
+
+    /** Check if `_select` reflection is enabled. Used by the Exposition Compiler. */
+    getSelectEnabled(): boolean { return this._selectEnabled; }
 
     /**
      * Preview the exact MCP protocol payload that the LLM will receive.

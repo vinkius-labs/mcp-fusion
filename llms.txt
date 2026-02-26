@@ -36,6 +36,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
 - **Tool Exposition**: Compile-time topology compiler — choose flat (one tool per action) or grouped (one tool per builder with discriminator enum) at attach time. Same handlers, different wire format.
+- **Select Reflection**: Opt-in `_select` parameter for context window optimization — AI agents request only the response fields they need. Uses Late Guillotine pattern (filter wire data AFTER UI/rules generation) to preserve UI integrity. Shallow top-level filtering only.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
 - **createGroup()**: Functional closure-based tool groups — pre-composed middleware, frozen by default, minifies 30-40% better
 - **autoDiscover()**: File-based routing — scan directory, auto-register tools from file structure
@@ -333,6 +334,46 @@ const OrderPresenter = createPresenter('Order')
     .embed('items', LineItemPresenter);
 // Child Presenters' rules, UI blocks, and suggestions are automatically merged.
 ```
+
+## Select Reflection — Context Window Optimization
+
+Opt-in feature that injects a `_select` parameter into the input schema, allowing AI agents to request only the response fields they need. Reduces token waste by up to 80% on large payloads.
+
+**Late Guillotine Pattern**: UI blocks, system rules, and action suggestions always receive the FULL data. Only the wire-facing data block sent to the AI is filtered. This ensures UI integrity — charts, rules, and suggestions never break due to missing fields.
+
+**Shallow filtering only**: `_select` lists top-level keys. Nested objects are returned whole when selected.
+
+```typescript
+import { createTool, createPresenter } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(z.object({
+        id: z.string(),
+        status: z.enum(['paid', 'pending', 'overdue']),
+        amount_cents: z.number(),
+        client: z.object({ name: z.string(), email: z.string() }),
+    }));
+
+const billing = createTool<AppContext>('billing')
+    .enableSelect()  // ← opt-in: inject _select into input schema
+    .action({
+        name: 'get_invoice',
+        schema: z.object({ id: z.string() }),
+        returns: InvoicePresenter,
+        handler: async (ctx, args) => await ctx.db.invoices.findUnique(args.id),
+    });
+
+// Generated input schema includes:
+// _select: { type: 'array', items: { enum: ['amount_cents', 'client', 'id', 'status'] } }
+//
+// AI sends: { action: 'get_invoice', id: '123', _select: ['status'] }
+// Response: { status: 'paid' }  ← instead of full invoice
+//
+// UI blocks still render with full data (Late Guillotine)
+```
+
+**Security**: Enum whitelist from Presenter schema keys (AI cannot request arbitrary fields). `Object.hasOwn()` in pickFields blocks prototype pollution. Subtractive-only design (can only remove fields, never add data). Disabled by default.
 
 ## ResponseBuilder (Manual Composition)
 
@@ -780,7 +821,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 ### Builder
 - `createTool<TContext>(name)` → GroupedToolBuilder (fluent builder, requires Zod)
 - `defineTool<TContext>(name, config)` → GroupedToolBuilder (JSON-first, no Zod required)
-- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .concurrency(), .maxPayloadBytes(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata()
+- `GroupedToolBuilder<TContext>` — .description(), .commonSchema(), .discriminator(), .tags(), .annotations(), .toonDescription(), .enableSelect(), .concurrency(), .maxPayloadBytes(), .use(), .action(), .group(), .buildToolDefinition(), .execute(), .previewPrompt(), .getName(), .getTags(), .getActionNames(), .getActionMetadata(), .getSelectEnabled()
 - `ActionGroupBuilder<TContext>` — .use(), .action()
 
 ### Presenter (MVA View Layer)
@@ -791,6 +832,13 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `ui.summary(stats)` → UIBlock (Collection summary)
 - `response.ok(data)` → ToolResponse (success shortcut)
 - `response.withRules(data, rules)` → ToolResponse (data + system rules)
+
+### Select Reflection (v2.11+)
+- `extractZodKeys(schema)` → string[] — recursively unwrap Zod wrappers to extract top-level object keys
+- `pickFields(data, selectSet)` → filtered object — shallow top-level field picker with Object.hasOwn() guard
+- `applySelectFilter(data, selectFields, isArray)` → filtered data — applies pickFields to single objects or arrays
+- `.enableSelect()` → GroupedToolBuilder — opt-in: inject `_select` parameter into input schema
+- `.getSelectEnabled()` → boolean — AST reflection: check if select is enabled
 
 ### Registry
 - `ToolRegistry<TContext>` — .register(), .registerAll(), .getAllTools(), .getTools(filter), .routeCall(), .attachToServer(), .has(), .clear(), .size

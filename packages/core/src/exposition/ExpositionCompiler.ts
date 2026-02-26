@@ -20,7 +20,8 @@
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { type ToolBuilder, type InternalAction } from '../core/types.js';
+import { type InternalAction, type ToolBuilder } from '../core/types.js';
+import { isPresenter } from '../presenter/Presenter.js';
 import { type ToolExposition } from './types.js';
 
 // ── Types ────────────────────────────────────────────────
@@ -104,6 +105,7 @@ function compileFlat<TContext>(
         const discriminator = getBuilderDiscriminator(builder);
         const commonSchema = getBuilderCommonSchema(builder);
         const toolName = builder.getName();
+        const selectEnabled = getBuilderSelectEnabled(builder);
 
         if (!actions || actions.length === 0) {
             // Fallback: builder has no reflection — pass through as grouped
@@ -115,7 +117,7 @@ function compileFlat<TContext>(
             const flatName = `${toolName}${separator}${action.key}`;
 
             // ── Schema Purification ──────────────────────────
-            const inputSchema = buildAtomicSchema(action, commonSchema);
+            const inputSchema = buildAtomicSchema(action, commonSchema, selectEnabled);
 
             // ── Boundary Isolation (Annotations) ─────────────
             const annotations = buildAtomicAnnotations(action);
@@ -178,6 +180,7 @@ function compileGrouped<TContext>(
 function buildAtomicSchema<TContext>(
     action: InternalAction<TContext>,
     commonSchema: ZodObject<ZodRawShape> | undefined,
+    selectEnabled = false,
 ): McpTool['inputSchema'] {
     const properties: Record<string, object> = {};
     const required: string[] = [];
@@ -221,6 +224,21 @@ function buildAtomicSchema<TContext>(
             if (key in properties && !required.includes(key)) {
                 required.push(key);
             }
+        }
+    }
+
+    // ── _select Reflection (opt-in) ──────────────────────
+    if (selectEnabled && action.returns && isPresenter(action.returns)) {
+        const schemaKeys = action.returns.getSchemaKeys();
+        if (schemaKeys.length > 0) {
+            properties['_select'] = {
+                type: 'array',
+                description: '⚡ Context optimization: select only the response fields you need. Omit to receive all fields.',
+                items: {
+                    type: 'string',
+                    enum: [...schemaKeys].sort(),
+                },
+            };
         }
     }
 
@@ -324,5 +342,13 @@ function getBuilderDiscriminator<TContext>(builder: ToolBuilder<TContext>): stri
  */
 function getBuilderCommonSchema<TContext>(builder: ToolBuilder<TContext>): ZodObject<ZodRawShape> | undefined {
     return builder.getCommonSchema?.();
+}
+
+/**
+ * Check if select reflection is enabled on a builder.
+ * Returns false if the builder doesn't implement `getSelectEnabled()`.
+ */
+ function getBuilderSelectEnabled<TContext>(builder: ToolBuilder<TContext>): boolean {
+    return builder.getSelectEnabled?.() ?? false;
 }
 

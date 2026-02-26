@@ -56,6 +56,7 @@ import { type ZodType, ZodError } from 'zod';
 import { ResponseBuilder } from './ResponseBuilder.js';
 import { type UiBlock } from './ui.js';
 import { PresenterValidationError } from './PresenterValidationError.js';
+import { applySelectFilter, extractZodKeys } from './SelectUtils.js';
 
 // ── Brand ────────────────────────────────────────────────
 
@@ -370,9 +371,7 @@ export class Presenter<T> {
      */
     getSchemaKeys(): string[] {
         if (!this._schema) return [];
-        // ZodType may not have `.shape` (e.g. z.array). Guard safely.
-        const shape = (this._schema as { shape?: Record<string, unknown> }).shape;
-        return shape ? Object.keys(shape) : [];
+        return extractZodKeys(this._schema);
     }
 
     /**
@@ -409,7 +408,16 @@ export class Presenter<T> {
     /**
      * Compose a {@link ResponseBuilder} from raw data.
      *
-     * Orchestrates: truncate → validate → embed → render UI → attach rules → suggest actions.
+     * Orchestrates: truncate → validate → embed → render UI → attach rules
+     * → suggest actions → **Late Guillotine** (`_select` filter).
+     *
+     * **Late Guillotine pattern**: UI blocks, system rules, and action
+     * suggestions are computed using the **full** validated data, ensuring
+     * charts and rules never see `undefined` for pruned fields. Only the
+     * wire-facing data block in the ResponseBuilder is filtered by `_select`
+     * — the UI consumes full data in RAM, the AI consumes pruned data on
+     * the wire.
+     *
      * After the first call, the Presenter is sealed (immutable).
      *
      * **Auto-detection**: If `data` is an array, items are validated
@@ -418,18 +426,22 @@ export class Presenter<T> {
      *
      * @param data - Raw data from the handler (object or array)
      * @param ctx - Optional request context (for RBAC, locale, etc.)
+     * @param selectFields - Optional top-level field names to keep in the
+     *   data block. When provided, only these keys survive in the JSON
+     *   payload sent to the AI. Nested objects are kept whole (shallow).
      * @returns A {@link ResponseBuilder} ready for chaining or `.build()`
      * @throws If Zod validation fails
      *
      * @example
      * ```typescript
-     * // Automatic (via returns: Presenter — ctx injected by framework)
-     * // Manual:
+     * // Full data (default)
      * return InvoicePresenter.make(rawInvoice).build();
-     * return InvoicePresenter.make(rawInvoice, ctx).build();
+     *
+     * // With _select filtering — only 'status' reaches the AI
+     * return InvoicePresenter.make(rawInvoice, ctx, ['status']).build();
      * ```
      */
-    make(data: T | T[], ctx?: unknown): ResponseBuilder {
+    make(data: T | T[], ctx?: unknown, selectFields?: string[]): ResponseBuilder {
         // Seal on first use — configuration is frozen from here
         this._sealed = true;
 
@@ -449,25 +461,40 @@ export class Presenter<T> {
         // may not include — so they must run on pre-validation data.
         const rawForEmbeds = data;
 
-        // Step 2: Validate
+        // Step 2: Validate — produces the FULL validated data
         const validated = this._validate(data, isArray);
-        const builder = new ResponseBuilder(validated as string | object);
 
-        // Step 2.5: Truncation warning (first UI block, before all others)
+        // ── Late Guillotine ──────────────────────────────────
+        // Steps 3-6 use the FULL validated data so that UI blocks,
+        // system rules, and action suggestions never see undefined
+        // for pruned fields (e.g. a chart using 'revenue' won't break
+        // if the AI only selected 'status').
+        //
+        // The _select filter is applied ONLY to the wire-facing data
+        // block in the ResponseBuilder — the last step before serialization.
+
+        // Step 3: Determine wire-facing data (filtered or full)
+        const wireData = (selectFields && selectFields.length > 0)
+            ? applySelectFilter(validated, selectFields, isArray)
+            : validated;
+
+        const builder = new ResponseBuilder(wireData as string | object);
+
+        // Step 3.5: Truncation warning (first UI block, before all others)
         if (truncationBlock) {
             builder.uiBlock(truncationBlock);
         }
 
-        // Step 3: Merge embedded child Presenter blocks
+        // Step 4: Merge embedded child Presenter blocks (using FULL data)
         this._processEmbeds(builder, rawForEmbeds, isArray, ctx);
 
-        // Step 4: Attach UI blocks
+        // Step 5: Attach UI blocks (using FULL validated data)
         this._attachUiBlocks(builder, validated, isArray, ctx);
 
-        // Step 5: Attach rules
+        // Step 6: Attach rules (using FULL validated data)
         this._attachRules(builder, validated, isArray, ctx);
 
-        // Step 6: Attach action suggestions
+        // Step 7: Attach action suggestions (using FULL validated data)
         this._attachSuggestions(builder, validated, isArray, ctx);
 
         return builder;

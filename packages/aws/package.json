@@ -61,6 +61,8 @@
         }
     },
     "devDependencies": {
+        "@aws-sdk/client-lambda": "^3.0.0",
+        "@aws-sdk/client-sfn": "^3.0.0",
         "@types/node": "^25.3.0"
     },
     "license": "Apache-2.0"

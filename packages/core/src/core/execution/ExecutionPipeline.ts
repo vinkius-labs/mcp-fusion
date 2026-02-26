@@ -82,23 +82,30 @@ export function validateArgs<TContext>(
     execCtx: ExecutionContext<TContext>,
     resolved: ResolvedAction<TContext>,
     args: Record<string, unknown>,
-): Result<Record<string, unknown>> {
+): Result<{ validated: Record<string, unknown>; selectFields: string[] | undefined }> {
     const validationSchema = execCtx.validationSchemaCache.get(resolved.action.key);
+
+    // Extract _select before validation — it's a framework-level field
+    // that must NOT reach the .strict() Zod schema.
+    const rawSelect = args['_select'];
+    const selectFields = (Array.isArray(rawSelect) && rawSelect.every(v => typeof v === 'string'))
+        ? rawSelect as string[]
+        : undefined;
 
     if (!validationSchema) {
         // No schema — pass through unchanged
-        return succeed(args);
+        return succeed({ validated: args, selectFields });
     }
 
-    // Remove discriminator before validation
-    const { [execCtx.discriminator]: _, ...argsWithoutDiscriminator } = args;
-    const result = validationSchema.safeParse(argsWithoutDiscriminator);
+    // Remove discriminator AND _select before validation
+    const { [execCtx.discriminator]: _, _select: _unused, ...argsToValidate } = args;
+    const result = validationSchema.safeParse(argsToValidate);
 
     if (!result.success) {
         const text = formatValidationError(
             result.error.issues,
             `${execCtx.toolName}/${resolved.discriminatorValue}`,
-            argsWithoutDiscriminator,
+            argsToValidate,
         );
         // formatValidationError already produces complete XML — bypass error() to avoid double-wrapping
         return fail({ content: [{ type: 'text', text }], isError: true });
@@ -107,7 +114,7 @@ export function validateArgs<TContext>(
     // Mutate directly — zero-copy re-injection of discriminator
     const validated = result.data as Record<string, unknown>;
     validated[execCtx.discriminator] = resolved.discriminatorValue;
-    return succeed(validated);
+    return succeed({ validated, selectFields });
 }
 
 /**
@@ -120,6 +127,9 @@ export function validateArgs<TContext>(
  * @param signal - Optional AbortSignal for cooperative cancellation.
  *   Checked before handler execution. If already aborted, returns an
  *   immediate error response without invoking the handler chain.
+ * @param selectFields - Optional `_select` field names extracted from the
+ *   AI's input. Forwarded to `postProcessResult()` → `Presenter.make()`
+ *   for Late Guillotine filtering.
  */
 export async function runChain<TContext>(
     execCtx: ExecutionContext<TContext>,
@@ -129,6 +139,7 @@ export async function runChain<TContext>(
     progressSink?: ProgressSink,
     rethrow = false,
     signal?: AbortSignal,
+    selectFields?: string[],
 ): Promise<ToolResponse> {
     const chain = execCtx.compiledChain.get(resolved.action.key);
     if (!chain) {
@@ -146,10 +157,10 @@ export async function runChain<TContext>(
         // If the middleware chain returned a generator result envelope, drain it
         if (isGeneratorResultEnvelope(result)) {
             const drained = await drainGenerator(result.generator, progressSink, signal);
-            return postProcessResult(drained, resolved.action.returns, ctx);
+            return postProcessResult(drained, resolved.action.returns, ctx, selectFields);
         }
 
-        return postProcessResult(result, resolved.action.returns, ctx);
+        return postProcessResult(result, resolved.action.returns, ctx, selectFields);
     } catch (err) {
         if (rethrow) throw err;
         const message = err instanceof Error ? err.message : String(err);

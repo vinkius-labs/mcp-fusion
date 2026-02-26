@@ -13,6 +13,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type InternalAction } from '../types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
+import { isPresenter } from '../../presenter/Presenter.js';
 
 /** Shape of an object-level JSON Schema emitted by zod-to-json-schema */
 interface JsonSchemaObject {
@@ -33,6 +34,7 @@ export function generateInputSchema<TContext>(
     discriminator: string,
     hasGroup: boolean,
     commonSchema: ZodObject<ZodRawShape> | undefined,
+    selectEnabled = false,
 ): McpTool['inputSchema'] {
     const actionKeys = actions.map(a => a.key);
     const properties: Record<string, object> = {};
@@ -47,6 +49,11 @@ export function generateInputSchema<TContext>(
     );
     collectActionFields(actions, properties, fieldActions);
     applyAnnotations(fieldActions, commonRequiredFields, actionKeys, properties);
+
+    // ── _select Reflection (opt-in) ──────────────────────
+    if (selectEnabled) {
+        injectSelectProperty(actions, properties);
+    }
 
     return {
         type: 'object' as const,
@@ -219,4 +226,43 @@ function annotateField(
     field.description = existingDesc
         ? `${existingDesc}. ${annotation}`
         : annotation;
+}
+
+// ── _select Reflection ───────────────────────────────────
+
+/**
+ * Inject `_select` property into the input schema.
+ *
+ * Collects the union of all top-level schema keys from Presenters
+ * across all actions. If any action has a Presenter with extractable
+ * keys, a `_select` optional array property is added with an enum
+ * constraint of those keys.
+ *
+ * **Top-level only**: The enum lists root-level keys only.
+ * Nested objects are returned whole when selected.
+ */
+function injectSelectProperty<TContext>(
+    actions: readonly InternalAction<TContext>[],
+    properties: Record<string, object>,
+): void {
+    const allKeys = new Set<string>();
+
+    for (const action of actions) {
+        if (action.returns && isPresenter(action.returns)) {
+            for (const key of action.returns.getSchemaKeys()) {
+                allKeys.add(key);
+            }
+        }
+    }
+
+    if (allKeys.size === 0) return;
+
+    properties['_select'] = {
+        type: 'array',
+        description: '⚡ Context optimization: select only the response fields you need. Omit to receive all fields.',
+        items: {
+            type: 'string',
+            enum: [...allKeys].sort(),
+        },
+    };
 }
