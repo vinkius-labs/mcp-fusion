@@ -5,6 +5,14 @@ description: "Content-addressed behavioral fingerprinting, temporal comparison, 
 
 # Surface Integrity
 
+- [Computing a Digest](#compute)
+- [The Four Digest Components](#components)
+- [Determinism Guarantees](#guarantees)
+- [Comparing Server Digests Over Time](#comparison)
+- [System Rules Fingerprinting](#rules)
+- [How Other Modules Use BehaviorDigest](#integration)
+- [Performance](#performance)
+
 Two snapshots of the same tool, taken a week apart:
 
 | Field | Snapshot $T_0$ | Snapshot $T_1$ |

@@ -5,6 +5,14 @@ description: "Automatic contract delta injection into validation errors, enablin
 
 # Self-Healing Context
 
+- [Enriching Validation Errors](#enrich)
+- [Tool-Scoped Enhancer](#enhancer)
+- [The `<contract_awareness>` Block](#block)
+- [Delta Filtering](#filtering)
+- [Full Setup Flow](#setup)
+- [Configuration](#config)
+- [API Reference](#api)
+
 When a Zod validation error occurs — the LLM sent malformed arguments — the default error response tells the model *what* went wrong but not *why*. If the tool's behavioral contract changed since the LLM was last calibrated (a new required field, a renamed action, a schema constraint), the LLM will repeat the same mistake on retry because it has no context about the change.
 
 Contract-Aware Self-Healing enriches validation error responses with contract delta context from the [Contract Diffing](/governance/contract-diffing) engine. The error XML includes which fields changed, what the previous contract looked like, and what the current contract requires. This gives the LLM enough context to self-correct on the next invocation instead of entering a retry loop.

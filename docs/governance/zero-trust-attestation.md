@@ -5,6 +5,14 @@ description: "Cryptographic signing, capability pinning, and runtime verificatio
 
 # Zero-Trust Attestation
 
+- [Sign at Build Time](#sign)
+- [Verify at Startup](#verify)
+- [Custom Signers](#custom-signers)
+- [Exposing Trust to MCP Clients](#mcp-capability)
+- [Handling Attestation Failures](#errors)
+- [Full CI/CD Pipeline](#ci)
+- [Security Model](#security)
+
 The [Capability Lockfile](/governance/capability-lockfile) captures the behavioral surface in version control. But what happens after deployment? A compromised dependency, a runtime mutation, or a misconfigured deploy could alter the tool surface between the lockfile check and the actual server startup.
 
 CryptoAttestation closes this gap. Sign the server's behavioral digest at build time. Pin the expected digest as a deployment artifact. Verify it at startup. If the surface doesn't match, the server refuses to start.

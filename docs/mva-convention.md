@@ -98,15 +98,13 @@ import { PetPresenter } from '../views/pet.presenter.js';
 
 const f = initFusion<ApiContext>();
 
-export const getPet = f.tool({
-  name: 'pet.get_by_id',
-  description: 'Get a pet by ID',
-  input: z.object({ petId: z.coerce.number().int() }),
-  returns: PetPresenter,
-  handler: async ({ input, ctx }) => {
+export const getPet = f.query('pet.get_by_id')
+  .describe('Get a pet by ID')
+  .withNumber('petId', 'Pet ID')
+  .returns(PetPresenter)
+  .handle(async (input, ctx) => {
     return ctx.db.pets.findUnique({ where: { id: input.petId } });
-  },
-});
+  });
 ```
 
 In the Prisma layout, imports are flat — `./userPresenter.js` instead of `../views/`.
@@ -143,4 +141,3 @@ Use `.firewall.test.ts`, `.guard.test.ts`, `.rules.test.ts`, and `.blocks.test.t
 **Prisma Generator:** `{model}Presenter.ts` + `{model}Tools.ts` (flat, camelCase)
 
 **Tests:** `tests/firewall/*.firewall.test.ts`, `tests/guards/*.guard.test.ts`, `tests/rules/*.rules.test.ts`, `tests/blocks/*.blocks.test.ts`
-

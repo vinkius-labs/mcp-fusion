@@ -1,5 +1,17 @@
 # Vercel Adapter
 
+- [Why This Matters](#why-this-matters)
+- [Installation](#installation)
+- [Architecture](#architecture)
+- [Step-by-Step Setup](#setup)
+- [Edge vs Node.js Runtime](#runtimes)
+- [Adding Middleware](#middleware)
+- [Adding Presenters](#presenters)
+- [Configuration Reference](#config)
+- [Vercel Services Integration](#services)
+- [What Works on Vercel](#compatibility)
+- [Compatible Clients](#clients)
+
 Deploy your MCP Fusion server as a Next.js App Router route handler or standalone Vercel Function. Edge Runtime or Node.js — one line, zero transport config.
 
 ```typescript
@@ -11,9 +23,10 @@ interface AppContext { tenantId: string; dbUrl: string }
 const f = initFusion<AppContext>();
 
 const listUsers = f.query('users.list')
-  .input({ limit: f.number().optional().default(20) })
-  .resolve(async ({ input, ctx }) =>
-    fetch(`${ctx.dbUrl}/users?limit=${input.limit}&tenant=${ctx.tenantId}`).then(r => r.json())
+  .describe('List users in tenant')
+  .withOptionalNumber('limit', 'Max results (default 20)')
+  .handle(async (input, ctx) =>
+    fetch(`${ctx.dbUrl}/users?limit=${input.limit ?? 20}&tenant=${ctx.tenantId}`).then(r => r.json())
   );
 
 const registry = f.registry();
@@ -84,7 +97,7 @@ The adapter splits work between two phases to minimize per-request CPU cost:
 │  COLD START (once per function instance)                  │
 │                                                          │
 │  const f = initFusion<AppContext>()                      │
-│  const tool = f.tool({ ... })                            │
+│  const tool = f.query('name').handle(...)                │
 │  const registry = f.registry()                           │
 │  registry.register(tool)                                 │
 │                                                          │
@@ -129,24 +142,20 @@ export const f = initFusion<AppContext>();
 
 export const listProjects = f.query('projects.list')
   .describe('List projects in the current workspace')
-  .input({
-    status: f.enum('active', 'archived', 'all').optional().default('active'),
-    limit: f.number().min(1).max(100).optional().default(20),
-  })
-  .resolve(async ({ input, ctx }) => {
+  .withOptionalEnum('status', ['active', 'archived', 'all'] as const, 'Project status filter')
+  .withOptionalNumber('limit', 'Max results (1-100, default 20)')
+  .handle(async (input, ctx) => {
     const res = await fetch(
-      `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&status=${input.status}&limit=${input.limit}`
+      `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&status=${input.status ?? 'active'}&limit=${input.limit ?? 20}`
     );
     return res.json();
   });
 
 export const createProject = f.action('projects.create')
   .describe('Create a new project')
-  .input({
-    name: f.string().min(1).max(128),
-    description: f.string().optional(),
-  })
-  .resolve(async ({ input, ctx }) => {
+  .withString('name', 'Project name')
+  .withOptionalString('description', 'Project description')
+  .handle(async (input, ctx) => {
     const res = await fetch(`${ctx.dbUrl}/api/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -230,8 +239,8 @@ const adminTool = f.mutation('admin.reset')
   .describe('Reset tenant data — requires admin role')
   .tags('admin')
   .use(authMiddleware)
-  .input({ confirm: f.boolean().describe('Must be true to confirm') })
-  .resolve(async ({ ctx }) => {
+  .withBoolean('confirm', 'Must be true to confirm')
+  .handle(async (input, ctx) => {
     if (ctx.user.role !== 'admin') throw new Error('Forbidden');
     // ...
   });
@@ -266,11 +275,12 @@ const ProjectPresenter = f.presenter({
 });
 
 const listProjects = f.query('projects.list')
-  .input({ limit: f.number().optional().default(20) })
+  .describe('List projects')
+  .withOptionalNumber('limit', 'Max results (default 20)')
   .returns(ProjectPresenter)
-  .resolve(async ({ input, ctx }) => {
+  .handle(async (input, ctx) => {
     const res = await fetch(
-      `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&limit=${input.limit}`
+      `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&limit=${input.limit ?? 20}`
     );
     return res.json();
   });
@@ -305,9 +315,10 @@ Use Vercel's managed services directly in your tools:
 import { sql } from '@vercel/postgres';
 
 const listUsers = f.query('users.list')
-  .input({ limit: f.number().default(20) })
-  .resolve(async ({ input }) => {
-    const { rows } = await sql`SELECT id, name FROM users LIMIT ${input.limit}`;
+  .describe('List users')
+  .withOptionalNumber('limit', 'Max results (default 20)')
+  .handle(async (input) => {
+    const { rows } = await sql`SELECT id, name FROM users LIMIT ${input.limit ?? 20}`;
     return rows;
   });
 
@@ -315,8 +326,9 @@ const listUsers = f.query('users.list')
 import { kv } from '@vercel/kv';
 
 const getCache = f.query('cache.get')
-  .input({ key: f.string() })
-  .resolve(async ({ input }) => {
+  .describe('Get a cached value')
+  .withString('key', 'Cache key')
+  .handle(async (input) => {
     const value = await kv.get(input.key);
     return { key: input.key, value };
   });
@@ -325,8 +337,10 @@ const getCache = f.query('cache.get')
 import { put, list } from '@vercel/blob';
 
 const uploadFile = f.action('files.upload')
-  .input({ name: f.string(), content: f.string() })
-  .resolve(async ({ input }) => {
+  .describe('Upload a file to blob storage')
+  .withString('name', 'File name')
+  .withString('content', 'File content')
+  .handle(async (input) => {
     const blob = await put(input.name, input.content, { access: 'public' });
     return { url: blob.url };
   });

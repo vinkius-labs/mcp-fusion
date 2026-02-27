@@ -5,6 +5,13 @@ description: "Semantic delta engine with BREAKING / RISKY / SAFE / COSMETIC seve
 
 # Contract Diffing
 
+- [Severity Classification](#severity)
+- [Using the Diff Engine](#usage)
+- [What Gets Compared](#delta-categories)
+- [Real-World Scenarios](#scenarios)
+- [Formatting for LLM Self-Healing](#xml)
+- [CI Integration](#ci)
+
 Traditional diffing tools compare bytes. A tool's description changed? That's a text diff. A tool gained a `subprocess` entitlement? Also a text diff — same severity, same visual treatment in the PR review.
 
 But these are not the same change. The description rewording is cosmetic — the LLM won't behave differently. The subprocess entitlement is a capability expansion — the tool can now execute arbitrary commands. `ContractDiff` understands this difference. Every change is classified by behavioral impact, not by how many bytes moved.

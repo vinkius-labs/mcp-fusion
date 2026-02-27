@@ -1,4 +1,5 @@
-import { toolError, ErrorCode, ErrorSeverity, ToolResponse } from '../response.js';
+import { toolError } from '../response.js';
+import type { ErrorCode, ErrorSeverity, ToolResponse } from '../response.js';
 
 /**
  * ErrorBuilder — Fluent API for Self-Healing Errors
@@ -75,14 +76,22 @@ export class ErrorBuilder {
      * directly and calls this method automatically.
      */
     build(): ToolResponse {
-        return toolError(this._code, {
+        const opts: {
+            message: string;
+            severity: ErrorSeverity;
+            suggestion?: string;
+            availableActions?: string[];
+            details?: Record<string, string>;
+            retryAfter?: number;
+        } = {
             message: this._message,
-            suggestion: this._suggestion,
-            availableActions: this._actions.length > 0 ? this._actions : undefined,
             severity: this._severity,
-            details: Object.keys(this._details).length > 0 ? this._details : undefined,
-            retryAfter: this._retryAfter,
-        });
+        };
+        if (this._suggestion) opts.suggestion = this._suggestion;
+        if (this._actions.length > 0) opts.availableActions = this._actions;
+        if (Object.keys(this._details).length > 0) opts.details = this._details;
+        if (this._retryAfter !== undefined) opts.retryAfter = this._retryAfter;
+        return toolError(this._code, opts);
     }
 
     /** Implementation of ToolResponse for direct return in handlers */

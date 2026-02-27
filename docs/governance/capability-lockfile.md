@@ -5,6 +5,15 @@ description: "Generate, verify, and integrate mcp-fusion.lock into CI/CD. A dete
 
 # Capability Lockfile
 
+- [Generating the Lockfile](#generating)
+- [What the Lockfile Captures](#structure)
+- [Why Canonical Serialization Matters](#canonical)
+- [Gating Your CI Build](#verification)
+- [Reviewing Lockfile Diffs](#diffs)
+- [CI/CD Integration](#ci)
+- [Parsing and Validation](#parsing)
+- [Best Practices](#best-practices)
+
 The MCP protocol provides `tools/list` — the current surface. It provides `notifications/tools/list_changed` — something changed. Neither provides a durable artifact, a comparison mechanism, or behavioral-level change detection.
 
 `mcp-fusion.lock` fills all three gaps. It is a deterministic, canonical JSON file that captures the complete behavioral surface of your MCP server — tool contracts, prompt definitions, cognitive guardrails, entitlements, and token economics. The behavioral equivalent of `package-lock.json`, except instead of pinning dependency versions, it pins what your server can do.

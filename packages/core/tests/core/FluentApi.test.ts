@@ -1,17 +1,14 @@
 /**
- * Fluent API Tests — Semantic Verbs, Schema Helpers, Type Chaining
+ * Fluent API Tests — Canonical with*() + .handle() API
  *
- * Covers: f.query(), f.mutation(), f.action(), f.string(), f.number(),
- *         .instructions(), .use(), .returns(), f.router(), Zod interop.
+ * Covers: f.query(), f.mutation(), f.action(), .withString(), .withNumber(),
+ *         .withEnum(), .withBoolean(), .withArray(), .instructions(),
+ *         .use(), .returns(), f.router(), .handle() execution.
  */
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { initFusion } from '../../src/core/initFusion.js';
 import { success } from '../../src/core/response.js';
-import {
-    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
-    isFluentDescriptor, resolveFluentParams,
-} from '../../src/core/builder/FluentSchemaHelpers.js';
 
 // ── Test Context ─────────────────────────────────────────
 
@@ -41,123 +38,6 @@ const testCtx: TestContext = {
 };
 
 // ============================================================================
-// Schema Helpers
-// ============================================================================
-
-describe('FluentSchemaHelpers', () => {
-    it('f.string() should produce a StringParamDef', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.string().min(3).max(100).describe('User name').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'string',
-            description: 'User name',
-            min: 3,
-            max: 100,
-        });
-    });
-
-    it('f.number() should produce a NumberParamDef', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.number().min(1).max(100).default(10).describe('Max results').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'number',
-            description: 'Max results (default: 10)',
-            min: 1,
-            max: 100,
-        });
-    });
-
-    it('f.boolean() should produce a BooleanParamDef', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.boolean().default(true).describe('Include archived').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'boolean',
-            description: 'Include archived (default: true)',
-        });
-    });
-
-    it('f.enum() should produce an EnumParamDef', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.enum('active', 'inactive', 'suspended').describe('User status').toDescriptor();
-
-        expect(desc).toEqual({
-            enum: ['active', 'inactive', 'suspended'],
-            description: 'User status',
-        });
-    });
-
-    it('f.array() should produce an ArrayParamDef', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.array('string').min(1).max(10).describe('Tag list').toDescriptor();
-
-        expect(desc).toEqual({
-            array: 'string',
-            description: 'Tag list',
-            min: 1,
-            max: 10,
-        });
-    });
-
-    it('.optional() should mark the descriptor as optional', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.string().optional().describe('Optional field').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'string',
-            description: 'Optional field',
-            optional: true,
-        });
-    });
-
-    it('.example() should add a single example (AI-First DX)', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.string().example('How to request vacation?').describe('Search query').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'string',
-            description: 'Search query',
-            examples: ['How to request vacation?'],
-        });
-    });
-
-    it('.examples() should add multiple examples', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.number().examples(1, 5, 10).describe('Page size').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'number',
-            description: 'Page size',
-            examples: [1, 5, 10],
-        });
-    });
-
-    it('.int() should mark number as integer', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.number().int().min(0).toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'number',
-            int: true,
-            min: 0,
-        });
-    });
-
-    it('.regex() should add pattern to string', () => {
-        const f = initFusion<TestContext>();
-        const desc = f.string().regex('^[a-z]+$').describe('Slug').toDescriptor();
-
-        expect(desc).toEqual({
-            type: 'string',
-            description: 'Slug',
-            regex: '^[a-z]+$',
-        });
-    });
-});
-
-// ============================================================================
 // Semantic Verbs — f.query(), f.mutation(), f.action()
 // ============================================================================
 
@@ -167,10 +47,8 @@ describe('Semantic Verbs', () => {
 
         const tool = f.query('users.list')
             .describe('List users')
-            .input({
-                limit: f.number().min(1).max(100).default(10).describe('Max results'),
-            })
-            .resolve(async ({ input, ctx }) => {
+            .withOptionalNumber('limit', 'Max results')
+            .handle(async (input, ctx) => {
                 return success(ctx.db.users.findMany({ take: input.limit }));
             });
 
@@ -187,8 +65,8 @@ describe('Semantic Verbs', () => {
 
         const tool = f.mutation('users.delete')
             .describe('Delete a user')
-            .input({ id: f.string().describe('User ID') })
-            .resolve(async ({ input, ctx }) => {
+            .withString('id', 'User ID')
+            .handle(async (input, ctx) => {
                 ctx.db.users.delete({ where: { id: input.id } });
                 return success('Deleted');
             });
@@ -206,11 +84,9 @@ describe('Semantic Verbs', () => {
         const tool = f.action('users.update')
             .describe('Update user')
             .idempotent()
-            .input({
-                id: f.string(),
-                name: f.string().optional(),
-            })
-            .resolve(async ({ input, ctx }) => {
+            .withString('id', 'User ID')
+            .withOptionalString('name', 'New display name')
+            .handle(async (input, ctx) => {
                 return success(ctx.db.users.update({
                     where: { id: input.id },
                     data: { name: input.name },
@@ -230,7 +106,7 @@ describe('Semantic Verbs', () => {
         const f = initFusion<TestContext>();
 
         const tool = f.query('health')
-            .resolve(async () => success('ok'));
+            .handle(async () => success('ok'));
 
         expect(tool.getName()).toBe('health');
         expect(tool.getActionNames()).toContain('default');
@@ -239,12 +115,12 @@ describe('Semantic Verbs', () => {
     it('semantic overrides should take precedence', () => {
         const f = initFusion<TestContext>();
 
-        // Query is readOnly by default, but we override to NOT readOnly
+        // Query is readOnly by default, but we can add destructive too
         const tool = f.query('users.sync')
             .describe('Sync users (has side effects)')
             .readOnly() // explicit override (stays readOnly)
             .destructive() // add destructive
-            .resolve(async () => success('synced'));
+            .handle(async () => success('synced'));
 
         const meta = tool.getActionMetadata();
         expect(meta[0]?.readOnly).toBe(true);
@@ -257,17 +133,15 @@ describe('Semantic Verbs', () => {
 // ============================================================================
 
 describe('Handler Execution', () => {
-    it('handler should receive typed { input, ctx }', async () => {
+    it('handler should receive typed (input, ctx)', async () => {
         const f = initFusion<TestContext>();
 
         let receivedInput: unknown;
         let receivedCtx: unknown;
 
         const tool = f.query('test.exec')
-            .input({
-                msg: f.string().describe('Message'),
-            })
-            .resolve(async ({ input, ctx }) => {
+            .withString('msg', 'Message')
+            .handle(async (input, ctx) => {
                 receivedInput = input;
                 receivedCtx = ctx;
                 return success('done');
@@ -283,8 +157,8 @@ describe('Handler Execution', () => {
         const f = initFusion<TestContext>();
 
         const tool = f.query('test.raw')
-            .input({ limit: f.number() })
-            .resolve(async ({ input, ctx }) => {
+            .withNumber('limit', 'Max results')
+            .handle(async (input, ctx) => {
                 // Return raw data — framework should wrap with success()
                 return ctx.db.users.findMany({ take: input.limit });
             });
@@ -299,10 +173,121 @@ describe('Handler Execution', () => {
         const f = initFusion<TestContext>();
 
         const tool = f.query('test.explicit')
-            .resolve(async () => success('explicit response'));
+            .handle(async () => success('explicit response'));
 
         const result = await tool.execute(testCtx, { action: 'explicit' });
         expect(result.content[0]?.text).toBe('explicit response');
+    });
+});
+
+// ============================================================================
+// with*() Parameter Declaration
+// ============================================================================
+
+describe('with*() Parameter Declaration', () => {
+    it('.withString() should add a required string parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.string')
+            .withString('name', 'User name')
+            .handle(async (input) => success(input.name));
+
+        const result = await tool.execute(testCtx, { action: 'string', name: 'Alice' });
+        expect(result.content[0]?.text).toContain('Alice');
+    });
+
+    it('.withOptionalString() should add an optional string parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.optstr')
+            .withOptionalString('title', 'Optional title')
+            .handle(async (input) => success(input.title ?? 'fallback'));
+
+        // Without the optional param
+        const result = await tool.execute(testCtx, { action: 'optstr' });
+        expect(result.content[0]?.text).toContain('fallback');
+    });
+
+    it('.withNumber() should add a required number parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.num')
+            .withNumber('limit', 'Max results')
+            .handle(async (input) => success(`limit=${input.limit}`));
+
+        const result = await tool.execute(testCtx, { action: 'num', limit: 42 });
+        expect(result.content[0]?.text).toContain('42');
+    });
+
+    it('.withBoolean() should add a required boolean parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.bool')
+            .withBoolean('active', 'Filter by active status')
+            .handle(async (input) => success(`active=${input.active}`));
+
+        const result = await tool.execute(testCtx, { action: 'bool', active: true });
+        expect(result.content[0]?.text).toContain('true');
+    });
+
+    it('.withEnum() should add a required enum parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.enum')
+            .withEnum('status', ['active', 'inactive', 'suspended'] as const, 'Filter by status')
+            .handle(async (input) => success(`status=${input.status}`));
+
+        const result = await tool.execute(testCtx, { action: 'enum', status: 'active' });
+        expect(result.content[0]?.text).toContain('active');
+    });
+
+    it('.withEnum() should reject invalid values', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.query('params.enumval')
+            .withEnum('status', ['active', 'inactive'] as const, 'Status')
+            .handle(async (input) => success(input.status));
+
+        const result = await tool.execute(testCtx, { action: 'enumval', status: 'INVALID' });
+        expect(result.isError).toBe(true);
+    });
+
+    it('.withArray() should add a required array parameter', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.mutation('params.arr')
+            .withArray('tags', 'string', 'Tags to apply')
+            .handle(async (input) => success(input.tags.join(',')));
+
+        const result = await tool.execute(testCtx, { action: 'arr', tags: ['a', 'b', 'c'] });
+        expect(result.content[0]?.text).toContain('a,b,c');
+    });
+
+    it('chained with*() should accumulate all parameters', async () => {
+        const f = initFusion<TestContext>();
+
+        const tool = f.mutation('params.chain')
+            .withString('id', 'Entity ID')
+            .withOptionalString('name', 'New name')
+            .withNumber('priority', 'Priority level')
+            .withOptionalBoolean('active', 'Active flag')
+            .withEnum('type', ['task', 'bug', 'feature'] as const, 'Entity type')
+            .handle(async (input) => {
+                return success({
+                    id: input.id,
+                    priority: input.priority,
+                    type: input.type,
+                });
+            });
+
+        const result = await tool.execute(testCtx, {
+            action: 'chain',
+            id: 't-1',
+            priority: 5,
+            type: 'task',
+        });
+        expect(result.content[0]?.text).toContain('t-1');
+        expect(result.content[0]?.text).toContain('task');
     });
 });
 
@@ -317,7 +302,7 @@ describe('AI-First DX', () => {
         const tool = f.query('docs.search')
             .describe('Search documentation')
             .instructions('Use ONLY when the user asks about internal policies.')
-            .resolve(async () => success('results'));
+            .handle(async () => success('results'));
 
         const def = tool.buildToolDefinition();
         expect(def.description).toContain('[INSTRUCTIONS]');
@@ -330,41 +315,11 @@ describe('AI-First DX', () => {
 
         const tool = f.query('docs.help')
             .instructions('Only for help queries.')
-            .resolve(async () => success('help'));
+            .handle(async () => success('help'));
 
         const def = tool.buildToolDefinition();
         expect(def.description).toContain('[INSTRUCTIONS]');
         expect(def.description).toContain('Only for help queries.');
-    });
-});
-
-// ============================================================================
-// Zod Interoperability
-// ============================================================================
-
-describe('Zod Interoperability', () => {
-    it('.input() should accept native Zod schemas', async () => {
-        const f = initFusion<TestContext>();
-
-        const schema = z.object({
-            limit: z.number().min(1).max(100).optional(),
-            status: z.enum(['active', 'inactive']),
-        });
-
-        const tool = f.query('users.search')
-            .input(schema)
-            .resolve(async ({ input }) => {
-                return success({ limit: input.limit, status: input.status });
-            });
-
-        expect(tool.getName()).toBe('users');
-
-        const result = await tool.execute(testCtx, {
-            action: 'search',
-            limit: 10,
-            status: 'active',
-        });
-        expect(result.content[0]?.text).toContain('active');
     });
 });
 
@@ -383,8 +338,8 @@ describe('Context Derivation (.use())', () => {
                 // Simulate auth check + inject admin info
                 return next({ ...ctx, adminUser: { name: 'SuperAdmin', role: 'admin' } });
             })
-            .input({ id: f.string() })
-            .resolve(async ({ input, ctx }) => {
+            .withString('id', 'User ID')
+            .handle(async (input, ctx) => {
                 enrichedAdmin = (ctx as Record<string, unknown>).adminUser;
                 return success(`Deleted ${input.id}`);
             });
@@ -405,7 +360,7 @@ describe('Tags', () => {
 
         const tool = f.query('admin.stats')
             .tags('admin', 'reporting')
-            .resolve(async () => success('stats'));
+            .handle(async () => success('stats'));
 
         expect(tool.getTags()).toContain('admin');
         expect(tool.getTags()).toContain('reporting');
@@ -423,7 +378,7 @@ describe('FluentRouter', () => {
         const users = f.router('users');
 
         const tool = users.query('list')
-            .resolve(async () => success('list'));
+            .handle(async () => success('list'));
 
         expect(tool.getName()).toBe('users');
         expect(tool.getActionNames()).toContain('list');
@@ -440,7 +395,7 @@ describe('FluentRouter', () => {
             });
 
         const tool = users.query('list')
-            .resolve(async () => success('list'));
+            .handle(async () => success('list'));
 
         await tool.execute(testCtx, { action: 'list' });
         expect(middlewareRan).toBe(true);
@@ -453,7 +408,7 @@ describe('FluentRouter', () => {
             .tags('admin', 'restricted');
 
         const tool = admin.mutation('purge')
-            .resolve(async () => success('purged'));
+            .handle(async () => success('purged'));
 
         expect(tool.getTags()).toContain('admin');
         expect(tool.getTags()).toContain('restricted');
@@ -465,8 +420,8 @@ describe('FluentRouter', () => {
         const users = f.router('users');
 
         const tool = users.mutation('delete')
-            .input({ id: f.string() })
-            .resolve(async () => success('deleted'));
+            .withString('id', 'User ID')
+            .handle(async () => success('deleted'));
 
         const meta = tool.getActionMetadata();
         expect(meta[0]?.destructive).toBe(true);
@@ -478,7 +433,7 @@ describe('FluentRouter', () => {
         const users = f.router('users');
 
         const tool = users.query('count')
-            .resolve(async () => success('42'));
+            .handle(async () => success('42'));
 
         const meta = tool.getActionMetadata();
         expect(meta[0]?.readOnly).toBe(true);
@@ -486,26 +441,11 @@ describe('FluentRouter', () => {
 });
 
 // ============================================================================
-// Backward Compatibility
+// Internal APIs (kept for power users, not documented)
 // ============================================================================
 
-describe('Backward Compatibility', () => {
-    it('existing f.tool() API should still work', async () => {
-        const f = initFusion<TestContext>();
-
-        const tool = f.tool({
-            name: 'legacy.ping',
-            handler: async () => success('pong'),
-        });
-
-        expect(tool.getName()).toBe('legacy');
-        expect(tool.getActionNames()).toContain('ping');
-
-        const result = await tool.execute(testCtx, { action: 'ping' });
-        expect(result.content[0]?.text).toBe('pong');
-    });
-
-    it('existing f.defineTool() API should still work', () => {
+describe('Internal APIs', () => {
+    it('f.defineTool() should still work (internal)', () => {
         const f = initFusion<TestContext>();
 
         const tool = f.defineTool('platform', {
@@ -521,7 +461,7 @@ describe('Backward Compatibility', () => {
         expect(tool.getActionNames()).toContain('ping');
     });
 
-    it('existing f.middleware() should still work', () => {
+    it('f.middleware() should still work', () => {
         const f = initFusion<TestContext>();
 
         const mw = f.middleware(async (ctx) => ({
@@ -532,7 +472,7 @@ describe('Backward Compatibility', () => {
         expect(typeof mw.toMiddlewareFn).toBe('function');
     });
 
-    it('existing f.registry() should still work', () => {
+    it('f.registry() should still work', () => {
         const f = initFusion<TestContext>();
         const registry = f.registry();
         expect(registry).toBeDefined();
@@ -540,7 +480,7 @@ describe('Backward Compatibility', () => {
 });
 
 // ============================================================================
-// Edge Cases — Multiple .use() Stacking
+// Multiple .use() Middleware Stacking
 // ============================================================================
 
 describe('Multiple .use() Middleware Stacking', () => {
@@ -557,7 +497,7 @@ describe('Multiple .use() Middleware Stacking', () => {
                 log.push('mw2');
                 return next({ ...ctx, tenant: 'acme' });
             })
-            .resolve(async ({ ctx }) => {
+            .handle(async (input, ctx) => {
                 const c = ctx as Record<string, unknown>;
                 return success({ auth: c.auth, tenant: c.tenant });
             });
@@ -570,46 +510,16 @@ describe('Multiple .use() Middleware Stacking', () => {
 });
 
 // ============================================================================
-// Edge Cases — ParamsMap Shorthand Input
-// ============================================================================
-
-describe('ParamsMap Shorthand Input', () => {
-    it('.input() should accept plain ParamsMap (JSON descriptors)', async () => {
-        const f = initFusion<TestContext>();
-
-        const tool = f.query('test.shorthand')
-            .input({
-                name: 'string',
-                age: { type: 'number' as const, min: 0 },
-                active: 'boolean',
-            })
-            .resolve(async ({ input }) => {
-                return success({ name: input.name, age: input.age });
-            });
-
-        const result = await tool.execute(testCtx, {
-            action: 'shorthand',
-            name: 'Alice',
-            age: 30,
-            active: true,
-        });
-        expect(result.content[0]?.text).toContain('Alice');
-    });
-});
-
-// ============================================================================
-// Edge Cases — Schema Validation at Runtime
+// Schema Validation at Runtime
 // ============================================================================
 
 describe('Schema Validation', () => {
-    it('fluent schema should reject invalid input at runtime', async () => {
+    it('withNumber() should reject string input at runtime', async () => {
         const f = initFusion<TestContext>();
 
         const tool = f.query('validate.strict')
-            .input({
-                limit: f.number().min(1).max(100),
-            })
-            .resolve(async ({ input }) => {
+            .withNumber('limit', 'Max results')
+            .handle(async (input) => {
                 return success({ limit: input.limit });
             });
 
@@ -622,16 +532,16 @@ describe('Schema Validation', () => {
         expect(result.isError).toBe(true);
     });
 
-    it('Zod schema should reject invalid input at runtime', async () => {
+    it('withEnum() should reject invalid enum value at runtime', async () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.query('validate.zod')
-            .input(z.object({ email: z.string().email() }))
-            .resolve(async ({ input }) => success(input.email));
+        const tool = f.query('validate.enum')
+            .withEnum('status', ['active', 'inactive'] as const, 'Status')
+            .handle(async (input) => success(input.status));
 
         const result = await tool.execute(testCtx, {
-            action: 'zod',
-            email: 'not-an-email',
+            action: 'enum',
+            status: 'BOGUS',
         });
 
         expect(result.isError).toBe(true);
@@ -639,41 +549,7 @@ describe('Schema Validation', () => {
 });
 
 // ============================================================================
-// Edge Cases — isFluentDescriptor + resolveFluentParams
-// ============================================================================
-
-describe('FluentDescriptor Utilities', () => {
-    it('isFluentDescriptor should detect fluent helpers', () => {
-        expect(isFluentDescriptor(new FluentString())).toBe(true);
-        expect(isFluentDescriptor(new FluentNumber())).toBe(true);
-        expect(isFluentDescriptor(new FluentBoolean())).toBe(true);
-        expect(isFluentDescriptor(new FluentEnum('a', 'b'))).toBe(true);
-        expect(isFluentDescriptor(new FluentArray('string'))).toBe(true);
-    });
-
-    it('isFluentDescriptor should reject non-fluent values', () => {
-        expect(isFluentDescriptor('string')).toBe(false);
-        expect(isFluentDescriptor({ type: 'string' })).toBe(false);
-        expect(isFluentDescriptor(123)).toBe(false);
-        expect(isFluentDescriptor(null)).toBe(false);
-        expect(isFluentDescriptor(undefined)).toBe(false);
-    });
-
-    it('resolveFluentParams should convert mixed maps', () => {
-        const resolved = resolveFluentParams({
-            name: new FluentString().min(3).describe('Name'),
-            age: { type: 'number', min: 0 }, // plain ParamDef passthrough
-            tags: new FluentArray('string').min(1),
-        });
-
-        expect(resolved.name).toEqual({ type: 'string', description: 'Name', min: 3 });
-        expect(resolved.age).toEqual({ type: 'number', min: 0 }); // untouched
-        expect(resolved.tags).toEqual({ array: 'string', min: 1 });
-    });
-});
-
-// ============================================================================
-// Edge Cases — buildToolDefinition with Input Schema
+// Tool Definition Compilation
 // ============================================================================
 
 describe('Tool Definition Compilation', () => {
@@ -683,11 +559,9 @@ describe('Tool Definition Compilation', () => {
         const tool = f.query('reports.daily')
             .describe('Generate daily report')
             .instructions('Use only for end-of-day summaries')
-            .input({
-                date: f.string().regex('^\\d{4}-\\d{2}-\\d{2}$').describe('ISO date'),
-                format: f.enum('pdf', 'csv', 'html').optional(),
-            })
-            .resolve(async () => success('report'));
+            .withString('date', 'ISO date (YYYY-MM-DD)')
+            .withOptionalEnum('format', ['pdf', 'csv', 'html'] as const, 'Output format')
+            .handle(async () => success('report'));
 
         const def = tool.buildToolDefinition();
 
@@ -707,11 +581,10 @@ describe('Tool Definition Compilation', () => {
 
         const tool = api.query('health')
             .describe('Health check')
-            .resolve(async () => success('ok'));
+            .handle(async () => success('ok'));
 
         const def = tool.buildToolDefinition();
 
         expect(def.name).toBe('api');
     });
 });
-

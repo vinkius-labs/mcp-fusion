@@ -75,14 +75,109 @@ html.dark .vp-doc pre {
   color: var(--vp-c-brand-1);
 }
 
+/* Compact sidebar spacing — override VitePress defaults */
+.VPSidebarItem.level-0 > .item {
+  padding: 2px 0 !important;
+  margin: 0 !important;
+}
+
+.VPSidebarItem.level-0 {
+  padding: 0 !important;
+}
+
+.VPSidebarItem.level-0 + .VPSidebarItem.level-0 {
+  border-top: none !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.VPSidebarItem.level-1 > .item {
+  padding: 1px 0 !important;
+}
+
+.VPSidebar .group + .group {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  border-top: none !important;
+}
+
+
 /* Custom Nav */
 .VPNavBar {
-  border-bottom: 1px solid var(--vp-c-divider);
   background-color: var(--vp-c-bg) !important;
+  position: relative !important;
+}
+
+/* VitePress uses a .divider child for the bottom line */
+.VPNavBar .divider,
+.VPNavBar .divider-line {
+  border-bottom: 1px solid var(--vp-c-divider) !important;
+}
+
+html.dark .VPNavBar .divider,
+html.dark .VPNavBar .divider-line {
+  border-bottom: 1px solid #333 !important;
+}
+
+/* Fallback: force a visible bottom border via pseudo-element */
+.VPNavBar::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #333;
+  z-index: 100;
+}
+
+html:not(.dark) .VPNavBar::after {
+  background: var(--vp-c-divider);
 }
 
 .VPNavBarMenuLink.active {
   color: var(--vp-c-brand-1);
+}
+
+/* Subtitle under MCP Fusion in the navbar */
+.VPNavBarTitle {
+  position: relative !important;
+}
+
+.VPNavBarTitle .title {
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  align-content: center;
+  gap: 2px 8px;
+}
+
+.VPNavBarTitle .title :deep(.logo),
+.VPNavBarTitle .title .logo {
+  grid-row: 1 / span 2;
+  margin-right: 0 !important;
+}
+
+.VPNavBarTitle .title > span {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  line-height: 1.1;
+  display: block !important;
+  margin-top: 2px;
+}
+
+.VPNavBarTitle .title .nav-subtitle {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--vp-c-text-3);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* Home Page Specifics */
@@ -221,6 +316,43 @@ html:not(.dark) .VPHero .name {
     letter-spacing: 0.1em !important;
     text-transform: uppercase !important;
     text-align: left !important;
+}
+
+/* Badges row */
+.ms-badges {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 40px;
+  margin-top: -40px;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 10;
+}
+
+.ms-badges p {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin: 0 !important;
+}
+
+.ms-badges a {
+  display: inline-block !important;
+  line-height: 0 !important;
+}
+
+.ms-badges img {
+  height: 22px !important;
+  display: inline-block !important;
+}
+
+/* Badges in doc pages (not homepage) */
+.vp-doc .ms-badges {
+  padding: 0 !important;
+  margin-top: 12px !important;
+  margin-bottom: 24px !important;
 }
 
 /* Feature grid */

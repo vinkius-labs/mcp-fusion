@@ -4,7 +4,7 @@
 
 ## `initFusion()` — Define Context Once {#init-fusion}
 
-Define your context type once. Every `f.tool()`, `f.presenter()`, `f.middleware()`, `f.prompt()` inherits it.
+Define your context type once. Every `f.query()`, `f.mutation()`, `f.action()`, `f.presenter()`, `f.middleware()`, `f.prompt()` inherits it.
 
 ```typescript
 // src/fusion.ts
@@ -23,36 +23,31 @@ Every tool file becomes generic-free:
 ```typescript
 // src/tools/billing.ts
 import { f } from '../fusion';
-import { z } from 'zod';
 
-export const getInvoice = f.tool({
-  name: 'billing.get_invoice',
-  input: z.object({ id: z.string() }),
-  readOnly: true,
-  handler: async ({ input, ctx }) => {
+export const getInvoice = f.query('billing.get_invoice')
+  .describe('Retrieve an invoice by ID')
+  .withString('id', 'Invoice ID')
+  .handle(async (input, ctx) => {
     // ctx is AppContext — typed automatically
     return ctx.db.invoices.findUnique({ where: { id: input.id } });
-  },
-});
+  });
 ```
 
-`f.tool()`, `f.presenter()`, `f.middleware()`, `f.prompt()`, `f.registry()`, `f.defineTool()` — all inherit `AppContext`. Add a property to the context interface and every handler sees it. Remove one and TypeScript flags every handler that references it.
+`f.query()`, `f.mutation()`, `f.action()`, `f.presenter()`, `f.middleware()`, `f.prompt()`, `f.registry()`, `f.router()` — all inherit `AppContext`. Add a property to the context interface and every handler sees it. Remove one and TypeScript flags every handler that references it.
 
-The handler receives `{ input, ctx }` — a destructured object (tRPC v11 pattern). Hover over `input.id` and the IDE shows the Zod-inferred type.
+The handler receives `(input, ctx)` — fully typed. Hover over `input.id` and the IDE shows `string`.
 
 ## JSON Descriptors — No Zod Required {#json-descriptors}
 
 For simple inputs — strings, numbers, enums — plain JSON descriptors replace Zod. Converted to Zod internally at runtime. Same validation, same error messages, zero imports.
 
 ```typescript
-export const getInvoice = f.tool({
-  name: 'billing.get_invoice',
-  input: { id: 'string' },
-  readOnly: true,
-  handler: async ({ input, ctx }) => {
+export const getInvoice = f.query('billing.get_invoice')
+  .describe('Retrieve an invoice by ID')
+  .withString('id', 'Invoice ID')
+  .handle(async (input, ctx) => {
     return ctx.db.invoices.findUnique({ where: { id: input.id } });
-  },
-});
+  });
 ```
 
 For constraints, use an object:

@@ -8,16 +8,18 @@ The default. Every action becomes an independent MCP tool with its own name, sch
 
 ```typescript
 const listProjects = f.query('projects.list')
-  .input({ workspace_id: f.string() })
-  .resolve(async ({ input, ctx }) => { /* ... */ });
+  .withString('workspace_id', 'Workspace ID')
+  .handle(async (input, ctx) => { /* ... */ });
 
 const createProject = f.action('projects.create')
-  .input({ workspace_id: f.string(), name: f.string() })
-  .resolve(async ({ input, ctx }) => { /* ... */ });
+  .withString('workspace_id', 'Workspace ID')
+  .withString('name', 'Project name')
+  .handle(async (input, ctx) => { /* ... */ });
 
 const deleteProject = f.mutation('projects.delete')
-  .input({ workspace_id: f.string(), id: f.string() })
-  .resolve(async ({ input, ctx }) => { /* ... */ });
+  .withString('workspace_id', 'Workspace ID')
+  .withString('id', 'Project ID')
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 Produces three entries in `tools/list`:
@@ -141,11 +143,11 @@ registry.attachToServer(server, {
 ```typescript
 const admin = f.query('admin.list')
   .tags('internal')
-  .resolve(async ({ ctx }) => { /* ... */ });
+  .handle(async (input, ctx) => { /* ... */ });
 
 const search = f.query('search.find')
   .tags('public')
-  .resolve(async ({ ctx }) => { /* ... */ });
+  .handle(async (input, ctx) => { /* ... */ });
 
 registry.attachToServer(server, {
   toolExposition: 'flat',

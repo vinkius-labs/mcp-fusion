@@ -103,6 +103,53 @@ describe('parseArgs', () => {
         expect(args.name).toBe('demo');
         expect(args.cwd).toBe('/tmp');
     });
+
+    // ── Dev command parsing ──
+
+    it('parses the dev command', () => {
+        const args = parseArgs(['node', 'fusion', 'dev']);
+        expect(args.command).toBe('dev');
+    });
+
+    it('parses dev with --server', () => {
+        const args = parseArgs(['node', 'fusion', 'dev', '--server', './src/server.ts']);
+        expect(args.command).toBe('dev');
+        expect(args.server).toBe('./src/server.ts');
+    });
+
+    it('parses dev with -s shorthand', () => {
+        const args = parseArgs(['node', 'fusion', 'dev', '-s', './src/server.ts']);
+        expect(args.command).toBe('dev');
+        expect(args.server).toBe('./src/server.ts');
+    });
+
+    it('parses dev with --dir', () => {
+        const args = parseArgs(['node', 'fusion', 'dev', '--dir', './src/tools']);
+        expect(args.command).toBe('dev');
+        expect(args.dir).toBe('./src/tools');
+    });
+
+    it('parses dev with -d shorthand', () => {
+        const args = parseArgs(['node', 'fusion', 'dev', '-d', './src/tools']);
+        expect(args.command).toBe('dev');
+        expect(args.dir).toBe('./src/tools');
+    });
+
+    it('parses dev with all flags combined', () => {
+        const args = parseArgs([
+            'node', 'fusion', 'dev',
+            '-s', './src/server.ts',
+            '-d', './src/tools',
+        ]);
+        expect(args.command).toBe('dev');
+        expect(args.server).toBe('./src/server.ts');
+        expect(args.dir).toBe('./src/tools');
+    });
+
+    it('defaults dir to undefined when not provided', () => {
+        const args = parseArgs(['node', 'fusion', 'dev']);
+        expect(args.dir).toBeUndefined();
+    });
 });
 
 // ============================================================================
@@ -116,10 +163,12 @@ describe('CLI constants', () => {
 
     it('HELP contains usage instructions', () => {
         expect(HELP).toContain('fusion lock');
+        expect(HELP).toContain('fusion dev');
         expect(HELP).toContain('--server');
         expect(HELP).toContain('--check');
         expect(HELP).toContain('--name');
         expect(HELP).toContain('--cwd');
+        expect(HELP).toContain('--dir');
         expect(HELP).toContain('--help');
     });
 });

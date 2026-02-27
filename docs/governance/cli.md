@@ -5,6 +5,16 @@ description: "The fusion CLI — generate, verify, and manage capability lockfil
 
 # CLI Reference
 
+- [Installation](#install)
+- [Generating a Lockfile](#generate)
+- [Verifying in CI](#check)
+- [Options](#options)
+- [Registry Auto-Discovery](#discovery)
+- [CI/CD Integration](#ci)
+- [Exit Codes](#exit)
+- [Progress Reporting](#progress)
+- [Programmatic API](#programmatic)
+
 The `fusion` CLI generates and verifies capability lockfiles from the command line. Two commands cover the entire workflow: `fusion lock` captures the behavioral surface, `fusion lock --check` gates the CI build.
 
 

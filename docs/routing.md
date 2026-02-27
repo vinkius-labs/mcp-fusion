@@ -1,8 +1,17 @@
 # Namespaces & Routing
 
+- [File-Based Routing](#auto-discover)
+- [Fluent Router](#fluent-router)
+- [Discriminators](#discriminators)
+- [Common Schema](#shared-schemas)
+- [Hierarchical Groups](#hierarchical)
+- [Tool Exposition](#exposition)
+
+## Introduction
+
 MCP Fusion separates how you author tools from how the agent discovers them. You organize tools as files in a directory tree; the framework maps that tree into MCP tool definitions with clear naming, discriminators, and shared schemas.
 
-## File-Based Routing {#auto-discover}
+## File-Based Routing — `autoDiscover()` {#auto-discover}
 
 `autoDiscover()` scans a directory and registers all exported tools:
 
@@ -36,19 +45,75 @@ Add a file — it's registered on the next start. Delete a file — it's gone. E
 ```typescript
 // src/tools/billing/pay.ts
 import { f } from '../../fusion';
-import { z } from 'zod';
 
-export default f.tool({
-  name: 'billing.pay',
-  description: 'Process a payment for an invoice',
-  input: z.object({ invoice_id: z.string(), amount: z.number() }),
-  handler: async ({ input, ctx }) => {
+export default f.mutation('billing.pay')
+  .describe('Process a payment for an invoice')
+  .withString('invoice_id', 'Invoice ID')
+  .withNumber('amount', 'Payment amount')
+  .handle(async (input, ctx) => {
     return await ctx.billing.charge(input.invoice_id, input.amount);
-  },
-});
+  });
 ```
 
 Pair `autoDiscover()` with `createDevServer()` for hot-reload during development. See the [DX Guide](/dx-guide#hmr-dev-server-createdevserver).
+
+## Fluent Router — `f.router()` {#fluent-router}
+
+When multiple tools share a prefix, middleware, and tags, `f.router()` eliminates repetition. The router creates a naming scope — child tools inherit the prefix, middleware chain, and tags automatically:
+
+```typescript
+import { f } from './fusion';
+
+const users = f.router('users')
+    .describe('User management')
+    .use(requireAuth)
+    .tags('core');
+
+// Tool name: "users", action: "list" → readOnly: true by default
+export const listUsers = users.query('list')
+    .describe('List all users')
+    .withOptionalNumber('limit', 'Max results')
+    .handle(async (input, ctx) => {
+        return ctx.db.users.findMany({ take: input.limit ?? 50 });
+    });
+
+// Tool name: "users", action: "invite" → neutral verb
+export const inviteUser = users.action('invite')
+    .describe('Invite a user by email')
+    .idempotent()
+    .withString('email', 'Email address')
+    .handle(async (input, ctx) => {
+        return ctx.invitations.send(input.email);
+    });
+
+// Tool name: "users", action: "ban" → destructive: true by default
+export const banUser = users.mutation('ban')
+    .describe('Permanently ban a user')
+    .withString('user_id', 'User ID to ban')
+    .handle(async (input, ctx) => {
+        await ctx.db.users.update({ where: { id: input.user_id }, data: { banned: true } });
+    });
+```
+
+The router supports three methods that mirror `initFusion`:
+
+| Method | Semantic Defaults |
+|--------|------------------|
+| `users.query('list')` | `readOnly: true` |
+| `users.action('invite')` | No defaults (neutral) |
+| `users.mutation('ban')` | `destructive: true` |
+
+> [!TIP]
+> Middleware added to the router via `.use()` runs on **every** child tool. Add tool-specific middleware via `.use()` on the individual builder:
+> ```typescript
+> const deleteUser = users.mutation('delete')
+>     .use(async ({ ctx, next }) => {
+>         const admin = await requireAdmin(ctx.headers);
+>         return next({ ...ctx, adminUser: admin });
+>     })
+>     .withString('id', 'User ID')
+>     .handle(async (input, ctx) => { /* ctx.adminUser is typed */ });
+> ```
 
 ## Discriminators {#discriminators}
 
@@ -64,88 +129,69 @@ When a tool has multiple actions, the framework compiles them behind a single MC
 }
 ```
 
-The `action` field forces the agent to select a value from a constrained enum instead of guessing between semantically similar tool names. The default key is `action`; override it with `.discriminator('operation')`.
+The `action` field forces the agent to select a value from a constrained enum instead of guessing between semantically similar tool names. The default key is `action`; override it with `.discriminator('operation')` on the builder.
 
-## Shared Schemas {#shared-schemas}
+## Common Schema {#shared-schemas}
 
-With `defineTool()`, the `shared` field injects common parameters into every action:
-
-```typescript
-const projects = defineTool<AppContext>('projects', {
-  description: 'Manage workspace projects',
-  shared: { workspace_id: 'string' },
-  actions: {
-    list: {
-      readOnly: true,
-      handler: async (ctx, args) => {
-        return success(await ctx.db.projects.findMany({ workspaceId: args.workspace_id }));
-      },
-    },
-    create: {
-      params: { name: 'string' },
-      handler: async (ctx, args) => {
-        return success(await ctx.db.projects.create({
-          workspaceId: args.workspace_id,
-          name: args.name,
-        }));
-      },
-    },
-  },
-});
-```
-
-`workspace_id` appears once in the compiled schema, not once per action. With `createTool()`, the equivalent is `.commonSchema()`:
+With `createTool()`, the `.commonSchema()` method injects common parameters into every action:
 
 ```typescript
-const projects = createTool<void>('projects')
+import { createTool, success } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const projects = createTool<AppContext>('projects')
+  .description('Manage workspace projects')
   .commonSchema(z.object({
-    workspaceId: z.string().describe('The active SaaS workspace ID'),
+    workspace_id: z.string().describe('Workspace identifier'),
   }))
-  .action({ name: 'list', readOnly: true, handler: listProjects })
+  .action({
+    name: 'list',
+    readOnly: true,
+    handler: async (ctx, args) => {
+      // args.workspace_id typed as string — from commonSchema
+      return success(await ctx.db.projects.findMany({
+        where: { workspaceId: args.workspace_id },
+      }));
+    },
+  })
   .action({
     name: 'create',
     schema: z.object({ name: z.string() }),
-    handler: createProject,
+    handler: async (ctx, args) => {
+      return success(await ctx.db.projects.create({
+        workspaceId: args.workspace_id,
+        name: args.name,
+      }));
+    },
   });
 ```
+
+`workspace_id` appears once in the compiled schema, marked as `(always required)` in the auto-generated description. `SchemaGenerator.ts` applies per-field annotations telling the LLM which fields are required for which action.
+
+> [!TIP]
+> With the Fluent API (`f.query()` / `f.mutation()`), each tool defines its own params via `.withString()`, `.withNumber()`, etc. Use `createTool()` with `.commonSchema()` when you need a shared field across many actions behind a single MCP endpoint.
 
 ## Hierarchical Groups {#hierarchical}
 
 Groups organize actions into namespaces, each with its own description and middleware:
 
 ```typescript
-const platform = defineTool<AppContext>('platform', {
-  description: 'Central API for the Platform',
-  shared: { workspace_id: 'string' },
-  middleware: [authMiddleware],
-  groups: {
-    users: {
-      description: 'User management',
-      middleware: [requireAdmin],
-      actions: {
-        invite: {
-          params: { email: 'string' },
-          handler: async (ctx, args) => { /* ... */ },
-        },
-        ban: {
-          destructive: true,
-          params: { user_id: 'string' },
-          handler: async (ctx, args) => { /* ... */ },
-        },
-      },
-    },
-    billing: {
-      description: 'Billing operations',
-      actions: {
-        refund: {
-          destructive: true,
-          params: { invoice_id: 'string' },
-          handler: async (ctx, args) => { /* ... */ },
-        },
-      },
-    },
-  },
-});
+import { createTool, success } from '@vinkius-core/mcp-fusion';
+
+const platform = createTool<AppContext>('platform')
+    .description('Central API for the Platform')
+    .commonSchema(z.object({
+        workspace_id: z.string().describe('Workspace ID'),
+    }))
+    .use(authMiddleware)
+    .group('users', 'User management', g => {
+        g.use(requireAdmin)  // Group-scoped middleware
+         .action({ name: 'invite', schema: z.object({ email: z.string() }), handler: inviteUser })
+         .action({ name: 'ban', destructive: true, schema: z.object({ user_id: z.string() }), handler: banUser });
+    })
+    .group('billing', 'Billing operations', g => {
+        g.action({ name: 'refund', destructive: true, schema: z.object({ invoice_id: z.string() }), handler: issueRefund });
+    });
 ```
 
 Discriminator values become dot-notation paths: `users.invite`, `users.ban`, `billing.refund`. You cannot mix `.action()` and `.group()` on the same root builder — once you use `.group()`, all actions must live inside groups.

@@ -1,5 +1,16 @@
 # AWS Connector
 
+- [Install](#install)
+- [Resource Tagging Convention](#tagging)
+- [Dynamic Ingestion](#ingestion)
+- [Grouping — Multi-Action Tools](#grouping)
+- [Step Functions — Express vs Standard](#step-functions)
+- [MVA Interception](#mva)
+- [Surgical Construction](#surgical)
+- [Live State Sync](#state-sync)
+- [Full Production Example](#production)
+- [Configuration Reference](#config)
+
 Auto-discover AWS Lambda functions and Step Functions via resource tags, then expose them as grouped MCP tools. Tag filtering controls what the AI can see, and the MVA pipeline (Presenters, middleware, egress firewall) applies before results leave your process.
 
 ```typescript
@@ -24,7 +35,7 @@ for (const tool of connector.tools()) {
 }
 ```
 
-## Install
+## Install {#install}
 
 ```bash
 npm install mcp-fusion-aws
@@ -32,7 +43,7 @@ npm install mcp-fusion-aws
 
 Peer dependencies: `@vinkius-core/mcp-fusion`, `@aws-sdk/client-lambda` (optional), `@aws-sdk/client-sfn` (optional).
 
-## Resource Tagging Convention
+## Resource Tagging Convention {#tagging}
 
 The connector discovers AWS resources via **tags**. Only resources with the `mcp:expose = true` tag are visible to the AI.
 
@@ -54,7 +65,7 @@ The connector discovers AWS resources via **tags**. Only resources with the `mcp
 └─────────────────────────────┘
 ```
 
-## Dynamic Ingestion
+## Dynamic Ingestion {#ingestion}
 
 `createAwsConnector` calls the AWS APIs at boot, fetches all Lambda functions and Step Functions matching your tags, and compiles them into `SynthesizedToolConfig` instances. Untagged resources (internal functions, cron handlers) stay invisible to the AI.
 
@@ -70,7 +81,7 @@ for (const tool of connector.tools()) {
 }
 ```
 
-## Grouping — Multi-Action Tools
+## Grouping — Multi-Action Tools {#grouping}
 
 Lambdas and Step Functions with the same `mcp:group` tag are merged into a single tool with multiple actions. This reduces tool sprawl and makes the AI's tool list cleaner.
 
@@ -88,7 +99,7 @@ Result: ONE tool "users" with actions: create, list, delete
 // AI sees: tools/call users { action: "delete", ... }
 ```
 
-## Step Functions — Express vs Standard
+## Step Functions — Express vs Standard {#step-functions}
 
 The connector handles both execution types automatically:
 
@@ -107,7 +118,7 @@ Standard Step Functions return a Long-Running Operation (LRO) with a cognitive i
 }
 ```
 
-## MVA Interception
+## MVA Interception {#mva}
 
 The package produces `SynthesizedToolConfig` instances, not a server. Attach Presenters and middleware before registration:
 
@@ -140,7 +151,7 @@ for (const tool of connector.tools()) {
 }
 ```
 
-## Surgical Construction
+## Surgical Construction {#surgical}
 
 For critical routes where auto-discovery is too permissive, use `defineAwsTool()` with strict control:
 
@@ -167,7 +178,7 @@ registry.register(defineTool(report.name, report.config));
 
 ARN detection: `arn:aws:lambda:...` → invokes synchronously. `arn:aws:states:...` → invokes via `startSyncExecution`.
 
-## Live State Sync
+## Live State Sync {#state-sync}
 
 Background polling detects resource tag changes and fires `notifications/tools/list_changed` so the LLM client refreshes automatically:
 
@@ -185,7 +196,7 @@ process.on('SIGTERM', () => { connector.stop(); process.exit(0); });
 
 The fingerprint includes tool names, descriptions, and action annotations — any change triggers `onChange`.
 
-## Full Production Example
+## Full Production Example {#production}
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -236,7 +247,7 @@ await server.connect(new StdioServerTransport());
 process.on('SIGTERM', () => { connector.stop(); process.exit(0); });
 ```
 
-## Configuration Reference
+## Configuration Reference {#config}
 
 ### `createAwsConnector(config)`
 

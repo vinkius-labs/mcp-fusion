@@ -11,8 +11,9 @@
         "lint:fix": "eslint packages/*/src/ --fix",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "docs:dev": "vitepress dev docs",
-        "docs:build": "vitepress build docs",
+        "docs:api": "typedoc",
+        "docs:dev": "npm run docs:api && vitepress dev docs",
+        "docs:build": "npm run docs:api && vitepress build docs",
         "docs:preview": "vitepress preview docs"
     },
     "engines": {
@@ -23,6 +24,9 @@
         "@modelcontextprotocol/sdk": "^1.12.1",
         "@vitest/coverage-v8": "^3.2.4",
         "eslint": "^10.0.1",
+        "typedoc": "^0.28.17",
+        "typedoc-plugin-markdown": "^4.10.0",
+        "typedoc-vitepress-theme": "^1.1.2",
         "typescript": "^5.7.3",
         "typescript-eslint": "^8.56.0",
         "vitepress": "^1.6.4",

@@ -1,5 +1,19 @@
 # Cost Reduction & Anti-Hallucination
 
+- [Before & After](#before-after)
+- [Design Thesis](#thesis)
+- [The 8 Mechanisms](#mechanisms)
+- [① Action Consolidation](#consolidation)
+- [② TOON Encoding](#toon)
+- [③ Zod .strict()](#strict)
+- [④ Self-Healing Errors](#self-healing)
+- [⑤ Cognitive Guardrails](#guardrails)
+- [⑥ Agentic Affordances](#affordances)
+- [⑦ JIT Context](#jit)
+- [⑧ State Sync](#state-sync)
+- [How They Compound](#compounding)
+- [Token Budget Preview](#preview)
+
 ## Before & After {#before-after}
 
 **Before — raw MCP server:**
@@ -71,11 +85,23 @@ Cost and hallucination are two symptoms of the same root cause: too many tokens 
 Operations grouped behind a single tool with a discriminator enum. Schema surface shrinks significantly:
 
 ```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
 const f = initFusion<AppContext>();
 
-const list = f.tool({ name: 'projects.list', input: z.object({}), handler: async ({ ctx }) => ctx.db.projects.findMany() });
-const get = f.tool({ name: 'projects.get', input: z.object({ id: z.string() }), handler: async ({ input, ctx }) => ctx.db.projects.findUnique(input.id) });
-const create = f.tool({ name: 'projects.create', input: z.object({ name: z.string() }), handler: async ({ input, ctx }) => ctx.db.projects.create(input) });
+const list = f.query('projects.list')
+  .describe('List projects')
+  .handle(async (input, ctx) => ctx.db.projects.findMany());
+
+const get = f.query('projects.get')
+  .describe('Get project')
+  .withString('id', 'Project ID')
+  .handle(async (input, ctx) => ctx.db.projects.findUnique(input.id));
+
+const create = f.mutation('projects.create')
+  .describe('Create project')
+  .withString('name', 'Name')
+  .handle(async (input, ctx) => ctx.db.projects.create(input));
 ```
 
 `SchemaGenerator.ts` compiles all actions into one `inputSchema` with a discriminator enum. `applyAnnotations()` adds per-field context telling the LLM which fields are needed for which action.
@@ -87,15 +113,21 @@ const create = f.tool({ name: 'projects.create', input: z.object({ name: z.strin
 
 ## ② TOON Encoding {#toon}
 
-TOON (Token-Oriented Object Notation) replaces JSON structure with pipe-delimited tabular data:
+TOON (Token-Oriented Object Notation) replaces JSON structure with pipe-delimited tabular data. Enable with `.toonDescription()`:
 
 ```typescript
-// ToonDescriptionGenerator.ts
-function encodeFlatActions<TContext>(actions: readonly InternalAction<TContext>[]): string {
-    const rows = actions.map(a => buildActionRow(a.key, a));
-    return encode(rows, { delimiter: '|' });
-}
-// → "action|desc|required\nlist|List projects|\nget|Get by ID|id"
+const projects = f.query('projects.list')
+  .describe('List all projects')
+  .toonDescription()
+  .handle(async (input, ctx) => ctx.db.projects.findMany());
+```
+
+Output:
+```text
+action|desc|required
+list|List all projects|
+get|Get by ID|id
+create|Create project|name
 ```
 
 `toonSuccess()` provides opt-in response encoding. ~40-50% token reduction over equivalent JSON for tabular data.
@@ -132,6 +164,15 @@ return toolError('ProjectNotFound', {
     suggestion: 'Call projects.list first to get valid IDs, then retry.',
     availableActions: ['projects.list'],
 });
+```
+
+Or use the fluent `ErrorBuilder` via `f.error()`:
+
+```typescript
+return f.error('NOT_FOUND', `Project '${input.id}' not found`)
+    .suggest('Call projects.list to find valid IDs')
+    .actions('projects.list')
+    .build();
 ```
 
 ## ⑤ Cognitive Guardrails {#guardrails}
@@ -179,19 +220,25 @@ if (typeof this._rules === 'function') {
 
 ## ⑧ State Sync {#state-sync}
 
-Causal invalidation signals at the protocol layer, inspired by RFC 7234:
+Causal invalidation signals at the protocol layer, inspired by RFC 7234. Inline on the tool:
 
 ```typescript
-registry.attachToServer(server, {
-    stateSync: {
-        defaults: { cacheControl: 'no-store' },
-        policies: [
-            { match: 'sprints.update', invalidates: ['sprints.*'] },
-            { match: 'tasks.update',   invalidates: ['tasks.*', 'sprints.*'] },
-            { match: 'countries.*',    cacheControl: 'immutable' },
-        ],
-    },
-});
+const updateSprint = f.mutation('sprints.update')
+    .describe('Update a sprint')
+    .invalidates('sprints.*', 'tasks.*')
+    .withString('id', 'Sprint ID')
+    .handle(async (input, ctx) => ctx.db.sprints.update(input));
+```
+
+Or centralized via `f.stateSync()`:
+
+```typescript
+const sync = f.stateSync()
+    .defaults(p => p.stale())
+    .policy('sprints.update', p => p.invalidates('sprints.*'))
+    .policy('tasks.update', p => p.invalidates('tasks.*', 'sprints.*'))
+    .policy('countries.*', p => p.cached())
+    .build();
 ```
 
 After successful mutation: `[System: Cache invalidated for sprints.* — caused by sprints.update]`. Failed mutations emit nothing — state didn't change.
@@ -238,8 +285,14 @@ Every block deterministic — from the builder, not the LLM. Domain rules appear
 
 ## Token Budget Preview {#preview}
 
+Use `.previewPrompt()` on any built tool to see exactly what the LLM receives:
+
 ```typescript
-const projects = defineTool<AppContext>('projects', { ... });
+const projects = f.query('projects.list')
+    .describe('List all projects')
+    .withString('workspace_id', 'Workspace ID')
+    .handle(async (input, ctx) => ctx.db.projects.findMany());
+
 console.log(projects.previewPrompt());
 
 // ┌────────────────────────────────────────────────────────────┐

@@ -19,6 +19,12 @@ hero:
   textAfterActions: "Open Source. Built by Vinkius Labs."
 ---
 
+<div class="ms-badges">
+
+[![First Release](https://img.shields.io/badge/First%20Release-Feb%2012%2C%202026-blue)](https://github.com/vinkius-labs/mcp-fusion/releases) [![Downloads](https://img.shields.io/npm/dt/@vinkius-core/mcp-fusion)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![Weekly Downloads](https://img.shields.io/npm/dw/@vinkius-core/mcp-fusion)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![Package Size](https://img.shields.io/bundlephobia/minzip/@vinkius-core/mcp-fusion)](https://bundlephobia.com/package/@vinkius-core/mcp-fusion) [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/) [![MCP SDK](https://img.shields.io/badge/MCP-Standard-purple.svg?style=flat-square)](https://modelcontextprotocol.io/) [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE) [![GitHub Stars](https://img.shields.io/github/stars/vinkius-labs/mcp-fusion?style=flat-square&color=gold)](https://github.com/vinkius-labs/mcp-fusion/stargazers) ![Built with 🚀 by Vinkius](https://img.shields.io/badge/Built%20with-%F0%9F%9A%80%20by%20Vinkius-%23000000)
+
+</div>
+
 <!-- ═══ Section 1: The Problem ═══ -->
 <div class="ms-section">
 <div class="ms-left">
@@ -79,9 +85,9 @@ const InvoicePresenter = createPresenter('Invoice')
 const getInvoice = f.query('billing.get')
     .describe('Retrieve an invoice by ID')
     .instructions('Use ONLY when user asks about a specific invoice.')
-    .input({ id: f.string().describe('Invoice ID') })
+    .withString('id', 'Invoice ID')
     .returns(InvoicePresenter)
-    .resolve(async ({ input, ctx }) => {
+    .handle(async (input, ctx) => {
         return ctx.db.invoices.findUnique(input.id);
     });
 
@@ -89,12 +95,10 @@ const getInvoice = f.query('billing.get')
 const payInvoice = f.mutation('billing.pay')
     .describe('Process payment for an invoice')
     .instructions('ALWAYS confirm with the user before processing payment.')
-    .input({
-        invoice_id: f.string(),
-        amount: f.number().min(1).describe('Amount in cents'),
-    })
+    .withString('invoice_id', 'Invoice ID')
+    .withNumber('amount', 'Amount in cents')
     .use(async ({ ctx, next }) => next({ ...ctx, audit: { action: 'payment' } }))
-    .resolve(async ({ input, ctx }) => {
+    .handle(async (input, ctx) => {
         return ctx.billing.charge(input.invoice_id, input.amount);
     });
 ```
@@ -304,7 +308,7 @@ const InvoicePresenter = createPresenter('Invoice')
 <div class="ms-card">
 <div class="ms-card-number">02 // DX</div>
 <h3 class="ms-card-title">Context Init (initFusion)</h3>
-<p class="ms-card-desc">tRPC-style f = initFusion&lt;AppContext&gt;(). Define your context type ONCE — every f.tool(), f.presenter(), f.registry() inherits it. Zero generics.</p>
+<p class="ms-card-desc">tRPC-style f = initFusion&lt;AppContext&gt;(). Define your context type ONCE — every f.query(), f.presenter(), f.registry() inherits it. Zero generics.</p>
 <a href="/dx-guide" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">

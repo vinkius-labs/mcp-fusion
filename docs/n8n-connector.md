@@ -1,5 +1,14 @@
 # n8n Connector
 
+- [Install](#install)
+- [Dynamic Ingestion](#ingestion)
+- [Semantic Inference](#semantic)
+- [MVA Interception](#mva)
+- [Surgical Construction](#surgical)
+- [Live State Sync](#state-sync)
+- [Full Production Example](#production)
+- [Configuration Reference](#config)
+
 Turn n8n webhook workflows into MCP tools. Tag filtering controls what the AI can see, and Presenters strip sensitive data before it leaves your process.
 
 ```typescript
@@ -20,7 +29,7 @@ for (const tool of n8n.tools()) {
 }
 ```
 
-## Install
+## Install {#install}
 
 ```bash
 npm install mcp-fusion-n8n
@@ -28,7 +37,7 @@ npm install mcp-fusion-n8n
 
 Peer dependencies: `@vinkius-core/mcp-fusion` and `zod`.
 
-## Dynamic Ingestion
+## Dynamic Ingestion {#ingestion}
 
 `createN8nConnector` connects to n8n's REST API at boot, fetches active workflows triggered by Webhooks matching your `includeTags`, and compiles them into `ToolBuilder` instances. Tag filtering ensures internal flows (credential rotations, database migrations) stay invisible to the AI.
 
@@ -45,13 +54,13 @@ for (const tool of n8n.tools()) {
 }
 ```
 
-## Semantic Inference
+## Semantic Inference {#semantic}
 
 n8n's Webhook node accepts loose JSON (`Record<string, any>`). The package extracts the **Notes** field from the n8n canvas and uses it as the tool's `description`. The LLM reads that description and builds the correct payload without a Zod schema.
 
 A workflow note like *"Send 'customer_email' and 'urgency' (low | medium | high) in the body"* becomes the tool description. Claude reads it, understands the semantics, and sends `{ "customer_email": "john@acme.com", "urgency": "high" }` — zero-shot, deterministic.
 
-## MVA Interception
+## MVA Interception {#mva}
 
 The package produces `ToolBuilder` instances, not a server. Attach Presenters and middleware before registration:
 
@@ -87,7 +96,7 @@ for (const tool of n8n.tools()) {
 
 The n8n workflow returns a 2MB Salesforce payload. The Presenter strips it to 5KB of clean data in RAM. Sensitive fields never reach the transport layer.
 
-## Surgical Construction
+## Surgical Construction {#surgical}
 
 For critical routes where auto-discovery is too permissive, use `defineN8nTool()` with strict typing:
 
@@ -123,7 +132,7 @@ registry.register(builder);
 
 n8n handles the Stripe API call and retry logic. Business rules, typing, and access control stay in your TypeScript backend.
 
-## Live State Sync
+## Live State Sync {#state-sync}
 
 Background polling detects workflow changes and fires `notifications/tools/list_changed` so the LLM client refreshes automatically:
 
@@ -139,7 +148,7 @@ const n8n = await createN8nConnector({
 process.on('SIGTERM', () => { n8n.stop(); process.exit(0); });
 ```
 
-## Full Production Example
+## Full Production Example {#production}
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -179,7 +188,7 @@ await server.connect(new StdioServerTransport());
 process.on('SIGTERM', () => { n8n.stop(); process.exit(0); });
 ```
 
-## Configuration Reference
+## Configuration Reference {#config}
 
 ### `createN8nConnector(config)`
 

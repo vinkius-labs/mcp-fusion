@@ -7,6 +7,9 @@
  *   fusion create <name> [--transport stdio|sse] [--vector blank|database|workflow|openapi] [--testing] [--yes|-y]
  *       Scaffold a new MCP Fusion server project.
  *
+ *   fusion dev --server <entrypoint> [--dir <watchDir>]
+ *       Start HMR dev server with auto-reload and tool list notifications.
+ *
  *   fusion lock [--server <entrypoint>] [--name <serverName>]
  *       Generate or update `mcp-fusion.lock`.
  *
@@ -33,6 +36,7 @@ import {
 } from '../introspection/CapabilityLockfile.js';
 import { scaffold } from './scaffold.js';
 import type { ProjectConfig, IngestionVector, TransportLayer } from './types.js';
+import { createDevServer } from '../server/DevServer.js';
 
 // ============================================================================
 // ANSI Styling (zero dependencies)
@@ -163,6 +167,7 @@ fusion — MCP Fusion CLI
 
 USAGE
   fusion create <name>                Scaffold a new MCP Fusion server
+  fusion dev --server <entry>         Start HMR dev server with auto-reload
   fusion lock                         Generate or update ${LOCKFILE_NAME}
   fusion lock --check                 Verify lockfile is up to date (CI gate)
 
@@ -172,6 +177,10 @@ CREATE OPTIONS
   --testing                Include test suite (default: true)
   --no-testing             Skip test suite
   --yes, -y                Skip prompts, use defaults
+
+DEV OPTIONS
+  --server, -s <path>      Path to server entrypoint (default: auto-detect)
+  --dir, -d <path>         Directory to watch for changes (default: auto-detect from server)
 
 LOCK OPTIONS
   --server, -s <path>      Path to server entrypoint
@@ -185,6 +194,8 @@ EXAMPLES
   fusion create my-server
   fusion create my-server -y
   fusion create my-server --vector prisma --transport sse
+  fusion dev --server ./src/server.ts
+  fusion dev --server ./src/server.ts --dir ./src/tools
   fusion lock --server ./src/server.ts
 `.trim();
 
@@ -206,6 +217,8 @@ export interface CliArgs {
     vector: IngestionVector | undefined;
     testing: boolean | undefined;
     yes: boolean;
+    // ── Dev-specific ──
+    dir: string | undefined;
 }
 
 /** @internal exported for testing */
@@ -223,6 +236,7 @@ export function parseArgs(argv: string[]): CliArgs {
         vector: undefined,
         testing: undefined,
         yes: false,
+        dir: undefined,
     };
 
     let seenCommand = false;
@@ -233,6 +247,7 @@ export function parseArgs(argv: string[]): CliArgs {
         switch (arg) {
             case 'lock':
             case 'create':
+            case 'dev':
                 result.command = arg;
                 seenCommand = true;
                 break;
@@ -265,6 +280,10 @@ export function parseArgs(argv: string[]): CliArgs {
                 break;
             case '--no-testing':
                 result.testing = false;
+                break;
+            case '-d':
+            case '--dir':
+                result.dir = args[++i];
                 break;
             case '-y':
             case '--yes':
@@ -471,6 +490,120 @@ export async function commandLock(args: CliArgs, reporter?: ProgressReporter): P
 }
 
 // ============================================================================
+// Dev Command — HMR Development Server
+// ============================================================================
+
+/** @internal exported for testing */
+export async function commandDev(args: CliArgs, reporter?: ProgressReporter): Promise<void> {
+    const progress = new ProgressTracker(reporter);
+
+    if (!args.server) {
+        const detected = inferServerEntry(args.cwd);
+        if (!detected) {
+            console.error('Error: Could not auto-detect server entrypoint.\n');
+            console.error('Usage: fusion dev --server ./src/server.ts');
+            process.exit(1);
+        }
+        args.server = detected;
+    }
+
+    // Narrowed: args.server is guaranteed to be a string from here
+    const serverEntry = args.server;
+
+    process.stderr.write(`\n  ${ansi.bold('⚡ fusion dev')} ${ansi.dim('— HMR Development Server')}\n\n`);
+
+    // Step 1: Resolve registry from server entrypoint
+    progress.start('resolve', 'Resolving server entrypoint');
+    const { registry, name } = await resolveRegistry(serverEntry);
+    progress.done('resolve', 'Resolving server entrypoint', name);
+
+    // Step 2: Determine watch directory
+    const watchDir = args.dir ?? inferWatchDir(serverEntry);
+    progress.start('watch', `Watching ${watchDir}`);
+    progress.done('watch', `Watching ${watchDir}`);
+
+    // Step 3: Create and start dev server
+    const devServer = createDevServer({
+        dir: watchDir,
+        setup: async (reg) => {
+            // Clear existing registrations if supported
+            if ('clear' in reg && typeof (reg as { clear: unknown }).clear === 'function') {
+                (reg as { clear: () => void }).clear();
+            }
+
+            // Re-resolve the registry (re-imports with cache-busting)
+            try {
+                const resolved = await resolveRegistry(serverEntry);
+                // Copy builders from re-resolved registry into the dev server's registry
+                for (const builder of resolved.registry.getBuilders()) {
+                    reg.register(builder);
+                }
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                throw new Error(`Failed to reload: ${message}`);
+            }
+        },
+    });
+
+    // Handle SIGINT for clean shutdown
+    process.on('SIGINT', () => {
+        process.stderr.write(`\n  ${ansi.dim('Shutting down...')}\n\n`);
+        devServer.stop();
+        process.exit(0);
+    });
+
+    await devServer.start();
+}
+
+/**
+ * Auto-detect the server entrypoint by probing common file paths.
+ *
+ * Checks in order: `src/server.ts`, `src/index.ts`, `server.ts`, `index.ts`,
+ * and their `.js` counterparts.
+ *
+ * @param cwd - Current working directory
+ * @returns Detected file path, or undefined if none found
+ * @internal
+ */
+function inferServerEntry(cwd: string): string | undefined {
+    const candidates = [
+        'src/server.ts', 'src/index.ts',
+        'src/server.js', 'src/index.js',
+        'server.ts', 'index.ts',
+        'server.js', 'index.js',
+    ];
+    for (const candidate of candidates) {
+        const fullPath = resolve(cwd, candidate);
+        if (existsSync(fullPath)) return fullPath;
+    }
+    return undefined;
+}
+
+/**
+ * Infer the watch directory from the server entrypoint path.
+ *
+ * Heuristic: if the server is in `src/server.ts`, watch `src/`.
+ * Falls back to the directory containing the entrypoint.
+ *
+ * @internal
+ */
+function inferWatchDir(serverPath: string): string {
+    const dir = resolve(serverPath, '..');
+    const dirName = dir.split(/[\\/]/).pop() ?? '';
+
+    // If the server is directly in `src/`, watch `src/`
+    if (dirName === 'src') return dir;
+
+    // If the server is deeper (e.g. `src/server/index.ts`), walk up to `src/`
+    const parentDir = resolve(dir, '..');
+    const parentName = parentDir.split(/[\\/]/).pop() ?? '';
+    if (parentName === 'src') return parentDir;
+
+    // Fallback: watch the directory containing the entrypoint
+    return dir;
+}
+
+// ============================================================================
 // Create Command — Interactive Wizard + Fast-Path
 // ============================================================================
 
@@ -631,6 +764,9 @@ async function main(): Promise<void> {
     switch (args.command) {
         case 'create':
             await commandCreate(args);
+            break;
+        case 'dev':
+            await commandDev(args);
             break;
         case 'lock':
             await commandLock(args);

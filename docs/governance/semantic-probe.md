@@ -5,6 +5,15 @@ description: "LLM-as-a-Judge evaluation framework for detecting semantic drift i
 
 # Semantic Probing
 
+- [Creating Probes](#probes)
+- [The LLM Adapter](#adapter)
+- [Evaluating Probes](#evaluate)
+- [Drift Classification](#drift)
+- [The Judge Prompt](#prompt)
+- [Aggregation](#aggregate)
+- [Testing Integration](#testing)
+- [API Reference](#api)
+
 Deterministic governance modules — Contract Diffing, Surface Integrity, Capability Lockfile — detect structural changes: schema mutations, system rule rewording, entitlement additions. But a handler can change its *meaning* without changing its structure. A `list` action that previously returned 10 items now returns 1000. A `summarize` action that used to produce two-sentence summaries now outputs full paragraphs. The egress schema is identical, the system rules are unchanged — yet the LLM's downstream behavior will be affected.
 
 Semantic Probing addresses this gap by delegating behavioral evaluation to an LLM judge. You provide input/output pairs (expected vs. actual), and the module constructs a structured evaluation prompt, sends it through a pluggable adapter, and parses the judge's verdict into a typed result with drift classification.

@@ -1,5 +1,15 @@
 # Cloudflare Workers Adapter
 
+- [Why This Matters](#why-this-matters)
+- [Installation](#installation)
+- [Architecture](#architecture)
+- [Step-by-Step Setup](#setup)
+- [Adding Middleware](#middleware)
+- [Adding Presenters](#presenters)
+- [Configuration Reference](#config)
+- [What Works on the Edge](#edge-compatibility)
+- [Compatible Clients](#clients)
+
 Deploy your MCP Fusion server to Cloudflare Workers in one line. No transport hacks, no session workarounds, no infrastructure config. Your existing tools, middleware, Presenters, and governance lockfile run at the edge — unchanged.
 
 ```typescript
@@ -11,13 +21,12 @@ import { z } from 'zod';
 interface AppContext { db: D1Database; tenantId: string }
 const f = initFusion<AppContext>();
 
-const listUsers = f.tool({
-  name: 'users.list',
-  input: z.object({ limit: z.number().optional().default(20) }),
-  readOnly: true,
-  handler: async ({ input, ctx }) =>
-    ctx.db.prepare('SELECT id, name FROM users LIMIT ?').bind(input.limit).all(),
-});
+const listUsers = f.query('users.list')
+  .describe('List users in tenant')
+  .withOptionalNumber('limit', 'Max results (default 20)')
+  .handle(async (input, ctx) =>
+    ctx.db.prepare('SELECT id, name FROM users LIMIT ?').bind(input.limit ?? 20).all()
+  );
 
 const registry = f.registry();
 registry.register(listUsers);
@@ -91,7 +100,7 @@ The adapter splits work between two phases to minimize per-request CPU cost:
 │  COLD START (once per isolate)                           │
 │                                                          │
 │  const f = initFusion<AppContext>()                      │
-│  const tool = f.tool({ ... })                            │
+│  const tool = f.query('name').handle(...)                │
 │  const registry = f.registry()                           │
 │  registry.register(tool)                                 │
 │                                                          │
@@ -136,42 +145,35 @@ interface AppContext {
 
 export const f = initFusion<AppContext>();
 
-export const listProjects = f.tool({
-  name: 'projects.list',
-  description: 'List projects in the current workspace',
-  input: z.object({
-    status: z.enum(['active', 'archived', 'all']).optional().default('active'),
-    limit: z.number().min(1).max(100).optional().default(20),
-  }),
-  readOnly: true,
-  handler: async ({ input, ctx }) => {
-    const query = input.status === 'all'
+export const listProjects = f.query('projects.list')
+  .describe('List projects in the current workspace')
+  .withOptionalEnum('status', ['active', 'archived', 'all'] as const, 'Project status filter')
+  .withOptionalNumber('limit', 'Max results (1-100, default 20)')
+  .handle(async (input, ctx) => {
+    const status = input.status ?? 'active';
+    const limit = input.limit ?? 20;
+    const query = status === 'all'
       ? 'SELECT id, name, status FROM projects WHERE tenant_id = ? LIMIT ?'
       : 'SELECT id, name, status FROM projects WHERE tenant_id = ? AND status = ? LIMIT ?';
 
-    const bindings = input.status === 'all'
-      ? [ctx.tenantId, input.limit]
-      : [ctx.tenantId, input.status, input.limit];
+    const bindings = status === 'all'
+      ? [ctx.tenantId, limit]
+      : [ctx.tenantId, status, limit];
 
     return ctx.db.prepare(query).bind(...bindings).all();
-  },
-});
+  });
 
-export const createProject = f.tool({
-  name: 'projects.create',
-  description: 'Create a new project',
-  input: z.object({
-    name: z.string().min(1).max(128),
-    description: z.string().optional(),
-  }),
-  handler: async ({ input, ctx }) => {
+export const createProject = f.mutation('projects.create')
+  .describe('Create a new project')
+  .withString('name', 'Project name')
+  .withOptionalString('description', 'Project description')
+  .handle(async (input, ctx) => {
     const id = crypto.randomUUID();
     await ctx.db.prepare(
       'INSERT INTO projects (id, name, description, tenant_id, status) VALUES (?, ?, ?, ?, ?)'
     ).bind(id, input.name, input.description ?? '', ctx.tenantId, 'active').run();
     return { id, name: input.name, status: 'active' };
-  },
-});
+  });
 ```
 
 ### Step 2 — Create the Worker {#step-2}
@@ -243,17 +245,15 @@ const authMiddleware = f.middleware(async (ctx) => {
   return { user };
 });
 
-const adminTool = f.tool({
-  name: 'admin.reset',
-  description: 'Reset tenant data — requires admin role',
-  input: z.object({ confirm: z.literal(true) }),
-  middleware: [authMiddleware],
-  tags: ['admin'],
-  handler: async ({ ctx }) => {
+const adminTool = f.mutation('admin.reset')
+  .describe('Reset tenant data — requires admin role')
+  .tags('admin')
+  .use(authMiddleware)
+  .withBoolean('confirm', 'Must be true to confirm')
+  .handle(async (input, ctx) => {
     if (ctx.user.role !== 'admin') throw new Error('Forbidden');
     // ...
-  },
-});
+  });
 ```
 
 ## Adding Presenters {#presenters}
@@ -282,16 +282,14 @@ const ProjectPresenter = f.presenter({
   limit: 30,
 });
 
-const listProjects = f.tool({
-  name: 'projects.list',
-  input: z.object({ limit: z.number().optional().default(20) }),
-  readOnly: true,
-  returns: ProjectPresenter,
-  handler: async ({ input, ctx }) => {
+const listProjects = f.query('projects.list')
+  .describe('List projects')
+  .withOptionalNumber('limit', 'Max results (default 20)')
+  .returns(ProjectPresenter)
+  .handle(async (input, ctx) => {
     return ctx.db.prepare('SELECT * FROM projects WHERE tenant_id = ? LIMIT ?')
-      .bind(ctx.tenantId, input.limit).all();
-  },
-});
+      .bind(ctx.tenantId, input.limit ?? 20).all();
+  });
 ```
 
 The handler returns raw database rows. The Presenter strips columns to `{ id, name, status }`, attaches contextual rules, suggests next actions, and caps collections at 30 items. Internal columns like `stripe_subscription_id` or `internal_cost` never reach the agent.

@@ -1,0 +1,20 @@
+{
+    "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+    "entryPoints": ["./packages/core/src/index.ts"],
+    "tsconfig": "./packages/core/tsconfig.json",
+    "skipErrorChecking": true,
+    "out": "./docs/api",
+    "docsRoot": "./docs",
+    "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "categorizeByGroup": true,
+    "hidePageHeader": true,
+    "hideBreadcrumbs": true,
+    "useCodeBlocks": true,
+    "expandObjects": true,
+    "parametersFormat": "table",
+    "enumMembersFormat": "table",
+    "typeDeclarationFormat": "table"
+}

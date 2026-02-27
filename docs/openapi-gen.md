@@ -1,5 +1,20 @@
 # OpenAPI Generator
 
+- [Install](#install)
+- [Generated Output](#output)
+- [Schema Fidelity — OpenAPI to Strict Zod](#schema-fidelity)
+- [Annotation Inference](#annotations)
+- [Code Generation Pipeline](#pipeline)
+- [Runtime Proxy Mode](#runtime)
+- [Full Production Example](#production)
+- [Configuration](#config)
+- [Exposition Strategy](#exposition)
+- [Name Resolution](#naming)
+- [Tag Filtering](#tag-filtering)
+- [Custom Context](#context)
+- [API Reference](#api)
+- [Requirements](#requirements)
+
 Turn any OpenAPI 3.x spec into a working MCP server — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying requests at runtime.
 
 ```bash
@@ -7,7 +22,7 @@ npx openapi-gen generate -i ./petstore.yaml -o ./generated
 API_BASE_URL=https://api.example.com npx tsx ./generated/server.ts
 ```
 
-## Install
+## Install {#install}
 
 ```bash
 npm install mcp-fusion-openapi-gen
@@ -15,7 +30,7 @@ npm install mcp-fusion-openapi-gen
 
 Peer dependencies: `@vinkius-core/mcp-fusion` and `zod`.
 
-## Generated Output
+## Generated Output {#output}
 
 ```
 generated/
@@ -28,7 +43,7 @@ generated/
 
 Every file follows the [MVA Convention](./mva-convention).
 
-## Schema Fidelity — OpenAPI to Strict Zod
+## Schema Fidelity — OpenAPI to Strict Zod {#schema-fidelity}
 
 The `ZodCompiler` walks every OpenAPI `SchemaNode` and emits strict Zod objects. Path and query parameters get `z.coerce` for automatic string-to-type coercion. Response schemas get `.strict()` to reject undeclared fields at runtime.
 
@@ -41,7 +56,7 @@ export const PetResponseSchema = z.object({
 }).strict();
 ```
 
-## Annotation Inference
+## Annotation Inference {#annotations}
 
 The `EndpointMapper` reads the HTTP method of each operation and infers the correct MCP annotation:
 
@@ -78,7 +93,7 @@ export const petTools = defineTool<ApiContext>('pet', {
 });
 ```
 
-## Code Generation Pipeline
+## Code Generation Pipeline {#pipeline}
 
 Four compilation stages transform the spec into production-ready TypeScript. Each stage is independently importable:
 
@@ -103,7 +118,7 @@ for (const file of files) {
 
 The generated code is fully editable — modify handlers, add middleware, attach Presenters.
 
-## Runtime Proxy Mode
+## Runtime Proxy Mode {#runtime}
 
 For rapid prototyping, `loadOpenAPI()` parses the spec at startup and creates live proxy handlers with no code generation step:
 
@@ -133,7 +148,7 @@ for (const tool of tools) {
 
 When the API spec changes, restart the server and the tools update automatically.
 
-## Full Production Example
+## Full Production Example {#production}
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -169,7 +184,7 @@ createServerAttachment(server, registry);
 await server.connect(new StdioServerTransport());
 ```
 
-## Configuration
+## Configuration {#config}
 
 Create `openapi-gen.yaml` in your project root. The CLI auto-detects it, or pass `--config <path>`.
 
@@ -221,7 +236,7 @@ npx openapi-gen [options]
 
 CLI flags override config file values.
 
-## Exposition Strategy
+## Exposition Strategy {#exposition}
 
 | Strategy | Behavior | Best for |
 |---|---|---|
@@ -234,7 +249,7 @@ server:
   actionSeparator: '_'
 ```
 
-## Name Resolution
+## Name Resolution {#naming}
 
 | operationId | `snake_case` | `camelCase` |
 |---|---|---|
@@ -244,14 +259,14 @@ server:
 
 When `operationId` is missing: `GET /pets` → `list_pets`, `POST /pets` → `create_pets`. Duplicates auto-suffix: `list_pets`, `list_pets_2`.
 
-## Tag Filtering
+## Tag Filtering {#tag-filtering}
 
 ```yaml
 includeTags: [pet, store]
 excludeTags: [admin, internal]
 ```
 
-## Custom Context
+## Custom Context {#context}
 
 ```yaml
 context:
@@ -263,7 +278,7 @@ import type { AppCtx } from '../types.js';
 const petTools = defineTool<AppCtx>('pet', { /* handlers receive ctx: AppCtx */ });
 ```
 
-## API Reference
+## API Reference {#api}
 
 ### `loadOpenAPI(input, config)`
 
@@ -304,7 +319,7 @@ const petTools = defineTool<AppCtx>('pet', { /* handlers receive ctx: AppCtx */ 
 | `loadOpenAPI(input, config)` | Runtime mode — parse + proxy |
 | `buildHandler(action)` | Build a single HTTP proxy handler |
 
-## Requirements
+## Requirements {#requirements}
 
 | Dependency | Version |
 |---|---|

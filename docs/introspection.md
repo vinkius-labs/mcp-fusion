@@ -1,33 +1,43 @@
 # Introspection
 
-Runtime access to action metadata — registered tools, schemas, middleware coverage, destructive flags. Use it for compliance audits, admin dashboards, test coverage checks, and prompt previews.
+- [Introduction](#introduction)
+- [Action Keys](#action-keys)
+- [Action Metadata](#metadata)
+- [Use Cases](#use-cases)
+- [Build-Time Prompt Preview](#preview)
+
+## Introduction {#introduction}
+
+Runtime access to action metadata — registered tools, schemas, middleware coverage, destructive flags. Use it for compliance audits, admin dashboards, test coverage checks, and prompt previews. This is the development-time, single-builder complement to the server-scoped [Dynamic Manifest](/dynamic-manifest).
 
 ## Action Keys {#action-keys}
 
-```typescript
-const registry = f.registry();
-registry.registerAll(listTool, createTool, deleteTool);
-// Registry-level introspection via getTools()
-```
-
-For `GroupedToolBuilder`, call `getActionNames()` after building:
+After building a tool, call `getActionNames()` to list available actions:
 
 ```typescript
-const platform = new GroupedToolBuilder<void>('platform')
-    .group('users', g => {
-        g.action({ name: 'list', handler: listUsers })
-         .action({ name: 'ban', handler: banUser });
-    });
+import { initFusion } from '@vinkius-core/mcp-fusion';
 
-platform.buildToolDefinition();
+const f = initFusion<AppContext>();
 
-console.log(platform.getActionNames());
-// ['users.list', 'users.ban']
+const listUsers = f.query('platform.users_list')
+  .describe('List all users')
+  .handle(async (input, ctx) => { /* ... */ });
+
+const banUser = f.mutation('platform.users_ban')
+  .describe('Ban a user')
+  .withString('id', 'User ID')
+  .handle(async (input, ctx) => { /* ... */ });
+
+// Get action names from the built tool
+console.log(listUsers.getActionNames()); // ['list']
+console.log(banUser.getActionNames());   // ['ban']
 ```
+
+For `GroupedToolBuilder` with hierarchical groups, `getActionNames()` returns the full dotted path: `['users.list', 'users.ban']`.
 
 ## Action Metadata {#metadata}
 
-`getActionMetadata()` returns the parsed metadata for every action:
+`getActionMetadata()` returns parsed metadata for every action:
 
 ```typescript
 interface ActionMetadata {
@@ -38,7 +48,7 @@ interface ActionMetadata {
     destructive: boolean;
     idempotent: boolean;
     readOnly: boolean;
-    requiredFields: string[]; // extracted from Zod schema via SchemaUtils
+    requiredFields: string[]; // extracted from Zod schema
     hasMiddleware: boolean;
 }
 ```
@@ -52,14 +62,14 @@ interface ActionMetadata {
 Ensure no destructive action ships without middleware:
 
 ```typescript
-function auditDestructiveActions(registry: ToolRegistry<AppContext>) {
+function auditDestructiveActions(builder: GroupedToolBuilder<AppContext>) {
     const report: Array<{ tool: string; action: string }> = [];
-    const meta = platformBuilder.getActionMetadata();
+    const meta = builder.getActionMetadata();
 
     for (const action of meta) {
         if (action.destructive && !action.hasMiddleware) {
             report.push({
-                tool: platformBuilder.getName(),
+                tool: builder.getName(),
                 action: action.key
             });
         }
@@ -150,22 +160,20 @@ describe('platform tool', () => {
 `previewPrompt()` shows the exact MCP payload the LLM receives — no server needed:
 
 ```typescript
-const projects = defineTool<AppContext>('projects', {
-    description: 'Manage workspace projects',
-    tags: ['api'],
-    actions: {
-        list:   { readOnly: true, handler: listProjects },
-        create: { params: { name: 'string' }, handler: createProject },
-        delete: { destructive: true, params: { id: 'string' }, handler: deleteProject },
-    },
-});
+const projects = f.query('projects.list')
+  .describe('List workspace projects')
+  .withString('workspace_id', 'Workspace ID')
+  .handle(async (input, ctx) => { /* ... */ });
 
 console.log(projects.previewPrompt());
 ```
 
 Output includes tool name, action count, tags, description, JSON Schema, annotations, and token estimate (~185 tokens / 740 chars in this example). Auto-calls `buildToolDefinition()` if not yet built.
 
-Use it for token budgeting, prompt grammar checks, schema validation, and TOON comparison (`.toonDescription(true)`).
+Use it for token budgeting, prompt grammar checks, schema validation, and TOON comparison (`.toonDescription()`).
+
+> [!TIP]
+> Run `previewPrompt()` in a test suite to catch schema regressions and token budget overflows before deployment.
 
 ## Connection to the Engine
 

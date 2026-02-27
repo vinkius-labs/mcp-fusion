@@ -42,7 +42,9 @@ When all five are present, the agent perceives the domain consistently. Hallucin
 ## Quick Reference: MVA in Code
 
 ```typescript
-import { createPresenter, t, suggest, ui, defineTool } from '@vinkius-core/mcp-fusion';
+import { initFusion, createPresenter, t, suggest, ui } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
 
 // ── VIEW: The Presenter — agent-centric perception layer ──
 const InvoicePresenter = createPresenter('Invoice')
@@ -66,15 +68,13 @@ const InvoicePresenter = createPresenter('Invoice')
     ].filter(Boolean));
 
 // ── AGENT: Receives a Structured Perception Package ──
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get_invoice: {
-            returns: InvoicePresenter,  // ← One line. Zero boilerplate.
-            params: { id: 'string' },
-            handler: async (ctx, args) => ctx.db.invoices.findUnique(args.id),
-        },
-    },
-});
+export const getInvoice = f.query('billing.get_invoice')
+    .describe('Retrieve an invoice by ID')
+    .withString('id', 'Invoice identifier')
+    .returns(InvoicePresenter)                            // ← One line. Zero boilerplate.
+    .handle(async (input, ctx) =>
+        ctx.db.invoices.findUnique({ where: { id: input.id } })
+    );
 ```
 
 The handler returns **raw data**. The Presenter intercepts it in the execution pipeline, validates through Zod, strips undeclared fields, attaches domain rules, renders charts, applies truncation, and suggests next actions — all automatically. The agent never sees raw JSON. It sees a **structured perception package**.

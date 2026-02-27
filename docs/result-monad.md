@@ -56,7 +56,7 @@ function findProject(db: Database, id: string): Result<Project> {
   return project ? succeed(project) : fail(error(`Project '${id}' not found`));
 }
 
-handler: async ({ input, ctx }) => {
+.handle(async (input, ctx) => {
   const result = findProject(ctx.db, input.project_id);
   if (!result.ok) return result.response;
 
@@ -81,7 +81,7 @@ function validateAge(age: number): Result<number> {
     : fail(error(`Age must be 0–150, got: ${age}`));
 }
 
-handler: async ({ input, ctx }) => {
+.handle(async (input, ctx) => {
   const emailResult = validateEmail(input.email);
   if (!emailResult.ok) return emailResult.response;
 
@@ -124,7 +124,7 @@ class ProjectService {
 ```
 
 ```typescript
-handler: async ({ input, ctx }) => {
+.handle(async (input, ctx) => {
   const svc = new ProjectService(ctx.db);
 
   const found = svc.find(input.project_id);

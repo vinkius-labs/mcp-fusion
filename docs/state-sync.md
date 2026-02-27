@@ -1,10 +1,85 @@
 # State Sync
 
-LLMs have no sense of time. After calling `sprints.list` and then `sprints.create`, the agent still believes the list is unchanged — nothing told it the data is stale. State Sync injects RFC 7234-inspired cache-control signals into MCP responses, guiding the agent to re-read after mutations. Zero overhead when not configured.
+- [Introduction](#introduction)
+- [Inline Fluent API](#inline)
+- [Registry-Level Policies](#registry)
+- [How It Works](#how)
+- [Cache Directives](#directives)
+- [Cross-Domain Invalidation](#cross-domain)
+- [Glob Patterns](#globs)
+- [Observability](#observability)
+- [Overlap Detection](#overlaps)
+- [Performance](#performance)
+- [API Reference](#api)
+
+## Introduction {#introduction}
+
+LLMs have no sense of time. After calling `sprints.list` and then `sprints.create`, the agent still believes the list is unchanged — nothing told it the data is stale. It makes decisions on outdated information.
+
+MCP Fusion's State Sync injects RFC 7234-inspired cache-control signals into MCP responses, guiding the agent to re-read after mutations. LLMs are trained on web pages with HTTP cache headers — they interpret `no-store` as "re-fetch before using" and `immutable` as "never changes." Zero overhead when not configured.
 
 > Based on ["Your LLM Agents are Temporally Blind"](https://arxiv.org/abs/2510.23853)
 
-## Quick Start {#quickstart}
+## Inline Fluent API {#inline}
+
+The simplest way to declare state sync is directly on the tool builder:
+
+```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Reference data — safe to cache forever
+const listCountries = f.query('countries.list')
+  .describe('List all country codes')
+  .cached()
+  .handle(async (input, ctx) => {
+    return ctx.db.countries.findMany();
+  });
+
+// Volatile data — always re-fetch before acting on it
+const listSprints = f.query('sprints.list')
+  .describe('List workspace sprints')
+  .stale()
+  .handle(async (input, ctx) => {
+    return ctx.db.sprints.findMany({ where: { tenantId: ctx.tenantId } });
+  });
+
+// Mutation — invalidates cached data on success
+const createSprint = f.action('sprints.create')
+  .describe('Create a new sprint')
+  .invalidates('sprints.*')
+  .withString('name', 'Sprint name')
+  .handle(async (input, ctx) => {
+    return ctx.db.sprints.create({ data: { name: input.name } });
+  });
+
+// Cross-domain invalidation — tasks affect sprints too
+const updateTask = f.action('tasks.update')
+  .describe('Update a task')
+  .invalidates('tasks.*', 'sprints.*')
+  .withString('id', 'Task ID')
+  .withOptionalString('title', 'New title')
+  .handle(async (input, ctx) => {
+    return ctx.db.tasks.update({
+      where: { id: input.id },
+      data: { title: input.title },
+    });
+  });
+```
+
+| Method | Cache Directive | Use When |
+|--------|-----------------|----------|
+| `.cached()` | `immutable` | Reference data — country codes, timezones, enums |
+| `.stale()` | `no-store` | Volatile data — always re-fetch before acting |
+| `.invalidates(...patterns)` | Causal signal | Mutations — tell the agent what data changed |
+
+> [!TIP]
+> Inline methods are the recommended approach for simple tools. For complex policies (dozens of tools, cross-tool dependencies), use registry-level configuration instead.
+
+## Registry-Level Policies {#registry}
+
+For full control over cache policies across your entire server, configure `stateSync` at the registry level:
 
 ```typescript
 import { ToolRegistry } from '@vinkius-core/mcp-fusion';
@@ -33,12 +108,10 @@ Two things happen automatically: `tools/list` descriptions get cache directives 
 
 **Description decoration** — the LLM sees cache directives inline:
 
-```
+```text
 "Manage workspace sprints. [Cache-Control: no-store]"
 "List country codes. [Cache-Control: immutable]"
 ```
-
-LLMs are trained on web pages with HTTP cache headers. They interpret `no-store` as "re-fetch before using" and `immutable` as "never changes."
 
 **Causal invalidation** — after a successful mutation, a system block is prepended:
 
@@ -56,6 +129,25 @@ Failed mutations (`isError: true`) emit no invalidation — the state didn't cha
 ## Cache Directives {#directives}
 
 `'no-store'` — dynamic data, may change at any time. `'immutable'` — reference data, never changes. No `max-age` because LLMs have no internal clock.
+
+## Cross-Domain Invalidation {#cross-domain}
+
+A task update changes the sprint's task count. Declare the causal dependency:
+
+```typescript
+// Inline:
+const updateTask = f.action('tasks.update')
+  .invalidates('tasks.*', 'sprints.*')
+  .handle(async (input, ctx) => { /* ... */ });
+
+// Or via policies:
+policies: [
+  { match: 'tasks.update', invalidates: ['tasks.*', 'sprints.*'] },
+  { match: 'tasks.create', invalidates: ['tasks.*', 'sprints.*'] },
+]
+```
+
+After `tasks.update` succeeds: `[System: Cache invalidated for tasks.*, sprints.* — caused by tasks.update]`
 
 ## Glob Patterns {#globs}
 
@@ -77,19 +169,6 @@ policies: [
 ```
 
 Unmatched tools use `defaults.cacheControl`. No defaults = no decoration.
-
-## Cross-Domain Invalidation {#cross-domain}
-
-A task update changes the sprint's task count. Declare the causal dependency:
-
-```typescript
-policies: [
-  { match: 'tasks.update', invalidates: ['tasks.*', 'sprints.*'] },
-  { match: 'tasks.create', invalidates: ['tasks.*', 'sprints.*'] },
-]
-```
-
-After `tasks.update` succeeds: `[System: Cache invalidated for tasks.*, sprints.* — caused by tasks.update]`
 
 ## Observability {#observability}
 
@@ -136,6 +215,9 @@ for (const w of warnings) {
   console.warn(`Policy [${w.shadowingIndex}] shadows [${w.shadowedIndex}]: ${w.message}`);
 }
 ```
+
+> [!TIP]
+> Run `detectOverlaps()` in your dev or startup script. It catches shadowed policies that are otherwise silent bugs — the narrow policy never fires because a broader one matches first.
 
 ## Performance {#performance}
 

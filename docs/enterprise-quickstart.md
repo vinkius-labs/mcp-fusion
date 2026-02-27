@@ -43,7 +43,7 @@ interface AppContext {
 export const f = initFusion<AppContext>();
 ```
 
-The `f` object provides typed factory methods — `f.tool()`, `f.presenter()`, `f.middleware()`, `f.registry()` — that all inherit `AppContext`. TypeScript knows `ctx.user.tenantId` is a `string` in every handler.
+The `f` object provides typed factory methods — `f.query()`, `f.mutation()`, `f.action()`, `f.presenter()`, `f.middleware()`, `f.registry()` — that all inherit `AppContext`. TypeScript knows `ctx.user.tenantId` is a `string` in every handler.
 
 ## Step 3 — Authentication Middleware {#step-3-auth-middleware}
 
@@ -105,22 +105,18 @@ The database row has 10+ fields. The agent sees 5. When a developer adds a new c
 
 ```typescript
 // src/tools/users.ts
-export const listUsers = f.tool({
-  name: 'users.list',
-  description: 'List users in the current tenant',
-  input: z.object({
-    limit: z.number().optional().default(20),
-    search: z.string().optional(),
-  }),
-  middleware: [authMiddleware],
-  returns: UserPresenter,
-  handler: async ({ input, ctx }) => {
+export const listUsers = f.query('users.list')
+  .describe('List users in the current tenant')
+  .withOptionalNumber('limit', 'Max results (default 20)')
+  .withOptionalString('search', 'Search by name')
+  .use(authMiddleware)
+  .returns(UserPresenter)
+  .handle(async (input, ctx) => {
     return ctx.db.user.findMany({
       where: { tenantId: ctx.user.tenantId, ...(input.search ? { name: { contains: input.search } } : {}) },
-      take: input.limit,
+      take: input.limit ?? 20,
     });
-  },
-});
+  });
 ```
 
 The handler has one job — query the database with tenant scope. Authentication is middleware. Column filtering is the Presenter. Collection capping is `limit`. Each concern is independently testable.
@@ -128,13 +124,12 @@ The handler has one job — query the database with tenant scope. Authentication
 ### Write Tool with Error Recovery
 
 ```typescript
-export const deleteUser = f.tool({
-  name: 'users.delete',
-  description: 'Permanently delete a user account',
-  input: z.object({ id: z.string() }),
-  tags: ['admin'],
-  middleware: [authMiddleware],
-  handler: async ({ input, ctx }) => {
+export const deleteUser = f.mutation('users.delete')
+  .describe('Permanently delete a user account')
+  .withString('id', 'User ID to delete')
+  .tags('admin')
+  .use(authMiddleware)
+  .handle(async (input, ctx) => {
     if (ctx.user.role !== 'admin') {
       return toolError('FORBIDDEN', {
         message: 'Only admin users can delete accounts',
@@ -144,8 +139,7 @@ export const deleteUser = f.tool({
     }
     await ctx.db.user.delete({ where: { id: input.id, tenantId: ctx.user.tenantId } });
     return { deleted: true, id: input.id };
-  },
-});
+  });
 ```
 
 `tags: ['admin']` makes this tool invisible when the registry is filtered with `exclude: ['admin']`. The agent doesn't waste tokens discovering tools it can't use.

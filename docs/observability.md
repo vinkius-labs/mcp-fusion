@@ -1,6 +1,18 @@
 # Observability
 
-Fusion emits structured events at each pipeline stage. When debug is off (default), zero runtime overhead — no conditionals, no observer objects. Events only flow when you opt in.
+- [Introduction](#introduction)
+- [Quick Start](#quickstart)
+- [Attachment Levels](#levels)
+- [createDebugObserver()](#factory)
+- [Event Types](#events)
+- [Practical Patterns](#patterns)
+- [Governance Observability](#governance)
+
+## Introduction {#introduction}
+
+Debugging MCP tool calls is hard — the LLM sends a request, your server processes it through validation, middleware, and handlers, and the response goes back. Without observability, you're blind to what happened between request and response.
+
+MCP Fusion emits structured events at each pipeline stage. When debug is off (default), the hot path has **zero runtime overhead** — no conditionals, no observer objects, no `Date.now()` calls. Events only flow when you opt in.
 
 ## Quick Start {#quickstart}
 
@@ -27,9 +39,12 @@ registry.attachToServer(server, {
 **Per-tool** — attach to a single tool during development:
 
 ```typescript
-const tool = createTool<AppContext>('users')
-  .debug(createDebugObserver())
-  .action({ name: 'list', handler: listUsers });
+const tool = f.query('users.list')
+  .describe('List users')
+  .handle(async (input, ctx) => { /* ... */ });
+
+// Attach debug after building (via GroupedToolBuilder)
+tool.debug(createDebugObserver());
 ```
 
 **Registry-wide** — propagate to every registered builder:
@@ -40,7 +55,7 @@ registry.enableDebug(createDebugObserver());
 
 **Server-wide** — pass as `AttachOptions.debug` (calls `enableDebug()` internally). One entry point, full pipeline visibility.
 
-## `createDebugObserver()` {#factory}
+## createDebugObserver() {#factory}
 
 ```typescript
 import { createDebugObserver } from '@vinkius-core/mcp-fusion';
@@ -94,7 +109,7 @@ Pipeline order: `route → validate → middleware → execute`. Validation fail
 
 ## Practical Patterns {#patterns}
 
-**Telemetry integration:**
+### Telemetry Integration
 
 ```typescript
 const observer = createDebugObserver((event) => {
@@ -113,7 +128,7 @@ const observer = createDebugObserver((event) => {
 });
 ```
 
-**Latency alerting:**
+### Latency Alerting
 
 ```typescript
 const observer = createDebugObserver((event) => {
@@ -123,7 +138,7 @@ const observer = createDebugObserver((event) => {
 });
 ```
 
-**Error-only (production):**
+### Error-Only (Production)
 
 ```typescript
 const observer = createDebugObserver((event) => {
@@ -152,7 +167,7 @@ The [governance](/governance/) stack emits `GovernanceEvent` objects through the
 }
 ```
 
-`operation` is one of: `'contract.compile'`, `'contract.diff'`, `'digest.compute'`, `'lockfile.generate'`, `'lockfile.check'`, `'lockfile.write'`, `'lockfile.read'`, `'attestation.sign'`, `'attestation.verify'`, `'entitlement.scan'`, `'token.profile'`. `outcome` is `'success'`, `'failure'`, or `'drift'`. `detail` is optional context (error message, counts).
+`operation` is one of: `'contract.compile'`, `'contract.diff'`, `'digest.compute'`, `'lockfile.generate'`, `'lockfile.check'`, `'lockfile.write'`, `'lockfile.read'`, `'attestation.sign'`, `'attestation.verify'`, `'entitlement.scan'`, `'token.profile'`. `outcome` is `'success'`, `'failure'`, or `'drift'`. `detail` is optional context.
 
 **`createGovernanceObserver()`** wraps governance operations with debug events and optional tracing spans:
 

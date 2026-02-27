@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { getPageHeadTags } from './seo'
+import typedocSidebar from '../api/typedoc-sidebar.json'
 
 export default defineConfig({
   title: "MCP Fusion",
@@ -84,14 +85,17 @@ export default defineConfig({
       { text: 'Documentation', link: '/introduction' },
       { text: 'Enterprise', link: '/enterprise-quickstart' },
       { text: 'MVA Architecture', link: '/mva/' },
-      { text: 'API', link: '/api-reference' },
-      { text: 'GitHub', link: 'https://github.com/vinkius-labs/mcp-fusion' }
+      { text: 'API', link: '/api/' },
+      {
+        text: '⭐ Star on GitHub',
+        link: 'https://github.com/vinkius-labs/mcp-fusion'
+      }
     ],
 
     sidebar: [
       // ── Getting Started ────────────────────────────────
       {
-        text: 'Getting Started',
+        text: 'Get Started',
         collapsed: false,
         items: [
           { text: 'Introduction', link: '/introduction' },
@@ -137,7 +141,7 @@ export default defineConfig({
 
       // ── Tools & Routing ────────────────────────────────
       {
-        text: 'Tools & Routing',
+        text: 'Tool Building',
         collapsed: true,
         items: [
           { text: 'Building Tools', link: '/building-tools' },
@@ -150,7 +154,7 @@ export default defineConfig({
 
       // ── Presenter ──────────────────────────────────────
       {
-        text: 'Presenter',
+        text: 'View Layer',
         collapsed: true,
         items: [
           { text: 'Presenter Guide', link: '/presenter' },
@@ -166,7 +170,7 @@ export default defineConfig({
 
       // ── Prompts & Resources ────────────────────────────
       {
-        text: 'Prompts & Resources',
+        text: 'Prompt Engine',
         collapsed: true,
         items: [
           { text: 'Prompt Engine', link: '/prompts' },
@@ -177,7 +181,7 @@ export default defineConfig({
 
       // ── Framework ──────────────────────────────────────
       {
-        text: 'Framework',
+        text: 'Core Framework',
         collapsed: true,
         items: [
           { text: 'Context & State', link: '/context' },
@@ -189,19 +193,83 @@ export default defineConfig({
         ]
       },
 
-      // ── Cookbook ────────────────────────────────────────
+      // ── Code Recipes ──────────────────────────────────
       {
-        text: 'Cookbook',
+        text: 'Code Recipes',
         collapsed: true,
         items: [
-          { text: 'Examples', link: '/examples' },
           { text: 'Cost & Hallucination', link: '/cost-and-hallucination' },
+          {
+            text: 'Getting Started',
+            collapsed: true,
+            items: [
+              { text: 'CRUD Operations', link: '/cookbook/crud' },
+              { text: 'Request Lifecycle', link: '/cookbook/request-lifecycle' },
+              { text: 'HMR Dev Server', link: '/cookbook/hmr-dev-server' },
+              { text: 'Production Server', link: '/cookbook/production-server' },
+            ]
+          },
+          {
+            text: 'Presenter & MVA',
+            collapsed: true,
+            items: [
+              { text: 'MVA Presenter', link: '/cookbook/mva-presenter' },
+              { text: 'Presenter Composition', link: '/cookbook/presenter-composition' },
+              { text: 'Custom Responses', link: '/cookbook/custom-responses' },
+              { text: 'Context-Aware Rules', link: '/cookbook/context-aware-rules' },
+              { text: 'Context Tree-Shaking', link: '/cookbook/context-tree-shaking' },
+              { text: 'Select Reflection', link: '/cookbook/select-reflection' },
+              { text: 'Agentic Affordances', link: '/cookbook/agentic-affordances' },
+              { text: 'Cognitive Guardrails', link: '/cookbook/cognitive-guardrails' },
+            ]
+          },
+          {
+            text: 'Tool Building',
+            collapsed: true,
+            items: [
+              { text: 'Hierarchical Groups', link: '/cookbook/hierarchical-groups' },
+              { text: 'Functional Groups', link: '/cookbook/functional-groups' },
+              { text: 'Tool Exposition', link: '/cookbook/tool-exposition' },
+              { text: 'Error Handling', link: '/cookbook/error-handling' },
+              { text: 'Result Monad', link: '/cookbook/result-monad' },
+              { text: 'Streaming', link: '/cookbook/streaming' },
+              { text: 'Cancellation', link: '/cookbook/cancellation' },
+              { text: 'Auth Middleware', link: '/cookbook/auth-middleware' },
+              { text: 'Prompts', link: '/cookbook/prompts' },
+              { text: 'Runtime Guards', link: '/cookbook/runtime-guards' },
+              { text: 'Self-Healing Context', link: '/cookbook/self-healing-context' },
+              { text: 'TOON Encoding', link: '/cookbook/toon' },
+            ]
+          },
+          {
+            text: 'Governance',
+            collapsed: true,
+            items: [
+              { text: 'Capability Lockfile', link: '/cookbook/capability-lockfile' },
+              { text: 'Contract Diffing', link: '/cookbook/contract-diffing' },
+              { text: 'Blast Radius', link: '/cookbook/blast-radius' },
+              { text: 'Token Economics', link: '/cookbook/token-economics' },
+              { text: 'Semantic Probe', link: '/cookbook/semantic-probe' },
+              { text: 'Zero-Trust Attestation', link: '/cookbook/zero-trust-attestation' },
+            ]
+          },
+          {
+            text: 'Production',
+            collapsed: true,
+            items: [
+              { text: 'Observability', link: '/cookbook/observability' },
+              { text: 'Tracing', link: '/cookbook/tracing' },
+              { text: 'Introspection', link: '/cookbook/introspection' },
+              { text: 'State Sync', link: '/cookbook/state-sync' },
+              { text: 'Testing', link: '/cookbook/testing' },
+            ]
+          },
         ]
       },
 
       // ── Production ─────────────────────────────────────
       {
-        text: 'Production',
+        text: 'Production Ops',
         collapsed: true,
         items: [
           { text: 'Observability', link: '/observability' },
@@ -214,7 +282,7 @@ export default defineConfig({
 
       // ── Enterprise ─────────────────────────────────────
       {
-        text: 'Enterprise',
+        text: 'Enterprise Ready',
         collapsed: true,
         items: [
           { text: 'Security & Auth', link: '/enterprise/security' },
@@ -225,7 +293,7 @@ export default defineConfig({
 
       // ── Testing ────────────────────────────────────────
       {
-        text: 'Testing',
+        text: 'Test Suite',
         collapsed: true,
         items: [
           { text: 'Overview', link: '/testing' },
@@ -248,7 +316,7 @@ export default defineConfig({
 
       // ── Generators ─────────────────────────────────────
       {
-        text: 'Generators',
+        text: 'Data Connectors',
         collapsed: true,
         items: [
           { text: 'OpenAPI Generator', link: '/openapi-gen' },
@@ -261,7 +329,7 @@ export default defineConfig({
 
       // ── Adapters ────────────────────────────────────────
       {
-        text: 'Adapters',
+        text: 'Deploy Targets',
         collapsed: true,
         items: [
           { text: 'Cloudflare Workers', link: '/cloudflare-adapter' },
@@ -269,23 +337,13 @@ export default defineConfig({
         ]
       },
 
-      // ── Reference ──────────────────────────────────────
+      // ── API Reference (auto-generated by TypeDoc) ─────
       {
-        text: 'Reference',
+        text: 'API Reference',
         collapsed: true,
         items: [
-          { text: 'API Reference', link: '/api-reference' },
-          { text: 'Response Helpers', link: '/api-reference#response-helpers' },
-          { text: 'Tool Builders', link: '/api-reference#tool-builders' },
-          { text: 'Middleware', link: '/api-reference#middleware' },
-          { text: 'Streaming Progress', link: '/api-reference#streaming-progress' },
-          { text: 'Result Monad', link: '/api-reference#result-monad' },
-          { text: 'FusionClient', link: '/api-reference#fusionclient' },
-          { text: 'ToolRegistry', link: '/api-reference#toolregistry' },
-          { text: 'Observability', link: '/api-reference#observability' },
-          { text: 'State Sync', link: '/api-reference#state-sync' },
-          { text: 'Prompt Engine', link: '/api-reference#prompt-engine' },
-          { text: 'Domain Models', link: '/api-reference#domain-model-classes' },
+          { text: 'Overview', link: '/api/' },
+          ...typedocSidebar,
         ]
       },
     ],

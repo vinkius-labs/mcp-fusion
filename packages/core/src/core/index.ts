@@ -4,10 +4,6 @@
  * Public API for the core tool consolidation engine.
  * Contains only the foundational building blocks: response helpers,
  * result monad, types, builder, registry, schema, execution, and middleware.
- *
- * Top-level modules (client, observability, presenter, prompt, server,
- * state-sync, introspection, exposition) are exported from their own
- * barrel files and re-aggregated in src/index.ts.
  */
 
 // ── Cross-cutting ────────────────────────────────────────
@@ -27,17 +23,8 @@ export type {
 export { GroupedToolBuilder, ActionGroupBuilder, createTool, defineTool } from './builder/index.js';
 export { FluentToolBuilder } from './builder/index.js';
 export { FluentRouter } from './builder/index.js';
-export {
-    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
-} from './builder/index.js';
 export type { GroupConfigurator, ToolConfig, ActionDef, GroupDef } from './builder/index.js';
-export type { SemanticDefaults, InferInputSchema } from './builder/index.js';
-export type { FluentDescriptor, FluentParamsMap, InferFluentParams } from './builder/index.js';
-export type {
-    ParamDef, ParamsMap, InferParams,
-    StringParamDef, NumberParamDef, BooleanParamDef,
-    EnumParamDef, ArrayParamDef,
-} from './builder/index.js';
+export type { SemanticDefaults } from './builder/index.js';
 
 // ── Registry ─────────────────────────────────────────────
 export { ToolRegistry } from './registry/index.js';
@@ -58,7 +45,7 @@ export type { MiddlewareDefinition, MergeContext, InferContextOut } from './midd
 
 // ── Fusion Initializer (tRPC-style) ─────────────────────
 export { initFusion } from './initFusion.js';
-export type { FusionInstance, FusionToolConfig } from './initFusion.js';
+export type { FusionInstance } from './initFusion.js';
 
 // ── Functional Core ──────────────────────────────────────
 export { createGroup } from './createGroup.js';

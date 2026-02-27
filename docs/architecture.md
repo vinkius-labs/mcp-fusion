@@ -1,8 +1,17 @@
 # Architecture
 
-Internal structure of MCP Fusion: what each layer does, how the execution pipeline works, and why decisions were made.
+- [Two-Layer Design](#two-layers)
+- [Schema Generation](#schema)
+- [Middleware Compilation](#middleware)
+- [Execution Pipeline](#pipeline)
+- [Immutability](#immutability)
+- [Server Resolution](#server)
 
-## Two-Layer Design
+## Introduction {#introduction}
+
+Understanding the internal structure helps you make informed decisions about tool design, performance tuning, and debugging. MCP Fusion is built on a two-layer architecture: a domain model for MCP primitives and a build-time strategy engine that pre-compiles everything for O(1) runtime execution.
+
+## Two-Layer Design {#two-layers}
 
 ### Layer 1 — Domain Model
 
@@ -38,7 +47,7 @@ The builder delegates to `ToolDefinitionCompiler`, which orchestrates five strat
 
 Each module is a stateless pure function in its own file — unit-testable in isolation, replaceable independently.
 
-## Schema Generation
+## Schema Generation {#schema}
 
 `SchemaGenerator` creates a single JSON Schema from all registered actions. It inserts a discriminator enum listing every action key, then merges per-action schemas with a 4-tier annotation system:
 
@@ -49,7 +58,7 @@ Each module is a stateless pure function in its own file — unit-testable in is
 
 Annotations are appended to each field's `description` string so the LLM sees requirements inline.
 
-## Middleware Compilation
+## Middleware Compilation {#middleware}
 
 `compileMiddlewareChains()` wraps middleware right-to-left into nested closures at build time:
 
@@ -60,7 +69,10 @@ Global MW 1 → Global MW 2 → Group MW → handler
 
 Each wrapping captures `nextFn()` in a closure. The result per action key is a single function — no array iteration at call time.
 
-## Execution Pipeline
+> [!TIP]
+> With 10 stacked middleware layers, calling an action is still a single function call — zero chain assembly per request.
+
+## Execution Pipeline {#pipeline}
 
 ```text
 LLM: tools/call { name: "platform", arguments: { action: "users.create", email: "a@b.com" } }
@@ -79,7 +91,7 @@ GroupedToolBuilder.execute()
 
 `.strict()` rejects unknown fields with actionable messages — the LLM sees which fields are invalid and self-corrects.
 
-## Immutability
+## Immutability {#immutability}
 
 After `buildToolDefinition()`:
 
@@ -90,7 +102,7 @@ After `buildToolDefinition()`:
 
 This prevents adding actions or middleware after registration — the LLM always sees definitions that match runtime behavior.
 
-## Server Resolution
+## Server Resolution {#server}
 
 `attachToServer()` accepts `unknown` and resolves the MCP server through `ServerResolver.ts`:
 

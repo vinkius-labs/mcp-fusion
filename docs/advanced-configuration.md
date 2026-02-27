@@ -1,34 +1,52 @@
 # Advanced Configuration
 
-## TOON Token Compression
+- [TOON Token Compression](#toon)
+- [Tag-Based Filtering](#tag-filtering)
+- [Custom Discriminator](#discriminator)
+- [MCP Annotations](#annotations)
+
+## TOON Token Compression {#toon}
 
 Fusion generates Markdown descriptions for tool actions by default. `.toonDescription()` switches to [Token-Oriented Object Notation (TOON)](https://github.com/toon-format/toon) — a pipe-delimited table format that preserves LLM structural perception at roughly half the tokens:
 
 ```typescript
-const admin = createTool<AppContext>('admin')
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+const adminUsers = f.query('admin.list_users')
+  .describe('List all platform users')
   .toonDescription()
-  .action({ name: 'provision_user', handler: myHandler })
-  .action({ name: 'deprovision_user', handler: myHandler2 });
+  .handle(async (input, ctx) => { /* ... */ });
+
+const adminProvision = f.action('admin.provision_user')
+  .describe('Provision a new user')
+  .toonDescription()
+  .withString('email', 'User email')
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 A 40-action tool in Markdown can consume 2000+ tokens of system prompt. TOON compresses the same routing information into a single dense table.
 
-## Tag-Based Filtering
+## Tag-Based Filtering {#tag-filtering}
 
 Assign tags to classify tools, then filter which ones appear in `tools/list`:
 
 ```typescript
-const github = createTool<AppContext>('github')
-  .tags('public', 'dev', 'repo');
+const githubTool = f.query('github.list_repos')
+  .describe('List GitHub repositories')
+  .tags('public', 'dev', 'repo')
+  .handle(async (input, ctx) => { /* ... */ });
 
-const billing = createTool<AppContext>('billing')
-  .tags('internal', 'payments');
+const billingTool = f.query('billing.list_invoices')
+  .describe('List invoices')
+  .tags('internal', 'payments')
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 ```typescript
-import { attachToServer } from '@vinkius-core/mcp-fusion';
-
-attachToServer(server, registry, {
+registry.attachToServer(server, {
+  contextFactory: createAppContext,
   filter: {
     tags: ['public'],        // AND — tool must have ALL these tags
     anyTag: ['dev', 'repo'], // OR  — tool must have ANY of these tags
@@ -39,11 +57,13 @@ attachToServer(server, registry, {
 
 A public chat assistant never sees the `billing` tool. The LLM can't call what it doesn't know exists. Filters compose: a tool must pass `tags` AND `anyTag`, then survive `exclude`.
 
-## Custom Discriminator
+## Custom Discriminator {#discriminator}
 
-The default routing field is `"action"`. Some domains have their own vocabulary:
+The default routing field is `"action"`. Some domains have their own vocabulary. Use `createTool()` to set a custom discriminator at the group level:
 
 ```typescript
+import { createTool } from '@vinkius-core/mcp-fusion';
+
 const storage = createTool<AppContext>('storage')
   .discriminator('operation')
   .action({ name: 'upload', handler: uploadHandler })
@@ -52,19 +72,27 @@ const storage = createTool<AppContext>('storage')
 
 The LLM now sends `{ "operation": "upload", ... }`. The compiled schema, description, and validation all reflect the new field name.
 
-## MCP Annotations
+> [!NOTE]
+> Custom discriminators apply to the grouped tool pattern. With the Fluent API's flat approach (`f.query('storage.upload')`), each action is its own tool — no discriminator needed.
+
+## MCP Annotations {#annotations}
 
 The MCP specification defines [Annotations](https://modelcontextprotocol.io/specification/2025-03-26/server/tools#annotations) — UI hints for AI clients like Claude Desktop and Cursor.
 
-Fusion infers `readOnlyHint` and `destructiveHint` from action declarations. Override explicitly at the tool level:
+Fusion infers `readOnlyHint` and `destructiveHint` from semantic verbs automatically. Override explicitly on any tool:
 
 ```typescript
-const database = createTool<AppContext>('database')
+const database = f.query('database.query')
+  .describe('Run a database query')
   .annotations({
     readOnlyHint: true,
     openWorldHint: true,
   })
-  .action({ name: 'query', handler: queryHandler });
+  .withString('sql', 'SQL query')
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 Available annotations: `readOnlyHint` (no state modification), `destructiveHint` (irreversible changes), `idempotentHint` (safe to repeat), `openWorldHint` (interacts with external systems).
+
+> [!TIP]
+> You rarely need to set annotations manually — `f.query()` sets `readOnlyHint: true`, `f.mutation()` sets `destructiveHint: true`. Use `.annotations()` for `openWorldHint` or when a semantic verbs default doesn't match your use case.

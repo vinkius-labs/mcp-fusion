@@ -5,6 +5,14 @@ description: "Cryptographic surface integrity, behavioral lockfiles, and zero-tr
 
 # Capability Governance
 
+- [What the Protocol Cannot Answer](#the-gap)
+- [Surface Drift Is Silent](#surface-drift)
+- [The Governance Stack](#modules)
+- [Try It in 60 Seconds](#quick-start)
+- [How Contracts Materialize](#contracts)
+- [Observability Integration](#observability)
+- [Where to Go Next](#next-steps)
+
 You review an MCP server. You trust its declared tools. You approve it for production.
 
 A week later, a dependency update adds a `shell_exec` action to one of the tools. A Presenter loses its system rules. An input schema silently gains a new parameter. The MCP protocol has no mechanism to detect any of this — `tools/list` returns whatever is currently registered, and `notifications/tools/list_changed` says "something changed" without saying what, when, or how.

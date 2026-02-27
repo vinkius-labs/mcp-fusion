@@ -69,7 +69,6 @@ export {
     toStandardValidator, fromZodSchema, isStandardSchema, autoValidator,
     // Fluent API
     FluentToolBuilder, FluentRouter,
-    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
 } from './core/index.js';
 /** @category Core */
 export type {
@@ -79,19 +78,14 @@ export type {
     ToolBuilder, ActionMetadata,
     Result, Success, Failure,
     ToolConfig, ActionDef, GroupDef,
-    ParamDef, ParamsMap, InferParams,
-    StringParamDef, NumberParamDef, BooleanParamDef,
-    EnumParamDef, ArrayParamDef,
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
     ConcurrencyConfig, EgressConfig,
-    FusionInstance, FusionToolConfig,
+    FusionInstance,
     GroupConfig, GroupAction, CompiledGroup,
     StandardSchemaV1, StandardSchemaIssue, InferStandardOutput,
     FusionValidator, ValidationResult,
-    // Fluent API Types
-    SemanticDefaults, InferInputSchema,
-    FluentDescriptor, FluentParamsMap, InferFluentParams,
+    SemanticDefaults,
     StateSyncHint,
 } from './core/index.js';
 

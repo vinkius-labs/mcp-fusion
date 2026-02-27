@@ -1,5 +1,12 @@
 # Without MVA vs With MVA
 
+- [Before & After: Invoice](#invoice)
+- [Before & After: Users](#users)
+- [Before & After: Error Recovery](#errors)
+- [The Architecture Difference](#architecture)
+
+Every tool response in a raw MCP server is `JSON.stringify()` — the AI receives a flat blob and guesses what it means. MCP Fusion's MVA pattern replaces guessing with a structured perception package: validated data + domain rules + UI blocks + suggested next actions.
+
 | Aspect | Without MVA | With MVA |
 |---|---|---|
 | **Tool count** | 50 individual tools. Token explosion. | Action consolidation — 5,000+ ops behind ONE tool via `module.action` discriminator |
@@ -17,7 +24,7 @@
 | **Cache signals** | None — AI re-fetches stale data forever | State sync — RFC 7234-inspired temporal awareness |
 | **Type safety** | Manual casting | `createFusionClient()` with end-to-end inference |
 
-## Side-by-Side: Returning an Invoice {#invoice}
+## Before & After: Invoice {#invoice}
 
 **Without MVA:**
 
@@ -39,6 +46,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 **With MVA:**
 
 ```typescript
+import { createPresenter, suggest, ui } from '@vinkius-core/mcp-fusion';
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+const f = initFusion<AppContext>();
+
 const InvoicePresenter = createPresenter('Invoice')
     .schema(z.object({
         id: z.string(),
@@ -60,16 +73,15 @@ const InvoicePresenter = createPresenter('Invoice')
             : [suggest('billing.archive', 'Invoice is settled — archive it')]
     );
 
-const getInvoice = f.tool({
-    name: 'billing.get_invoice',
-    input: z.object({ id: z.string() }),
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => ctx.db.invoices.findUnique(input.id),
-});
+const getInvoice = f.query('billing.get_invoice')
+    .describe('Get an invoice by ID')
+    .withString('id', 'Invoice ID')
+    .returns(InvoicePresenter)
+    .handle(async (input, ctx) => ctx.db.invoices.findUnique(input.id));
 // AI receives: system rules + validated data (no internal fields) + ECharts gauge + suggested actions
 ```
 
-## Side-by-Side: Listing Users {#users}
+## Before & After: Users {#users}
 
 **Without MVA:**
 
@@ -92,7 +104,7 @@ const UserPresenter = createPresenter('User')
 // 50 users shown. Agent guided to filters. ~25,000 tokens instead of ~5,000,000.
 ```
 
-## Side-by-Side: Error Recovery {#errors}
+## Before & After: Error Recovery {#errors}
 
 **Without MVA:**
 

@@ -301,15 +301,14 @@ This prevents accidental mutation in shared modules. If `InvoicePresenter` is ex
 `.make()` transforms raw data into a `ResponseBuilder` instance. The builder composes the Structured Perception Package:
 
 ```typescript
-// Automatic (via `returns` field in tool definition):
-const billing = defineTool<Ctx>('billing', {
-    actions: {
-        get_invoice: {
-            returns: InvoicePresenter,  // Framework calls .make() automatically
-            handler: async (ctx, args) => ctx.db.invoices.findUnique(args.id),
-        },
-    },
-});
+// Automatic (via `.returns()` in Fluent API):
+export const getInvoice = f.query('billing.get_invoice')
+    .describe('Retrieve an invoice by ID')
+    .withString('id', 'Invoice identifier')
+    .returns(InvoicePresenter)  // Framework calls .make() automatically
+    .handle(async (input, ctx) =>
+        ctx.db.invoices.findUnique({ where: { id: input.id } })
+    );
 
 // Manual (for advanced cases):
 const builder = InvoicePresenter.make(invoiceData, { user: ctx.user });

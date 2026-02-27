@@ -166,7 +166,7 @@ describe('FluentToolBuilder — State Sync Propagation', () => {
 
         const tool = f.mutation('tasks.update')
             .invalidates('tasks.*', 'sprints.*')
-            .resolve(async ({ input, ctx }) => {
+            .handle(async (input, ctx) => {
                 return success('ok');
             });
 
@@ -182,7 +182,7 @@ describe('FluentToolBuilder — State Sync Propagation', () => {
 
         const tool = f.query('countries.list')
             .cached()
-            .resolve(async ({ ctx }) => {
+            .handle(async (input, ctx) => {
                 return success(ctx.db.countries.findMany());
             });
 
@@ -196,7 +196,7 @@ describe('FluentToolBuilder — State Sync Propagation', () => {
 
         const tool = f.query('live.stats')
             .stale()
-            .resolve(async () => success({ active: 100 }));
+            .handle(async () => success({ active: 100 }));
 
         const hints = tool.getStateSyncHints();
         const wildcard = hints.get('*');
@@ -209,7 +209,7 @@ describe('FluentToolBuilder — State Sync Propagation', () => {
         const tool = f.mutation('tasks.bulk_update')
             .invalidates('tasks.*')
             .cached()
-            .resolve(async () => success('ok'));
+            .handle(async () => success('ok'));
 
         const hints = tool.getStateSyncHints();
         const wildcard = hints.get('*');
@@ -221,7 +221,7 @@ describe('FluentToolBuilder — State Sync Propagation', () => {
         const f = initFusion<TestContext>();
 
         const tool = f.query('tasks.list')
-            .resolve(async () => success([]));
+            .handle(async () => success([]));
 
         const hints = tool.getStateSyncHints();
         expect(hints.size).toBe(0);
@@ -239,7 +239,7 @@ describe('FluentToolBuilder — toonDescription & annotations', () => {
         const tool = f.query('tasks.list')
             .describe('List all tasks in the workspace')
             .toonDescription()
-            .resolve(async () => success([]));
+            .handle(async () => success([]));
 
         const def = tool.buildToolDefinition();
         // TOON mode compresses descriptions — the exact format depends
@@ -255,7 +255,7 @@ describe('FluentToolBuilder — toonDescription & annotations', () => {
         const tool = f.query('admin.stats')
             .describe('Get admin statistics')
             .annotations({ title: 'Admin Stats', openWorldHint: true })
-            .resolve(async () => success({ count: 42 }));
+            .handle(async () => success({ count: 42 }));
 
         const def = tool.buildToolDefinition();
         expect(def.annotations).toBeDefined();
@@ -270,7 +270,7 @@ describe('FluentToolBuilder — toonDescription & annotations', () => {
             .describe('List all users')
             .toonDescription()
             .annotations({ readOnlyHint: true })
-            .resolve(async () => success([]));
+            .handle(async () => success([]));
 
         const def = tool.buildToolDefinition();
         expect(def.annotations).toBeDefined();
@@ -290,8 +290,8 @@ describe('Integration — Fluent State Sync + Execution', () => {
         const tool = f.mutation('tasks.update')
             .describe('Update a task')
             .invalidates('tasks.*')
-            .input({ id: f.string() })
-            .resolve(async ({ input, ctx }) => {
+            .withString('id', 'Task ID')
+            .handle(async (input, ctx) => {
                 return ctx.db.tasks.update(input.id, {});
             });
 
@@ -310,7 +310,7 @@ describe('Integration — Fluent State Sync + Execution', () => {
         const tool = f.query('countries.list')
             .describe('List all countries')
             .cached()
-            .resolve(async ({ ctx }) => ctx.db.countries.findMany());
+            .handle(async (input, ctx) => ctx.db.countries.findMany());
 
         const result = await tool.execute(testCtx, { action: 'list' });
 
@@ -326,7 +326,7 @@ describe('Integration — Fluent State Sync + Execution', () => {
             .toonDescription()
             .annotations({ idempotentHint: true })
             .invalidates('tasks.*', 'projects.*')
-            .resolve(async () => success({ synced: 5 }));
+            .handle(async () => success({ synced: 5 }));
 
         // Should build correctly
         const def = tool.buildToolDefinition();

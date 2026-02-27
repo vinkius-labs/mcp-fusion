@@ -5,6 +5,13 @@ description: "Cognitive overload detection, context window budget profiling, and
 
 # Token Economics
 
+- [Risk Classification](#risk)
+- [Static Analysis](#static)
+- [Runtime Profiling](#runtime)
+- [Server-Level Summary](#aggregate)
+- [Integration With the Governance Stack](#integration)
+- [Full Profile Pipeline](#pipeline)
+
 An MCP tool that returns large, unbounded responses will rapidly exhaust the LLM's context window. When the window fills, the system rules injected by the Presenter's `addRules()` — the primary mechanism for controlling behavioral correctness — are pushed out of the model's attention window. The LLM's behavior silently degrades.
 
 Consider a tool with a schema of 8 fields and no collection limit. A query that returns 200 users produces ~20KB+ of JSON. After Presenter rendering, the system rules that were injected earlier are now outside the model's effective attention. Nothing breaks. Nothing throws. The output just gets worse.

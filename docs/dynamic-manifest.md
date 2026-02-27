@@ -1,6 +1,18 @@
 # Dynamic Manifest
 
-A live `fusion://manifest.json` MCP Resource describing every tool, action, and presenter on the server. An optional RBAC filter strips capabilities per session — unauthorized agents never see hidden tools.
+- [Introduction](#introduction)
+- [Quick Start](#quickstart)
+- [Manifest Payload](#payload)
+- [RBAC Filtering](#rbac)
+- [Custom URI](#uri)
+- [Configuration](#config)
+- [How It Works](#internals)
+
+## Introduction {#introduction}
+
+When an AI agent connects to your MCP server, it discovers tools via `tools/list`. But there's no way for it to understand the relationships between tools, which Presenters power which response, or which actions are safe to call in sequence.
+
+The Dynamic Manifest is a live `fusion://manifest.json` MCP Resource that describes every tool, action, and presenter on the server — including semantic metadata, schema shapes, and capability flags. An optional RBAC filter strips capabilities per session so unauthorized agents never see hidden tools.
 
 ## Quick Start {#quickstart}
 
@@ -120,6 +132,9 @@ filter: (manifest, ctx) => {
 },
 ```
 
+> [!TIP]
+> Use the Dynamic Manifest for developer tooling and agent debugging. Disable it in production with `enabled: process.env.NODE_ENV !== 'production'` — it exposes internal structure that external agents don't need.
+
 ## Custom URI {#uri}
 
 ```typescript
@@ -161,6 +176,6 @@ filter(clone, ctx) → RBAC filtering
 JSON response
 ```
 
-Compiled per request so late-registered tools always appear. Deep clone before filter so concurrent sessions with different roles never interfere. Presenter metadata extracted via accessors (`getSchemaKeys()`, `getUiBlockTypes()`, `hasContextualRules()`) without executing `.make()`.
+Compiled per request so late-registered tools always appear. Deep clone before filter so concurrent sessions with different roles never interfere. Presenter metadata extracted via accessors without executing `.make()`.
 
 **Dynamic Manifest vs Builder Introspection** — Dynamic Manifest is runtime, server-scoped, RBAC-filtered, accessed via MCP Resource protocol. Builder Introspection is development-time, single-builder-scoped, accessed via direct method calls. See [Introspection](/introspection) for the builder-level API.

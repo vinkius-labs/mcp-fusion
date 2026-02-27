@@ -37,3 +37,24 @@ jobs:
               run: npm test
               env:
                   CI: true
+
+    docs:
+        name: Docs
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Use Node.js 20
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Generate API Reference (TypeDoc)
+              run: npm run docs:api
+
+            - name: Build documentation (VitePress)
+              run: npx vitepress build docs

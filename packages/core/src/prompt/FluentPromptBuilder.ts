@@ -54,7 +54,7 @@ export class FluentPromptBuilder<TContext = void, TArgs extends Record<string, u
     private _handler?: (ctx: TContext & LoopbackContext, args: TArgs) => Promise<PromptResult>;
 
     /** @internal Cached delegate built on first access to PromptBuilder methods */
-    private _delegate?: PromptBuilder<TContext>;
+    private _delegate: PromptBuilder<TContext> | undefined;
 
     constructor(name: string) {
         this._name = name;
@@ -134,7 +134,8 @@ export class FluentPromptBuilder<TContext = void, TArgs extends Record<string, u
      */
     input<S extends ZodRawShape>(schema: ZodObject<S>): FluentPromptBuilder<TContext, ZodObject<S>['_output']>;
     input(params: PromptParamsMap): this;
-    input(schemaOrParams: ZodObject<ZodRawShape> | PromptParamsMap): this {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    input(schemaOrParams: ZodObject<ZodRawShape> | PromptParamsMap): any {
         this._args = schemaOrParams;
         this._delegate = undefined;
         return this;

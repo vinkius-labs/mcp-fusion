@@ -1,5 +1,14 @@
 # Prisma Generator
 
+- [Install](#install)
+- [Field-Level Security](#field-security)
+- [OOM Guard & Tenant Isolation](#oom-guard)
+- [Wiring into Your Server](#wiring)
+- [Schema Annotations](#annotations)
+- [Generator Configuration](#configuration)
+- [Generated Output](#output)
+- [Requirements](#requirements)
+
 A Prisma Generator that reads `schema.prisma` annotations and produces MCP Fusion ToolBuilders and Presenters with field-level security, tenant isolation, and OOM protection baked into the generated code.
 
 ```prisma
@@ -25,7 +34,7 @@ npx prisma generate
 # → src/tools/database/userTools.ts
 ```
 
-## Install
+## Install {#install}
 
 ```bash
 npm install mcp-fusion-prisma-gen
@@ -33,7 +42,7 @@ npm install mcp-fusion-prisma-gen
 
 Peer dependencies: `@vinkius-core/mcp-fusion`, `zod`, and `@prisma/generator-helper`.
 
-## Field-Level Security
+## Field-Level Security {#field-security}
 
 `/// @fusion.hide` physically excludes fields from the generated Zod response schema. `/// @fusion.describe()` compiles into `.describe()` calls that inject domain semantics.
 
@@ -66,7 +75,7 @@ export const UserPresenter = createPresenter('User')
 
 Prisma queries return `passwordHash` and `stripeToken` from the database. The Presenter's `.strict()` strips them in RAM before serialization.
 
-## OOM Guard & Tenant Isolation
+## OOM Guard & Tenant Isolation {#oom-guard}
 
 `/// @fusion.tenantKey` injects the tenant filter into every generated query's `WHERE` clause. Pagination is enforced with `take` capped at 50.
 
@@ -164,7 +173,7 @@ export const userTools = defineTool<PrismaFusionContext>('db_user', {
 
 Every query is tenant-isolated at the generated code level. Cross-tenant access is structurally impossible.
 
-## Wiring into Your Server
+## Wiring into Your Server {#wiring}
 
 The generator produces `ToolBuilder` instances and `Presenter` files — no server, no transport. You import and wire them:
 
@@ -194,7 +203,7 @@ createServerAttachment(server, registry, {
 await server.connect(new StdioServerTransport());
 ```
 
-## Schema Annotations
+## Schema Annotations {#annotations}
 
 | Annotation | Location | Effect |
 |---|---|---|
@@ -202,7 +211,7 @@ await server.connect(new StdioServerTransport());
 | `/// @fusion.describe("...")` | Field | Adds `.describe()` to the Zod field |
 | `/// @fusion.tenantKey` | Field | Injects into every query's `WHERE` clause from `ctx` |
 
-## Generator Configuration
+## Generator Configuration {#configuration}
 
 ```prisma
 generator mcp {
@@ -216,7 +225,7 @@ generator mcp {
 | `provider` | `string` | — | Must be `"vinkius-prisma-gen"` |
 | `output` | `string` | `"./generated"` | Output directory for generated files |
 
-## Generated Output
+## Generated Output {#output}
 
 ```
 src/tools/database/
@@ -229,7 +238,7 @@ src/tools/database/
 
 Each model produces a Presenter (Zod `.strict()` schema with `@fusion.hide` fields removed) and a Tool (`defineTool()` builder with `find_many`, `find_unique`, `create`, `update`, `delete` actions).
 
-## Requirements
+## Requirements {#requirements}
 
 | Dependency | Version |
 |---|---|

@@ -4,24 +4,18 @@
  * The core builder behind `f.query()`, `f.mutation()`, and `f.action()`.
  * Uses TypeScript generic accumulation so that each fluent step narrows
  * the types — the IDE "magically" knows the exact shape of `input` and
- * `ctx` inside `.resolve()` without any manual Interface declaration.
+ * `ctx` inside `.handle()` without any manual Interface declaration.
  *
  * @example
  * ```typescript
  * const f = initFusion<AppContext>();
  *
- * // f.query() → readOnly implicit, f.mutation() → destructive implicit
  * const listUsers = f.query('users.list')
  *     .describe('List users from the database')
- *     .instructions('Use when the user asks about team members')
- *     .input({
- *         limit:  f.number().min(1).max(100).default(10).describe('Max results'),
- *         status: f.enum('active', 'inactive').optional(),
- *     })
+ *     .withNumber('limit', 'Max results to return')
+ *     .withOptionalEnum('status', ['active', 'inactive'], 'Filter by status')
  *     .returns(UserPresenter)
- *     .resolve(async ({ input, ctx }) => {
- *         // input: { limit: number; status?: 'active' | 'inactive' }
- *         // ctx: AppContext — fully typed!
+ *     .handle(async (input, ctx) => {
  *         return ctx.db.user.findMany({ take: input.limit });
  *     });
  * ```
@@ -31,19 +25,11 @@
  *
  * @module
  */
-import { type ZodObject, type ZodRawShape } from 'zod';
+import { z, type ZodType, type ZodObject, type ZodRawShape } from 'zod';
 import { GroupedToolBuilder } from './GroupedToolBuilder.js';
 import { type ToolResponse, type MiddlewareFn } from '../types.js';
 import { success } from '../response.js';
 import { type Presenter } from '../../presenter/Presenter.js';
-import { isZodSchema } from '../schema/SchemaUtils.js';
-import { convertParamsToZod, type ParamsMap } from './ParamDescriptors.js';
-import {
-    type FluentParamsMap,
-    type InferFluentParams,
-    resolveFluentParams,
-    isFluentDescriptor,
-} from './FluentSchemaHelpers.js';
 import { type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
 
 // ── Semantic Verb Defaults ───────────────────────────────
@@ -67,22 +53,16 @@ export const MUTATION_DEFAULTS: SemanticDefaults = { destructive: true };
 /** Defaults for `f.action()` — neutral, no assumptions */
 export const ACTION_DEFAULTS: SemanticDefaults = {};
 
-// ── Input Type Resolution ────────────────────────────────
+// ── Array Item Type Resolution ───────────────────────────
 
-/**
- * Resolve the TypeScript type of an input schema.
- *
- * Supports:
- * - FluentParamsMap (fluent helpers) → InferFluentParams
- * - ZodObject → Zod's inferred output type
- * - ParamsMap (JSON descriptors) → Record<string, unknown> (runtime-only typing)
- *
- * @internal
- */
-export type InferInputSchema<T> =
-    T extends ZodObject<ZodRawShape> ? T['_output'] :
-    T extends Record<string, unknown> ? InferFluentParams<T> :
-    void;
+/** Resolve Zod type from array item type string */
+function resolveArrayItemType(itemType: 'string' | 'number' | 'boolean'): ZodType {
+    switch (itemType) {
+        case 'string': return z.string();
+        case 'number': return z.number();
+        case 'boolean': return z.boolean();
+    }
+}
 
 // ── FluentToolBuilder ────────────────────────────────────
 
@@ -90,7 +70,7 @@ export type InferInputSchema<T> =
  * Fluent builder that accumulates types at each step.
  *
  * @typeParam TContext - Base application context (from `initFusion<TContext>()`)
- * @typeParam TInput - Accumulated input type (set by `.input()`)
+ * @typeParam TInput - Accumulated input type (built by `with*()` methods)
  * @typeParam TCtx - Accumulated context type (enriched by `.use()`)
  */
 export class FluentToolBuilder<
@@ -102,7 +82,7 @@ export class FluentToolBuilder<
     /** @internal */ _description?: string;
     /** @internal */ _instructions?: string;
     /** @internal */ _inputSchema?: ZodObject<ZodRawShape>;
-    /** @internal */ _rawInput?: unknown;
+    /** @internal */ _withParams: Record<string, ZodType> = {};
     /** @internal */ _tags: string[] = [];
     /** @internal */ _middlewares: MiddlewareFn<TContext>[] = [];
     /** @internal */ _returns?: Presenter<unknown>;
@@ -153,8 +133,8 @@ export class FluentToolBuilder<
      * f.query('docs.search')
      *     .describe('Search internal documentation')
      *     .instructions('Use ONLY when the user asks about internal policies.')
-     *     .input({ query: f.string() })
-     *     .resolve(async ({ input }) => { ... });
+     *     .withString('query', 'Search term')
+     *     .handle(async (input) => { ... });
      * ```
      */
     instructions(text: string): FluentToolBuilder<TContext, TInput, TCtx> {
@@ -162,55 +142,205 @@ export class FluentToolBuilder<
         return this;
     }
 
+    // ── Parameter Declaration (with* methods) ────────────
+
     /**
-     * Define the input schema — the **type-chaining magic** happens here.
+     * Add a required string parameter.
      *
-     * Accepts three formats (Interoperability Door):
-     * 1. **Fluent helpers** — `{ limit: f.number().min(1) }` (zero Zod import)
-     * 2. **ParamsMap** — `{ limit: 'number' }` (JSON shorthand)
-     * 3. **Zod schema** — `z.object({ limit: z.number() })` (native interop)
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
      *
-     * The return type narrows `TInput` to the inferred schema type, so
-     * `.resolve()` receives fully typed `input` — zero manual interfaces.
-     *
-     * @param schema - Input schema (fluent, JSON, or Zod)
-     * @returns A **new type** of `FluentToolBuilder` with `TInput` narrowed
+     * @example
+     * ```typescript
+     * f.query('projects.get')
+     *     .withString('project_id', 'The project ID to retrieve')
+     *     .handle(async (input) => { ... });
+     * // input.project_id: string ✅
+     * ```
      */
-    input<TSchema extends ZodObject<ZodRawShape>>(
-        schema: TSchema,
-    ): FluentToolBuilder<TContext, TSchema['_output'], TCtx>;
-    input<TSchema extends Record<string, unknown>>(
-        schema: TSchema,
-    ): FluentToolBuilder<TContext, InferFluentParams<TSchema>, TCtx>;
-    input(schema: unknown): FluentToolBuilder<TContext, unknown, TCtx> {
-        this._rawInput = schema;
-
-        // Resolve to ZodObject at runtime
-        if (isZodSchema(schema)) {
-            this._inputSchema = schema as ZodObject<ZodRawShape>;
-        } else if (typeof schema === 'object' && schema !== null) {
-            // Check if any values are FluentDescriptors
-            const entries = Object.entries(schema as Record<string, unknown>);
-            const hasFluentDescriptors = entries.some(([, v]) => isFluentDescriptor(v));
-
-            if (hasFluentDescriptors) {
-                // Resolve FluentDescriptors → ParamDef → Zod
-                const resolved = resolveFluentParams(schema as FluentParamsMap);
-                this._inputSchema = convertParamsToZod(resolved);
-            } else {
-                // Plain ParamsMap → Zod
-                this._inputSchema = convertParamsToZod(schema as ParamsMap);
-            }
-        }
-
-        return this as unknown as FluentToolBuilder<TContext, unknown, TCtx>;
+    withString<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx> {
+        this._withParams[name] = description ? z.string().describe(description) : z.string();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx>;
     }
+
+    /**
+     * Add an optional string parameter.
+     *
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withOptionalString<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Partial<Record<K, string>>, TCtx> {
+        const base = description ? z.string().describe(description) : z.string();
+        this._withParams[name] = base.optional();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, string>>, TCtx>;
+    }
+
+    /**
+     * Add a required number parameter.
+     *
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withNumber<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, number>, TCtx> {
+        this._withParams[name] = description ? z.number().describe(description) : z.number();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, number>, TCtx>;
+    }
+
+    /**
+     * Add an optional number parameter.
+     *
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withOptionalNumber<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Partial<Record<K, number>>, TCtx> {
+        const base = description ? z.number().describe(description) : z.number();
+        this._withParams[name] = base.optional();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, number>>, TCtx>;
+    }
+
+    /**
+     * Add a required boolean parameter.
+     *
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withBoolean<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, boolean>, TCtx> {
+        this._withParams[name] = description ? z.boolean().describe(description) : z.boolean();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, boolean>, TCtx>;
+    }
+
+    /**
+     * Add an optional boolean parameter.
+     *
+     * @param name - Parameter name
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withOptionalBoolean<K extends string>(
+        name: K,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Partial<Record<K, boolean>>, TCtx> {
+        const base = description ? z.boolean().describe(description) : z.boolean();
+        this._withParams[name] = base.optional();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, boolean>>, TCtx>;
+    }
+
+    /**
+     * Add a required enum parameter.
+     *
+     * @param name - Parameter name
+     * @param values - Allowed enum values
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('invoices.list')
+     *     .withEnum('status', ['draft', 'sent', 'paid'], 'Filter by status')
+     *     .handle(async (input) => { ... });
+     * // input.status: 'draft' | 'sent' | 'paid' ✅
+     * ```
+     */
+    withEnum<K extends string, V extends string>(
+        name: K,
+        values: readonly [V, ...V[]],
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, V>, TCtx> {
+        const schema = z.enum(values as [V, ...V[]]);
+        this._withParams[name] = description ? schema.describe(description) : schema;
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, V>, TCtx>;
+    }
+
+    /**
+     * Add an optional enum parameter.
+     *
+     * @param name - Parameter name
+     * @param values - Allowed enum values
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withOptionalEnum<K extends string, V extends string>(
+        name: K,
+        values: readonly [V, ...V[]],
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Partial<Record<K, V>>, TCtx> {
+        const schema = z.enum(values as [V, ...V[]]);
+        this._withParams[name] = description ? schema.describe(description).optional() : schema.optional();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, V>>, TCtx>;
+    }
+
+    /**
+     * Add a required array parameter.
+     *
+     * @param name - Parameter name
+     * @param itemType - Type of array items (`'string'`, `'number'`, `'boolean'`)
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.mutation('tasks.tag')
+     *     .withString('task_id', 'The task to tag')
+     *     .withArray('tags', 'string', 'Tags to apply')
+     *     .handle(async (input) => { ... });
+     * // input.tags: string[] ✅
+     * ```
+     */
+    withArray<K extends string, I extends 'string' | 'number' | 'boolean'>(
+        name: K,
+        itemType: I,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, (I extends 'string' ? string : I extends 'number' ? number : boolean)[]>, TCtx> {
+        const schema = z.array(resolveArrayItemType(itemType));
+        this._withParams[name] = description ? schema.describe(description) : schema;
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, (I extends 'string' ? string : I extends 'number' ? number : boolean)[]>, TCtx>;
+    }
+
+    /**
+     * Add an optional array parameter.
+     *
+     * @param name - Parameter name
+     * @param itemType - Type of array items (`'string'`, `'number'`, `'boolean'`)
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     */
+    withOptionalArray<K extends string, I extends 'string' | 'number' | 'boolean'>(
+        name: K,
+        itemType: I,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Partial<Record<K, (I extends 'string' ? string : I extends 'number' ? number : boolean)[]>>, TCtx> {
+        const schema = z.array(resolveArrayItemType(itemType));
+        this._withParams[name] = description ? schema.describe(description).optional() : schema.optional();
+        return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, (I extends 'string' ? string : I extends 'number' ? number : boolean)[]>>, TCtx>;
+    }
+
+    // ── Middleware ────────────────────────────────────────
 
     /**
      * Add context-derivation middleware (tRPC-style).
      *
      * The middleware receives `{ ctx, next }` and can enrich the context
-     * for downstream steps. The TypeScript type of `ctx` in `.resolve()`
+     * for downstream steps. The TypeScript type of `ctx` in `.handle()`
      * is automatically extended with the derived properties.
      *
      * @param mw - Middleware that returns enriched context
@@ -223,8 +353,8 @@ export class FluentToolBuilder<
      *         const admin = await requireAdmin(ctx.headers);
      *         return next({ ...ctx, adminUser: admin });
      *     })
-     *     .input({ id: f.string() })
-     *     .resolve(async ({ input, ctx }) => {
+     *     .withString('id', 'User ID to delete')
+     *     .handle(async (input, ctx) => {
      *         // ctx.adminUser is typed! Zero casting.
      *         ctx.logger.info(`${ctx.adminUser.name} deleting ${input.id}`);
      *     });
@@ -295,19 +425,7 @@ export class FluentToolBuilder<
     /**
      * Enable TOON-formatted descriptions for token optimization.
      *
-     * Uses TOON (Token-Oriented Object Notation) to encode action metadata
-     * in a compact tabular format, reducing description token count by ~30-50%.
-     *
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.query('users.list')
-     *     .toonDescription()
-     *     .resolve(async ({ ctx }) => ctx.db.users.findMany());
-     * ```
-     *
-     * @see {@link toonSuccess} for TOON-encoded responses
      */
     toonDescription(): FluentToolBuilder<TContext, TInput, TCtx> {
         this._toonMode = true;
@@ -317,21 +435,8 @@ export class FluentToolBuilder<
     /**
      * Set MCP tool annotations.
      *
-     * Manual override for tool-level annotations. If not set,
-     * annotations are automatically aggregated from per-action
-     * semantic properties (readOnly, destructive, idempotent).
-     *
      * @param a - Annotation key-value pairs
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.query('admin.stats')
-     *     .annotations({ openWorldHint: true, returnDirect: false })
-     *     .resolve(async ({ ctx }) => ctx.db.getStats());
-     * ```
-     *
-     * @see {@link https://modelcontextprotocol.io/specification/2025-03-26/server/tools#annotations | MCP Tool Annotations}
      */
     annotations(a: Record<string, unknown>): FluentToolBuilder<TContext, TInput, TCtx> {
         this._annotations = a;
@@ -343,23 +448,8 @@ export class FluentToolBuilder<
     /**
      * Declare glob patterns invalidated when this tool succeeds.
      *
-     * Eliminates manual `stateSync.policies` configuration —
-     * the framework auto-collects hints from all builders.
-     *
      * @param patterns - Glob patterns (e.g. `'sprints.*'`, `'tasks.*'`)
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.mutation('tasks.update')
-     *     .invalidates('tasks.*', 'sprints.*')
-     *     .input({ id: f.string(), title: f.string() })
-     *     .resolve(async ({ input, ctx }) => {
-     *         return ctx.db.tasks.update(input.id, { title: input.title });
-     *     });
-     * ```
-     *
-     * @see {@link StateSyncConfig} for centralized configuration
      */
     invalidates(...patterns: string[]): FluentToolBuilder<TContext, TInput, TCtx> {
         this._invalidatesPatterns.push(...patterns);
@@ -369,17 +459,7 @@ export class FluentToolBuilder<
     /**
      * Mark this tool's data as immutable (safe to cache forever).
      *
-     * Use for reference data: countries, currencies, ICD-10 codes.
-     * The LLM sees `[Cache-Control: immutable]` in the description.
-     *
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.query('countries.list')
-     *     .cached()
-     *     .resolve(async ({ ctx }) => ctx.db.countries.findMany());
-     * ```
      */
     cached(): FluentToolBuilder<TContext, TInput, TCtx> {
         this._cacheControl = 'immutable';
@@ -388,8 +468,6 @@ export class FluentToolBuilder<
 
     /**
      * Mark this tool's data as volatile (never cache).
-     *
-     * Use for dynamic data that changes frequently.
      *
      * @returns `this` for chaining
      */
@@ -403,18 +481,8 @@ export class FluentToolBuilder<
     /**
      * Set concurrency limits for this tool (Semaphore + Queue pattern).
      *
-     * Prevents thundering-herd scenarios where the LLM fires N
-     * concurrent calls in the same millisecond.
-     *
      * @param config - Concurrency configuration
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.mutation('billing.process')
-     *     .concurrency({ maxActive: 5, maxQueue: 20 })
-     *     .resolve(...)
-     * ```
      */
     concurrency(config: ConcurrencyConfig): FluentToolBuilder<TContext, TInput, TCtx> {
         this._concurrency = config;
@@ -424,41 +492,72 @@ export class FluentToolBuilder<
     /**
      * Set maximum payload size for tool responses (Egress Guard).
      *
-     * Prevents oversized responses from crashing the process or
-     * overflowing the LLM context window.
-     *
      * @param bytes - Maximum payload size in bytes
      * @returns `this` for chaining
-     *
-     * @example
-     * ```typescript
-     * f.query('logs.search')
-     *     .egress(2 * 1024 * 1024) // 2MB
-     *     .resolve(...)
-     * ```
      */
     egress(bytes: number): FluentToolBuilder<TContext, TInput, TCtx> {
         this._egressMaxBytes = bytes;
         return this;
     }
 
-    // ── Terminal: resolve() ──────────────────────────────
+    // ── Terminal: handle() ───────────────────────────────
 
     /**
      * Set the handler and build the tool — the terminal step.
      *
-     * The handler receives `{ input, ctx }` with fully typed `TInput` and `TCtx`.
+     * The handler receives `(input, ctx)` with fully typed `TInput` and `TCtx`.
      * **Implicit `success()` wrapping**: if the handler returns raw data
      * (not a `ToolResponse`), the framework wraps it with `success()`.
      *
-     * @param handler - Async function receiving typed `{ input, ctx }`
+     * @param handler - Async function receiving typed `(input, ctx)`
      * @returns A `GroupedToolBuilder` ready for registration
+     *
+     * @example
+     * ```typescript
+     * const getProject = f.query('projects.get')
+     *     .describe('Get a project by ID')
+     *     .withString('project_id', 'The exact project ID')
+     *     .handle(async (input, ctx) => {
+     *         return await ctx.db.projects.findUnique({ where: { id: input.project_id } });
+     *     });
+     * ```
+     */
+    handle(
+        handler: (
+            input: TInput extends void ? Record<string, unknown> : TInput,
+            ctx: TCtx,
+        ) => Promise<ToolResponse | unknown>,
+    ): GroupedToolBuilder<TContext> {
+        return this._build(handler);
+    }
+
+    /**
+     * Alias for `.handle()` — for backward compatibility.
+     * @internal
      */
     resolve(
         handler: (
             args: { input: TInput extends void ? Record<string, unknown> : TInput; ctx: TCtx },
         ) => Promise<ToolResponse | unknown>,
     ): GroupedToolBuilder<TContext> {
+        // Adapt { input, ctx } signature to (input, ctx)
+        return this._build((input, ctx) => handler({ input, ctx } as never));
+    }
+
+    // ── Internal Build ───────────────────────────────────
+
+    /** @internal */
+    private _build(
+        handler: (
+            input: TInput extends void ? Record<string, unknown> : TInput,
+            ctx: TCtx,
+        ) => Promise<ToolResponse | unknown>,
+    ): GroupedToolBuilder<TContext> {
+        // Build accumulated with* params into ZodObject
+        if (Object.keys(this._withParams).length > 0) {
+            this._inputSchema = z.object(this._withParams as ZodRawShape);
+        }
+
         // Parse name: 'domain.action' → tool='domain', action='action'
         const dotIndex = this._name.indexOf('.');
         const toolName = dotIndex > 0 ? this._name.slice(0, dotIndex) : this._name;
@@ -479,10 +578,10 @@ export class FluentToolBuilder<
         const destructive = this._destructive ?? this._semanticDefaults.destructive;
         const idempotent = this._idempotent ?? this._semanticDefaults.idempotent;
 
-        // Wrap handler: { input, ctx } → (ctx, args) + implicit success()
+        // Wrap handler: (input, ctx) → (ctx, args)
         const resolvedHandler = handler;
         const wrappedHandler = async (ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
-            const result = await resolvedHandler({ input: args, ctx } as never);
+            const result = await resolvedHandler(args as never, ctx as never);
 
             // Auto-wrap non-ToolResponse results (implicit success)
             if (

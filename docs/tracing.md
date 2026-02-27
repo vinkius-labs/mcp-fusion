@@ -1,6 +1,21 @@
 # Tracing
 
-Every tool call can produce an OpenTelemetry-compatible span with semantic error classification. Zero dependencies — Fusion uses structural subtyping, not `import @opentelemetry/api`. Zero overhead when disabled — a completely separate code path runs.
+- [Introduction](#introduction)
+- [Quick Start](#quickstart)
+- [Error Classification](#errors)
+- [Span Attributes](#attributes)
+- [Pipeline Events](#pipeline)
+- [FusionTracer Interface](#interface)
+- [Coexistence with Debug](#coexistence)
+- [Span Lifecycle](#lifecycle)
+- [Context Propagation](#propagation)
+- [Production Setup](#production)
+
+## Introduction {#introduction}
+
+When an MCP tool call fails in production, you need to know exactly where and why — was it a validation error, a middleware guard, or a handler exception? Standard logging gives you `"error occurred"`. OpenTelemetry tracing gives you the full pipeline: route → validate → middleware → execute, with durations, attributes, and semantic error classification.
+
+MCP Fusion produces OpenTelemetry-compatible spans with **zero dependencies** — structural subtyping, not `import @opentelemetry/api`. Zero overhead when disabled — a completely separate code path runs.
 
 ## Quick Start {#quickstart}
 
@@ -44,6 +59,9 @@ count(mcp.error_type:validation_failed) / count(*) > 0.5
 # Grafana: handler error rate for SLO
 count(mcp.error_type:handler_returned_error) / count(*) > 0.3
 ```
+
+> [!TIP]
+> Set up PagerDuty alerts on `SpanStatusCode.ERROR` only — these are real infrastructure failures. Use separate dashboards for `mcp.error_type` to track AI self-correction patterns.
 
 ## Span Attributes {#attributes}
 
@@ -132,8 +150,8 @@ import { context, trace } from '@opentelemetry/api';
 
 const dbQuery = f.query('db.query')
   .describe('Run a database query')
-  .input({ sql: f.string() })
-  .resolve(async ({ input, ctx }) => {
+  .withString('sql', 'SQL query')
+  .handle(async (input, ctx) => {
     const span = trace.getActiveSpan();
     return context.with(
       trace.setSpan(context.active(), span!),

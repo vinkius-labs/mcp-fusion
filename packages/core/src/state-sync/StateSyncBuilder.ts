@@ -36,10 +36,10 @@ export class PolicyBuilder {
 
     /** @internal */
     build() {
-        return {
-            cacheControl: this._cacheControl,
-            invalidates: this._invalidates.length > 0 ? this._invalidates : undefined,
-        };
+        const result: { cacheControl?: CacheDirective; invalidates?: string[] } = {};
+        if (this._cacheControl) result.cacheControl = this._cacheControl;
+        if (this._invalidates.length > 0) result.invalidates = this._invalidates;
+        return result;
     }
 }
 
@@ -105,12 +105,18 @@ export class StateSyncBuilder {
      * Build the StateSyncLayer instance.
      */
     build(): StateSyncLayer {
-        return new StateSyncLayer({
+        const config: {
+            policies: SyncPolicy[];
+            defaults: { cacheControl?: CacheDirective };
+            onInvalidation?: (event: InvalidationEvent) => void;
+            notificationSink?: (notification: ResourceNotification) => void | Promise<void>;
+        } = {
             policies: this._policies,
             defaults: this._defaults,
-            onInvalidation: this._onInvalidation,
-            notificationSink: this._notificationSink,
-        });
+        };
+        if (this._onInvalidation) config.onInvalidation = this._onInvalidation;
+        if (this._notificationSink) config.notificationSink = this._notificationSink;
+        return new StateSyncLayer(config);
     }
 
     /**

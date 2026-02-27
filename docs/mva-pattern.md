@@ -1,5 +1,11 @@
 # The MVA Pattern
 
+- [Why MVC Fails for Agents](#why-mvc-fails)
+- [The Solution: MVA](#solution)
+- [The Presenter](#presenter-responsibilities)
+- [Presenter Composition](#composition)
+- [Pipeline Integration](#pipeline)
+
 **Model-View-Agent (MVA)** replaces the human-centric View of MVC with a **Presenter** — a deterministic perception layer that tells the agent how to interpret, display, and act on domain data. For the full reference, see the [MVA Architecture Section](/mva/).
 
 ## Why MVC Fails for Agents {#why-mvc-fails}
@@ -171,23 +177,28 @@ const InvoicePresenter = createPresenter('Invoice')
 
 ## Pipeline Integration {#pipeline}
 
-The `returns` field connects the Presenter to a tool. The handler returns raw data; the Presenter does everything else:
+The `.returns()` method connects a Presenter to a tool. The handler returns raw data; the Presenter does everything else:
 
 ```typescript
-const getInvoice = f.tool({
-  name: 'billing.get_invoice',
-  input: z.object({ invoice_id: z.string() }),
-  returns: InvoicePresenter,
-  readOnly: true,
-  handler: async ({ input, ctx }) => {
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+const getInvoice = f.query('billing.get_invoice')
+  .describe('Get an invoice by ID')
+  .withString('invoice_id', 'The exact invoice ID')
+  .returns(InvoicePresenter)
+  .handle(async (input, ctx) => {
     return await ctx.db.invoices.findUnique({
       where: { id: input.invoice_id },
       include: { client: true },
     });
-  },
-});
+  });
 ```
 
 The handler (Model) produces raw data. The Presenter (View) shapes perception. The LLM (Agent) acts on structured context.
+
+> [!TIP]
+> The handler can return raw data directly — `FluentToolBuilder.handle()` auto-wraps non-`ToolResponse` returns with `success()`. No need to manually call `success()` when using `.returns()`.
 
 For one-off responses that don't map to a reusable entity, use `response(data).uiBlock(...).systemRules([...]).build()` — see the [Presenter Guide](/presenter) for the `ResponseBuilder` API.

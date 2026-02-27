@@ -1,5 +1,5 @@
 /**
- * Tests for initFusion() — tRPC-style context initialization
+ * Tests for initFusion() — Canonical Fluent API entry point
  */
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
@@ -17,54 +17,53 @@ describe('initFusion', () => {
         const f = initFusion<TestContext>();
 
         expect(f).toBeDefined();
-        expect(typeof f.tool).toBe('function');
+        expect(typeof f.query).toBe('function');
+        expect(typeof f.mutation).toBe('function');
+        expect(typeof f.action).toBe('function');
         expect(typeof f.presenter).toBe('function');
         expect(typeof f.middleware).toBe('function');
         expect(typeof f.defineTool).toBe('function');
         expect(typeof f.registry).toBe('function');
+        expect(typeof f.router).toBe('function');
     });
 
-    it('f.tool() should create a GroupedToolBuilder', () => {
+    it('f.query() should create a read-only tool via fluent API', () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.tool({
-            name: 'users.list',
-            input: z.object({ limit: z.number().optional() }),
-            readOnly: true,
-            handler: async ({ ctx }) => success(ctx.db.users.findMany()),
-        });
+        const tool = f.query('users.list')
+            .handle(async (input, ctx) => success(ctx.db.users.findMany()));
 
         expect(tool.getName()).toBe('users');
+        expect(tool.getActionNames()).toContain('list');
+
+        const meta = tool.getActionMetadata();
+        expect(meta[0]?.readOnly).toBe(true);
     });
 
-    it('f.tool() should split domain.action into tool name + action', () => {
+    it('f.mutation() should create a destructive tool', () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.tool({
-            name: 'billing.get_invoice',
-            handler: async ({ ctx }) => success('ok'),
-        });
+        const tool = f.mutation('billing.get_invoice')
+            .handle(async () => success('ok'));
 
         expect(tool.getName()).toBe('billing');
         const actionNames = tool.getActionNames();
         expect(actionNames).toContain('get_invoice');
     });
 
-    it('f.tool() handler should receive { input, ctx }', async () => {
+    it('f.query() handler should receive (input, ctx)', async () => {
         const f = initFusion<TestContext>();
 
         let receivedCtx: TestContext | undefined;
         let receivedInput: unknown;
 
-        const tool = f.tool({
-            name: 'test.action',
-            input: z.object({ msg: z.string() }),
-            handler: async ({ input, ctx }) => {
+        const tool = f.query('test.action')
+            .withString('msg', 'Message')
+            .handle(async (input, ctx) => {
                 receivedCtx = ctx;
                 receivedInput = input;
                 return success('done');
-            },
-        });
+            });
 
         const ctx: TestContext = {
             db: { users: { findMany: () => ['alice'] } },
@@ -76,13 +75,11 @@ describe('initFusion', () => {
         expect(receivedInput).toEqual(expect.objectContaining({ msg: 'hello' }));
     });
 
-    it('f.tool() should auto-wrap non-ToolResponse results', async () => {
+    it('f.query() should auto-wrap non-ToolResponse results', async () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.tool({
-            name: 'test.simple',
-            handler: async () => success({ result: 'data' }),
-        });
+        const tool = f.query('test.simple')
+            .handle(async () => success({ result: 'data' }));
 
         const ctx: TestContext = {
             db: { users: { findMany: () => [] } },
@@ -129,27 +126,22 @@ describe('initFusion', () => {
         expect(tool.getActionNames()).toContain('ping');
     });
 
-    it('f.tool() with no dot in name should use "default" action', () => {
+    it('f.query() with no dot in name should use "default" action', () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.tool({
-            name: 'echo',
-            handler: async () => success('echo'),
-        });
+        const tool = f.query('echo')
+            .handle(async () => success('echo'));
 
         expect(tool.getName()).toBe('echo');
         expect(tool.getActionNames()).toContain('default');
     });
 
-    it('f.tool() should forward tags and annotations', () => {
+    it('f.mutation() should forward tags', () => {
         const f = initFusion<TestContext>();
 
-        const tool = f.tool({
-            name: 'admin.delete',
-            tags: ['admin', 'destructive'],
-            destructive: true,
-            handler: async () => success('deleted'),
-        });
+        const tool = f.mutation('admin.delete')
+            .tags('admin', 'destructive')
+            .handle(async () => success('deleted'));
 
         expect(tool.getTags()).toContain('admin');
         expect(tool.getTags()).toContain('destructive');

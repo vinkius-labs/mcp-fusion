@@ -1,8 +1,23 @@
 # Performance
 
+- [Build-Time Pre-Compilation](#build-time)
+- [Freeze-After-Build Immutability](#freeze)
+- [Zero-Overhead Observability](#observability)
+- [Railway-Oriented Execution Pipeline](#railway)
+- [Zero-Copy Validation](#zero-copy)
+- [State Sync Caching Architecture](#state-sync)
+- [Bounded Glob Matching](#glob)
+- [Tag Filtering with O(1) Set Lookups](#tag-filter)
+- [TOON Token Compression](#toon)
+- [Cognitive Guardrails (Context DDoS Prevention)](#guardrails)
+- [Zod `.strict()` Security Boundary](#strict)
+- [Pure-Function Module Architecture](#pure-functions)
+- [Minimal Dependency Footprint](#dependencies)
+- [Self-Healing Error Responses](#self-healing)
+
 Every optimization documented here exists in the codebase. Features that are not enabled have zero runtime cost — debug observers, State Sync, middleware, Presenters produce no conditionals, no object allocations, and no function calls in the hot path when not configured.
 
-## 1. Build-Time Pre-Compilation
+## 1. Build-Time Pre-Compilation {#build-time}
 
 ### Middleware Chain Compilation
 
@@ -81,7 +96,7 @@ const actionKeysString = input.actions.map(a => a.key).join(', ');
 No `Array.join()` on every error path.
 
 
-## 2. Freeze-After-Build Immutability
+## 2. Freeze-After-Build Immutability {#freeze}
 
 After `buildToolDefinition()`, the entire builder state is permanently frozen:
 
@@ -108,7 +123,7 @@ buildToolDefinition(): McpTool {
 - The `_frozen` flag prevents accidental mutation, guaranteeing deterministic behavior without defensive copies.
 
 
-## 3. Zero-Overhead Observability
+## 3. Zero-Overhead Observability {#observability}
 
 The debug observer pattern in **MCP Fusion** is designed so that **when disabled, the hot path has zero conditionals**:
 
@@ -143,7 +158,7 @@ debug({ type: 'execute', tool: this._name, action: actionName,
 **Result:** Production deployments without `createDebugObserver()` run the pure fast path. Adding observability is a single line — no code changes, no conditionals in any handler.
 
 
-## 4. Railway-Oriented Execution Pipeline
+## 4. Railway-Oriented Execution Pipeline {#railway}
 
 The `ExecutionPipeline` uses the `Result<T>` monad for **zero-exception error handling**:
 
@@ -174,7 +189,7 @@ if (!disc.ok) return disc.response;  // Short-circuit — zero cost
 This is measurably faster than exception-based error handling for expected failures (missing discriminator, unknown action, validation errors).
 
 
-## 5. Zero-Copy Validation
+## 5. Zero-Copy Validation {#zero-copy}
 
 After Zod validates args, the discriminator is re-injected via **direct mutation** instead of object spread:
 
@@ -194,7 +209,7 @@ return succeed(validated);
 Instead of creating a new object with `{ ...result.data, action: value }`, the framework mutates the `result.data` reference directly. This avoids an extra object allocation on every validated call.
 
 
-## 6. State Sync Caching Architecture
+## 6. State Sync Caching Architecture {#state-sync}
 
 ### Policy Resolution Cache (O(1) Repeat Lookups)
 
@@ -259,7 +274,7 @@ private _decorateToolCached(tool: McpTool): McpTool {
 Since `tools/list` is the **hottest path** (runs at the start of every LLM conversation), this cache ensures near-zero overhead.
 
 
-## 7. Bounded Glob Matching
+## 7. Bounded Glob Matching {#glob}
 
 The `GlobMatcher` for State Sync policies uses iterative matching with **bounded backtracking** to prevent exponential blowup on adversarial patterns:
 
@@ -280,7 +295,7 @@ function matchIterative(pattern: string[], name: string[]): boolean {
 **Why this matters:** Recursive glob matching can be O(2^n) for pathological patterns like `**.**.**.**`. The iterative approach with a 1024-iteration cap guarantees deterministic worst-case CPU usage while being generous enough for any real-world MCP tool name hierarchy.
 
 
-## 8. Tag Filtering with O(1) Set Lookups
+## 8. Tag Filtering with O(1) Set Lookups {#tag-filter}
 
 The `ToolFilterEngine` pre-converts filter arrays to `Set` objects for O(1) tag membership tests, and uses single-pass iteration to avoid intermediate array allocations:
 
@@ -314,7 +329,7 @@ export function filterTools<TContext>(
 Early `break` on first match/exclusion avoids unnecessary iterations.
 
 
-## 9. TOON Token Compression (30-50% Fewer Tokens)
+## 9. TOON Token Compression (30-50% Fewer Tokens) {#toon}
 
 ### Description Compression
 
@@ -365,7 +380,7 @@ export function toonSuccess(data: unknown, options?: EncodeOptions): ToolRespons
 For a 100-row user list, this saves thousands of tokens per response, translating directly to lower API costs.
 
 
-## 10. Cognitive Guardrails (Context DDoS Prevention)
+## 10. Cognitive Guardrails (Context DDoS Prevention) {#guardrails}
 
 The Presenter's `.limit()` / `.agentLimit()` truncates large collections **before serialization**, preventing context overflow:
 
@@ -388,7 +403,7 @@ if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
 Truncation happens **before Zod validation**, so the schema only processes the capped set — saving CPU on large datasets.
 
 
-## 11. Zod `.strict()` Security Boundary
+## 11. Zod `.strict()` Security Boundary {#strict}
 
 Every action's validation schema is compiled with `.strict()`:
 
@@ -403,7 +418,7 @@ function buildValidationSchema(action, commonSchema) {
 `.strict()` **rejects all undeclared fields** from the LLM's payload with an actionable error message naming the invalid fields. This is both a security measure (no undeclared data reaches handlers) and an agent experience improvement — the LLM learns which fields are valid and self-corrects on retry.
 
 
-## 12. Pure-Function Module Architecture
+## 12. Pure-Function Module Architecture {#pure-functions}
 
 Critical performance modules are implemented as pure functions with **no state and no side effects**:
 
@@ -427,7 +442,7 @@ Critical performance modules are implemented as pure functions with **no state a
 - Deterministic output enables internal caching
 
 
-## 13. Minimal Dependency Footprint
+## 13. Minimal Dependency Footprint {#dependencies}
 
 **MCP Fusion** ships with only **2 runtime dependencies**:
 
@@ -447,7 +462,7 @@ Critical performance modules are implemented as pure functions with **no state a
 - **Reduced attack surface** — fewer transitive dependencies
 
 
-## 14. Self-Healing Error Responses (Reduced LLM Retry Loops)
+## 14. Self-Healing Error Responses (Reduced LLM Retry Loops) {#self-healing}
 
 While not a CPU optimization, `toolError()` and the `ValidationErrorFormatter` reduce **total system cost** by avoiding unnecessary LLM retries:
 

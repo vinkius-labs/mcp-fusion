@@ -16,7 +16,6 @@ npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 
 ```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
 
 const f = initFusion();
 ```
@@ -26,20 +25,15 @@ const f = initFusion();
 ## Define a Tool {#first-tool}
 
 ```typescript
-const getWeather = f.tool({
-  name: 'weather.get',
-  description: 'Get current weather for a city',
-  input: z.object({
-    city: z.string().describe('City name, e.g. "San Francisco"'),
-  }),
-  readOnly: true,
-  handler: async ({ input }) => {
+const getWeather = f.query('weather.get')
+  .describe('Get current weather for a city')
+  .withString('city', 'City name, e.g. "San Francisco"')
+  .handle(async (input) => {
     return { city: input.city, temp_c: 18, condition: 'Partly cloudy' };
-  },
-});
+  });
 ```
 
-`weather.get` follows the `domain.action` convention. [Tool exposition](/tool-exposition) flattens it to `weather_get` by default. `readOnly: true` is an MCP annotation telling clients this tool is safe without confirmation. Invalid input like `{ city: 42 }` is rejected before the handler runs.
+`weather.get` follows the `domain.action` convention. [Tool exposition](/tool-exposition) flattens it to `weather_get` by default. `f.query()` sets `readOnly: true` — an MCP annotation telling clients this tool is safe without confirmation. Invalid input like `{ city: 42 }` is rejected before the handler runs.
 
 ## Register and Start {#server}
 
@@ -74,21 +68,15 @@ main().catch(console.error);
 import { initFusion, ToolRegistry } from '@vinkius-core/mcp-fusion';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
 
 const f = initFusion();
 
-const getWeather = f.tool({
-  name: 'weather.get',
-  description: 'Get current weather for a city',
-  input: z.object({
-    city: z.string().describe('City name, e.g. "San Francisco"'),
-  }),
-  readOnly: true,
-  handler: async ({ input }) => {
+const getWeather = f.query('weather.get')
+  .describe('Get current weather for a city')
+  .withString('city', 'City name, e.g. "San Francisco"')
+  .handle(async (input) => {
     return { city: input.city, temp_c: 18, condition: 'Partly cloudy' };
-  },
-});
+  });
 
 const registry = new ToolRegistry();
 registry.register(getWeather);
@@ -108,7 +96,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-30 lines. Input validation, structured responses, MCP annotations, running server.
+28 lines. Input validation, structured responses, MCP annotations, running server.
 
 ## Test It {#test}
 

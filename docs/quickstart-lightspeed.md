@@ -149,8 +149,8 @@ The tool's `name` field in the code is the source of truth — the directory jus
 
 | Priority | What it looks for | Example |
 |----------|-------------------|---------|
-| 1 | `export default` | `export default f.tool({ ... })` |
-| 2 | Named `tool` export | `export const tool = f.tool({ ... })` |
+| 1 | `export default` | `export default f.query('weather.get').handle(...)` |
+| 2 | Named `tool` export | `export const tool = f.query('weather.get').handle(...)` |
 | 3 | Any exported builder | Scans all exports for objects with `getName()` |
 
 The recommended pattern is `export default`:
@@ -158,19 +158,13 @@ The recommended pattern is `export default`:
 ```typescript
 // src/tools/weather/get.ts
 import { f } from '../../fusion.js';
-import { z } from 'zod';
 
-export default f.tool({
-  name: 'weather.get',
-  description: 'Get current weather for a city',
-  input: z.object({
-    city: z.string().describe('City name'),
-  }),
-  readOnly: true,
-  handler: async ({ input }) => {
+export default f.query('weather.get')
+  .describe('Get current weather for a city')
+  .withString('city', 'City name')
+  .handle(async (input) => {
     return { city: input.city, temp_c: 18, condition: 'Clear' };
-  },
-});
+  });
 ```
 
 Restart the dev server. `weather_get` is now callable by any MCP client.
@@ -182,22 +176,15 @@ Priority 3 enables exporting multiple tools from a single file:
 ```typescript
 // src/tools/billing/crud.ts
 import { f } from '../../fusion.js';
-import { z } from 'zod';
 
-export const listInvoices = f.tool({
-  name: 'billing.list_invoices',
-  description: 'List all invoices',
-  input: z.object({}),
-  readOnly: true,
-  handler: async () => ({ invoices: [] }),
-});
+export const listInvoices = f.query('billing.list_invoices')
+  .describe('List all invoices')
+  .handle(async () => ({ invoices: [] }));
 
-export const createInvoice = f.tool({
-  name: 'billing.create_invoice',
-  description: 'Create an invoice',
-  input: z.object({ amount: z.number() }),
-  handler: async ({ input }) => ({ id: 'inv_1', amount: input.amount }),
-});
+export const createInvoice = f.mutation('billing.create_invoice')
+  .describe('Create an invoice')
+  .withNumber('amount', 'Invoice amount')
+  .handle(async (input) => ({ id: 'inv_1', amount: input.amount }));
 ```
 
 Both tools are discovered and registered — no extra wiring.

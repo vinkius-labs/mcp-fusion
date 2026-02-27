@@ -269,18 +269,16 @@ Embeds nest to any depth.
 ## Tool Integration {#tool-integration}
 
 ```typescript
-const getInvoice = f.tool({
-  name: 'billing.get_invoice',
-  description: 'Retrieve an invoice by ID',
-  input: z.object({ id: z.string() }),
-  returns: InvoicePresenter,
-  handler: async ({ input, ctx }) => {
+const getInvoice = f.query('billing.get_invoice')
+  .describe('Retrieve an invoice by ID')
+  .withString('id', 'Invoice ID')
+  .returns(InvoicePresenter)
+  .handle(async (input, ctx) => {
     return ctx.db.invoices.findUnique({
       where: { id: input.id },
       include: { client: true },
     });
-  },
-});
+  });
 ```
 
 The handler's only job is to query data. The framework calls `presenter.make(data, ctx).build()` automatically.

@@ -170,27 +170,22 @@ const InvoicePresenter = createPresenter('Invoice')
         : []);
 
 // Used in billing.get_invoice
-f.tool({
-    name: 'billing.get_invoice',
-    input: z.object({ id: z.string() }),
-    returns: InvoicePresenter,
-    handler: async (ctx, { id }) => ctx.db.invoices.findUnique({ where: { id } }),
-});
+f.query('billing.get_invoice')
+    .describe('Get an invoice by ID')
+    .withString('id', 'Invoice ID')
+    .returns(InvoicePresenter)
+    .handle(async (input, ctx) => ctx.db.invoices.findUnique({ where: { id: input.id } }));
 
-f.tool({
-    name: 'billing.list_invoices',
-    input: z.object({}),
-    returns: InvoicePresenter,
-    handler: async (ctx) => ctx.db.invoices.findMany(),
-});
+f.query('billing.list_invoices')
+    .describe('List all invoices')
+    .returns(InvoicePresenter)
+    .handle(async (input, ctx) => ctx.db.invoices.findMany());
 
 // Used in reports.financial_summary — same Presenter
-f.tool({
-    name: 'reports.financial_summary',
-    input: z.object({}),
-    returns: InvoicePresenter,
-    handler: async (ctx) => ctx.db.invoices.findMany(),
-});
+f.query('reports.financial_summary')
+    .describe('Financial summary report')
+    .returns(InvoicePresenter)
+    .handle(async (input, ctx) => ctx.db.invoices.findMany());
 ```
 
 The agent perceives invoices identically whether they come from `billing.get_invoice`, `billing.list_invoices`, or `reports.financial_summary`. This is **Perception Consistency** — the third requirement derived above.

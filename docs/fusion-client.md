@@ -1,39 +1,47 @@
 # FusionClient
 
-tRPC-style type inference for MCP tool calls. Export a router type from the server, import it on the client — every `client.execute()` call gets full autocomplete and compile-time argument validation.
+- [Introduction](#introduction)
+- [Server — Export the Router Type](#server)
+- [Client — Import and Call](#client)
+- [How It Works](#how)
+- [Transport](#transport)
+- [Client Middleware](#middleware)
+- [Error Handling](#errors)
+- [Batch Execution](#batch)
+- [API Reference](#api)
 
-## Setup
+## Introduction {#introduction}
 
-### Server — Export the Router Type
+MCP tool calls are stringly-typed — you pass a tool name and an `arguments` object, and hope the shape is correct. There's no compile-time validation, no autocomplete, nothing stopping you from sending `"projetcs.create"` (typo) or missing a required field.
+
+FusionClient brings **tRPC-style type inference** to MCP. Export a router type from the server, import it on the client — every `client.execute()` call gets full autocomplete and compile-time argument validation. Zero runtime cost.
+
+## Server — Export the Router Type {#server}
 
 ```typescript
 // server.ts
 import { initFusion, createTypedRegistry } from '@vinkius-core/mcp-fusion';
 import type { InferRouter } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
 
 const f = initFusion<AppContext>();
 
-const listProjects = f.tool({
-  name: 'projects.list',
-  input: z.object({
-    workspace_id: z.string(),
-    status: z.enum(['active', 'archived']).optional(),
-  }),
-  handler: async ({ input, ctx }) => ctx.db.projects.findMany(),
-});
+const listProjects = f.query('projects.list')
+  .describe('List projects')
+  .withString('workspace_id', 'Workspace ID')
+  .withOptionalEnum('status', ['active', 'archived'] as const, 'Project status')
+  .handle(async (input, ctx) => ctx.db.projects.findMany());
 
-const createProject = f.tool({
-  name: 'projects.create',
-  input: z.object({ workspace_id: z.string(), name: z.string().min(1) }),
-  handler: async ({ input, ctx }) => ctx.db.projects.create(input),
-});
+const createProject = f.mutation('projects.create')
+  .describe('Create a project')
+  .withString('workspace_id', 'Workspace ID')
+  .withString('name', 'Project name')
+  .handle(async (input, ctx) => ctx.db.projects.create(input));
 
-const refund = f.tool({
-  name: 'billing.refund',
-  input: z.object({ invoice_id: z.string(), amount: z.number() }),
-  handler: async ({ input, ctx }) => 'Refunded',
-});
+const refund = f.mutation('billing.refund')
+  .describe('Refund an invoice')
+  .withString('invoice_id', 'Invoice ID')
+  .withNumber('amount', 'Refund amount')
+  .handle(async (input, ctx) => 'Refunded');
 
 const registry = createTypedRegistry<AppContext>()(listProjects, createProject, refund);
 export type AppRouter = InferRouter<typeof registry>;
@@ -41,7 +49,7 @@ export type AppRouter = InferRouter<typeof registry>;
 
 `createTypedRegistry()` is curried — first call sets `TContext`, second infers builder types. `InferRouter` is pure type-level, zero runtime cost.
 
-### Client — Import and Call
+## Client — Import and Call {#client}
 
 ```typescript
 // agent.ts
@@ -64,7 +72,7 @@ await client.execute('projects.create', { workspace_id: 'ws_1' }); // TS error: 
 await client.execute('projects.create', { workspace_id: 'ws_1', name: 42 }); // TS error: number ≠ string
 ```
 
-## How It Works
+## How It Works {#how}
 
 `execute()` parses the dotted path and forwards as a discriminated call:
 
@@ -172,4 +180,3 @@ Parallel by default (`Promise.all`). Use `{ sequential: true }` for ordered exec
 **Runtime:** `createFusionClient(transport, options?)`, `createTypedRegistry<TContext>()`, `FusionClientError`.
 
 **Types:** `FusionClient<TRouter>`, `FusionTransport`, `InferRouter<T>`, `TypedToolRegistry<TContext, TBuilders>`, `ClientMiddleware` (`(action, args, next) => Promise<ToolResponse>`), `FusionClientOptions` (`{ middleware?, throwOnError? }`), `RouterMap`.
-

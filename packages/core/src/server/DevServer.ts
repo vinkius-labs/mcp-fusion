@@ -1,7 +1,7 @@
 /**
  * DevServer — HMR-enabled MCP Development Server
  *
- * The "killer feature" for MCP DX: `npx mcp-fusion dev` starts a
+ * The "killer feature" for MCP DX: `fusion dev` starts a
  * development server that watches for file changes and performs
  * automatic Hot Module Replacement without requiring the LLM client
  * (Claude Desktop, Cursor, etc.) to be restarted.
@@ -17,11 +17,11 @@
  * ## Usage
  *
  * ```bash
- * # Start dev server watching src/tools/ directory
- * npx mcp-fusion dev --dir ./src/tools --entry ./src/server.ts
+ * # Auto-detects src/server.ts
+ * fusion dev
  *
- * # With specific file pattern
- * npx mcp-fusion dev --dir ./src/tools --pattern "*.tool.ts"
+ * # Explicit entrypoint + custom watch dir
+ * fusion dev --server ./src/server.ts --dir ./src/tools
  * ```
  *
  * @example
@@ -215,7 +215,7 @@ export function createDevServer(config: DevServerConfig): DevServer {
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             // eslint-disable-next-line no-console
-            console.error(`[mcp-fusion dev] Reload failed: ${message}`);
+            console.error(`[fusion dev] Reload failed: ${message}`);
             return;
         }
 
@@ -264,7 +264,7 @@ export function createDevServer(config: DevServerConfig): DevServer {
             });
 
             // eslint-disable-next-line no-console
-            console.log(`[mcp-fusion dev] Watching ${relative(process.cwd(), absoluteDir)} for changes...`);
+            console.log(`[fusion dev] Watching ${relative(process.cwd(), absoluteDir)} for changes...`);
         },
 
         stop(): void {
@@ -272,7 +272,7 @@ export function createDevServer(config: DevServerConfig): DevServer {
             watcher?.close();
             watcher = undefined;
             // eslint-disable-next-line no-console
-            console.log(`[mcp-fusion dev] Stopped. ${reloadCount} reload(s) performed.`);
+            console.log(`[fusion dev] Stopped. ${reloadCount} reload(s) performed.`);
         },
 
         async reload(reason?: string): Promise<void> {

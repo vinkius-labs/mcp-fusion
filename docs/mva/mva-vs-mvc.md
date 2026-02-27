@@ -157,15 +157,13 @@ app.get('/api/invoices/:id', async (req, res) => {
 });
 
 // MVA: Agent-facing API (returns structured perception package)
-const billing = defineTool<AppContext>('billing', {
-    actions: {
-        get_invoice: {
-            returns: InvoicePresenter,  // ← Perception layer
-            params: { id: 'string' },
-            handler: async (ctx, args) => ctx.db.invoices.findUnique(args.id),
-        },
-    },
-});
+export const getInvoice = f.query('billing.get_invoice')
+    .describe('Retrieve an invoice by ID')
+    .withString('id', 'Invoice identifier')
+    .returns(InvoicePresenter)                      // ← Perception layer
+    .handle(async (input, ctx) =>
+        ctx.db.invoices.findUnique({ where: { id: input.id } })
+    );
 ```
 
 Both serve the same business data. Both use the same database. But they serve fundamentally different consumers through fundamentally different architectural patterns.

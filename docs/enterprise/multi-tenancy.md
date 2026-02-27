@@ -35,12 +35,12 @@ After both stages, the handler receives `ctx.user.tenantId`, `ctx.tenant.plan`, 
 The key: `tenantId` comes from a verified JWT → middleware → `ctx.user.tenantId`. It's not part of the tool's `input` schema. The agent cannot override it:
 
 ```typescript
-handler: async ({ input, ctx }) => {
+.handle(async (input, ctx) => {
   return ctx.db.order.findMany({
     where: { tenantId: ctx.user.tenantId },  // ← from middleware, not input
     take: Math.min(input.limit, ctx.tenant.maxRowsPerQuery),
   });
-},
+});
 ```
 
 An enterprise tenant might allow 1,000 rows per query. A free tenant gets 50. Same handler, different behavior from middleware context.
@@ -55,19 +55,17 @@ Tags control what tools _exist_ from the agent's perspective. Different plan tie
 ### Tagging by Tier
 
 ```typescript
-const cohortAnalysis = f.tool({
-  name: 'analytics.cohort',
-  tags: ['enterprise'],
-  middleware: [authMiddleware, tenantMiddleware],
-  handler: async ({ ctx }) => { /* ... */ },
-});
+const cohortAnalysis = f.query('analytics.cohort')
+  .describe('Run cohort analysis')
+  .tags('enterprise')
+  .use(authMiddleware, tenantMiddleware)
+  .handle(async (input, ctx) => { /* ... */ });
 
-const basicReport = f.tool({
-  name: 'reports.summary',
-  tags: ['core'],
-  middleware: [authMiddleware, tenantMiddleware],
-  handler: async ({ ctx }) => { /* ... */ },
-});
+const basicReport = f.query('reports.summary')
+  .describe('Generate a summary report')
+  .tags('core')
+  .use(authMiddleware, tenantMiddleware)
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 ### One Registry, Three Surfaces
@@ -133,11 +131,11 @@ const EnterpriseOrderPresenter = f.presenter({
 Select the Presenter dynamically in the handler:
 
 ```typescript
-handler: async ({ input, ctx }) => {
+.handle(async (input, ctx) => {
   const data = await ctx.db.order.findMany({ where: { tenantId: ctx.user.tenantId } });
   const presenter = ctx.tenant.plan === 'enterprise' ? EnterpriseOrderPresenter : FreeOrderPresenter;
   return presenter.make(data, ctx).build();
-},
+});
 ```
 
 Rules are perception guidance, not access control. If a field must _never_ reach a specific tenant, use a separate Presenter with a different schema. Rules explain; schemas enforce.

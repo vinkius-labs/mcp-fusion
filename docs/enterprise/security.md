@@ -131,12 +131,11 @@ In a raw MCP server, every registered tool appears in `tools/list`. If you regis
 Tags are string arrays on the tool definition. They carry no inherent semantics — the framework doesn't interpret `'admin'` as special:
 
 ```typescript
-const adminTool = f.tool({
-  name: 'admin.purge',
-  tags: ['admin', 'destructive'],
-  middleware: [authMiddleware],
-  handler: async ({ ctx }) => { /* ... */ },
-});
+const adminTool = f.mutation('admin.purge')
+  .describe('Purge system data')
+  .tags('admin', 'destructive')
+  .use(authMiddleware)
+  .handle(async (input, ctx) => { /* ... */ });
 ```
 
 ### Filtering at Attachment

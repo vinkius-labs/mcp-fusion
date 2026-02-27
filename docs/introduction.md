@@ -1,5 +1,18 @@
 # Introduction
 
+<div class="ms-badges">
+<a href="https://github.com/vinkius-labs/mcp-fusion/releases"><img src="https://img.shields.io/badge/First%20Release-Feb%2012%2C%202026-blue" alt="First Release"></a>
+<a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion"><img src="https://img.shields.io/npm/dt/@vinkius-core/mcp-fusion" alt="Downloads"></a>
+<a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion"><img src="https://img.shields.io/npm/dw/@vinkius-core/mcp-fusion" alt="Weekly Downloads"></a>
+<a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion.svg?style=flat-square&color=0ea5e9" alt="npm version"></a>
+<a href="https://bundlephobia.com/package/@vinkius-core/mcp-fusion"><img src="https://img.shields.io/bundlephobia/minzip/@vinkius-core/mcp-fusion" alt="Package Size"></a>
+<a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript" alt="TypeScript"></a>
+<a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-Standard-purple.svg?style=flat-square" alt="MCP SDK"></a>
+<a href="https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square" alt="License"></a>
+<a href="https://github.com/vinkius-labs/mcp-fusion/stargazers"><img src="https://img.shields.io/github/stars/vinkius-labs/mcp-fusion?style=flat-square&color=gold" alt="GitHub Stars"></a>
+<img src="https://img.shields.io/badge/Built%20with-%F0%9F%9A%80%20by%20Vinkius-%23000000" alt="Built with 🚀 by Vinkius">
+</div>
+
 MCP Fusion is an architecture layer for the Model Context Protocol. It separates three concerns that every raw MCP server mixes into a single handler: **who can call what** (middleware pipeline), **what the agent sees** (Presenter with Zod schema), and **whether the surface is trustworthy** (governance lockfile + HMAC attestation).
 
 This separation is the **MVA (Model-View-Agent)** pattern. The handler returns raw data (Model). The Presenter shapes perception (View). The middleware governs access (Agent).
@@ -51,14 +64,14 @@ We use **Semantic Verbs** to define the behavior. `f.query()` is read-only, whil
 export const getInvoice = f.query('billing.get')
   .describe('Retrieve an invoice by ID')
   .instructions('Use only when the user refers to a specific invoice ID.')
-  .input({ id: f.string() })
+  .withString('id', 'The unique invoice identifier')
   .returns(InvoicePresenter)
   .use(async ({ ctx, next }) => {
      // middleware: auth, tenant injection, etc.
      const user = await auth.verify(ctx.token);
      return next({ ...ctx, user });
   })
-  .resolve(async ({ input, ctx }) => {
+  .handle(async (input, ctx) => {
     // Handler receives typed input and enriched ctx
     return ctx.db.invoice.findUnique({
       where: { id: input.id, tenantId: ctx.user.tenantId },

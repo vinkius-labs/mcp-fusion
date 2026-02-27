@@ -5,6 +5,15 @@ description: "Multi-layer static analysis with entitlement scanning, code evalua
 
 # Blast Radius Analysis
 
+- [Scanning Source Code](#scan)
+- [Validating Against Claims](#validate)
+- [The Full Report](#report)
+- [Evasion Detection](#evasion)
+- [Integration With the Governance Stack](#integration)
+- [CI Safety Gate](#ci)
+- [Pattern Detection](#patterns)
+- [Performance](#performance)
+
 Every MCP tool handler has an implicit blast radius — the set of I/O capabilities it *actually* uses, regardless of what it *declares*. A tool declared as read-only that imports `fs.writeFile` can write to disk. A tool described as "query your database" that imports `child_process` can execute arbitrary commands.
 
 The MCP protocol has no mechanism to enforce this. Tool annotations like `readOnlyHint` are advisory — the spec itself says they are "not guaranteed to be complete or correct" and "not enforceable at the protocol level."
