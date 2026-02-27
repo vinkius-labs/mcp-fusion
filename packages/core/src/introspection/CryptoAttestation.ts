@@ -24,12 +24,17 @@
  * identical to the default path.
  *
  * Uses Web Crypto API (globalThis.crypto.subtle) for runtime
- * agnosticism — works on Node.js 20+, Cloudflare Workers, Deno, Bun.
+ * agnosticism — works on Node.js 18+, Cloudflare Workers, Deno, Bun.
  *
  * @module
  */
 import type { ToolContract } from './ToolContract.js';
 import type { ServerDigest, BehaviorDigestResult } from './BehaviorDigest.js';
+
+// Node 18 does not expose `crypto` as a global — resolve via node:crypto.webcrypto
+const subtle: SubtleCrypto = globalThis.crypto?.subtle
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ?? (await import('node:crypto')).webcrypto.subtle as SubtleCrypto;
 
 // ============================================================================
 // Types
@@ -320,12 +325,12 @@ async function hmacSign(data: string, secret: string): Promise<string> {
     const keyData = encoder.encode(secret);
     const msgData = encoder.encode(data);
 
-    const key = await crypto.subtle.importKey(
+    const key = await subtle.importKey(
         'raw', keyData, { name: 'HMAC', hash: 'SHA-256' },
         false, ['sign'],
     );
 
-    const signature = await crypto.subtle.sign('HMAC', key, msgData);
+    const signature = await subtle.sign('HMAC', key, msgData);
     return Array.from(new Uint8Array(signature))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
