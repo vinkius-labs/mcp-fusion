@@ -401,3 +401,27 @@ await server.connect(transport);
 
 > [!TIP]
 > Use `autoDiscover()` for file-based routing — drop tool files in a directory and they're registered automatically. See [Routing & Groups](/routing) for the full guide.
+
+## Deploy Your Tools {#deploy}
+
+Every tool you built above is transport-agnostic. The Fluent API compiles tool metadata — Zod schemas, Presenter bindings, middleware chains — into a `ToolRegistry` that works identically on Stdio, SSE, and serverless runtimes. Moving from local development to production at the edge requires no tool code changes.
+
+### Vercel — App Router Endpoint
+
+Export the registry as a Next.js POST handler. Edge Runtime compiles tools once at cold start; subsequent requests execute the pipeline without re-reflection:
+
+```typescript
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+export const POST = vercelAdapter({ registry, contextFactory });
+```
+
+### Cloudflare Workers — Edge-Native SQL & KV
+
+The adapter receives `(req, env, executionCtx)`, giving your tool handlers access to D1 for edge-native SQL, KV for sub-millisecond reads, and `waitUntil()` for background telemetry:
+
+```typescript
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+```
+
+Full deployment guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter) · [Production Server](/cookbook/production-server)

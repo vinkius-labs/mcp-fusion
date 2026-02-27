@@ -13,7 +13,7 @@ Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-
 
 ## Introduction {#introduction}
 
-MCP Fusion tools are transport-agnostic — the same registry works with Stdio, HTTP/SSE, WebSocket, and edge runtimes. This page covers production deployment patterns for each transport.
+MCP Fusion tools are transport-agnostic — the same `ToolRegistry` runs on Stdio (local development), HTTP/SSE (persistent servers), and serverless edge runtimes. For edge deployment, the [Vercel Adapter](/vercel-adapter) turns your registry into a Next.js App Router route with Edge Runtime support (~0ms cold starts), while the [Cloudflare Workers Adapter](/cloudflare-adapter) gives your tool handlers direct access to D1, KV, and R2 from 300+ edge locations. Both adapters cache registry compilation at cold start and handle warm requests as stateless JSON-RPC — no SSE sessions, no streaming state, no infrastructure to manage.
 
 ## Stdio Transport {#stdio}
 

@@ -26,6 +26,7 @@ Every tool response in a raw MCP server is `JSON.stringify()` — the AI receive
 | **Error recovery** | `throw new Error('not found')` — AI gives up | `toolError()` with recovery hints and retry args |
 | **Middleware** | Copy-paste auth checks | tRPC-style `defineMiddleware()` with context derivation |
 | **Cache signals** | None — AI re-fetches stale data forever | State sync — RFC 7234-inspired temporal awareness |
+| **Deployment** | Stdio only — manual HTTP bridging | One-line adapters for [Vercel Edge](/vercel-adapter) and [Cloudflare Workers](/cloudflare-adapter) |
 | **Type safety** | Manual casting | `createFusionClient()` with end-to-end inference |
 
 ## Before & After: Invoice {#invoice}
@@ -162,4 +163,5 @@ Without MVA:                          With MVA:
 | Lines of code per tool | 20-50 (routing + validation + formatting) | 3-5 (handler only) |
 | Security | Hope you didn't forget to strip fields | Schema IS the boundary |
 | Token cost per call | High (raw dumps, large payloads) | Low (guardrails, TOON, truncation) |
+| Deployment targets | Stdio + manual HTTP bridge | Stdio, SSE, [Vercel](/vercel-adapter), [Cloudflare Workers](/cloudflare-adapter) |
 | Maintenance | Every tool re-implements rendering | Presenter defined once |

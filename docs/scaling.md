@@ -111,3 +111,30 @@ The LLM sees exactly which fields are invalid and self-corrects on retry.
 ## Error Recovery {#error-recovery}
 
 Structured error responses let the LLM self-correct without retry loops. Every validation bounce includes valid options or the specific field that failed. See [Error Handling](/error-handling) for the full reference.
+
+## Scale Beyond a Single Process {#serverless}
+
+Token compression and tool grouping reduce cognitive load — but your MCP server still runs as a single Node.js process. To scale horizontally without managing infrastructure, deploy to serverless runtimes where each invocation runs in its own isolate.
+
+MCP Fusion's adapters cache registry compilation at module scope — Zod reflection, Presenter compilation, schema generation — and execute warm requests as stateless JSON-RPC calls. No shared memory, no session affinity, no connection pooling.
+
+### Vercel — Auto-Scaling MCP Functions
+
+Each invocation compiles tools once at cold start and reuses the cached registry for subsequent calls. Edge Runtime distributes your MCP server globally with ~0ms cold starts:
+
+```typescript
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+export const POST = vercelAdapter({ registry, contextFactory });
+export const runtime = 'edge';
+```
+
+### Cloudflare Workers — Isolate-per-Request Architecture
+
+Workers spawn a V8 isolate per request — true horizontal scaling with zero coordination. Your tools access D1 and KV at the edge without cross-isolate state:
+
+```typescript
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+```
+
+Full deployment guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter) · [Production Server](/cookbook/production-server)

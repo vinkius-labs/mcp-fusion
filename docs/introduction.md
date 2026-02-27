@@ -87,7 +87,7 @@ export const getInvoice = f.query('billing.get')
 npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 ```
 
-Node.js 18+. Works with any MCP SDK-compatible transport (stdio, HTTP, WebSocket).
+Node.js 18+. Works with any MCP SDK-compatible transport (Stdio, HTTP/SSE, WebSocket). For serverless deployment, add [@vinkius-core/mcp-fusion-vercel](/vercel-adapter) or [@vinkius-core/mcp-fusion-cloudflare](/cloudflare-adapter).
 
 ## Why This Matters {#benefits}
 
@@ -96,5 +96,7 @@ Node.js 18+. Works with any MCP SDK-compatible transport (stdio, HTTP, WebSocket
 **AI-First DX.** `.instructions()` embeds prompt engineering directly into the tool definition. The agent gets context, not just data.
 
 **Deterministic Recovery.** `suggest` sends valid next actions with pre-populated arguments. No hallucinated tool names.
+
+**Deploy Anywhere.** The same `ToolRegistry` runs on Stdio, SSE, and serverless runtimes without code changes. Ship to [Vercel Edge Functions](/vercel-adapter) for ~0ms cold starts in a Next.js route, or to [Cloudflare Workers](/cloudflare-adapter) for D1/KV access from 300+ edge locations. Registry compilation is cached at cold start — warm requests are pure JSON-RPC with near-zero overhead.
 
 **Audit & Governance.** `mcp-fusion.lock` captures every tool's behavioral contract. PR diffs show what changed. See [Governance](/governance/).

@@ -119,14 +119,18 @@ Ask: *"What's the weather in San Francisco?"* — the agent calls `weather_get` 
 
 The registry you built above works with any transport — Stdio, SSE, HTTP, or serverless. To deploy as a global HTTP endpoint without changing your tool code:
 
-**Vercel** — one function turns your registry into a Next.js route handler. Zod reflection and schema compilation happen once at cold start; warm invocations route and execute in microseconds:
+### Vercel — Serverless MCP Endpoint
+
+One function turns your registry into a Next.js route handler. Zod reflection and schema compilation happen once at cold start; warm invocations route and execute in microseconds:
 
 ```typescript
 import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
 export const POST = vercelAdapter({ registry, contextFactory });
 ```
 
-**Cloudflare Workers** — the same registry runs on 300+ edge locations with direct access to D1, KV, and R2 via Cloudflare's `env` bindings:
+### Cloudflare Workers — Global Edge Distribution
+
+The same registry runs on 300+ edge locations with direct access to D1, KV, and R2 via Cloudflare's `env` bindings:
 
 ```typescript
 import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
