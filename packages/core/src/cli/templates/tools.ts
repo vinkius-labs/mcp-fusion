@@ -1,28 +1,31 @@
 /**
  * Tool Templates — Example tools for the scaffolded project
+ *
+ * All tools use the Fluent API — `f.query()`, `f.mutation()` — with
+ * semantic verbs, `.withString()` / `.withNumber()` typed parameters,
+ * `.returns()` Presenter binding, and `.handle()` terminal step.
  * @module
  */
 
 /** Generate `src/tools/system/health.ts` — Health check with Presenter */
 export function healthToolTs(): string {
     return `/**
- * System Health Tool — Full MVA Pipeline Example
+ * System Health Tool — Full MVA Pipeline (Fluent API)
  *
  * Demonstrates:
- * - f.tool() with automatic context typing
- * - Presenter integration (Egress Firewall)
- * - readOnly annotation for LLM optimization
+ * - f.query() — read-only semantic verb (auto-sets readOnlyHint)
+ * - .describe() — LLM-facing description
+ * - .returns() — Presenter (Egress Firewall + system rules + UI)
+ * - .handle(input, ctx) — fully typed handler
  * - export default for autoDiscover()
  */
 import { f } from '../../fusion.js';
 import { SystemPresenter } from '../../presenters/SystemPresenter.js';
 
-export default f.tool({
-    name: 'system.health',
-    description: 'Real-time server health status',
-    readOnly: true,
-    returns: SystemPresenter,
-    handler: async ({ ctx }) => {
+export default f.query('system.health')
+    .describe('Real-time server health status')
+    .returns(SystemPresenter)
+    .handle(async (_input, ctx) => {
         // Return raw data — the Presenter validates, strips
         // undeclared fields, injects rules, and renders UI.
         return {
@@ -32,36 +35,30 @@ export default f.tool({
             timestamp: new Date().toISOString(),
             tenant: ctx.tenantId,
         };
-    },
-});
+    });
 `;
 }
 
 /** Generate `src/tools/system/echo.ts` — Simple echo tool */
 export function echoToolTs(): string {
     return `/**
- * Echo Tool — Connectivity Testing
+ * Echo Tool — Connectivity Testing (Fluent API)
  *
- * Minimal tool without a Presenter. Uses success() for
- * a raw JSON response. Useful for verifying the MCP
- * connection is alive.
+ * Demonstrates:
+ * - f.query() with .withString() typed parameter
+ * - .handle(input, ctx) — input.message is typed as string
+ * - Implicit success() wrapping — return raw data, framework wraps it
  */
 import { f } from '../../fusion.js';
-import { success } from '@vinkius-core/mcp-fusion';
 
-export default f.tool({
-    name: 'system.echo',
-    description: 'Echo a message back (connectivity test)',
-    readOnly: true,
-    input: {
-        message: { type: 'string', description: 'Message to echo back' },
-    },
-    handler: async ({ input }) => {
-        return success({
+export default f.query('system.echo')
+    .describe('Echo a message back (connectivity test)')
+    .withString('message', 'Message to echo back')
+    .handle(async (input) => {
+        return {
             echo: input.message,
             receivedAt: new Date().toISOString(),
-        });
-    },
-});
+        };
+    });
 `;
 }

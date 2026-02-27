@@ -550,9 +550,9 @@ describe('Template output — source files', () => {
     // ── healthToolTs ─────────────────────────────────────────
 
     describe('healthToolTs', () => {
-        it('uses export default f.tool() pattern', () => {
+        it('uses Fluent API f.query() pattern', () => {
             const content = tpl.healthToolTs();
-            expect(content).toContain('export default f.tool(');
+            expect(content).toContain("f.query('system.health')");
         });
 
         it('imports from fusion.js and Presenter', () => {
@@ -561,15 +561,14 @@ describe('Template output — source files', () => {
             expect(content).toContain("import { SystemPresenter } from '../../presenters/SystemPresenter.js'");
         });
 
-        it('sets readOnly and returns Presenter', () => {
+        it('uses .returns() for Presenter binding', () => {
             const content = tpl.healthToolTs();
-            expect(content).toContain('readOnly: true');
-            expect(content).toContain('returns: SystemPresenter');
+            expect(content).toContain('.returns(SystemPresenter)');
         });
 
-        it('handler uses destructured ctx', () => {
+        it('handler uses typed ctx parameter', () => {
             const content = tpl.healthToolTs();
-            expect(content).toContain('async ({ ctx })');
+            expect(content).toContain('.handle(async');
             expect(content).toContain('ctx.tenantId');
         });
     });
@@ -577,17 +576,16 @@ describe('Template output — source files', () => {
     // ── echoToolTs ───────────────────────────────────────────
 
     describe('echoToolTs', () => {
-        it('uses export default f.tool() and success()', () => {
+        it('uses Fluent API f.query() with .withString()', () => {
             const content = tpl.echoToolTs();
-            expect(content).toContain('export default f.tool(');
-            expect(content).toContain("import { success } from '@vinkius-core/mcp-fusion'");
-            expect(content).toContain('success({');
+            expect(content).toContain("f.query('system.echo')");
+            expect(content).toContain(".withString('message'");
         });
 
-        it('defines input schema', () => {
+        it('uses .handle() and returns raw data', () => {
             const content = tpl.echoToolTs();
-            expect(content).toContain('input:');
-            expect(content).toContain('message');
+            expect(content).toContain('.handle(async');
+            expect(content).toContain('input.message');
         });
     });
 
@@ -640,11 +638,16 @@ describe('Template output — source files', () => {
     // ── authMiddlewareTs ─────────────────────────────────────
 
     describe('authMiddlewareTs', () => {
-        it('exports authGuard that rejects GUEST', () => {
+        it('uses f.middleware() and rejects GUEST', () => {
             const content = tpl.authMiddlewareTs();
-            expect(content).toContain('export async function authGuard');
+            expect(content).toContain('f.middleware(');
             expect(content).toContain("ctx.role === 'GUEST'");
             expect(content).toContain('error(');
+        });
+
+        it('exports withAuth constant', () => {
+            const content = tpl.authMiddlewareTs();
+            expect(content).toContain('export const withAuth');
         });
     });
 
@@ -788,10 +791,10 @@ describe('Vector-specific templates', () => {
         expect(content).toContain('@relation');
     });
 
-    it('dbUsersToolTs uses export default f.tool()', () => {
+    it('dbUsersToolTs uses Fluent API f.query()', () => {
         const content = tpl.dbUsersToolTs();
-        expect(content).toContain('export default f.tool(');
-        expect(content).toContain("'db.list_users'");
+        expect(content).toContain("f.query('db.list_users')");
+        expect(content).toContain('.withOptionalNumber');
     });
 
     it('n8nConnectorTs exports discoverWorkflows typed function', () => {
@@ -2020,27 +2023,28 @@ describe('tsconfig — no conflicting flags', () => {
 });
 
 describe('README — correct tool example syntax', () => {
-    it('tool example uses object descriptor, not shorthand', () => {
+    it('tool example uses Fluent API f.query() pattern', () => {
         const config: ProjectConfig = { name: 'readme-syntax', transport: 'stdio', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
-        // Must use { type: 'string', description: '...' } not just 'string'
-        expect(readmeContent).toContain("type: 'string'");
-        expect(readmeContent).toContain("description: 'Search query'");
+        // Must use f.query() with .withString() and .handle()
+        expect(readmeContent).toContain("f.query('my_domain.my_tool')");
+        expect(readmeContent).toContain(".withString('query', 'Search query')");
     });
 
-    it('tool example imports success helper', () => {
+    it('tool example uses .handle() with raw data return', () => {
+        const config: ProjectConfig = { name: 'readme-handle', transport: 'stdio', vector: 'vanilla', testing: false };
+        const readmeContent = tpl.readme(config);
+
+        expect(readmeContent).toContain('.handle(async');
+        expect(readmeContent).toContain('return { result: input.query }');
+    });
+
+    it('tool example imports f from fusion.js', () => {
         const config: ProjectConfig = { name: 'readme-import', transport: 'stdio', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
-        expect(readmeContent).toContain("import { success } from '@vinkius-core/mcp-fusion'");
-    });
-
-    it('tool example uses success() wrapper', () => {
-        const config: ProjectConfig = { name: 'readme-success', transport: 'stdio', vector: 'vanilla', testing: false };
-        const readmeContent = tpl.readme(config);
-
-        expect(readmeContent).toContain('return success(');
+        expect(readmeContent).toContain("import { f } from '../../fusion.js'");
     });
 });
 

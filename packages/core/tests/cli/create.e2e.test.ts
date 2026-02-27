@@ -637,11 +637,11 @@ describe('E2E: Cross-file consistency — contracts between generated files', ()
         expect(greet).toContain("from '../fusion.js'");
     });
 
-    it('auth.ts imports context.ts that exists', async () => {
+    it('auth.ts imports fusion.js for f.middleware()', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir);
 
         const auth = readProjectFile(projectDir, 'src/middleware/auth.ts');
-        expect(auth).toContain("from '../context.js'");
+        expect(auth).toContain("from '../fusion.js'");
         expect(existsSync(join(projectDir, 'src', 'context.ts'))).toBe(true);
     });
 
@@ -902,7 +902,8 @@ describe('E2E: RBAC Middleware — design contract', () => {
 
         expect(auth).toContain("ctx.role === 'GUEST'");
         expect(auth).toContain('error(');
-        expect(auth).toContain('next()');
+        // f.middleware() returns derived context instead of calling next()
+        expect(auth).toContain('f.middleware(');
     });
 
     it('context.ts defines role enum used by auth middleware', async () => {
@@ -916,8 +917,8 @@ describe('E2E: RBAC Middleware — design contract', () => {
         expect(context).toContain("'USER'");
         expect(context).toContain("'GUEST'");
 
-        // Auth imports AppContext type
-        expect(auth).toContain('AppContext');
+        // Auth uses f.middleware() from fusion.js (context type is inferred)
+        expect(auth).toContain('f.middleware(');
     });
 });
 
@@ -1281,7 +1282,7 @@ describe('E2E: autoDiscover contract', () => {
     beforeEach(() => { tmpDir = tempDir(); });
     afterEach(() => { try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } });
 
-    it('all tool files use export default f.tool() pattern', async () => {
+    it('all tool files use Fluent API f.query()/f.mutation() pattern', async () => {
         const { projectDir, files } = await runE2EPipeline(tmpDir, { vector: 'prisma' });
 
         const toolFiles = files.filter(f => f.startsWith('src/tools/') && f.endsWith('.ts'));
@@ -1289,7 +1290,7 @@ describe('E2E: autoDiscover contract', () => {
 
         for (const toolFile of toolFiles) {
             const content = readProjectFile(projectDir, toolFile);
-            expect(content).toContain('export default f.tool(');
+            expect(content).toMatch(/export default f\.(query|mutation|action)\(/);
         }
     });
 
@@ -1321,8 +1322,9 @@ describe('E2E: autoDiscover contract', () => {
 
         for (const toolFile of toolFiles) {
             const content = readProjectFile(projectDir, toolFile);
-            const nameMatch = content.match(/name:\s*'([^']+)'/);
-            if (nameMatch) toolNames.push(nameMatch[1]!);
+            // Match Fluent API: f.query('tool.name') or f.mutation('tool.name')
+            const nameMatch = content.match(/f\.(query|mutation|action)\('([^']+)'\)/);
+            if (nameMatch) toolNames.push(nameMatch[2]!);
         }
 
         // All names are unique
@@ -1338,7 +1340,7 @@ describe('E2E: autoDiscover contract', () => {
 
         for (const toolFile of toolFiles) {
             const content = readProjectFile(projectDir, toolFile);
-            expect(content).toContain('handler: async');
+            expect(content).toContain('.handle(async');
         }
     });
 
@@ -1349,7 +1351,7 @@ describe('E2E: autoDiscover contract', () => {
 
         for (const toolFile of toolFiles) {
             const content = readProjectFile(projectDir, toolFile);
-            expect(content).toMatch(/description:\s*'/);
+            expect(content).toContain('.describe(');
         }
     });
 });
@@ -1479,14 +1481,14 @@ describe('E2E: Handler patterns — deep code structure validation', () => {
         expect(context).toContain('return {');
     });
 
-    it('auth middleware follows the next() pattern', async () => {
+    it('auth middleware uses f.middleware() pattern', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir);
 
         const auth = readProjectFile(projectDir, 'src/middleware/auth.ts');
-        // Must call next() in the success path
-        expect(auth).toContain('return next()');
+        // Must use f.middleware() pattern
+        expect(auth).toContain('f.middleware(');
         // Must return error() in the failure path
-        expect(auth).toContain("return error(");
+        expect(auth).toContain("error(");
     });
 
     it('n8n connector handles missing env vars gracefully (workflow)', async () => {
@@ -1498,13 +1500,12 @@ describe('E2E: Handler patterns — deep code structure validation', () => {
         expect(n8n).toContain('return 0');
     });
 
-    it('db users.ts has a take parameter with bounds', async () => {
+    it('db users.ts uses .withOptionalNumber for take parameter', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir, { vector: 'prisma' });
 
         const users = readProjectFile(projectDir, 'src/tools/db/users.ts');
-        expect(users).toContain('min:');
-        expect(users).toContain('max:');
-        expect(users).toContain('optional:');
+        expect(users).toContain('.withOptionalNumber');
+        expect(users).toContain('take');
     });
 });
 

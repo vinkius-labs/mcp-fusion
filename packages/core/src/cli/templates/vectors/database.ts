@@ -57,32 +57,28 @@ model Post {
 /** Generate `src/tools/db/users.ts` */
 export function dbUsersToolTs(): string {
     return `/**
- * Database Users Tool — Prisma-Driven CRUD
+ * Database Users Tool — Prisma-Driven CRUD (Fluent API)
  *
- * Example tool that queries the database via Prisma.
- * The Presenter strips the 'password' field before
- * it reaches the LLM context.
+ * Demonstrates:
+ * - f.query() with .withOptionalNumber() typed parameter
+ * - .handle(input, ctx) — input.take is typed as number | undefined
+ * - Implicit success() wrapping
  */
 import { f } from '../../fusion.js';
-import { success } from '@vinkius-core/mcp-fusion';
 
-export default f.tool({
-    name: 'db.list_users',
-    description: 'List users from the database',
-    readOnly: true,
-    input: {
-        take: { type: 'number', min: 1, max: 50, optional: true, description: 'Max results' },
-    },
-    handler: async ({ input, ctx }) => {
+export default f.query('db.list_users')
+    .describe('List users from the database')
+    .withOptionalNumber('take', 'Max results (1-50)')
+    .handle(async (input, ctx) => {
         // TODO: Replace with your Prisma client
         // const users = await ctx.db.user.findMany({ take: input.take ?? 10 });
         // return users;
 
-        return success({
+        return {
             hint: 'Connect your Prisma client in src/context.ts to enable database queries.',
             example: 'const users = await ctx.db.user.findMany({ take: 10 })',
-        });
-    },
-});
+        };
+    });
 `;
 }
+

@@ -79,18 +79,13 @@ Create a new file in \`src/tools/\`. It's automatically discovered:
 \`\`\`typescript
 // src/tools/my-domain/my-tool.ts
 import { f } from '../../fusion.js';
-import { success } from '@vinkius-core/mcp-fusion';
 
-export default f.tool({
-    name: 'my_domain.my_tool',
-    description: 'What this tool does',
-    input: {
-        query: { type: 'string', description: 'Search query' },
-    },
-    handler: async ({ input, ctx }) => {
-        return success({ result: input.query });
-    },
-});
+export default f.query('my_domain.my_tool')
+    .describe('What this tool does')
+    .withString('query', 'Search query')
+    .handle(async (input, ctx) => {
+        return { result: input.query };
+    });
 \`\`\`
 
 No registration needed. The \`autoDiscover()\` system picks it up automatically.
@@ -173,11 +168,12 @@ Use \`/// @fusion.hide\` on sensitive fields to strip them from the Egress Firew
    \`\`\`ts
    import { withAuth } from '../middleware/auth.js';
 
-   export default f.tool({
-       name: 'protected.action',
-       middleware: [withAuth],
-       handler: async ({ ctx }) => { /* authenticated */ },
-   });
+   export default f.query('protected.action')
+       .describe('A protected query')
+       .use(withAuth)
+       .handle(async (input, ctx) => {
+           // ctx is authenticated
+       });
    \`\`\`
 `;
         default:

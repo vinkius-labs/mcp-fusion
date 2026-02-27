@@ -55,11 +55,10 @@ export function oauthMiddlewareTs(): string {
  * \`\`\`ts
  * import { withAuth } from '../middleware/auth.js';
  *
- * export default f.tool({
- *     name: 'projects.list',
- *     middleware: [withAuth],
- *     handler: async ({ ctx }) => { /* authenticated */ },
- * });
+ * export default f.query('projects.list')
+ *     .describe('List all projects')
+ *     .use(withAuth)
+ *     .handle(async (input, ctx) => { /* authenticated */ });
  * \`\`\`
  */
 import { requireAuth } from '@vinkius-core/mcp-fusion-oauth';
