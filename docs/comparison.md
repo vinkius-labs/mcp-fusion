@@ -9,7 +9,9 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 - [Before & After: Error Recovery](#errors)
 - [The Architecture Difference](#architecture)
 
-Every tool response in a raw MCP server is `JSON.stringify()` — the AI receives a flat blob and guesses what it means. MCP Fusion's MVA pattern replaces guessing with a structured perception package: validated data + domain rules + UI blocks + suggested next actions. The resulting server works with every MCP client: Cursor, Claude Desktop, Claude Code, Windsurf, Cline, and VS Code with GitHub Copilot.
+Every tool response in a raw MCP server is `JSON.stringify()` — the AI receives a flat blob and guesses what it means. This creates a severe **Context DDoS** that destroys token economics. MCP Fusion's MVA pattern replaces guessing with a structured perception package: validated data + domain rules + UI blocks + suggested next actions. 
+
+This architecture makes it the ultimate strategy for **Legacy API Migration**, allowing you to wrap ancient REST/SOAP monoliths into clean, deterministic AI Agents without rebuilding your entire backend. The resulting server works with every MCP client: Cursor, Claude Desktop, Claude Code, Windsurf, Cline, and VS Code with GitHub Copilot.
 
 | Aspect | Without MVA | With MVA |
 |---|---|---|

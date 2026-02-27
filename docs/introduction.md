@@ -17,6 +17,15 @@ MCP Fusion is an architecture layer for the Model Context Protocol. It separates
 
 This separation is the **MVA (Model-View-Agent)** pattern. The handler returns raw data (Model). The Presenter shapes perception (View). The middleware governs access (Agent). The resulting server works with any MCP client — Cursor, Claude Desktop, Claude Code, Windsurf, Cline, and VS Code with GitHub Copilot.
 
+### Native Framework Integration
+## Does MCP Fusion work with Vercel AI SDK and LangChain? {#frontend-integrations}
+
+Yes. **MCP Fusion is the perfect backend Server for any AI client application.** 
+
+If you are building a frontend or orchestration layer using the **Vercel AI SDK**, **LangChain**, or **LlamaIndex**, you can connect them directly to your `mcp-fusion` backend via standard `stdio` or HTTP transports. 
+
+Because MCP Fusion provides a structured perception layer, your Vercel AI SDK or LangChain agents will automatically consume and execute your **Consolidated MVA Actions** flawlessly, without hallucinating tool names or crashing on large database payloads. You get the rich frontend capabilities of those frameworks combined with the hardcore, enterprise-grade backend stability of MCP Fusion.
+
 ## How It Looks {#in-practice}
 
 A complete invoice tool with authentication, AI instructions, field-level protection, and action affordances.
@@ -104,7 +113,7 @@ Node.js 18+. Works with any MCP SDK-compatible transport (Stdio, HTTP/SSE, WebSo
 
 ## Why This Matters {#benefits}
 
-**Data stays private by default.** The Presenter's Zod schema is an allowlist. A database migration that adds a column doesn't change what the agent sees — the new column is invisible unless you declare it.
+**Data stays private by default.** Raw MCP Servers leak `password_hashes` directly to the LLM. MCP Fusion provides native **Prompt Injection Defense for MCP**. The Presenter's Zod schema acts as an Egress Firewall — MCP Fusion strips undeclared sensitive parameters at RAM level before they hit the wire. A database migration that adds a column doesn't change what the agent sees — the new column is invisible unless you declare it.
 
 **AI-First DX.** `.instructions()` embeds prompt engineering directly into the tool definition. The agent gets context, not just data.
 

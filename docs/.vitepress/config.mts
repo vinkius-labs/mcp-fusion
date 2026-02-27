@@ -81,6 +81,7 @@ export default defineConfig({
         'tool routing', 'Zod validation', 'tRPC-style client',
         'Cursor MCP', 'Claude Desktop MCP', 'Claude Code MCP',
         'Windsurf MCP', 'Cline MCP', 'VS Code Copilot MCP',
+        'Vercel AI SDK MCP', 'LangChain MCP server', 'LlamaIndex MCP backend',
         'Vercel MCP server', 'Cloudflare Workers MCP', 'AWS Lambda MCP',
         'OpenAPI to MCP', 'Prisma to MCP', 'n8n MCP',
         'mcp-fusion-vercel', 'mcp-fusion-cloudflare', 'mcp-fusion-aws',
@@ -147,6 +148,7 @@ export default defineConfig({
           { text: 'Quickstart — Lightspeed', link: '/quickstart-lightspeed' },
           { text: 'Quickstart — Traditional', link: '/quickstart' },
           { text: 'Enterprise Quickstart', link: '/enterprise-quickstart' },
+          { text: 'Client Integrations', link: '/client-integrations' },
           { text: 'DX Guide', link: '/dx-guide' },
           { text: 'Migration Guide', link: '/migration' },
         ]

@@ -18,14 +18,14 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 - [Parsing and Validation](#parsing)
 - [Best Practices](#best-practices)
 
-The MCP protocol provides `tools/list` — the current surface. It provides `notifications/tools/list_changed` — something changed. Neither provides a durable artifact, a comparison mechanism, or behavioral-level change detection.
+The MCP protocol provides `tools/list` — the current surface. It provides `notifications/tools/list_changed` — something changed. Neither provides a durable artifact, a comparison mechanism, or behavioral-level change detection. This black box makes it impossible to guarantee **CISO Compliance** or prevent **Phantom Capabilities** (tools that silently hijack other imports) from slipping into production.
 
 `mcp-fusion.lock` fills all three gaps. It is a deterministic, canonical JSON file that captures the complete behavioral surface of your MCP server — tool contracts, prompt definitions, cognitive guardrails, entitlements, and token economics. The behavioral equivalent of `package-lock.json`, except instead of pinning dependency versions, it pins what your server can do.
 
 ```text
 Developer builds server → fusion lock → mcp-fusion.lock → git commit
 
-CI runs build → fusion lock --check → compares live surface to committed lockfile
+CI runs build → fusion lock --check → compares live surface to committed lockfile (SOC2 Immutable Evidence)
 
 If stale → CI fails → reviewer inspects the git diff before merge
 ```

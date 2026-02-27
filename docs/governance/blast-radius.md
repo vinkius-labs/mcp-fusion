@@ -22,7 +22,7 @@ Every MCP tool handler has an implicit blast radius — the set of I/O capabilit
 
 The MCP protocol has no mechanism to enforce this. Tool annotations like `readOnlyHint` are advisory — the spec itself says they are "not guaranteed to be complete or correct" and "not enforceable at the protocol level."
 
-`EntitlementScanner` closes this gap with three complementary layers: pattern detection for known I/O APIs, code evaluation detection for `eval()`/`new Function()` vectors, and evasion heuristics for techniques that bypass static analysis. When the declared contract says one thing and the code does another, it reports a violation. When the code tries to hide its intent, it reports an evasion indicator.
+`EntitlementScanner` closes this gap with three complementary layers: pattern detection for known I/O APIs, code evaluation detection for `eval()`/`new Function()` vectors, and evasion heuristics for techniques that bypass static analysis. When the declared contract says one thing and the code does another, it reports a violation. When the code tries to hide its intent, it flags the **Phantom Capability** as an evasion indicator, guaranteeing enterprise security.
 
 
 ## Scanning Source Code {#scan}

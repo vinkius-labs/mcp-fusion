@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Stop Writing MCP Servers Like It's 2024."
   text: ""
-  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. MCP Fusion introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer with a Structured Perception Layer on your data like trained engineers, not guessing machines."
+  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. MCP Fusion introduces the MVA (Model-View-Agent) pattern — a definitive AI Software Architecture that gives your tools a deterministic View layer. Build a Structured Perception Layer on top of your data for autonomous agents behaving like trained engineers, not guessing machines."
   actions:
     - theme: brand
       text: The MVA Pattern →
@@ -16,7 +16,25 @@ hero:
   textAfterActions: "Open Source. Built by Vinkius Labs."
 ---
 
+<!-- ═══ Section Integrations ═══ -->
+<div class="ms-integrations">
+<p><strong>Perfect Backend Server for:</strong> Vercel AI SDK • LangChain • LlamaIndex • Cursor • Claude Desktop • Windsurf</p>
+</div>
 
+<style>
+.ms-integrations {
+  text-align: center;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-2);
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+.ms-integrations strong {
+  color: var(--vp-c-text-1);
+}
+</style>
 
 <!-- ═══ Section 2.5: Comparison Table ═══ -->
 <div class="ms-compare">
@@ -107,9 +125,9 @@ hero:
 
 <div class="ms-problem-card">
 <div class="ms-problem-number">01</div>
-<h3 class="ms-problem-title">Egress Firewall</h3>
-<p class="ms-problem-pain"><strong>The problem:</strong> The developer does <code>SELECT *</code> and calls <code>JSON.stringify()</code>. Passwords, API keys, tenant IDs — all leaked to the LLM provider over the network. A compliance nightmare waiting to happen.</p>
-<p class="ms-problem-solution"><strong>The mechanism:</strong> The Zod <code>.schema()</code> on every Presenter physically strips undeclared fields in server RAM via <code>Zod.parse()</code>. Sensitive data is destroyed before serialization — not by developer discipline, but by the framework itself. Combined with <code>.strict()</code> on inputs, this creates a bidirectional data boundary on every tool.</p>
+<h3 class="ms-problem-title">Egress Firewall & Anti-DDoS</h3>
+<p class="ms-problem-pain"><strong>The problem:</strong> Raw MCP Servers leak <code>password_hashes</code> directly to the LLM when developers do <code>SELECT *</code>. Furthermore, returning 100,000 records routinely triggers <strong>LLM OOM (Out of Memory)</strong> crashes or bankrupts companies with runaway Anthropic API bills.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> MCP Fusion introduces native <strong>Prompt Injection Defense for MCP</strong> and <strong>Context DDoS Prevention</strong>. The Zod <code>.schema()</code> on every Presenter physically strips sensitive undeclared fields at RAM level. Simultaneously, <code>.agentLimit()</code> truncates massive arrays, securing your Token Economics.</p>
 
 ```typescript
 const UserPresenter = createPresenter('User')

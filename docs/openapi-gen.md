@@ -15,7 +15,9 @@
 - [API Reference](#api)
 - [Requirements](#requirements)
 
-Turn any OpenAPI 3.x spec into a working MCP server — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying requests at runtime.
+Turn any **REST/OpenAPI 3.x spec into a working MCP server** — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying requests at runtime. 
+
+This is the ultimate **Legacy API Migration strategy for AI Agents**. Whether you need to connect thousands of legacy corporate endpoints to an LLM, or simply want to bridge **Swagger to Claude Desktop**, this generator completely automates the creation of strict MVA architectures, models, and Presenters.
 
 ```bash
 npx openapi-gen generate -i ./petstore.yaml -o ./generated

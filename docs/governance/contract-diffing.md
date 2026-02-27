@@ -126,7 +126,7 @@ System rules changing is BREAKING — the LLM was calibrated to behave according
 
 ### Entitlement Changes
 
-Gaining an I/O capability is always BREAKING. Losing one is always SAFE. There is no ambiguity — if the handler gains `subprocess`, the blast radius expanded.
+Gaining an I/O capability is always BREAKING. Losing one is always SAFE. There is no ambiguity — if the handler quietly gains a `subprocess` entitlement through an obscure dependency update, it mathematically guarantees a potential **Lateral Movement Attack**. Contract Diffing flags this instantly as `BREAKING`, preventing malicious capabilities from passing CI untouched.
 
 | Field | Change | Severity |
 |---|---|---|

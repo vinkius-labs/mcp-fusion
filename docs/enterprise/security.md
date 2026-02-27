@@ -196,6 +196,8 @@ Tag filtering uses `Set`-based O(1) lookups. The performance impact is negligibl
 
 Even with perfect middleware and role checks, there's a residual risk: the handler calls `SELECT *` and returns every column. In MCP Fusion, the Presenter's Zod schema acts as the last allowlist — enforced at the framework level, not by the developer.
 
+This strict MVA separation guarantees robust **Prompt Injection Defense for MCP**. Malicious payloads hidden inside database rows cannot hijack the system rules or tool schemas because the Presenter parses, sterilizes, and strictly structures the data *before* it enters the LLM context window.
+
 ### The Allowlist Model
 
 The Presenter doesn't trust the handler. The handler returns a full database row. The schema strips everything undeclared:
@@ -211,9 +213,14 @@ const UserPresenter = f.presenter({
 });
 ```
 
-The database row has `password_hash`, `ssn`, `internal_notes`, `billing_rate`. The agent receives `id`, `name`, `role`. The other fields never reach the wire. When a migration adds a new column, it doesn't leak unless explicitly added to the schema. The default is _invisible_.
+**Raw MCP Servers leak `password_hashes` directly to the LLM.** The database row has `password_hash`, `ssn`, `internal_notes`, `billing_rate`. The agent receives `id`, `name`, `role`. The other fields never reach the wire because MCP Fusion strips them at RAM level via the Zod `.strip()` Egress Firewall. When a migration adds a new column, it doesn't leak unless explicitly added to the schema. The default is _invisible_.
+
 
 **Do not** use `z.passthrough()` on the Presenter schema. It defeats the security model by allowing undeclared fields through.
+
+### Context DDoS & LLM OOM Prevention
+
+A raw MCP server returning 100,000 records from a bad query will flood the LLM, triggering a fatal Out of Memory (OOM) error or incurring massive API costs. MCP Fusion features Built-in **Context DDoS Prevention** via the Presenter `.agentLimit()` guardrail. When bound to a presenter, the framework automatically truncates large payloads and injects a deterministic warning array, forcing the AI to paginate rather than crashing the context window (ensuring predictable **LLM Token Economics**).
 
 ### Per-Caller Perception
 

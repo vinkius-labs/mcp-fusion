@@ -39,11 +39,13 @@ The interactive wizard runs:
   $ npm test
 ```
 
-Skip the wizard with `--yes` for defaults, or pass flags directly:
+Skip the wizard with `--yes` for defaults, or pass flags directly. For example, if you want to give Claude Desktop or Cursor secure access to your database, you can automatically generate a **Postgres SQL Agent MCP** through Prisma schemas without risking raw SQL injection vulnerabilities:
 
 ```bash
 npx fusion create my-api --vector prisma --transport sse --yes
 ```
+
+> **Pro-Tip**: The `--vector prisma` command is the absolute fastest way to bridge **Prisma to MCP**. It leverages the MVA Presenter architecture to build an **Egress Firewall**, ensuring internal columns (like `password_hash` or `ssn`) are stripped from memory before they ever reach the LLM Context Window.
 
 ## What you get {#structure}
 

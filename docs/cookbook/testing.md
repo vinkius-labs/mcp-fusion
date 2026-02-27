@@ -14,9 +14,9 @@ Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-
 
 ## Introduction {#introduction}
 
-MCP Fusion ships `@vinkius-core/mcp-fusion-testing` — a dedicated testing harness that lets you execute tools, inspect responses, verify Presenter rules, and assert on field whitelists without spinning up a full MCP server.
+MCP Fusion ships `@vinkius-core/mcp-fusion-testing` — a dedicated testing harness that enables **Automated AI Tool Testing**. It lets you execute tools, inspect responses, verify Presenter rules, and assert on field whitelists without spinning up a full MCP server.
 
-The philosophy: **test perception, not plumbing**. Instead of testing "does `findMany` return rows?", test "does the AI receive exactly the fields it should, with the right rules attached?"
+The philosophy: **test perception, not plumbing**. Instead of testing "does `findMany` return rows?", test "does the AI receive exactly the fields it should, with the right rules attached?" This focuses your testing on guaranteeing **Deterministic LLM Output** and ensuring absolute **Data Exfiltration Prevention** before your agents ever reach production.
 
 ## FusionTester Setup {#setup}
 

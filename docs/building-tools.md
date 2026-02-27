@@ -21,7 +21,9 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 
 Most MCP servers force you to define tools via giant, nested JSON schemas or tangled Zod objects. A 10-line query requires 40 lines of boilerplate — hand-written schemas, manual parameter validation, explicit `success()` wrapping, and disconnected error handling. The result is code that nobody enjoys reading or maintaining.
 
-MCP Fusion's **Fluent API** eliminates all of that. You declare what your tool does, what it needs, and how it behaves — through semantic verbs, chainable builder methods, and a terminal `.handle()`. The framework handles schema generation, validation, response wrapping, and type inference automatically. The tools you build work with every MCP client — Cursor, Claude Desktop, Claude Code, Windsurf, Cline, VS Code with Copilot — and deploy unchanged to [Vercel](/vercel-adapter) or [Cloudflare Workers](/cloudflare-adapter).
+MCP Fusion's **Fluent API** eliminates all of that. You declare what your tool does, what it needs, and how it behaves — through semantic verbs, chainable builder methods, and a terminal `.handle()`. The framework handles schema generation, validation, response wrapping, and type inference automatically, enforcing **Deterministic AI Tool Execution** under the hood. 
+
+If your goal is building **Zero-Hallucination Agent Workflows**, this is how you do it. The tools you build work with every MCP client — Cursor, Claude Desktop, Claude Code, Windsurf, Cline, VS Code with Copilot — and deploy unchanged to [Vercel](/vercel-adapter) or [Cloudflare Workers](/cloudflare-adapter).
 
 ```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';

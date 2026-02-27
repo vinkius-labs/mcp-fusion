@@ -52,7 +52,7 @@ const pages: Record<string, PageSEO> = {
     title: 'Without MVA vs With MVA — Feature Comparison',
     description: 'Side-by-side comparison of traditional MCP servers vs mcp-fusion with MVA. Covers action consolidation, Presenters, cognitive guardrails, self-healing errors, and more.',
     faqs: [
-      { q: 'What problems does MVA solve that raw MCP doesn\'t?', a: 'Raw MCP servers dump JSON.stringify() output, have no domain context, no action hints, leak internal fields, and force switch/case routing. MVA solves all of this with structured perception packages, system rules, Agentic HATEOAS, Zod .strip() security, and discriminator-based action consolidation.' },
+      { q: 'What problems does MVA solve that raw MCP doesn\'t?', a: 'Raw MCP servers dump JSON.stringify() output, have no domain context, no action hints, leak internal fields, and force switch/case routing. MVA solves all of this with structured perception packages, system rules, Agentic HATEOAS, Zod .strip() security, and discriminator-based action consolidation. It is the definitive strategy for secure Legacy API Migration.' },
       { q: 'How does action consolidation reduce token usage?', a: 'Instead of registering 50 individual tools (each with name + description + schema in the prompt consuming ~100 tokens), mcp-fusion consolidates them behind ONE tool with a discriminator enum. The LLM sees a single tool definition instead of 50, reducing prompt token usage by up to 10x.' },
       { q: 'How do cognitive guardrails prevent context DDoS?', a: 'When a query returns 10,000 rows, .agentLimit(50) truncates to 50 items and injects guidance: "Showing 50 of 10,000. Use filters to narrow results." This prevents context overflow, reduces costs from ~$2.40 to ~$0.02 per call, and maintains AI accuracy.' },
       { q: 'What are self-healing errors in mcp-fusion?', a: 'toolError() returns structured recovery hints instead of plain error strings. Example: { code: "NOT_FOUND", recovery: { action: "list", suggestion: "List invoices to find the correct ID" }, suggestedArgs: { status: "pending" } }. The AI automatically retries with corrected parameters instead of giving up.' },
@@ -91,6 +91,7 @@ const pages: Record<string, PageSEO> = {
       { q: 'Does mcp-fusion work with Claude, GPT, and other LLMs?', a: 'Yes. mcp-fusion is LLM-agnostic. It follows the Model Context Protocol standard, which is supported by Claude, GPT-5.2, Gemini, and any MCP-compatible client. The structured responses work with any LLM that can process text.' },
       { q: 'What makes mcp-fusion better than writing raw MCP handlers?', a: 'Raw handlers require manual switch/case routing, manual JSON.stringify, no validation, no domain context, and no security boundary. mcp-fusion gives you: automatic Zod validation, discriminator routing, Presenters with system rules and UI blocks, self-healing errors, middleware chains, and cognitive guardrails — all type-safe and zero-boilerplate.' },
       { q: 'What is the learning curve for mcp-fusion?', a: 'If you know TypeScript and basic MCP concepts, you can be productive in under 30 minutes. defineTool() requires zero Zod knowledge. createTool() requires basic Zod. Presenters are optional and can be added incrementally after your tools work.' },
+      { q: 'Does MCP Fusion work with Vercel AI SDK or LangChain?', a: 'Yes. MCP Fusion is the perfect backend Server. If you are using LangChain, LlamaIndex, or Vercel AI SDK in your client application, simply connect them to your mcp-fusion backend via standard stdio or HTTP transports. They will automatically consume and execute your consolidated MVA actions flawlessly.' },
       { q: 'What components does the mcp-fusion architecture include?', a: 'The architecture includes: GroupedToolBuilder (tool definition), ToolRegistry (registration and routing), ExecutionPipeline (middleware + handler execution), Presenter Engine (MVA View layer), ResponseBuilder (manual response composition), FusionClient (tRPC-style type-safe client), and State Sync (cache signals).' },
     ],
   },
@@ -107,8 +108,9 @@ const pages: Record<string, PageSEO> = {
       { q: "How do I configure Windsurf to use my MCP Server?", a: "Open your `~/.codeium/windsurf/mcp_config.json` and map your Fusion server using the standard STDIO transport (`npx tsx src/server.ts`). Windsurf natively understands MCP Fusion's Agentic Affordances and Context Tree-Shaking, executing complex domain tasks perfectly." },
       { q: "Does GitHub Copilot support MCP Fusion?", a: "Yes! Modern VS Code Copilot instances read the `.vscode/mcp.json` configuration. Just scaffold your project, map your start command, and GitHub Copilot immediately gains access to your database, local APIs, and background services with full type-safety." },
       { q: "What makes MCP Fusion the best framework for Cline?", a: "Cline is wildly popular for autonomous coding. MCP Fusion's 'Self-Healing Errors' are perfect for Cline. When Cline hallucinates a wrong parameter, Fusion's `.suggestedArgs` instantly tells Cline how to correct itself, preventing endless loops of broken terminal executions." },
-      { q: "What is autoDiscover in the MCP Fusion CLI?", a: "It is file-based routing for MCP tools. You NEVER have to manually register tools. Drop a `listUsers.ts` file in your `/tools/users` folder, and `npx fusion dev` instantly hot-reloads the tool into Cursor, Claude Code, or Windsurf without you even restarting the chat." },
-      { q: "Can I scaffold an MCP server hooked directly to my Prisma database?", a: "Yes! The command `npx fusion create my-api --vector prisma` automatically installs the Fusion Prisma generator. It bridges your `schema.prisma` directly into live MCP tools. Cursor can suddenly read, write, and query your secure local database via Zod-stripped Presenters." },
+      { q: "What is autoDiscover in the MCP Fusion CLI?", a: "It is file-based routing for MCP tools. You NEVER have to manually register tools. Drop a `listUsers.ts` file in your `/tools/users` folder, and `fusion dev` instantly hot-reloads the tool into Cursor, Claude Code, or Windsurf without you even restarting the chat." },
+      { q: "How do I safely connect Clayton/Claude to my Postgres Database?", a: "Use `npx fusion create my-api --vector prisma`. This generates a secure Postgres SQL Agent MCP server. Unlike raw SQL access which destroys databases and burns millions of tokens, Fusion wraps your Prisma schema in Zod-stripped Presenters so the AI only accesses safe, confined Egress Firewalls." },
+      { q: "Can I scaffold an MCP server hooked directly to my Prisma database?", a: "Yes! The command automatically installs the Fusion Prisma generator. It bridges your `schema.prisma` directly into live MCP tools. Cursor can suddenly read, write, and query your secure local database via Zod-stripped Presenters." },
     ],
   },
 
@@ -144,6 +146,20 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
+  // CLIENT INTEGRATIONS
+  // ═══════════════════════════════════════════════════════
+  'client-integrations.md': {
+    title: 'Client Integrations — Vercel AI SDK, LangChain, LlamaIndex',
+    description: 'MCP Fusion is the perfect backend Server for Vercel AI SDK and LangChain. Expose your MCP server and they will consume Consolidated MVA Actions flawlessly.',
+    faqs: [
+      { q: 'Does MCP Fusion work with Vercel AI SDK and LangChain?', a: 'Yes. MCP Fusion is the perfect backend Server. If you are using LangChain or Vercel AI SDK in your client app, simply connect them to your mcp-fusion backend via stdio or HTTP. They will automatically consume and execute your Consolidated MVA Actions flawlessly.' },
+      { q: 'Why use MCP Fusion instead of defining tools directly in Vercel AI SDK?', a: 'Defining tools directly in Vercel AI SDK mixes UI routing with backend logic and lacks protection against Context DDoS. MCP Fusion provides a dedicated Zero-Trust backend environment with middleware, tenant isolation, and cognitive guardrails, while Vercel AI SDK streams the rich UI.' },
+      { q: 'How does MCP Fusion fix LangChain Tool Hell?', a: 'By providing Consolidated MVA Actions. Instead of overwhelming a LangChain agent with 50 raw tools, MCP Fusion exposes a single orchestrator tool with a deterministic discriminator. This drastically reduces agent hallucination and token costs.' },
+      { q: 'Can LlamaIndex connect to an MCP Fusion server?', a: 'Yes. LlamaIndex agents, like the ReAct agent, can use an MCP Fusion server to execute external actions. This guarantees that every mutation passes through strictly typed middleware and Presenter logic, preventing LLM-driven data corruption while LlamaIndex handles RAG orchestration.' }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════
   // SECURITY & AUTH
   // ═══════════════════════════════════════════════════════
   'enterprise/security.md': {
@@ -152,20 +168,36 @@ const pages: Record<string, PageSEO> = {
     faqs: [
       { q: 'How does mcp-fusion enforce authentication?', a: 'contextFactory runs first on every request, creating seed context from the MCP SDK extra object. Middleware functions then resolve identity and merge user properties into ctx. If contextFactory or middleware throws, the handler is never executed.' },
       { q: 'How does tag-based access control work in mcp-fusion?', a: 'Tools declare tags via the tags property. attachToServer accepts a filter with AND/OR/Exclude logic. Filtered tools are invisible — they do not appear in the tool list and cannot be called by the agent.' },
-      { q: 'How does mcp-fusion prevent sensitive data leaks to AI agents?', a: 'The Presenter Zod schema declares only the fields the agent should perceive. Zod parse() strips undeclared fields. Even if the handler returns all database columns, only schema-declared fields reach the agent context window.' },
+      { q: 'How does mcp-fusion prevent sensitive data leaks to AI agents?', a: 'Raw MCP Servers leak password_hashes directly to the LLM. MCP Fusion strips them at RAM level. The Presenter Zod schema declares only the fields the agent should perceive. Zod parse() destroys undeclared sensitive parameters before serialization. This creates an impenetrable Egress Firewall protecting your Token Economics.' },
+      { q: 'How does MCP Fusion provide Prompt Injection Defense?', a: 'By rigidly enforcing MVA patterns. Because the Presenter engine sits strictly between the handler and the LLM response window, it ensures malicious payloads hidden in your database cannot hijack the system rules or tool schemas. The data is parsed, sterilized, and structured deterministically.' },
+      { q: 'How does MCP Fusion prevent LLM OOM (Out of Memory) and Context DDoS?', a: 'Using the Presenter `.agentLimit()` cognitive guardrail. If your database unexpectedly returns 100,000 records, raw MCP servers will flood the LLM, causing a fatal OOM or a $50 API bill. MCP Fusion catches this, truncates the payload to a safe bound (e.g., 50 items), and injects a warning array instructing the AI to paginate.' },
       { q: 'Can I apply different security policies to different handlers?', a: 'Yes. Middleware can be applied globally via the tool builder, or scoped to specific action groups using `.group()`. This ensures granular role-based access control (RBAC) down to the individual endpoint.' },
-      { q: 'What happens when an unauthorized request is made?', a: 'The pipeline immediately short-circuits, returning a deterministic Failure monad. No downstream code runs, preventing execution side-effects and ensuring absolute security.' },
-    ],
+      { q: 'What happens when an unauthorized request is made?', a: 'The pipeline immediately short-circuits, returning a deterministic Failure monad. No downstream code runs, preventing execution side-effects and ensuring absolute security.' },    ],
   },
 
   // ═══════════════════════════════════════════════════════
-  // OBSERVABILITY & AUDIT
+  // GOVERNANCE & AUDIT & SOC2
   // ═══════════════════════════════════════════════════════
+  'governance/index.md': {
+    title: 'Capability Governance — AI Agent Sandbox & SOC2 Audit',
+    description: 'Cryptographic surface integrity, behavioral lockfiles, and zero-trust attestation for secure AI Agent Sandbox and CISO Compliance.',
+    faqs: [
+      { q: 'How does MCP Fusion help with SOC2 compliance?', a: 'By providing Immutable Evidence via the Capability Lockfile. Every change to a tool\'s behavioral contract, schema, or system rules requires a git commit to `mcp-fusion.lock`. This guarantees full CISO Compliance by ensuring your AI Agent Sandbox has a deterministic, auditable capability surface that never drifts silently.' },
+      { q: 'What is Phantom Capability prevention?', a: 'Raw MCP tools can silently gain destructive imports (like `child_process.exec`) without changing their schema. MCP Fusion\'s Blast Radius Analysis detects these Phantom Capabilities statically, preventing lateral movement attacks before they merge in CI.' },
+      { q: 'Does MCP Fusion support Zero-Trust Attestation?', a: 'Yes. The server\'s behavioral surface is cryptographically digested and signed via HMAC-SHA256 at build time. During startup, the server verifies its signature. If the code was tampered with, the server refuses to boot.' },
+      { q: 'How does mcp-fusion.lock work?', a: 'The lockfile captures every tool surface behavioral contract: action names, parameter schemas, Presenter fields, destructive flags, and middleware chains. CI diffs the lockfile on every PR — reviewers see exactly what changed in the capabilities.' },
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // OBSERVABILITY & TELEMETRY
+  // ═══════════════════════════════════════════════════════
+
   'enterprise/observability.md': {
     title: 'Observability & Audit — MCP Fusion Enterprise',
     description: 'Structured debug events, OpenTelemetry tracing, and SOC 2-aligned audit logging for production MCP servers.',
     faqs: [
-      { q: 'How do I add audit logging to mcp-fusion?', a: 'Use createDebugObserver() with a custom handler. It receives typed DebugEvent objects with discriminated types: route, validate, middleware, execute, error, and governance. Log execute events for audit trails and error events for incident response.' },
+      { q: 'How do I add audit logging to mcp-fusion?', a: 'Use createDebugObserver() with a custom handler. It provides enterprise AI Agent Telemetry by emitting typed DebugEvent objects for route, validate, middleware, execute, error, and governance. This is the foundation for precise LLM Cost Attribution across autonomous operations.' },
       { q: 'Does mcp-fusion support OpenTelemetry?', a: 'Yes. Pass any FusionTracer-compatible object (including OpenTelemetry Tracer) to attachToServer via the tracing option. Each tool call creates a span with tool name, action, tags, duration, and semantic error classification.' },
       { q: 'How does mcp-fusion align with SOC 2?', a: 'Middleware pipelines provide logical access controls (CC6.1), contextFactory handles authentication (CC6.2), createDebugObserver provides access monitoring (CC6.3), Presenter schema enforces data boundaries (CC6.6), and enableTracing provides system monitoring (CC7.2).' },
       { q: 'Are observability events synchronous or asynchronous?', a: 'Debug events are synchronous and fully integrated into the pipeline to guarantee causality. However, you can freely implement asynchronous telemetry dispatchers in your observer implementation to avoid blocking the main thread.' },
@@ -212,7 +244,7 @@ const pages: Record<string, PageSEO> = {
     title: 'Building Tools — defineTool() and createTool()',
     description: 'Learn how to build MCP tools with mcp-fusion using defineTool() (JSON-first) or createTool() (full Zod). Action handlers, parameter validation, annotations, and more.',
     faqs: [
-      { q: 'What is the difference between defineTool() and createTool()?', a: 'defineTool() is a JSON-first API — define parameters as plain strings like { id: "string" } without importing Zod. createTool() gives you full Zod power for complex schemas with regex, transforms, and refinements. Both produce identical GroupedToolBuilder instances with the same runtime behavior.' },
+      { q: 'What is the difference between defineTool() and createTool()?', a: 'defineTool() is a JSON-first API — define parameters as plain strings like { id: "string" } without importing Zod. createTool() gives you full Zod power for complex schemas. Both produce identical GroupedToolBuilder instances that enforce Deterministic AI Tool Execution, helping you build Zero-Hallucination Agent Workflows.' },
       { q: 'How do I mark a tool action as destructive?', a: 'Set destructive: true on the action config: .action({ name: "delete", destructive: true, handler: ... }). This adds the MCP destructiveHint annotation, letting clients warn users before executing destructive operations. Similarly, use readOnly: true and idempotent: true for read and idempotent operations.' },
       { q: 'Can I share parameters across all actions in a tool?', a: 'Yes. Use commonSchema (createTool) or shared (defineTool) to define fields that are injected into every action\'s schema automatically. Example: shared: { workspace_id: "string" } makes workspace_id required for all actions in that tool. These are marked "(always required)" in auto-generated descriptions.' },
       { q: 'What tool annotations does mcp-fusion support?', a: 'mcp-fusion supports all standard MCP tool annotations: destructiveHint, readOnlyHint, idempotentHint, openWorldHint, and returnDirect. Set them per-action with destructive: true, readOnly: true, idempotent: true, or use .annotations() on the builder for tool-level annotations.' },
@@ -228,7 +260,7 @@ const pages: Record<string, PageSEO> = {
     title: 'Routing & Groups — Action Consolidation',
     description: 'Consolidate thousands of operations behind a single MCP tool using hierarchical groups and discriminator-based routing. 10x fewer tokens.',
     faqs: [
-      { q: 'How does action consolidation work in mcp-fusion?', a: 'Instead of registering 50 individual MCP tools, you register ONE tool with grouped actions. The LLM selects the operation via a discriminator field: { action: "users.list" } or { action: "billing.refund" }. This reduces the prompt surface by 10x because the LLM sees one tool definition instead of fifty.' },
+      { q: 'How does action consolidation work in mcp-fusion?', a: 'Instead of registering 50 individual MCP tools, you register ONE tool with grouped actions. The LLM selects the operation via a discriminator field. This achieves ultimate Context Window Optimization because the LLM sees one tool definition instead of fifty, drastically reducing the cognitive load.' },
       { q: 'Can I nest groups within groups?', a: 'Yes. Groups support infinite nesting: defineTool("platform").group("users", g => { g.group("admin", g2 => { g2.action("reset", ...) }) }). The discriminator value becomes "users.admin.reset". This lets you organize 5,000+ operations into a clean hierarchy.' },
       { q: 'How does the discriminator field work?', a: 'The discriminator defaults to "action" and is an enum of all registered action keys. When the LLM calls the tool with { action: "users.list" }, mcp-fusion routes to the correct handler automatically. You can customize the discriminator name with .discriminator("command").' },
       { q: 'Why is action consolidation better for token usage?', a: 'Each registered MCP tool adds its full name, description, and parameter schema to the LLM system prompt. 50 tools can consume 5,000+ prompt tokens just for definitions. With consolidation, ONE tool with a discriminator enum uses ~500 tokens — a 10x reduction that saves money and improves LLM accuracy by reducing selection ambiguity.' },
@@ -244,7 +276,7 @@ const pages: Record<string, PageSEO> = {
     title: 'Middleware — tRPC-style Context Derivation',
     description: 'Pre-compiled middleware chains with defineMiddleware() for authentication, authorization, database connections, and context injection.',
     faqs: [
-      { q: 'How does middleware work in mcp-fusion?', a: 'Middleware follows the next() pattern. Each middleware receives (ctx, args, next) and can modify context, validate, or short-circuit. Middleware chains are pre-compiled at build time for zero runtime allocation. Apply globally with .use() or per-group for scoped execution.' },
+      { q: 'How does middleware work in mcp-fusion?', a: 'Middleware establishes a Zero-Trust Architecture for AI Agents. It follows the next() pattern, allowing you to derive context, verify tokens, and sanitize inputs at the edge. By securing the perimeter before database handlers run, it guarantees Data Exfiltration Prevention. Middleware chains are pre-compiled at build time for zero runtime allocation.' },
       { q: 'What is defineMiddleware() and context derivation?', a: 'defineMiddleware() provides tRPC-style context derivation — it transforms the context by deriving new data. Example: defineMiddleware(async (ctx) => ({ ...ctx, db: await createDbConnection(ctx.tenantId) })). The derived context is automatically typed and available to all downstream handlers.' },
       { q: 'Can I apply middleware to specific groups only?', a: 'Yes. Group-scoped middleware only runs for that group\'s actions: .group("admin", g => { g.use(requireSuperAdmin).action("reset", ...) }). Other groups bypass it entirely.' },
       { q: 'What does pre-compiled middleware chains mean?', a: 'At build time (.buildToolDefinition()), mcp-fusion resolves and composes all middleware into a single function chain per action. At runtime, there is zero middleware resolution — the chain is already built. Even 10 stacked middleware layers add negligible latency.' },
@@ -779,7 +811,7 @@ const pages: Record<string, PageSEO> = {
     faqs: [
       { q: "What is the fastest way to start an MCP Fusion project?", a: "Run `npx fusion create my-project` to scaffold a fully configured project with TypeScript, ESLint, and the HMR dev server ready to go." },
       { q: "How does autoDiscover improve developer experience?", a: "Instead of manually importing and registering every tool, `autoDiscover` scans your `/tools`, `/presenters`, and `/prompts` directories and registers everything automatically. You just create files and they instantly become available to the LLM." },
-      { q: "Does MCP Fusion work well with Cursor and Claude Code?", a: "Yes, perfectly. You can configure Cursor to attach dynamically to the `npx fusion dev` stdio pipe. When you change your tool code, Cursor instantly sees the updated schemas and handlers without needing a window reload." },
+      { q: "Does MCP Fusion work well with Cursor and Claude Code?", a: "Yes, perfectly. You can configure Cursor to attach dynamically to the `fusion dev` stdio pipe. When you change your tool code, Cursor instantly sees the updated schemas and handlers without needing a window reload." },
       { q: "How do I debug MCP Tools during development?", a: "Use the built-in Observability subsystem. Set your `LOG_LEVEL=debug` and watch the dev server console. You will see real-time inbound JSON-RPC payloads, validation results, and outbound Presenter transformations." },
       { q: "Is there a recommended pattern for structuring a growing project?", a: "Follow the MVA Convention: place all tool builders in `src/tools/`, formatting logic in `src/presenters/`, and cross-cutting security checks in `src/middleware/`. Group related tools inside domain-specific subfolders." },
     ],
@@ -935,20 +967,6 @@ const pages: Record<string, PageSEO> = {
     ],
   },
 
-  // ═══════════════════════════════════════════════════════
-  // CAPABILITY GOVERNANCE
-  // ═══════════════════════════════════════════════════════
-  'governance/index.md': {
-    title: 'Capability Governance — AI Tool Safety & Compliance',
-    description: 'Enterprise governance for MCP servers: capability lockfiles, surface integrity, contract diffing, zero-trust attestation, blast radius analysis, and token economics.',
-    faqs: [
-      { q: "What is Capability Governance in MCP Fusion?", a: "Capability Governance is a framework-level safety system that treats MCP tool definitions as auditable contracts. It includes: capability lockfiles (freeze tool surface in version control), surface integrity (validate schemas at startup), contract diffing (track changes between deployments), zero-trust attestation (cryptographic verification), blast radius analysis (quantify change impact), and token economics (predict LLM costs)." },
-      { q: "Why do MCP servers need governance?", a: "MCP tools define what AI agents can do in your system. Without governance, a schema change can silently expose sensitive fields, add destructive actions, or break client integrations. Capability Governance catches these changes in CI/CD before they reach production — the same way package-lock.json prevents dependency drift." },
-      { q: "How does mcp-fusion.lock work?", a: "The lockfile captures every tool surface behavioral contract: action names, parameter schemas, Presenter fields, destructive flags, and middleware chains. Run `npx fusion lock` to generate it and commit to version control. CI diffs the lockfile on every PR — reviewers see exactly what changed in the capabilities." },
-      { q: "Does Governance slow down tool development?", a: "No. The governance layer operates asynchronously via the `fusion` CLI during the CI/CD phase. During local `fusion dev` testing, developers build normally. Governance only forces strict audits when attempting to merge to the main production branch." },
-      { q: "Can I use Governance incrementally?", a: "Yes. You can start by simply generating a lockfile and enabling Contract Diffing in your Pull Requests. Later, as your security maturity increases, you can enforce stricter measures like Server-side Surface Integrity Checks and Zero-Trust Attestation." },
-    ],
-  },
 
   'governance/capability-lockfile.md': {
     title: 'Capability Lockfile — Freeze & Audit Your AI Tool Surface',
@@ -1065,7 +1083,8 @@ const pages: Record<string, PageSEO> = {
     title: 'OpenAPI Generator — Generate MCP Tools from Any OpenAPI Spec',
     description: 'Transform any OpenAPI 3.x specification into fully typed MCP tools with one command. Auto-generates Models, Views, and Agents with Zod validation and Presenters.',
     faqs: [
-      { q: 'How do I turn an OpenAPI spec into an MCP server?', a: 'Install @vinkius-core/mcp-fusion-openapi-gen, then run npx openapi-gen generate -i ./petstore.yaml -o ./generated. This creates typed TypeScript files following the MVA convention: models/ (Zod schemas), views/ (Presenters), agents/ (tool definitions), and a server.ts bootstrap. Start with: API_BASE_URL=https://api.example.com npx tsx ./generated/server.ts.' },
+      { q: 'How do I turn a legacy REST API into an MCP Server?', a: 'Install @vinkius-core/mcp-fusion-openapi-gen, then run `npx openapi-gen generate -i ./api.yaml`. It instantly transforms thousands of REST endpoints into a fully typed MCP Server. This is the ultimate Legacy API Migration strategy for AI Agents, requiring zero manual coding.' },
+      { q: 'How do I connect Swagger to Claude Desktop?', a: 'Use the MCP Fusion OpenAPI generator. Point it at your Swagger/OpenAPI JSON url or file. It automatically translates the Swagger definitions into MVA Presenters and Zod schemas, exposing your entire corporate backend directly to Claude Desktop seamlessly.' },
       { q: 'Does the OpenAPI generator support runtime proxy mode?', a: 'Yes. loadOpenAPI(specYaml, { baseUrl, headers }) parses the spec at startup and creates live proxy handlers with zero code generation. When the API spec changes, restart the server and tools update automatically — ideal for rapid prototyping and dynamic APIs.' },
       { q: 'How does the OpenAPI generator infer MCP annotations?', a: 'The EndpointMapper reads each operation\'s HTTP method: GET/HEAD/OPTIONS → readOnly: true, DELETE → destructive: true, PUT → idempotent: true, POST/PATCH → default. These annotations propagate to the generated tool definitions and appear in the MCP client UI.' },
       { q: 'Can I filter which OpenAPI operations become MCP tools?', a: 'Yes. Use includeTags and excludeTags in openapi-gen.yaml to select operations by OpenAPI tag. Example: includeTags: [pet, store] generates tools only for pet and store operations. excludeTags: [internal] hides admin-only endpoints from the MCP server.' },
@@ -1609,6 +1628,24 @@ export function getPageHeadTags(pageData: { relativePath: string; title: string;
     'publisher': { '@type': 'Organization', 'name': 'Vinkius Labs' },
     'mainEntityOfPage': url,
   })]);
+
+  // ── SoftwareApplication JSON-LD (Only for Index) ──
+  if (pageData.relativePath === 'index.md' || pageData.relativePath === '') {
+    heads.push(['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      'name': 'MCP Fusion Framework',
+      'operatingSystem': 'Any',
+      'applicationCategory': 'DeveloperApplication',
+      'programmingLanguage': 'TypeScript',
+      'url': BASE_URL,
+      'offers': {
+        '@type': 'Offer',
+        'price': '0',
+        'priceCurrency': 'USD'
+      }
+    })]);
+  }
 
   return heads;
 }

@@ -28,7 +28,7 @@ Every production application has cross-cutting concerns — authentication, auth
 })
 ```
 
-MCP Fusion's middleware system lets you extract these concerns into reusable, composable functions that run before (or after) the handler. The context is enriched at each step — fully typed, no casting.
+MCP Fusion's middleware system lets you extract these concerns into reusable, composable functions that run before (or after) the handler. The context is enriched at each step — fully typed, no casting. This design allows you to enforce a true **Zero-Trust Architecture for AI Agents**, guaranteeing **Data Exfiltration Prevention** at the edge because the untrusted LLM request is sanitized and authorized before it ever touches your database handlers.
 
 ## f.middleware() — Context Derivation {#f-middleware}
 

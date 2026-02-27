@@ -1,6 +1,6 @@
 # Observability & Audit
 
-MCP Fusion provides structured observability through `createDebugObserver()` — a typed event stream that emits one event per pipeline stage, capturing the full request lifecycle.
+MCP Fusion provides structured observability through `createDebugObserver()` — a typed event stream that emits one event per pipeline stage, capturing the full request lifecycle. This is the foundation for enterprise **AI Agent Telemetry** and precise **LLM Cost Attribution** across autonomous operations.
 
 
 ## createDebugObserver {#debug-observer}
