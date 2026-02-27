@@ -88,45 +88,44 @@ export interface ServerDigest {
  * @param contract - The materialized tool contract
  * @returns Content-addressed digest with per-section components
  */
-export function computeDigest(contract: ToolContract): BehaviorDigestResult {
-    const surfaceHash = hashSection({
-        name: contract.surface.name,
-        description: contract.surface.description,
-        tags: [...contract.surface.tags].sort(),
-        inputSchemaDigest: contract.surface.inputSchemaDigest,
-        actions: sortedActions(contract),
-    });
-
-    const behaviorHash = hashSection({
-        egressSchemaDigest: contract.behavior.egressSchemaDigest,
-        systemRulesFingerprint: contract.behavior.systemRulesFingerprint,
-        cognitiveGuardrails: contract.behavior.cognitiveGuardrails,
-        middlewareChain: contract.behavior.middlewareChain,
-        stateSyncFingerprint: contract.behavior.stateSyncFingerprint,
-        concurrencyFingerprint: contract.behavior.concurrencyFingerprint,
-        affordanceTopology: [...contract.behavior.affordanceTopology],
-        embeddedPresenters: [...contract.behavior.embeddedPresenters],
-    });
-
-    const tokenEconomicsHash = hashSection({
-        schemaFieldCount: contract.tokenEconomics.schemaFieldCount,
-        unboundedCollection: contract.tokenEconomics.unboundedCollection,
-        baseOverheadTokens: contract.tokenEconomics.baseOverheadTokens,
-        inflationRisk: contract.tokenEconomics.inflationRisk,
-    });
-
-    const entitlementsHash = hashSection({
-        filesystem: contract.entitlements.filesystem,
-        network: contract.entitlements.network,
-        subprocess: contract.entitlements.subprocess,
-        crypto: contract.entitlements.crypto,
-        codeEvaluation: contract.entitlements.codeEvaluation,
-        raw: [...contract.entitlements.raw].sort(),
-    });
+export async function computeDigest(contract: ToolContract): Promise<BehaviorDigestResult> {
+    const [surfaceHash, behaviorHash, tokenEconomicsHash, entitlementsHash] = await Promise.all([
+        hashSection({
+            name: contract.surface.name,
+            description: contract.surface.description,
+            tags: [...contract.surface.tags].sort(),
+            inputSchemaDigest: contract.surface.inputSchemaDigest,
+            actions: sortedActions(contract),
+        }),
+        hashSection({
+            egressSchemaDigest: contract.behavior.egressSchemaDigest,
+            systemRulesFingerprint: contract.behavior.systemRulesFingerprint,
+            cognitiveGuardrails: contract.behavior.cognitiveGuardrails,
+            middlewareChain: contract.behavior.middlewareChain,
+            stateSyncFingerprint: contract.behavior.stateSyncFingerprint,
+            concurrencyFingerprint: contract.behavior.concurrencyFingerprint,
+            affordanceTopology: [...contract.behavior.affordanceTopology],
+            embeddedPresenters: [...contract.behavior.embeddedPresenters],
+        }),
+        hashSection({
+            schemaFieldCount: contract.tokenEconomics.schemaFieldCount,
+            unboundedCollection: contract.tokenEconomics.unboundedCollection,
+            baseOverheadTokens: contract.tokenEconomics.baseOverheadTokens,
+            inflationRisk: contract.tokenEconomics.inflationRisk,
+        }),
+        hashSection({
+            filesystem: contract.entitlements.filesystem,
+            network: contract.entitlements.network,
+            subprocess: contract.entitlements.subprocess,
+            crypto: contract.entitlements.crypto,
+            codeEvaluation: contract.entitlements.codeEvaluation,
+            raw: [...contract.entitlements.raw].sort(),
+        }),
+    ]);
 
     // Composite digest over all components
     const compositeInput = [surfaceHash, behaviorHash, tokenEconomicsHash, entitlementsHash].join(':');
-    const digest = sha256(compositeInput);
+    const digest = await sha256(compositeInput);
 
     return {
         digest,
@@ -150,20 +149,20 @@ export function computeDigest(contract: ToolContract): BehaviorDigestResult {
  * @param contracts - Record of tool name → contract
  * @returns Server-level content-addressed digest
  */
-export function computeServerDigest(
+export async function computeServerDigest(
     contracts: Record<string, ToolContract>,
-): ServerDigest {
+): Promise<ServerDigest> {
     const tools: Record<string, BehaviorDigestResult> = {};
     const sortedNames = Object.keys(contracts).sort();
 
     const perToolDigests: string[] = [];
     for (const name of sortedNames) {
-        const result = computeDigest(contracts[name]!);
+        const result = await computeDigest(contracts[name]!);
         tools[name] = result;
         perToolDigests.push(`${name}:${result.digest}`);
     }
 
-    const digest = sha256(perToolDigests.join('\n'));
+    const digest = await sha256(perToolDigests.join('\n'));
 
     return {
         digest,
@@ -253,6 +252,6 @@ function sortedActions(contract: ToolContract): Record<string, unknown>[] {
  * Hash a section object using canonical JSON serialization.
  * @internal
  */
-function hashSection(obj: unknown): string {
+function hashSection(obj: unknown): Promise<string> {
     return sha256(canonicalize(obj));
 }

@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [@vinkius-core/mcp-fusion-cloudflare@1.0.0] - 2026-02-27
+
+### ☁️ Cloudflare Workers Adapter — Edge Deployment in One Line
+
+New `@vinkius-core/mcp-fusion-cloudflare` package. Deploys any MCP Fusion ToolRegistry to Cloudflare Workers with zero configuration. Stateless JSON-RPC via the MCP SDK's native `WebStandardStreamableHTTPServerTransport` — no SSE sessions, no transport bridging, no polyfills. Registry compiles at cold start; warm requests only instantiate `McpServer` + `Transport`.
+
+### Added
+
+- **`cloudflareWorkersAdapter<TEnv, TContext>(options)`** — creates a Cloudflare Workers `fetch()` handler from a pre-compiled `ToolRegistry`
+  - `contextFactory(req, env, ctx)` — injects Cloudflare bindings (D1, KV, R2, secrets, `ExecutionContext`) into handler context
+  - `enableJsonResponse: true` — stateless JSON-RPC, no SSE, no session state
+  - Ephemeral `McpServer` per request — isolates concurrent invocations
+  - Cold-start caching — Zod reflection, Presenter compilation, and schema generation happen once at module scope
+- **`CloudflareAdapterOptions<TEnv, TContext>`** — full typed configuration interface
+- **`CloudflareWorkerHandler<TEnv>`** — Workers ES Modules `fetch()` signature
+- **`RegistryLike`** — duck-typed interface for `ToolRegistry` (decoupled from core import)
+- **`ExecutionContext`** — inline Cloudflare Workers types (no `@cloudflare/workers-types` dependency)
+
+### Documentation
+
+- **`docs/cloudflare-adapter.md`** — full documentation page: deployment pain points, plug-and-play solution, architecture diagram (cold start vs warm request), step-by-step setup with D1/KV, middleware and Presenter at the edge, configuration reference, edge compatibility matrix
+- **VitePress sidebar** — new "Adapters" section with Cloudflare Workers entry
+- **`llms.txt`** — Cloudflare Workers Adapter API reference with usage example
+
+## [2.11.1] - 2026-02-27
+
+### 🧪 Introspection Test Coverage — 122 New Unit Tests
+
+Dedicated unit test coverage for 4 previously untested introspection modules. Total test count: 566 tests, 11 test files, 0 failures in the introspection suite.
+
+### Added
+
+- **`CryptoCanonical.test.ts`** (32 tests) — `sha256` (determinism, known test vectors, Unicode, large input, empty string), `canonicalize` (key sorting, nested objects, arrays, primitives, insertion-order independence), HMAC signer (sign/verify roundtrip, wrong secret rejection), attestation roundtrip
+- **`EntitlementScanner.test.ts`** (42 tests) — `scanSource` (CJS/ESM/node: imports, fetch/exec/eval detection), evasion heuristics (`String.fromCharCode`, bracket-notation, dynamic import, entropy), `buildEntitlements`, `validateClaims` (readOnly + write violations, readOnly + network warnings), `scanAndValidate`
+- **`ManifestCompiler.test.ts`** (17 tests) — `compileManifest` (single/multi builder, action metadata, presenters), `cloneManifest` (deep independence), mock `ToolBuilder` interface
+- **`TokenEconomicsUnit.test.ts`** (31 tests) — `estimateTokens` (token estimation heuristic, scaling), `profileBlock`/`profileResponse` (risk classification), `computeStaticProfile` (bounded/unbounded), `aggregateProfiles`
+
+### Test Suite
+
+- **566 tests** passing in introspection suite (11 test files) — 122 new tests added
 
 ## [2.8.1] - 2026-02-26
 

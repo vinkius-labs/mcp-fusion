@@ -409,7 +409,7 @@ export async function commandLock(args: CliArgs, reporter?: ProgressReporter): P
     // Step 2: Compile tool contracts
     progress.start('compile', 'Compiling tool contracts');
     const builders = [...registry.getBuilders()];
-    const contracts = compileContracts(builders);
+    const contracts = await compileContracts(builders);
     const toolCount = Object.keys(contracts).length;
     progress.done('compile', 'Compiling tool contracts', `${toolCount} tool${toolCount !== 1 ? 's' : ''}`);
 
@@ -435,7 +435,7 @@ export async function commandLock(args: CliArgs, reporter?: ProgressReporter): P
         progress.done('read', 'Reading existing lockfile');
 
         progress.start('verify', 'Verifying integrity');
-        const result = checkLockfile(existing, contracts, options);
+        const result = await checkLockfile(existing, contracts, options);
         if (result.ok) {
             progress.done('verify', 'Verifying integrity', 'up to date');
             console.log(`\n✓ ${LOCKFILE_NAME} is up to date.`);
@@ -454,7 +454,7 @@ export async function commandLock(args: CliArgs, reporter?: ProgressReporter): P
     } else {
         // ── Generate Mode ──
         progress.start('generate', 'Computing behavioral digests');
-        const lockfile = generateLockfile(serverName, contracts, MCP_FUSION_VERSION, options);
+        const lockfile = await generateLockfile(serverName, contracts, MCP_FUSION_VERSION, options);
         progress.done('generate', 'Computing behavioral digests');
 
         progress.start('write', `Writing ${LOCKFILE_NAME}`);

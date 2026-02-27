@@ -8,7 +8,7 @@
  *
  * @module
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { GroupedToolBuilder } from '../../src/core/builder/GroupedToolBuilder.js';
 import { createPresenter } from '../../src/presenter/Presenter.js';
@@ -71,7 +71,7 @@ const Presenter1 = createPresenter('UserPresenter')
     .schema(z.object({ id: z.number(), name: z.string(), email: z.string() }))
     .systemRules(['Always format emails in lowercase']);
 
-function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
+async function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
     return {
         description: 'Test action',
         destructive: false,
@@ -79,19 +79,19 @@ function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
         readOnly: false,
         requiredFields: [],
         presenterName: undefined,
-        inputSchemaDigest: sha256('test'),
+        inputSchemaDigest: await sha256('test'),
         hasMiddleware: false,
         ...overrides,
     };
 }
 
-function makeSurface(overrides: Partial<ToolSurface> = {}): ToolSurface {
+async function makeSurface(overrides: Partial<ToolSurface> = {}): ToolSurface {
     return {
         name: 'test-tool',
         description: 'A test tool',
         tags: ['test'],
-        actions: { run: makeAction() },
-        inputSchemaDigest: sha256('schema'),
+        actions: { run: await makeAction() },
+        inputSchemaDigest: await sha256('schema'),
         ...overrides,
     };
 }
@@ -132,14 +132,14 @@ function makeEntitlements(overrides: Partial<HandlerEntitlements> = {}): Handler
     };
 }
 
-function makeContract(overrides: {
+async function makeContract(overrides: {
     surface?: Partial<ToolSurface>;
     behavior?: Partial<ToolBehavior>;
     tokenEconomics?: Partial<TokenEconomicsProfile>;
     entitlements?: Partial<HandlerEntitlements>;
 } = {}): ToolContract {
     return {
-        surface: makeSurface(overrides.surface),
+        surface: await makeSurface(overrides.surface),
         behavior: makeBehavior(overrides.behavior),
         tokenEconomics: makeTokenEconomics(overrides.tokenEconomics),
         entitlements: makeEntitlements(overrides.entitlements),
@@ -199,9 +199,9 @@ function buildToolWithPresenter() {
 
 describe('ContractDiff — severity classification (doc parity)', () => {
     // ── Surface deltas ──
-    it('COSMETIC: description change', () => {
-        const before = makeContract({ surface: { description: 'Old desc' } });
-        const after = makeContract({ surface: { description: 'New desc' } });
+    it('COSMETIC: description change', async () => {
+        const before = await makeContract({ surface: { description: 'Old desc' } });
+        const after = await makeContract({ surface: { description: 'New desc' } });
         const result = diffContracts(before, after);
         expect(result.maxSeverity).toBe('COSMETIC');
         expect(result.isBackwardsCompatible).toBe(true);
@@ -210,35 +210,35 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('COSMETIC');
     });
 
-    it('BREAKING: tool name changed', () => {
-        const before = makeContract({ surface: { name: 'old-tool' } });
-        const after = makeContract({ surface: { name: 'new-tool' } });
+    it('BREAKING: tool name changed', async () => {
+        const before = await makeContract({ surface: { name: 'old-tool' } });
+        const after = await makeContract({ surface: { name: 'new-tool' } });
         const result = diffContracts(before, after);
         expect(result.maxSeverity).toBe('BREAKING');
         expect(result.isBackwardsCompatible).toBe(false);
     });
 
-    it('BREAKING: input schema digest changed', () => {
-        const before = makeContract({ surface: { inputSchemaDigest: sha256('v1') } });
-        const after = makeContract({ surface: { inputSchemaDigest: sha256('v2') } });
+    it('BREAKING: input schema digest changed', async () => {
+        const before = await makeContract({ surface: { inputSchemaDigest: await sha256('v1') } });
+        const after = await makeContract({ surface: { inputSchemaDigest: await sha256('v2') } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'inputSchemaDigest');
         expect(delta).toBeDefined();
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('SAFE: tag removed', () => {
-        const before = makeContract({ surface: { tags: ['a', 'b'] } });
-        const after = makeContract({ surface: { tags: ['a'] } });
+    it('SAFE: tag removed', async () => {
+        const before = await makeContract({ surface: { tags: ['a', 'b'] } });
+        const after = await makeContract({ surface: { tags: ['a'] } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'tags');
         expect(delta).toBeDefined();
         expect(delta!.severity).toBe('SAFE');
     });
 
-    it('COSMETIC: tag added without removal', () => {
-        const before = makeContract({ surface: { tags: ['a'] } });
-        const after = makeContract({ surface: { tags: ['a', 'b'] } });
+    it('COSMETIC: tag added without removal', async () => {
+        const before = await makeContract({ surface: { tags: ['a'] } });
+        const after = await makeContract({ surface: { tags: ['a', 'b'] } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'tags');
         expect(delta).toBeDefined();
@@ -246,12 +246,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
     });
 
     // ── Action deltas ──
-    it('BREAKING: action removed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction(), delete: makeAction() } },
+    it('BREAKING: action removed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction(), delete: await makeAction() } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction() } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction() } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.delete');
@@ -259,12 +259,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('SAFE: action added', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction() } },
+    it('SAFE: action added', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction() } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction(), create: makeAction() } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction(), create: await makeAction() } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.create');
@@ -272,12 +272,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('SAFE');
     });
 
-    it('BREAKING: destructive flag changed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ destructive: false }) } },
+    it('BREAKING: destructive flag changed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ destructive: false }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ destructive: true }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ destructive: true }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.destructive');
@@ -285,12 +285,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('BREAKING: readOnly flag changed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ readOnly: true }) } },
+    it('BREAKING: readOnly flag changed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ readOnly: true }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ readOnly: false }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ readOnly: false }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.readOnly');
@@ -298,12 +298,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('RISKY: idempotent flag changed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ idempotent: false }) } },
+    it('RISKY: idempotent flag changed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ idempotent: false }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ idempotent: true }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ idempotent: true }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.idempotent');
@@ -311,12 +311,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('BREAKING: new required field added', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ requiredFields: ['id'] }) } },
+    it('BREAKING: new required field added', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ requiredFields: ['id'] }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ requiredFields: ['id', 'name'] }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ requiredFields: ['id', 'name'] }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d =>
@@ -326,12 +326,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.description).toContain('name');
     });
 
-    it('SAFE: required field removed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ requiredFields: ['id', 'name'] }) } },
+    it('SAFE: required field removed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ requiredFields: ['id', 'name'] }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ requiredFields: ['id'] }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ requiredFields: ['id'] }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d =>
@@ -340,12 +340,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta).toBeDefined();
     });
 
-    it('RISKY: action input schema changed', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ inputSchemaDigest: sha256('v1') }) } },
+    it('RISKY: action input schema changed', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ inputSchemaDigest: await sha256('v1') }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ inputSchemaDigest: sha256('v2') }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ inputSchemaDigest: await sha256('v2') }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.inputSchemaDigest');
@@ -353,12 +353,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('BREAKING: presenter removed from action', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ presenterName: 'UserPresenter' }) } },
+    it('BREAKING: presenter removed from action', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ presenterName: 'UserPresenter' }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ presenterName: undefined }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ presenterName: undefined }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.presenterName');
@@ -366,12 +366,12 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('RISKY: presenter changed on action', () => {
-        const before = makeContract({
-            surface: { actions: { run: makeAction({ presenterName: 'OldPresenter' }) } },
+    it('RISKY: presenter changed on action', async () => {
+        const before = await makeContract({
+            surface: { actions: { run: await makeAction({ presenterName: 'OldPresenter' }) } },
         });
-        const after = makeContract({
-            surface: { actions: { run: makeAction({ presenterName: 'NewPresenter' }) } },
+        const after = await makeContract({
+            surface: { actions: { run: await makeAction({ presenterName: 'NewPresenter' }) } },
         });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'actions.run.presenterName');
@@ -380,29 +380,29 @@ describe('ContractDiff — severity classification (doc parity)', () => {
     });
 
     // ── Behavior deltas ──
-    it('BREAKING: egress schema digest changed', () => {
-        const before = makeContract({ behavior: { egressSchemaDigest: 'a' } });
-        const after = makeContract({ behavior: { egressSchemaDigest: 'b' } });
+    it('BREAKING: egress schema digest changed', async () => {
+        const before = await makeContract({ behavior: { egressSchemaDigest: 'a' } });
+        const after = await makeContract({ behavior: { egressSchemaDigest: 'b' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'egressSchemaDigest');
         expect(delta!.severity).toBe('BREAKING');
         expect(result.digestChanged).toBe(true);
     });
 
-    it('BREAKING: system rules fingerprint changed', () => {
-        const before = makeContract({ behavior: { systemRulesFingerprint: 'static:abc' } });
-        const after = makeContract({ behavior: { systemRulesFingerprint: 'static:def' } });
+    it('BREAKING: system rules fingerprint changed', async () => {
+        const before = await makeContract({ behavior: { systemRulesFingerprint: 'static:abc' } });
+        const after = await makeContract({ behavior: { systemRulesFingerprint: 'static:def' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'systemRulesFingerprint');
         expect(delta!.severity).toBe('BREAKING');
         expect(result.digestChanged).toBe(true);
     });
 
-    it('RISKY: agentLimitMax removed (null)', () => {
-        const before = makeContract({
+    it('RISKY: agentLimitMax removed (null)', async () => {
+        const before = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: 50, egressMaxBytes: null } },
         });
-        const after = makeContract({
+        const after = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: null } },
         });
         const result = diffContracts(before, after);
@@ -410,11 +410,11 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('SAFE: agentLimitMax tightened', () => {
-        const before = makeContract({
+    it('SAFE: agentLimitMax tightened', async () => {
+        const before = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: null } },
         });
-        const after = makeContract({
+        const after = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: 20, egressMaxBytes: null } },
         });
         const result = diffContracts(before, after);
@@ -422,11 +422,11 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('SAFE');
     });
 
-    it('RISKY: egressMaxBytes removed', () => {
-        const before = makeContract({
+    it('RISKY: egressMaxBytes removed', async () => {
+        const before = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: 4096 } },
         });
-        const after = makeContract({
+        const after = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: null } },
         });
         const result = diffContracts(before, after);
@@ -434,11 +434,11 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('SAFE: egressMaxBytes added', () => {
-        const before = makeContract({
+    it('SAFE: egressMaxBytes added', async () => {
+        const before = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: null } },
         });
-        const after = makeContract({
+        const after = await makeContract({
             behavior: { cognitiveGuardrails: { agentLimitMax: null, egressMaxBytes: 8192 } },
         });
         const result = diffContracts(before, after);
@@ -446,124 +446,124 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(delta!.severity).toBe('SAFE');
     });
 
-    it('RISKY: middleware chain changed', () => {
-        const before = makeContract({ behavior: { middlewareChain: ['auth:mw'] } });
-        const after = makeContract({ behavior: { middlewareChain: ['auth:mw', 'rate-limit:mw'] } });
+    it('RISKY: middleware chain changed', async () => {
+        const before = await makeContract({ behavior: { middlewareChain: ['auth:mw'] } });
+        const after = await makeContract({ behavior: { middlewareChain: ['auth:mw', 'rate-limit:mw'] } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'middlewareChain');
         expect(delta).toBeDefined();
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('RISKY: stateSync fingerprint changed', () => {
-        const before = makeContract({ behavior: { stateSyncFingerprint: 'v1' } });
-        const after = makeContract({ behavior: { stateSyncFingerprint: 'v2' } });
+    it('RISKY: stateSync fingerprint changed', async () => {
+        const before = await makeContract({ behavior: { stateSyncFingerprint: 'v1' } });
+        const after = await makeContract({ behavior: { stateSyncFingerprint: 'v2' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'stateSyncFingerprint');
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('RISKY: concurrency fingerprint changed', () => {
-        const before = makeContract({ behavior: { concurrencyFingerprint: 'serial' } });
-        const after = makeContract({ behavior: { concurrencyFingerprint: 'parallel' } });
+    it('RISKY: concurrency fingerprint changed', async () => {
+        const before = await makeContract({ behavior: { concurrencyFingerprint: 'serial' } });
+        const after = await makeContract({ behavior: { concurrencyFingerprint: 'parallel' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'concurrencyFingerprint');
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('RISKY: affordance topology changed', () => {
-        const before = makeContract({ behavior: { affordanceTopology: ['payments.refund'] } });
-        const after = makeContract({ behavior: { affordanceTopology: ['payments.refund', 'payments.void'] } });
+    it('RISKY: affordance topology changed', async () => {
+        const before = await makeContract({ behavior: { affordanceTopology: ['payments.refund'] } });
+        const after = await makeContract({ behavior: { affordanceTopology: ['payments.refund', 'payments.void'] } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'affordanceTopology');
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('RISKY: embedded presenters changed', () => {
-        const before = makeContract({ behavior: { embeddedPresenters: ['UserPresenter'] } });
-        const after = makeContract({ behavior: { embeddedPresenters: ['UserPresenter', 'InvoicePresenter'] } });
+    it('RISKY: embedded presenters changed', async () => {
+        const before = await makeContract({ behavior: { embeddedPresenters: ['UserPresenter'] } });
+        const after = await makeContract({ behavior: { embeddedPresenters: ['UserPresenter', 'InvoicePresenter'] } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'embeddedPresenters');
         expect(delta!.severity).toBe('RISKY');
     });
 
     // ── TokenEconomics deltas ──
-    it('BREAKING: inflation risk escalated', () => {
-        const before = makeContract({ tokenEconomics: { inflationRisk: 'low' } });
-        const after = makeContract({ tokenEconomics: { inflationRisk: 'high' } });
+    it('BREAKING: inflation risk escalated', async () => {
+        const before = await makeContract({ tokenEconomics: { inflationRisk: 'low' } });
+        const after = await makeContract({ tokenEconomics: { inflationRisk: 'high' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'inflationRisk');
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('SAFE: inflation risk de-escalated', () => {
-        const before = makeContract({ tokenEconomics: { inflationRisk: 'high' } });
-        const after = makeContract({ tokenEconomics: { inflationRisk: 'low' } });
+    it('SAFE: inflation risk de-escalated', async () => {
+        const before = await makeContract({ tokenEconomics: { inflationRisk: 'high' } });
+        const after = await makeContract({ tokenEconomics: { inflationRisk: 'low' } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'inflationRisk');
         expect(delta!.severity).toBe('SAFE');
     });
 
-    it('RISKY: became unbounded collection', () => {
-        const before = makeContract({ tokenEconomics: { unboundedCollection: false } });
-        const after = makeContract({ tokenEconomics: { unboundedCollection: true } });
+    it('RISKY: became unbounded collection', async () => {
+        const before = await makeContract({ tokenEconomics: { unboundedCollection: false } });
+        const after = await makeContract({ tokenEconomics: { unboundedCollection: true } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'unboundedCollection');
         expect(delta!.severity).toBe('RISKY');
     });
 
-    it('SAFE: became bounded collection', () => {
-        const before = makeContract({ tokenEconomics: { unboundedCollection: true } });
-        const after = makeContract({ tokenEconomics: { unboundedCollection: false } });
+    it('SAFE: became bounded collection', async () => {
+        const before = await makeContract({ tokenEconomics: { unboundedCollection: true } });
+        const after = await makeContract({ tokenEconomics: { unboundedCollection: false } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'unboundedCollection');
         expect(delta!.severity).toBe('SAFE');
     });
 
     // ── Entitlement deltas ──
-    it('BREAKING: gained filesystem entitlement', () => {
-        const before = makeContract({ entitlements: { filesystem: false } });
-        const after = makeContract({ entitlements: { filesystem: true } });
+    it('BREAKING: gained filesystem entitlement', async () => {
+        const before = await makeContract({ entitlements: { filesystem: false } });
+        const after = await makeContract({ entitlements: { filesystem: true } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'filesystem');
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('BREAKING: gained network entitlement', () => {
-        const before = makeContract({ entitlements: { network: false } });
-        const after = makeContract({ entitlements: { network: true } });
+    it('BREAKING: gained network entitlement', async () => {
+        const before = await makeContract({ entitlements: { network: false } });
+        const after = await makeContract({ entitlements: { network: true } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'network');
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('BREAKING: gained subprocess entitlement', () => {
-        const before = makeContract({ entitlements: { subprocess: false } });
-        const after = makeContract({ entitlements: { subprocess: true } });
+    it('BREAKING: gained subprocess entitlement', async () => {
+        const before = await makeContract({ entitlements: { subprocess: false } });
+        const after = await makeContract({ entitlements: { subprocess: true } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'subprocess');
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('BREAKING: gained crypto entitlement', () => {
-        const before = makeContract({ entitlements: { crypto: false } });
-        const after = makeContract({ entitlements: { crypto: true } });
+    it('BREAKING: gained crypto entitlement', async () => {
+        const before = await makeContract({ entitlements: { crypto: false } });
+        const after = await makeContract({ entitlements: { crypto: true } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'crypto');
         expect(delta!.severity).toBe('BREAKING');
     });
 
-    it('SAFE: lost entitlement', () => {
-        const before = makeContract({ entitlements: { subprocess: true } });
-        const after = makeContract({ entitlements: { subprocess: false } });
+    it('SAFE: lost entitlement', async () => {
+        const before = await makeContract({ entitlements: { subprocess: true } });
+        const after = await makeContract({ entitlements: { subprocess: false } });
         const result = diffContracts(before, after);
         const delta = result.deltas.find(d => d.field === 'subprocess');
         expect(delta!.severity).toBe('SAFE');
     });
 
     // ── Composite / edge cases ──
-    it('no deltas produces COSMETIC maxSeverity and isBackwardsCompatible=true', () => {
-        const contract = makeContract();
+    it('no deltas produces COSMETIC maxSeverity and isBackwardsCompatible=true', async () => {
+        const contract = await makeContract();
         const result = diffContracts(contract, contract);
         expect(result.deltas).toHaveLength(0);
         expect(result.maxSeverity).toBe('COSMETIC');
@@ -571,16 +571,16 @@ describe('ContractDiff — severity classification (doc parity)', () => {
         expect(result.digestChanged).toBe(false);
     });
 
-    it('multiple mixed severities: deltas sorted BREAKING > RISKY > SAFE > COSMETIC', () => {
-        const before = makeContract({
+    it('multiple mixed severities: deltas sorted BREAKING > RISKY > SAFE > COSMETIC', async () => {
+        const before = await makeContract({
             surface: { description: 'old', tags: ['a', 'b'], actions: {
-                run: makeAction({ idempotent: false }),
+                run: await makeAction({ idempotent: false }),
             } },
             entitlements: { network: false },
         });
-        const after = makeContract({
+        const after = await makeContract({
             surface: { description: 'new', tags: ['a'], actions: {
-                run: makeAction({ idempotent: true }),
+                run: await makeAction({ idempotent: true }),
             } },
             entitlements: { network: true },
         });
@@ -601,16 +601,16 @@ describe('ContractDiff — severity classification (doc parity)', () => {
 // ============================================================================
 
 describe('ContractDiff — formatting (doc parity)', () => {
-    it('formatDiffReport with no deltas', () => {
-        const contract = makeContract();
+    it('formatDiffReport with no deltas', async () => {
+        const contract = await makeContract();
         const result = diffContracts(contract, contract);
         const report = formatDiffReport(result);
         expect(report).toContain('No contract changes detected');
     });
 
-    it('formatDiffReport with mixed severities', () => {
-        const before = makeContract({ surface: { description: 'old' }, entitlements: { filesystem: false } });
-        const after = makeContract({ surface: { description: 'new' }, entitlements: { filesystem: true } });
+    it('formatDiffReport with mixed severities', async () => {
+        const before = await makeContract({ surface: { description: 'old' }, entitlements: { filesystem: false } });
+        const after = await makeContract({ surface: { description: 'new' }, entitlements: { filesystem: true } });
         const result = diffContracts(before, after);
         const report = formatDiffReport(result);
         expect(report).toContain('BREAKING');
@@ -618,19 +618,19 @@ describe('ContractDiff — formatting (doc parity)', () => {
         expect(report).toContain('change(s)');
     });
 
-    it('formatDeltasAsXml with empty deltas', () => {
-        const contract = makeContract();
+    it('formatDeltasAsXml with empty deltas', async () => {
+        const contract = await makeContract();
         const result = diffContracts(contract, contract);
         const xml = formatDeltasAsXml(result.deltas);
         expect(xml === '' || xml.includes('<contract_changes')).toBe(true);
     });
 
-    it('formatDeltasAsXml with multiple deltas produces valid XML structure', () => {
-        const before = makeContract({
+    it('formatDeltasAsXml with multiple deltas produces valid XML structure', async () => {
+        const before = await makeContract({
             behavior: { middlewareChain: ['auth'] },
             entitlements: { network: false },
         });
-        const after = makeContract({
+        const after = await makeContract({
             behavior: { middlewareChain: ['auth', 'limit'] },
             entitlements: { network: true },
         });
@@ -647,11 +647,11 @@ describe('ContractDiff — formatting (doc parity)', () => {
 // ============================================================================
 
 describe('BehaviorDigest — section sensitivity (doc parity)', () => {
-    it('digest changes when tokenEconomics changes', () => {
-        const c1 = makeContract({ tokenEconomics: { inflationRisk: 'low' } });
-        const c2 = makeContract({ tokenEconomics: { inflationRisk: 'critical' } });
-        const d1 = computeDigest(c1);
-        const d2 = computeDigest(c2);
+    it('digest changes when tokenEconomics changes', async () => {
+        const c1 = await makeContract({ tokenEconomics: { inflationRisk: 'low' } });
+        const c2 = await makeContract({ tokenEconomics: { inflationRisk: 'critical' } });
+        const d1 = await computeDigest(c1);
+        const d2 = await computeDigest(c2);
         expect(d1.digest).not.toBe(d2.digest);
         expect(d1.components.tokenEconomics).not.toBe(d2.components.tokenEconomics);
         // Other components should remain equal
@@ -659,38 +659,38 @@ describe('BehaviorDigest — section sensitivity (doc parity)', () => {
         expect(d1.components.behavior).toBe(d2.components.behavior);
     });
 
-    it('digest changes when entitlements change', () => {
-        const c1 = makeContract({ entitlements: { filesystem: false } });
-        const c2 = makeContract({ entitlements: { filesystem: true } });
-        const d1 = computeDigest(c1);
-        const d2 = computeDigest(c2);
+    it('digest changes when entitlements change', async () => {
+        const c1 = await makeContract({ entitlements: { filesystem: false } });
+        const c2 = await makeContract({ entitlements: { filesystem: true } });
+        const d1 = await computeDigest(c1);
+        const d2 = await computeDigest(c2);
         expect(d1.digest).not.toBe(d2.digest);
         expect(d1.components.entitlements).not.toBe(d2.components.entitlements);
         expect(d1.components.surface).toBe(d2.components.surface);
     });
 
-    it('digest changes when surface tags change', () => {
-        const c1 = makeContract({ surface: { tags: ['a'] } });
-        const c2 = makeContract({ surface: { tags: ['a', 'b'] } });
-        const d1 = computeDigest(c1);
-        const d2 = computeDigest(c2);
+    it('digest changes when surface tags change', async () => {
+        const c1 = await makeContract({ surface: { tags: ['a'] } });
+        const c2 = await makeContract({ surface: { tags: ['a', 'b'] } });
+        const d1 = await computeDigest(c1);
+        const d2 = await computeDigest(c2);
         expect(d1.digest).not.toBe(d2.digest);
         expect(d1.components.surface).not.toBe(d2.components.surface);
     });
 
-    it('computedAt is a valid ISO timestamp', () => {
-        const contract = makeContract();
-        const result = computeDigest(contract);
+    it('computedAt is a valid ISO timestamp', async () => {
+        const contract = await makeContract();
+        const result = await computeDigest(contract);
         expect(() => new Date(result.computedAt).toISOString()).not.toThrow();
         expect(result.toolName).toBe('test-tool');
     });
 
-    it('compareServerDigests classifies unchanged tools', () => {
+    it('compareServerDigests classifies unchanged tools', async () => {
         const contracts: Record<string, ToolContract> = {
-            'tool-a': makeContract({ surface: { name: 'tool-a' } }),
-            'tool-b': makeContract({ surface: { name: 'tool-b' } }),
+            'tool-a': await makeContract({ surface: { name: 'tool-a' } }),
+            'tool-b': await makeContract({ surface: { name: 'tool-b' } }),
         };
-        const digest = computeServerDigest(contracts);
+        const digest = await computeServerDigest(contracts);
         const comparison = compareServerDigests(digest, digest);
         expect(comparison.serverDigestChanged).toBe(false);
         expect(comparison.unchanged).toContain('tool-a');
@@ -700,11 +700,11 @@ describe('BehaviorDigest — section sensitivity (doc parity)', () => {
         expect(comparison.changed).toHaveLength(0);
     });
 
-    it('serverDigest is deterministic (object key order doesn\'t matter)', () => {
-        const a = makeContract({ surface: { name: 'alpha' } });
-        const b = makeContract({ surface: { name: 'beta' } });
-        const d1 = computeServerDigest({ alpha: a, beta: b });
-        const d2 = computeServerDigest({ beta: b, alpha: a });
+    it('serverDigest is deterministic (object key order doesn\'t matter)', async () => {
+        const a = await makeContract({ surface: { name: 'alpha' } });
+        const b = await makeContract({ surface: { name: 'beta' } });
+        const d1 = await computeServerDigest({ alpha: a, beta: b });
+        const d2 = await computeServerDigest({ beta: b, alpha: a });
         expect(d1.digest).toBe(d2.digest);
     });
 });
@@ -714,7 +714,7 @@ describe('BehaviorDigest — section sensitivity (doc parity)', () => {
 // ============================================================================
 
 describe('EntitlementScanner — expanded coverage (doc parity)', () => {
-    it('detects mixed filesystem + subprocess + network in one source', () => {
+    it('detects mixed filesystem + subprocess + network in one source', async () => {
         const source = `
             import { readFile, writeFile } from 'node:fs/promises';
             import { exec } from 'node:child_process';
@@ -727,7 +727,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(categories.has('network')).toBe(true);
     });
 
-    it('detects crypto patterns', () => {
+    it('detects crypto patterns', async () => {
         const source = `
             import { createSign, createVerify } from 'node:crypto';
             const signer = createSign('SHA256');
@@ -736,7 +736,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(matches.some(m => m.category === 'crypto')).toBe(true);
     });
 
-    it('validateClaims: readOnly + network produces warning', () => {
+    it('validateClaims: readOnly + network produces warning', async () => {
         const source = `const res = await fetch('https://api.com');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, { readOnly: true });
@@ -745,7 +745,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         )).toBe(true);
     });
 
-    it('validateClaims: allowed entitlements suppress violations', () => {
+    it('validateClaims: allowed entitlements suppress violations', async () => {
         const source = `
             import { readFile } from 'fs';
             await fetch('https://api.com');
@@ -757,7 +757,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(errorViolations).toHaveLength(0);
     });
 
-    it('validateClaims: non-destructive + subprocess produces warning', () => {
+    it('validateClaims: non-destructive + subprocess produces warning', async () => {
         const source = `import { exec } from 'child_process';`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, { destructive: false });
@@ -766,7 +766,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         )).toBe(true);
     });
 
-    it('scanAndValidate produces complete report with summary', () => {
+    it('scanAndValidate produces complete report with summary', async () => {
         const source = `
             import { writeFile } from 'fs/promises';
             import { spawn } from 'child_process';
@@ -779,7 +779,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(report.entitlements.network).toBe(false);
     });
 
-    it('buildEntitlements: raw field contains sorted unique identifiers', () => {
+    it('buildEntitlements: raw field contains sorted unique identifiers', async () => {
         const source = `
             import { readFile, writeFile } from 'fs';
             import { exec } from 'child_process';
@@ -794,7 +794,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(entitlements.raw).toEqual(sorted);
     });
 
-    it('scanSource returns accurate line numbers', () => {
+    it('scanSource returns accurate line numbers', async () => {
         const source = [
             'const x = 1;',           // line 1
             'import fs from "fs";',    // line 2
@@ -811,7 +811,7 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
         expect(execMatch!.line).toBe(4);
     });
 
-    it('scanAndValidate defaults claims to empty (no violations)', () => {
+    it('scanAndValidate defaults claims to empty (no violations)', async () => {
         const source = `import { exec } from 'child_process';`;
         const report = scanAndValidate(source);
         expect(report.entitlements.subprocess).toBe(true);
@@ -825,20 +825,20 @@ describe('EntitlementScanner — expanded coverage (doc parity)', () => {
 // ============================================================================
 
 describe('TokenEconomics — risk classification & edge cases (doc parity)', () => {
-    it('estimateTokens: ~3.5 chars per token', () => {
+    it('estimateTokens: ~3.5 chars per token', async () => {
         const text = 'a'.repeat(350);
         const tokens = estimateTokens(text);
         expect(tokens).toBe(100);
     });
 
-    it('profileBlock: returns correct byte count', () => {
+    it('profileBlock: returns correct byte count', async () => {
         const block = profileBlock({ type: 'text', text: 'hello' });
         expect(block.type).toBe('text');
         expect(block.bytes).toBe(5);
         expect(block.estimatedTokens).toBeGreaterThan(0);
     });
 
-    it('profileResponse: actionKey is captured', () => {
+    it('profileResponse: actionKey is captured', async () => {
         const analysis = profileResponse('users', 'list', [
             { type: 'text', text: 'data payload' },
         ]);
@@ -846,7 +846,7 @@ describe('TokenEconomics — risk classification & edge cases (doc parity)', () 
         expect(analysis.actionKey).toBe('list');
     });
 
-    it('profileResponse: overhead ratio computation', () => {
+    it('profileResponse: overhead ratio computation', async () => {
         const overheadText = 'x'.repeat(350);   // 100 tokens overhead
         const dataText = 'y'.repeat(350);        // 100 tokens data
         const analysis = profileResponse('tool', null, [
@@ -858,38 +858,38 @@ describe('TokenEconomics — risk classification & edge cases (doc parity)', () 
         expect(analysis.overheadRatio).toBeGreaterThan(0);
     });
 
-    it('profileResponse: medium risk classification (1001-4000 tokens)', () => {
+    it('profileResponse: medium risk classification (1001-4000 tokens)', async () => {
         const text = 'x'.repeat(7000); // ~2000 tokens
         const analysis = profileResponse('tool', null, [{ type: 'text', text }]);
         expect(analysis.risk).toBe('medium');
     });
 
-    it('profileResponse: high risk classification (4001-8000 tokens)', () => {
+    it('profileResponse: high risk classification (4001-8000 tokens)', async () => {
         const text = 'x'.repeat(21000); // ~6000 tokens
         const analysis = profileResponse('tool', null, [{ type: 'text', text }]);
         expect(analysis.risk).toBe('high');
     });
 
-    it('profileResponse: critical risk classification (>8000 tokens)', () => {
+    it('profileResponse: critical risk classification (>8000 tokens)', async () => {
         const text = 'x'.repeat(35000); // ~10000 tokens
         const analysis = profileResponse('tool', null, [{ type: 'text', text }]);
         expect(analysis.risk).toBe('critical');
         expect(analysis.advisory).toBeTruthy();
     });
 
-    it('computeStaticProfile: recommendations include agentLimit for unbounded', () => {
+    it('computeStaticProfile: recommendations include agentLimit for unbounded', async () => {
         const profile = computeStaticProfile('users', ['id', 'name', 'email'], null, null);
         expect(profile.bounded).toBe(false);
         expect(profile.recommendations.some(r => r.toLowerCase().includes('agentlimit'))).toBe(true);
     });
 
-    it('computeStaticProfile: egressMaxBytes bounds take priority', () => {
+    it('computeStaticProfile: egressMaxBytes bounds take priority', async () => {
         const profile = computeStaticProfile('users', ['id', 'name'], null, 1024);
         expect(profile.bounded).toBe(true);
         expect(profile.maxTokens).toBe(Math.ceil(1024 / 3.5));
     });
 
-    it('computeStaticProfile: field breakdown lists all fields', () => {
+    it('computeStaticProfile: field breakdown lists all fields', async () => {
         const fields = ['id', 'name', 'email', 'phone'];
         const profile = computeStaticProfile('users', fields, 10, null);
         expect(profile.fieldBreakdown).toHaveLength(fields.length);
@@ -899,14 +899,14 @@ describe('TokenEconomics — risk classification & edge cases (doc parity)', () 
         });
     });
 
-    it('aggregateProfiles: empty array', () => {
+    it('aggregateProfiles: empty array', async () => {
         const summary = aggregateProfiles([]);
         expect(summary.toolCount).toBe(0);
         expect(summary.overallRisk).toBe('low');
         expect(summary.unboundedToolNames).toHaveLength(0);
     });
 
-    it('aggregateProfiles: aggregates multiple profiles correctly', () => {
+    it('aggregateProfiles: aggregates multiple profiles correctly', async () => {
         const profiles: StaticTokenProfile[] = [
             computeStaticProfile('users', ['id', 'name'], null, null),
             computeStaticProfile('config', ['key'], 5, null),
@@ -919,7 +919,7 @@ describe('TokenEconomics — risk classification & edge cases (doc parity)', () 
         expect(summary.unboundedToolCount).toBe(1);
     });
 
-    it('aggregateProfiles: overallRisk escalates to highest', () => {
+    it('aggregateProfiles: overallRisk escalates to highest', async () => {
         const profiles: StaticTokenProfile[] = [
             computeStaticProfile('safe', ['id'], 5, null),
             computeStaticProfile('danger', Array.from({ length: 20 }, (_, i) => `f${i}`), null, null),
@@ -935,12 +935,17 @@ describe('TokenEconomics — risk classification & edge cases (doc parity)', () 
 // ============================================================================
 
 describe('CryptoAttestation — extended coverage (doc parity)', () => {
-    const testContracts: Record<string, ToolContract> = {
-        'alpha': makeContract({ surface: { name: 'alpha' } }),
-        'beta': makeContract({ surface: { name: 'beta' } }),
-    };
-    const serverDigest = computeServerDigest(testContracts);
+    let testContracts: Record<string, ToolContract>;
+    let serverDigest: ServerDigest;
     const secret = 'test-secret-at-least-32-bytes-long!!';
+
+    beforeAll(async () => {
+        testContracts = {
+            'alpha': await makeContract({ surface: { name: 'alpha' } }),
+            'beta': await makeContract({ surface: { name: 'beta' } }),
+        };
+        serverDigest = await computeServerDigest(testContracts);
+    });
 
     it('verifyAttestation: wrong secret fails verification', async () => {
         const attestation = await attestServerDigest(serverDigest, {
@@ -955,8 +960,8 @@ describe('CryptoAttestation — extended coverage (doc parity)', () => {
     });
 
     it('verifyCapabilityPin: failOnMismatch=false returns invalid without throwing', async () => {
-        const wrongDigest = computeServerDigest({
-            'gamma': makeContract({ surface: { name: 'gamma' } }),
+        const wrongDigest = await computeServerDigest({
+            'gamma': await makeContract({ surface: { name: 'gamma' } }),
         });
         const result = await verifyCapabilityPin(wrongDigest, {
             signer: 'hmac',
@@ -969,8 +974,8 @@ describe('CryptoAttestation — extended coverage (doc parity)', () => {
     });
 
     it('verifyCapabilityPin: failOnMismatch=true throws AttestationError', async () => {
-        const wrongDigest = computeServerDigest({
-            'gamma': makeContract({ surface: { name: 'gamma' } }),
+        const wrongDigest = await computeServerDigest({
+            'gamma': await makeContract({ surface: { name: 'gamma' } }),
         });
         await expect(verifyCapabilityPin(wrongDigest, {
             signer: 'hmac',
@@ -980,7 +985,7 @@ describe('CryptoAttestation — extended coverage (doc parity)', () => {
         })).rejects.toThrow(AttestationError);
     });
 
-    it('buildTrustCapability: captures verified=false for failed attestation', () => {
+    it('buildTrustCapability: captures verified=false for failed attestation', async () => {
         const failedAttestation: AttestationResult = {
             valid: false,
             computedDigest: 'abc',
@@ -1029,32 +1034,32 @@ describe('CryptoAttestation — extended coverage (doc parity)', () => {
 // ============================================================================
 
 describe('canonicalize & sha256 — edge cases', () => {
-    it('canonicalize: arrays preserve order', () => {
+    it('canonicalize: arrays preserve order', async () => {
         const result = canonicalize([3, 1, 2]);
         expect(result).toBe('[3,1,2]');
     });
 
-    it('canonicalize: nested objects sorted recursively', () => {
+    it('canonicalize: nested objects sorted recursively', async () => {
         const result = canonicalize({ z: { b: 2, a: 1 }, a: 1 });
         expect(result).toBe('{"a":1,"z":{"a":1,"b":2}}');
     });
 
-    it('canonicalize: null values preserved', () => {
+    it('canonicalize: null values preserved', async () => {
         const result = canonicalize({ b: null, a: 1 });
         expect(result).toBe('{"a":1,"b":null}');
     });
 
-    it('sha256: produces 64-char hex', () => {
-        expect(sha256('hello')).toMatch(/^[a-f0-9]{64}$/);
+    it('sha256: produces 64-char hex', async () => {
+        expect(await sha256('hello')).toMatch(/^[a-f0-9]{64}$/);
     });
 
-    it('sha256: different inputs produce different hashes', () => {
-        expect(sha256('a')).not.toBe(sha256('b'));
+    it('sha256: different inputs produce different hashes', async () => {
+        expect(await sha256('a')).not.toBe(await sha256('b'));
     });
 
-    it('sha256 + canonicalize: key order irrelevant', () => {
-        const h1 = sha256(canonicalize({ b: 2, a: 1 }));
-        const h2 = sha256(canonicalize({ a: 1, b: 2 }));
+    it('sha256 + canonicalize: key order irrelevant', async () => {
+        const h1 = await sha256(canonicalize({ b: 2, a: 1 }));
+        const h2 = await sha256(canonicalize({ a: 1, b: 2 }));
         expect(h1).toBe(h2);
     });
 });
@@ -1071,23 +1076,23 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
         const userTool = buildToolWithPresenter();
 
         // Step 2: Compile contracts
-        const contracts = compileContracts([configTool, adminTool, userTool]);
+        const contracts = await compileContracts([configTool, adminTool, userTool]);
         expect(Object.keys(contracts)).toEqual(expect.arrayContaining(['config', 'admin', 'users']));
 
         // Step 3: Compute digests
-        const serverDigest = computeServerDigest(contracts);
+        const serverDigest = await computeServerDigest(contracts);
         expect(serverDigest.digest).toMatch(/^[a-f0-9]{64}$/);
         expect(Object.keys(serverDigest.tools)).toEqual(expect.arrayContaining(['config', 'admin', 'users']));
 
         // Step 4: Generate lockfile
-        const lockfile = generateLockfile('test-server', contracts, '2.7.0');
+        const lockfile = await generateLockfile('test-server', contracts, '2.7.0');
         expect(lockfile.lockfileVersion).toBe(1);
         expect(lockfile.serverName).toBe('test-server');
         expect(lockfile.integrityDigest).toBe(`sha256:${serverDigest.digest}`);
 
         // Verify per-tool digests match
         for (const [name, tool] of Object.entries(lockfile.capabilities.tools)) {
-            const expectedDigest = computeDigest(contracts[name]!);
+            const expectedDigest = await computeDigest(contracts[name]!);
             expect(tool.integrityDigest).toBe(`sha256:${expectedDigest.digest}`);
         }
 
@@ -1095,7 +1100,7 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
         expect(parsed).not.toBeNull();
-        const check = checkLockfile(parsed!, contracts);
+        const check = await checkLockfile(parsed!, contracts);
         expect(check.ok).toBe(true);
 
         // Step 6: Attest
@@ -1121,9 +1126,9 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
         expect(trust.signerName).toBe('hmac-sha256');
     });
 
-    it('diff detects BREAKING change across lockfile boundary', () => {
+    it('diff detects BREAKING change across lockfile boundary', async () => {
         const v1 = buildReadOnlyTool();
-        const contractsV1 = compileContracts([v1]);
+        const contractsV1 = await compileContracts([v1]);
 
         // V2: add destructive action
         const v2 = new GroupedToolBuilder<void>('config')
@@ -1143,33 +1148,33 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
                 schema: z.object({ key: z.string() }),
                 handler: async () => success({ data: { deleted: true } }),
             });
-        const contractsV2 = compileContracts([v2]);
+        const contractsV2 = await compileContracts([v2]);
 
         // Diff
         const result = diffContracts(contractsV1['config']!, contractsV2['config']!);
         expect(result.deltas.some(d => d.field === 'actions.delete' && d.severity === 'SAFE')).toBe(true);
 
         // Lockfile check should detect drift
-        const lockfile = generateLockfile('cfg-server', contractsV1, '2.7.0');
+        const lockfile = await generateLockfile('cfg-server', contractsV1, '2.7.0');
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
-        const check = checkLockfile(parsed!, contractsV2);
+        const check = await checkLockfile(parsed!, contractsV2);
         expect(check.ok).toBe(false);
         expect(check.changed).toContain('config');
     });
 
-    it('digest comparison matches lockfile check result', () => {
-        const toolA = makeContract({ surface: { name: 'alpha' } });
-        const toolB = makeContract({ surface: { name: 'beta' } });
+    it('digest comparison matches lockfile check result', async () => {
+        const toolA = await makeContract({ surface: { name: 'alpha' } });
+        const toolB = await makeContract({ surface: { name: 'beta' } });
         const contractsBefore: Record<string, ToolContract> = { alpha: toolA, beta: toolB };
 
         // After: alpha changed, gamma added
-        const toolAChanged = makeContract({ surface: { name: 'alpha', description: 'Updated!' } });
-        const toolGamma = makeContract({ surface: { name: 'gamma' } });
+        const toolAChanged = await makeContract({ surface: { name: 'alpha', description: 'Updated!' } });
+        const toolGamma = await makeContract({ surface: { name: 'gamma' } });
         const contractsAfter: Record<string, ToolContract> = { alpha: toolAChanged, gamma: toolGamma };
 
-        const digestBefore = computeServerDigest(contractsBefore);
-        const digestAfter = computeServerDigest(contractsAfter);
+        const digestBefore = await computeServerDigest(contractsBefore);
+        const digestAfter = await computeServerDigest(contractsAfter);
         const comparison = compareServerDigests(digestBefore, digestAfter);
 
         expect(comparison.serverDigestChanged).toBe(true);
@@ -1178,10 +1183,10 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
         expect(comparison.removed).toContain('beta');
 
         // Lockfile should agree
-        const lockfile = generateLockfile('test', contractsBefore, '2.7.0');
+        const lockfile = await generateLockfile('test', contractsBefore, '2.7.0');
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
-        const check = checkLockfile(parsed!, contractsAfter);
+        const check = await checkLockfile(parsed!, contractsAfter);
         expect(check.ok).toBe(false);
         expect(check.added).toContain('gamma');
         expect(check.removed).toContain('beta');
@@ -1194,9 +1199,9 @@ describe('Cross-module: Contract → Digest → Lockfile → Diff pipeline', () 
 // ============================================================================
 
 describe('TokenEconomics ↔ ToolContract consistency', () => {
-    it('materialized contract tokenEconomics matches static analysis expectations', () => {
+    it('materialized contract tokenEconomics matches static analysis expectations', async () => {
         const builder = buildToolWithPresenter();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         // Verify tokenEconomics section exists
         expect(contract.tokenEconomics).toBeDefined();
@@ -1206,9 +1211,9 @@ describe('TokenEconomics ↔ ToolContract consistency', () => {
         expect(['low', 'medium', 'high', 'critical']).toContain(contract.tokenEconomics.inflationRisk);
     });
 
-    it('materialized entitlements default to all false for pure handlers', () => {
+    it('materialized entitlements default to all false for pure handlers', async () => {
         const builder = buildReadOnlyTool();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         expect(contract.entitlements.filesystem).toBe(false);
         expect(contract.entitlements.network).toBe(false);
@@ -1223,9 +1228,9 @@ describe('TokenEconomics ↔ ToolContract consistency', () => {
 // ============================================================================
 
 describe('Lockfile structure — documentation parity', () => {
-    it('lockfile has all documented top-level fields', () => {
-        const contracts = compileContracts([buildReadOnlyTool()]);
-        const lockfile = generateLockfile('doc-test', contracts, '2.7.0');
+    it('lockfile has all documented top-level fields', async () => {
+        const contracts = await compileContracts([buildReadOnlyTool()]);
+        const lockfile = await generateLockfile('doc-test', contracts, '2.7.0');
 
         expect(lockfile).toHaveProperty('lockfileVersion', 1);
         expect(lockfile).toHaveProperty('serverName', 'doc-test');
@@ -1236,9 +1241,9 @@ describe('Lockfile structure — documentation parity', () => {
         expect(lockfile.capabilities).toHaveProperty('tools');
     });
 
-    it('per-tool entry has all four documented sections', () => {
-        const contracts = compileContracts([buildDestructiveTool()]);
-        const lockfile = generateLockfile('doc-test', contracts, '2.7.0');
+    it('per-tool entry has all four documented sections', async () => {
+        const contracts = await compileContracts([buildDestructiveTool()]);
+        const lockfile = await generateLockfile('doc-test', contracts, '2.7.0');
         const tool = lockfile.capabilities.tools['admin']!;
 
         expect(tool).toHaveProperty('integrityDigest');
@@ -1248,9 +1253,9 @@ describe('Lockfile structure — documentation parity', () => {
         expect(tool).toHaveProperty('entitlements');
     });
 
-    it('surface section has correct shape', () => {
-        const contracts = compileContracts([buildDestructiveTool()]);
-        const lockfile = generateLockfile('doc-test', contracts, '2.7.0');
+    it('surface section has correct shape', async () => {
+        const contracts = await compileContracts([buildDestructiveTool()]);
+        const lockfile = await generateLockfile('doc-test', contracts, '2.7.0');
         const surface = lockfile.capabilities.tools['admin']!.surface;
 
         expect(surface).toHaveProperty('description');
@@ -1261,9 +1266,9 @@ describe('Lockfile structure — documentation parity', () => {
         expect(Array.isArray(surface.tags)).toBe(true);
     });
 
-    it('behavior section has correct shape', () => {
-        const contracts = compileContracts([buildDestructiveTool()]);
-        const lockfile = generateLockfile('doc-test', contracts, '2.7.0');
+    it('behavior section has correct shape', async () => {
+        const contracts = await compileContracts([buildDestructiveTool()]);
+        const lockfile = await generateLockfile('doc-test', contracts, '2.7.0');
         const behavior = lockfile.capabilities.tools['admin']!.behavior;
 
         expect(behavior).toHaveProperty('egressSchemaDigest');
@@ -1275,9 +1280,9 @@ describe('Lockfile structure — documentation parity', () => {
         expect(behavior).toHaveProperty('cognitiveGuardrails');
     });
 
-    it('destructive/readOnly actions are correctly classified', () => {
-        const contracts = compileContracts([buildDestructiveTool()]);
-        const lockfile = generateLockfile('doc-test', contracts, '2.7.0');
+    it('destructive/readOnly actions are correctly classified', async () => {
+        const contracts = await compileContracts([buildDestructiveTool()]);
+        const lockfile = await generateLockfile('doc-test', contracts, '2.7.0');
         const behavior = lockfile.capabilities.tools['admin']!.behavior;
 
         expect(behavior.destructiveActions).toContain('reset');
@@ -1286,28 +1291,28 @@ describe('Lockfile structure — documentation parity', () => {
         expect(behavior.readOnlyActions).not.toContain('reset');
     });
 
-    it('tools are sorted alphabetically in lockfile', () => {
-        const contracts = compileContracts([
+    it('tools are sorted alphabetically in lockfile', async () => {
+        const contracts = await compileContracts([
             buildDestructiveTool(),
             buildReadOnlyTool(),
             buildToolWithPresenter(),
         ]);
-        const lockfile = generateLockfile('sort-test', contracts, '2.7.0');
+        const lockfile = await generateLockfile('sort-test', contracts, '2.7.0');
         const toolNames = Object.keys(lockfile.capabilities.tools);
         const sortedNames = [...toolNames].sort();
         expect(toolNames).toEqual(sortedNames);
     });
 
-    it('serialized lockfile has trailing newline', () => {
-        const contracts = compileContracts([buildReadOnlyTool()]);
-        const lockfile = generateLockfile('test', contracts, '2.7.0');
+    it('serialized lockfile has trailing newline', async () => {
+        const contracts = await compileContracts([buildReadOnlyTool()]);
+        const lockfile = await generateLockfile('test', contracts, '2.7.0');
         const json = serializeLockfile(lockfile);
         expect(json.endsWith('\n')).toBe(true);
     });
 
-    it('serialized lockfile uses 2-space indentation', () => {
-        const contracts = compileContracts([buildReadOnlyTool()]);
-        const lockfile = generateLockfile('test', contracts, '2.7.0');
+    it('serialized lockfile uses 2-space indentation', async () => {
+        const contracts = await compileContracts([buildReadOnlyTool()]);
+        const lockfile = await generateLockfile('test', contracts, '2.7.0');
         const json = serializeLockfile(lockfile);
         // Second line should start with exactly 2 spaces
         const lines = json.split('\n');
@@ -1317,11 +1322,11 @@ describe('Lockfile structure — documentation parity', () => {
         expect(indentedLine!.startsWith('    ')).toBe(false);
     });
 
-    it('parseLockfile rejects invalid JSON gracefully', () => {
+    it('parseLockfile rejects invalid JSON gracefully', async () => {
         expect(parseLockfile('not-json{')).toBeNull();
     });
 
-    it('parseLockfile rejects wrong lockfileVersion', () => {
+    it('parseLockfile rejects wrong lockfileVersion', async () => {
         const valid = serializeLockfile(
             generateLockfile('test', compileContracts([buildReadOnlyTool()]), '2.7.0'),
         );
@@ -1336,8 +1341,8 @@ describe('Lockfile structure — documentation parity', () => {
 
 describe('Full Zero-Trust lifecycle', () => {
     it('compile → digest → attest → pin → verify → trust', async () => {
-        const contracts = compileContracts([buildReadOnlyTool(), buildDestructiveTool()]);
-        const digest = computeServerDigest(contracts);
+        const contracts = await compileContracts([buildReadOnlyTool(), buildDestructiveTool()]);
+        const digest = await computeServerDigest(contracts);
         const secret = 'zero-trust-e2e-lifecycle-test-secret!!';
 
         // 1. Attest
@@ -1365,9 +1370,9 @@ describe('Full Zero-Trust lifecycle', () => {
         // 4. Tamper detection — add a tool
         const tamperedContracts = {
             ...contracts,
-            extra: makeContract({ surface: { name: 'extra' } }),
+            extra: await makeContract({ surface: { name: 'extra' } }),
         };
-        const tamperedDigest = computeServerDigest(tamperedContracts);
+        const tamperedDigest = await computeServerDigest(tamperedContracts);
 
         // Pin should fail
         await expect(verifyCapabilityPin(tamperedDigest, {
@@ -1391,44 +1396,44 @@ describe('Full Zero-Trust lifecycle', () => {
 // ============================================================================
 
 describe('ToolContract materialization — real builders', () => {
-    it('readonly tool captures readOnly on actions', () => {
-        const contract = materializeContract(buildReadOnlyTool());
+    it('readonly tool captures readOnly on actions', async () => {
+        const contract = await materializeContract(buildReadOnlyTool());
         expect(contract.surface.actions['get']!.readOnly).toBe(true);
         expect(contract.surface.actions['get']!.destructive).toBe(false);
     });
 
-    it('destructive tool captures both readOnly and destructive flags', () => {
-        const contract = materializeContract(buildDestructiveTool());
+    it('destructive tool captures both readOnly and destructive flags', async () => {
+        const contract = await materializeContract(buildDestructiveTool());
         expect(contract.surface.actions['reset']!.destructive).toBe(true);
         expect(contract.surface.actions['status']!.readOnly).toBe(true);
         expect(contract.surface.actions['reset']!.readOnly).toBe(false);
     });
 
-    it('tool with presenter captures presenter metadata', () => {
-        const contract = materializeContract(buildToolWithPresenter());
+    it('tool with presenter captures presenter metadata', async () => {
+        const contract = await materializeContract(buildToolWithPresenter());
         expect(contract.surface.actions['list']!.presenterName).toBe('UserPresenter');
         expect(contract.behavior.egressSchemaDigest).not.toBeNull();
     });
 
-    it('tags are preserved in contract surface', () => {
-        const contract = materializeContract(buildDestructiveTool());
+    it('tags are preserved in contract surface', async () => {
+        const contract = await materializeContract(buildDestructiveTool());
         expect(contract.surface.tags).toContain('admin');
         expect(contract.surface.tags).toContain('danger');
     });
 
-    it('compileContracts produces a keyed record', () => {
-        const contracts = compileContracts([buildReadOnlyTool(), buildDestructiveTool()]);
+    it('compileContracts produces a keyed record', async () => {
+        const contracts = await compileContracts([buildReadOnlyTool(), buildDestructiveTool()]);
         expect(contracts).toHaveProperty('config');
         expect(contracts).toHaveProperty('admin');
         expect(contracts['config']!.surface.name).toBe('config');
         expect(contracts['admin']!.surface.name).toBe('admin');
     });
 
-    it('deterministic: same builder produces same contract', () => {
-        const c1 = materializeContract(buildReadOnlyTool());
-        const c2 = materializeContract(buildReadOnlyTool());
-        const d1 = computeDigest(c1);
-        const d2 = computeDigest(c2);
+    it('deterministic: same builder produces same contract', async () => {
+        const c1 = await materializeContract(buildReadOnlyTool());
+        const c2 = await materializeContract(buildReadOnlyTool());
+        const d1 = await computeDigest(c1);
+        const d2 = await computeDigest(c2);
         expect(d1.digest).toBe(d2.digest);
     });
 });

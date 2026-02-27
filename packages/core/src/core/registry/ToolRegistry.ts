@@ -253,10 +253,10 @@ export class ToolRegistry<TContext = void> {
      * @see {@link DetachFn} for the teardown function type
      * @see {@link AttachOptions} for all options
      */
-    attachToServer(
+    async attachToServer(
         server: unknown,
         options: AttachOptions<TContext> = {},
-    ): DetachFn {
+    ): Promise<DetachFn> {
         return attachToServerStrategy(server, this, options);
     }
 

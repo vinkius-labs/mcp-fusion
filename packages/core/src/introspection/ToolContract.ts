@@ -166,9 +166,9 @@ export interface HandlerEntitlements {
  * @param builder - A registered tool builder
  * @returns A fully materialized `ToolContract`
  */
-export function materializeContract<TContext>(
+export async function materializeContract<TContext>(
     builder: ToolBuilder<TContext>,
-): ToolContract {
+): Promise<ToolContract> {
     const toolDef = builder.buildToolDefinition();
     const metadata = builder.getActionMetadata();
 
@@ -182,7 +182,7 @@ export function materializeContract<TContext>(
             readOnly: action.readOnly,
             requiredFields: action.requiredFields,
             presenterName: action.presenterName,
-            inputSchemaDigest: sha256(JSON.stringify(action.requiredFields)),
+            inputSchemaDigest: await sha256(JSON.stringify(action.requiredFields)),
             hasMiddleware: action.hasMiddleware,
         };
     }
@@ -192,11 +192,11 @@ export function materializeContract<TContext>(
         description: toolDef.description,
         tags: builder.getTags(),
         actions,
-        inputSchemaDigest: sha256(canonicalize(toolDef.inputSchema)),
+        inputSchemaDigest: await sha256(canonicalize(toolDef.inputSchema)),
     };
 
     // Behavior — extract from action metadata (Presenter introspection accessors)
-    const behavior = materializeBehavior(metadata, builder);
+    const behavior = await materializeBehavior(metadata, builder);
 
     // Token Economics
     const tokenEconomics = computeTokenEconomics(metadata, behavior);
@@ -218,10 +218,10 @@ export function materializeContract<TContext>(
  * Materialize the behavioral contract from action metadata.
  * @internal
  */
-function materializeBehavior<TContext>(
+async function materializeBehavior<TContext>(
     metadata: readonly import('../core/types.js').ActionMetadata[],
     builder: ToolBuilder<TContext>,
-): ToolBehavior {
+): Promise<ToolBehavior> {
     // Collect Presenter data from the first action that declares one
     let egressSchemaDigest: string | null = null;
     let systemRulesFingerprint = 'none';
@@ -244,11 +244,11 @@ function materializeBehavior<TContext>(
 
     if (presenterSchemaKeys.size > 0) {
         const sortedKeys = [...presenterSchemaKeys].sort();
-        egressSchemaDigest = sha256(sortedKeys.join(','));
+        egressSchemaDigest = await sha256(sortedKeys.join(','));
     }
 
     if (systemRulesFingerprint !== 'dynamic' && presenterSchemaKeys.size > 0) {
-        systemRulesFingerprint = 'static:' + sha256([...presenterSchemaKeys].sort().join(','));
+        systemRulesFingerprint = 'static:' + await sha256([...presenterSchemaKeys].sort().join(','));
     }
 
     // Middleware chain — extract names from builder
@@ -325,12 +325,12 @@ function computeTokenEconomics(
  * @param builders - Iterable of all registered tool builders
  * @returns Record mapping tool names to their materialized contracts
  */
-export function compileContracts<TContext>(
+export async function compileContracts<TContext>(
     builders: Iterable<ToolBuilder<TContext>>,
-): Record<string, ToolContract> {
+): Promise<Record<string, ToolContract>> {
     const contracts: Record<string, ToolContract> = {};
     for (const builder of builders) {
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
         contracts[contract.surface.name] = contract;
     }
     return contracts;

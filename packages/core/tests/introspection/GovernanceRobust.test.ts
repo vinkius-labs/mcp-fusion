@@ -113,7 +113,7 @@ import { definePrompt } from '../../src/prompt/definePrompt.js';
 // Shared Fixtures
 // ============================================================================
 
-function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
+async function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
     return {
         description: 'Test action',
         destructive: false,
@@ -121,13 +121,13 @@ function makeAction(overrides: Partial<ActionContract> = {}): ActionContract {
         readOnly: false,
         requiredFields: [],
         presenterName: undefined,
-        inputSchemaDigest: sha256('test'),
+        inputSchemaDigest: await sha256('test'),
         hasMiddleware: false,
         ...overrides,
     };
 }
 
-function makeContract(overrides: Partial<{
+async function makeContract(overrides: Partial<{
     name: string;
     description: string | undefined;
     tags: string[];
@@ -150,11 +150,11 @@ function makeContract(overrides: Partial<{
             name: overrides.name ?? 'test-tool',
             description: overrides.description ?? 'A test tool',
             tags: overrides.tags ?? ['test'],
-            actions: overrides.actions ?? { run: makeAction() },
-            inputSchemaDigest: sha256('schema'),
+            actions: overrides.actions ?? { run: await makeAction() },
+            inputSchemaDigest: await sha256('schema'),
         },
         behavior: {
-            egressSchemaDigest: overrides.egressSchemaDigest ?? sha256('egress'),
+            egressSchemaDigest: overrides.egressSchemaDigest ?? await sha256('egress'),
             systemRulesFingerprint: overrides.systemRulesFingerprint ?? 'static:rules',
             cognitiveGuardrails: { agentLimitMax: 50, egressMaxBytes: null },
             middlewareChain: overrides.middlewareChain ?? [],
@@ -233,7 +233,7 @@ function createMockTracer(): { tracer: FusionTracer; spans: Array<{ name: string
 // ============================================================================
 
 describe('Security: XML Injection in formatDeltasAsXml', () => {
-    it('escapes XML-special characters in delta values', () => {
+    it('escapes XML-special characters in delta values', async () => {
         const deltas: ContractDelta[] = [{
             category: 'surface',
             field: 'description',
@@ -249,7 +249,7 @@ describe('Security: XML Injection in formatDeltasAsXml', () => {
         expect(xml).toContain('&quot;');
     });
 
-    it('handles ampersands in tool descriptions', () => {
+    it('handles ampersands in tool descriptions', async () => {
         const deltas: ContractDelta[] = [{
             category: 'surface',
             field: 'description',
@@ -263,7 +263,7 @@ describe('Security: XML Injection in formatDeltasAsXml', () => {
         expect(xml).toContain('S&amp;P');
     });
 
-    it('escapes angle brackets in field names and descriptions', () => {
+    it('escapes angle brackets in field names and descriptions', async () => {
         const deltas: ContractDelta[] = [{
             category: 'surface',
             field: '<injected>',
@@ -279,11 +279,11 @@ describe('Security: XML Injection in formatDeltasAsXml', () => {
 });
 
 describe('Security: Self-Healing contract_awareness injection', () => {
-    it('does not double-inject if error already contains contract_awareness', () => {
-        const contract = makeContract({ name: 'users' });
-        const contractAfter = makeContract({
+    it('does not double-inject if error already contains contract_awareness', async () => {
+        const contract = await makeContract({ name: 'users' });
+        const contractAfter = await makeContract({
             name: 'users',
-            egressSchemaDigest: sha256('changed-egress'),
+            egressSchemaDigest: await sha256('changed-egress'),
         });
         const diff = diffContracts(contract, contractAfter);
         const config = {
@@ -295,9 +295,9 @@ describe('Security: Self-Healing contract_awareness injection', () => {
         expect(result.injected).toBe(true);
     });
 
-    it('appends to end if </validation_error> tag is absent', () => {
-        const contract = makeContract({ name: 'tools' });
-        const contractAfter = makeContract({
+    it('appends to end if </validation_error> tag is absent', async () => {
+        const contract = await makeContract({ name: 'tools' });
+        const contractAfter = await makeContract({
             name: 'tools',
             systemRulesFingerprint: 'changed-rules',
         });
@@ -314,22 +314,22 @@ describe('Security: Self-Healing contract_awareness injection', () => {
 });
 
 describe('Security: Lockfile integrity tamper detection', () => {
-    it('detects tampered integrityDigest', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('detects tampered integrityDigest', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const tampered: CapabilityLockfile = {
             ...lockfile,
             integrityDigest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
         };
-        const result = checkLockfile(tampered, contracts);
+        const result = await checkLockfile(tampered, contracts);
         // Even though tool digests match individually, the overall integrity is wrong
         // The fast path checks integrityDigest first
         expect(result.ok).toBe(false);
     });
 
-    it('detects tampered per-tool digest without surface changes', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('detects tampered per-tool digest without surface changes', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         // Tamper the per-tool digest
         const tampered = JSON.parse(serializeLockfile(lockfile)) as CapabilityLockfile;
         (tampered.capabilities.tools as Record<string, { integrityDigest: string }>)['users']!.integrityDigest = 'sha256:aaaa';
@@ -337,7 +337,7 @@ describe('Security: Lockfile integrity tamper detection', () => {
         // Per-tool tamper alone doesn't affect it unless integrityDigest also changes
         // So we also tamper the overall digest to simulate corruption
         tampered.integrityDigest = 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-        const result = checkLockfile(tampered, contracts);
+        const result = await checkLockfile(tampered, contracts);
         expect(result.ok).toBe(false);
     });
 });
@@ -345,11 +345,8 @@ describe('Security: Lockfile integrity tamper detection', () => {
 describe('Security: Attestation with adversarial inputs', () => {
     it('rejects empty secret for HMAC signer', async () => {
         const signer = createHmacSigner('');
-        // Empty secret still works as HMAC accepts any string key
-        const sig = await signer.sign('test-digest');
-        expect(sig).toBeTruthy();
-        const valid = await signer.verify('test-digest', sig);
-        expect(valid).toBe(true);
+        // Web Crypto API rejects zero-length HMAC keys
+        await expect(signer.sign('test-digest')).rejects.toThrow();
     });
 
     it('rejects signature of different length', async () => {
@@ -392,26 +389,26 @@ describe('Security: Attestation with adversarial inputs', () => {
 });
 
 describe('Security: EntitlementScanner false positive resistance', () => {
-    it('does NOT detect fs in string literals without call parens', () => {
+    it('does NOT detect fs in string literals without call parens', async () => {
         const source = `const msg = "fs.readFileSync is dangerous";`;
         const matches = scanSource(source);
         // The scanner requires \( after identifiers — bare names in strings don't match
         expect(matches.length).toBe(0);
     });
 
-    it('detects patterns in comments (conservative over-report)', () => {
+    it('detects patterns in comments (conservative over-report)', async () => {
         const source = `// child_process.exec('ls')`;
         const matches = scanSource(source);
         expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('detects dynamic import expression', () => {
+    it('detects dynamic import expression', async () => {
         const source = `const mod = await import('child_process');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'subprocess')).toBe(true);
     });
 
-    it('detects eval and new Function as codeEvaluation risk', () => {
+    it('detects eval and new Function as codeEvaluation risk', async () => {
         const source = `const result = eval('1+1');\nconst fn = new Function('return 42');`;
         const matches = scanSource(source);
         // eval and Function are now detected as codeEvaluation entitlements
@@ -419,7 +416,7 @@ describe('Security: EntitlementScanner false positive resistance', () => {
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Function')).toBe(true);
     });
 
-    it('detects fetch and XMLHttpRequest as network', () => {
+    it('detects fetch and XMLHttpRequest as network', async () => {
         const source = `
             const resp = await fetch('https://api.example.com');
             const xhr = new XMLHttpRequest();
@@ -429,7 +426,7 @@ describe('Security: EntitlementScanner false positive resistance', () => {
         expect(networkMatches.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('detects globalThis.fetch as network', () => {
+    it('detects globalThis.fetch as network', async () => {
         const source = `const r = await globalThis.fetch('https://example.com');`;
         const matches = scanSource(source);
         const networkMatches = matches.filter(m => m.category === 'network');
@@ -442,160 +439,160 @@ describe('Security: EntitlementScanner false positive resistance', () => {
 // ============================================================================
 
 describe('Boundary: Unicode & emoji in tool/prompt names', () => {
-    it('handles unicode tool name in contracts', () => {
-        const contract = makeContract({ name: '用户管理' });
-        const digest = computeDigest(contract);
+    it('handles unicode tool name in contracts', async () => {
+        const contract = await makeContract({ name: '用户管理' });
+        const digest = await computeDigest(contract);
         expect(digest.toolName).toBe('用户管理');
         expect(digest.digest).toHaveLength(64);
     });
 
-    it('handles emoji in tags', () => {
-        const contract = makeContract({ tags: ['🔥', '✨', '🚀'] });
-        const digest = computeDigest(contract);
+    it('handles emoji in tags', async () => {
+        const contract = await makeContract({ tags: ['🔥', '✨', '🚀'] });
+        const digest = await computeDigest(contract);
         expect(digest.digest).toHaveLength(64);
     });
 
-    it('handles unicode prompt name in lockfile', () => {
-        const contracts = { test: makeContract() };
+    it('handles unicode prompt name in lockfile', async () => {
+        const contracts = { test: await makeContract() };
         const prompt = createPromptBuilder({ name: 'モデル検証' });
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         expect(lockfile.capabilities.prompts!['モデル検証']).toBeDefined();
     });
 
-    it('handles emoji in tool description', () => {
-        const contract = makeContract({ description: '🏗️ Build & deploy tools 🚀' });
-        const digest = computeDigest(contract);
+    it('handles emoji in tool description', async () => {
+        const contract = await makeContract({ description: '🏗️ Build & deploy tools 🚀' });
+        const digest = await computeDigest(contract);
         expect(digest.digest).toHaveLength(64);
     });
 
-    it('handles RTL text in descriptions', () => {
-        const contract = makeContract({ description: 'أدوات إدارة المستخدمين' });
-        const digest = computeDigest(contract);
+    it('handles RTL text in descriptions', async () => {
+        const contract = await makeContract({ description: 'أدوات إدارة المستخدمين' });
+        const digest = await computeDigest(contract);
         expect(digest.toolName).toBe('test-tool');
         expect(digest.digest).toHaveLength(64);
     });
 });
 
 describe('Boundary: Empty inputs', () => {
-    it('sha256 of empty string produces known hash', () => {
-        const hash = sha256('');
+    it('sha256 of empty string produces known hash', async () => {
+        const hash = await sha256('');
         // SHA-256 of empty string is a well-known constant
         expect(hash).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
     });
 
-    it('canonicalize with null', () => {
+    it('canonicalize with null', async () => {
         expect(canonicalize(null)).toBe('null');
     });
 
-    it('canonicalize with undefined in object', () => {
+    it('canonicalize with undefined in object', async () => {
         // JSON.stringify omits undefined values
         const result = canonicalize({ a: 1, b: undefined });
         const parsed = JSON.parse(result);
         expect(parsed).toEqual({ a: 1 });
     });
 
-    it('canonicalize with empty object', () => {
+    it('canonicalize with empty object', async () => {
         expect(canonicalize({})).toBe('{}');
     });
 
-    it('canonicalize with empty array', () => {
+    it('canonicalize with empty array', async () => {
         expect(canonicalize([])).toBe('[]');
     });
 
-    it('canonicalize with nested empty objects', () => {
+    it('canonicalize with nested empty objects', async () => {
         const result = canonicalize({ a: {}, b: { c: {} } });
         expect(JSON.parse(result)).toEqual({ a: {}, b: { c: {} } });
     });
 
-    it('canonicalize primitive number', () => {
+    it('canonicalize primitive number', async () => {
         expect(canonicalize(42)).toBe('42');
     });
 
-    it('canonicalize primitive string', () => {
+    it('canonicalize primitive string', async () => {
         expect(canonicalize('hello')).toBe('"hello"');
     });
 
-    it('canonicalize with boolean', () => {
+    it('canonicalize with boolean', async () => {
         expect(canonicalize(true)).toBe('true');
         expect(canonicalize(false)).toBe('false');
     });
 
-    it('compileContracts with empty array', () => {
-        const result = compileContracts([]);
+    it('compileContracts with empty array', async () => {
+        const result = await compileContracts([]);
         expect(result).toEqual({});
     });
 
-    it('diffContracts with empty actions on both sides', () => {
-        const before = makeContract({ actions: {} });
-        const after = makeContract({ actions: {} });
+    it('diffContracts with empty actions on both sides', async () => {
+        const before = await makeContract({ actions: {} });
+        const after = await makeContract({ actions: {} });
         const diff = diffContracts(before, after);
         expect(diff.isBackwardsCompatible).toBe(true);
     });
 
-    it('computeServerDigest with empty contracts', () => {
-        const digest = computeServerDigest({});
+    it('computeServerDigest with empty contracts', async () => {
+        const digest = await computeServerDigest({});
         expect(digest.digest).toHaveLength(64);
         expect(Object.keys(digest.tools)).toHaveLength(0);
     });
 
-    it('parseLockfile with empty string', () => {
+    it('parseLockfile with empty string', async () => {
         expect(parseLockfile('')).toBeNull();
     });
 
-    it('parseLockfile with empty object', () => {
+    it('parseLockfile with empty object', async () => {
         expect(parseLockfile('{}')).toBeNull();
     });
 
-    it('scanSource with empty string', () => {
+    it('scanSource with empty string', async () => {
         const matches = scanSource('');
         expect(matches).toHaveLength(0);
     });
 
-    it('scanAndValidate with empty source is safe', () => {
+    it('scanAndValidate with empty source is safe', async () => {
         const report = scanAndValidate('');
         expect(report.safe).toBe(true);
         expect(report.matches).toHaveLength(0);
     });
 
-    it('estimateTokens with empty string', () => {
+    it('estimateTokens with empty string', async () => {
         expect(estimateTokens('')).toBe(0);
     });
 
-    it('profileBlock with empty text', () => {
+    it('profileBlock with empty text', async () => {
         const profile = profileBlock({ type: 'text', text: '' });
         expect(profile.estimatedTokens).toBe(0);
         expect(profile.bytes).toBe(0);
     });
 
-    it('profileBlock with missing text', () => {
+    it('profileBlock with missing text', async () => {
         const profile = profileBlock({ type: 'text' });
         expect(profile.estimatedTokens).toBe(0);
     });
 
-    it('aggregateProfiles with empty array', () => {
+    it('aggregateProfiles with empty array', async () => {
         const summary = aggregateProfiles([]);
         expect(summary.overallRisk).toBe('low');
         expect(summary.toolCount).toBe(0);
     });
 
-    it('checkLockfile with prompts: undefined vs prompts: []', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('checkLockfile with prompts: undefined vs prompts: []', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         // No prompts (undefined)
-        const result1 = checkLockfile(lockfile, contracts, undefined);
+        const result1 = await checkLockfile(lockfile, contracts, undefined);
         expect(result1.ok).toBe(true);
         // Empty prompts array
-        const result2 = checkLockfile(lockfile, contracts, { prompts: [] });
+        const result2 = await checkLockfile(lockfile, contracts, { prompts: [] });
         expect(result2.ok).toBe(true);
     });
 
-    it('generateLockfile with empty server name', () => {
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('', contracts, '1.0.0');
+    it('generateLockfile with empty server name', async () => {
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('', contracts, '1.0.0');
         expect(lockfile.serverName).toBe('');
     });
 
-    it('aggregateResults with empty results', () => {
+    it('aggregateResults with empty results', async () => {
         const report = aggregateResults('my-tool', []);
         expect(report.stable).toBe(true);
         expect(report.overallDrift).toBe('none');
@@ -604,32 +601,32 @@ describe('Boundary: Empty inputs', () => {
 });
 
 describe('Boundary: Large-scale inputs', () => {
-    it('handles 100 tools in lockfile', () => {
+    it('handles 100 tools in lockfile', async () => {
         const contracts: Record<string, ToolContract> = {};
         for (let i = 0; i < 100; i++) {
-            contracts[`tool-${String(i).padStart(3, '0')}`] = makeContract({
+            contracts[`tool-${String(i).padStart(3, '0')}`] = await makeContract({
                 name: `tool-${String(i).padStart(3, '0')}`,
             });
         }
-        const lockfile = generateLockfile('big-server', contracts, '1.0.0');
+        const lockfile = await generateLockfile('big-server', contracts, '1.0.0');
         expect(Object.keys(lockfile.capabilities.tools)).toHaveLength(100);
         const json = serializeLockfile(lockfile);
         expect(JSON.parse(json)).toBeTruthy();
     });
 
-    it('handles prompt with 50 arguments', () => {
+    it('handles prompt with 50 arguments', async () => {
         const args = Array.from({ length: 50 }, (_, i) => ({
             name: `arg-${String(i).padStart(2, '0')}`,
             description: `Argument ${i}`,
             required: i < 25,
         }));
         const prompt = createPromptBuilder({ arguments: args });
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         expect(lockfile.capabilities.prompts!['test-prompt']!.arguments).toHaveLength(50);
     });
 
-    it('estimateTokens with large multi-byte text', () => {
+    it('estimateTokens with large multi-byte text', async () => {
         const cjk = '中'.repeat(10000); // CJK character, 3 bytes each
         const tokens = estimateTokens(cjk);
         expect(tokens).toBeGreaterThan(0);
@@ -637,66 +634,66 @@ describe('Boundary: Large-scale inputs', () => {
         expect(tokens).toBe(Math.ceil(10000 / 3.5));
     });
 
-    it('sha256 produces consistent output for large input', () => {
+    it('sha256 produces consistent output for large input', async () => {
         const large = 'A'.repeat(1_000_000);
-        const hash1 = sha256(large);
-        const hash2 = sha256(large);
+        const hash1 = await sha256(large);
+        const hash2 = await sha256(large);
         expect(hash1).toBe(hash2);
         expect(hash1).toHaveLength(64);
     });
 });
 
 describe('Boundary: Special characters in tool names', () => {
-    it('tool name with dots', () => {
-        const contract = makeContract({ name: 'api.v2.users' });
-        const digest = computeDigest(contract);
+    it('tool name with dots', async () => {
+        const contract = await makeContract({ name: 'api.v2.users' });
+        const digest = await computeDigest(contract);
         expect(digest.toolName).toBe('api.v2.users');
     });
 
-    it('tool name with slashes', () => {
-        const contract = makeContract({ name: 'namespace/tool' });
-        const digest = computeDigest(contract);
+    it('tool name with slashes', async () => {
+        const contract = await makeContract({ name: 'namespace/tool' });
+        const digest = await computeDigest(contract);
         expect(digest.toolName).toBe('namespace/tool');
     });
 
-    it('tool name with spaces', () => {
-        const contract = makeContract({ name: 'my tool' });
+    it('tool name with spaces', async () => {
+        const contract = await makeContract({ name: 'my tool' });
         const contracts = { 'my tool': contract };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         expect(lockfile.capabilities.tools['my tool']).toBeDefined();
     });
 
-    it('tool name with reserved JSON characters', () => {
-        const contract = makeContract({ name: 'tool"with"quotes' });
-        const digest = computeDigest(contract);
+    it('tool name with reserved JSON characters', async () => {
+        const contract = await makeContract({ name: 'tool"with"quotes' });
+        const digest = await computeDigest(contract);
         expect(digest.digest).toHaveLength(64);
     });
 });
 
 describe('Boundary: Token Economics edge cases', () => {
-    it('computeStaticProfile with 0 fields', () => {
+    it('computeStaticProfile with 0 fields', async () => {
         const profile = computeStaticProfile('empty', [], null, null);
         expect(profile.risk).toBe('low');
         expect(profile.fieldBreakdown).toHaveLength(0);
     });
 
-    it('computeStaticProfile with egressMaxBytes set', () => {
+    it('computeStaticProfile with egressMaxBytes set', async () => {
         const profile = computeStaticProfile('tool', ['id', 'name'], null, 1024);
         expect(profile.bounded).toBe(true);
     });
 
-    it('computeStaticProfile with agentLimitMax set', () => {
+    it('computeStaticProfile with agentLimitMax set', async () => {
         const profile = computeStaticProfile('tool', ['id', 'name'], 10, null);
         expect(profile.bounded).toBe(true);
     });
 
-    it('profileResponse with empty blocks array', () => {
+    it('profileResponse with empty blocks array', async () => {
         const analysis = profileResponse('tool', 'action', []);
         expect(analysis.estimatedTokens).toBe(0);
         expect(analysis.risk).toBe('low');
     });
 
-    it('aggregateProfiles with all critical risk', () => {
+    it('aggregateProfiles with all critical risk', async () => {
         const profiles: StaticTokenProfile[] = [
             computeStaticProfile('a', Array.from({ length: 100 }, (_, i) => `field${i}`), null, null),
             computeStaticProfile('b', Array.from({ length: 100 }, (_, i) => `field${i}`), null, null),
@@ -705,20 +702,20 @@ describe('Boundary: Token Economics edge cases', () => {
         expect(['high', 'critical']).toContain(summary.overallRisk);
     });
 
-    it('profileBlock with resource type', () => {
+    it('profileBlock with resource type', async () => {
         const profile = profileBlock({ type: 'resource' });
         expect(profile.type).toBe('resource');
         expect(profile.estimatedTokens).toBe(0);
     });
 
-    it('profileBlock with image type', () => {
+    it('profileBlock with image type', async () => {
         const profile = profileBlock({ type: 'image' });
         expect(profile.type).toBe('image');
     });
 });
 
 describe('Boundary: EntitlementScanner edge cases', () => {
-    it('buildEntitlements with empty matches', () => {
+    it('buildEntitlements with empty matches', async () => {
         const ent = buildEntitlements([]);
         expect(ent.filesystem).toBe(false);
         expect(ent.network).toBe(false);
@@ -726,12 +723,12 @@ describe('Boundary: EntitlementScanner edge cases', () => {
         expect(ent.crypto).toBe(false);
     });
 
-    it('validateClaims with empty matches', () => {
+    it('validateClaims with empty matches', async () => {
         const violations = validateClaims([], { readOnly: true });
         expect(violations).toHaveLength(0);
     });
 
-    it('validateClaims with allowed bypasses violations', () => {
+    it('validateClaims with allowed bypasses violations', async () => {
         const source = `import fs from 'fs'; fs.readFileSync('file');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, {
@@ -743,7 +740,7 @@ describe('Boundary: EntitlementScanner edge cases', () => {
         expect(fsViolations).toHaveLength(0);
     });
 
-    it('scanSource returns correct line numbers', () => {
+    it('scanSource returns correct line numbers', async () => {
         const source = [
             'const a = 1;',
             'import fs from "fs";',
@@ -759,7 +756,7 @@ describe('Boundary: EntitlementScanner edge cases', () => {
 });
 
 describe('Boundary: SemanticProbe edge cases', () => {
-    it('parseJudgeResponse with partial JSON (missing fields)', () => {
+    it('parseJudgeResponse with partial JSON (missing fields)', async () => {
         const probe = createProbe('tool', 'action', 'input', 'expected', 'actual', {
             description: 'Test',
             readOnly: false,
@@ -771,7 +768,7 @@ describe('Boundary: SemanticProbe edge cases', () => {
         expect(result.similarityScore).toBeCloseTo(0.9);
     });
 
-    it('parseJudgeResponse with negative similarity score is clamped', () => {
+    it('parseJudgeResponse with negative similarity score is clamped', async () => {
         const probe = createProbe('tool', 'action', 'input', 'expected', 'actual', {
             description: 'Test',
             readOnly: false,
@@ -787,7 +784,7 @@ describe('Boundary: SemanticProbe edge cases', () => {
         expect(result.similarityScore).toBe(0);
     });
 
-    it('parseJudgeResponse with score > 1 is clamped', () => {
+    it('parseJudgeResponse with score > 1 is clamped', async () => {
         const probe = createProbe('tool', 'action', 'input', 'expected', 'actual', {
             description: 'Test',
             readOnly: false,
@@ -803,7 +800,7 @@ describe('Boundary: SemanticProbe edge cases', () => {
         expect(result.similarityScore).toBe(1);
     });
 
-    it('parseJudgeResponse with completely invalid input falls back', () => {
+    it('parseJudgeResponse with completely invalid input falls back', async () => {
         const probe = createProbe('tool', 'action', 'input', 'expected', 'actual', {
             description: 'Test',
             readOnly: false,
@@ -816,7 +813,7 @@ describe('Boundary: SemanticProbe edge cases', () => {
         expect(result.driftLevel).toBe('medium');
     });
 
-    it('buildJudgePrompt produces valid prompt text', () => {
+    it('buildJudgePrompt produces valid prompt text', async () => {
         const probe = createProbe('users', 'list', '{}', '[{"id":1}]', '[{"id":1}]', {
             description: 'List users',
             readOnly: true,
@@ -836,9 +833,9 @@ describe('Boundary: SemanticProbe edge cases', () => {
 // ============================================================================
 
 describe('Corruption: parseLockfile resilience', () => {
-    it('rejects truncated JSON (simulating partial disk write)', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('rejects truncated JSON (simulating partial disk write)', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const json = serializeLockfile(lockfile);
         // Truncate at various points
         expect(parseLockfile(json.slice(0, 10))).toBeNull();
@@ -846,9 +843,9 @@ describe('Corruption: parseLockfile resilience', () => {
         expect(parseLockfile(json.slice(0, json.length - 5))).toBeNull();
     });
 
-    it('rejects JSON with BOM character prefix', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('rejects JSON with BOM character prefix', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const json = serializeLockfile(lockfile);
         // UTF-8 BOM
         const withBom = '\uFEFF' + json;
@@ -861,9 +858,9 @@ describe('Corruption: parseLockfile resilience', () => {
         expect(result === null || typeof result === 'object').toBe(true);
     });
 
-    it('handles extra unknown fields (forward compatibility)', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+    it('handles extra unknown fields (forward compatibility)', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const json = JSON.parse(serializeLockfile(lockfile));
         json.newField = 'future-addition';
         json.capabilities.newSection = {};
@@ -872,13 +869,13 @@ describe('Corruption: parseLockfile resilience', () => {
         expect(result!.serverName).toBe('test');
     });
 
-    it('rejects wrong lockfileVersion', () => {
+    it('rejects wrong lockfileVersion', async () => {
         expect(parseLockfile('{"lockfileVersion": 2}')).toBeNull();
         expect(parseLockfile('{"lockfileVersion": 0}')).toBeNull();
         expect(parseLockfile('{"lockfileVersion": "1"}')).toBeNull();
     });
 
-    it('rejects missing required fields', () => {
+    it('rejects missing required fields', async () => {
         const base = {
             lockfileVersion: 1,
             serverName: 'test',
@@ -901,7 +898,7 @@ describe('Corruption: parseLockfile resilience', () => {
         expect(parseLockfile(JSON.stringify({ ...base, capabilities: {} }))).toBeNull();
     });
 
-    it('parseLockfile rejects non-object capabilities.tools', () => {
+    it('parseLockfile rejects non-object capabilities.tools', async () => {
         const bad = {
             lockfileVersion: 1,
             serverName: 'test',
@@ -913,7 +910,7 @@ describe('Corruption: parseLockfile resilience', () => {
         expect(parseLockfile(JSON.stringify(bad))).toBeNull();
     });
 
-    it('parseLockfile rejects array as capabilities', () => {
+    it('parseLockfile rejects array as capabilities', async () => {
         const bad = {
             lockfileVersion: 1,
             serverName: 'test',
@@ -980,7 +977,7 @@ describe('Corruption: Attestation with malformed inputs', () => {
         expect(result.error).toBeDefined();
     });
 
-    it('buildTrustCapability with toolCount 0', () => {
+    it('buildTrustCapability with toolCount 0', async () => {
         const attestation: AttestationResult = {
             valid: true,
             computedDigest: 'digest-abc',
@@ -1041,7 +1038,7 @@ describe('Corruption: Attestation with malformed inputs', () => {
 // ============================================================================
 
 describe('CrossModule: GovernanceObserver with debug events', () => {
-    it('emits governance events through debug observer', () => {
+    it('emits governance events through debug observer', async () => {
         const events: DebugEvent[] = [];
         const debug = (event: DebugEvent) => { events.push(event); };
         const observer = createGovernanceObserver({ debug });
@@ -1059,7 +1056,7 @@ describe('CrossModule: GovernanceObserver with debug events', () => {
         expect(event.durationMs).toBeGreaterThanOrEqual(0);
     });
 
-    it('emits failure event when operation throws', () => {
+    it('emits failure event when operation throws', async () => {
         const events: DebugEvent[] = [];
         const debug = (event: DebugEvent) => { events.push(event); };
         const observer = createGovernanceObserver({ debug });
@@ -1076,7 +1073,7 @@ describe('CrossModule: GovernanceObserver with debug events', () => {
         expect(event.detail).toBe('Out of memory');
     });
 
-    it('emits tracing spans for governance operations', () => {
+    it('emits tracing spans for governance operations', async () => {
         const { tracer, spans } = createMockTracer();
         const observer = createGovernanceObserver({ tracer });
 
@@ -1090,7 +1087,7 @@ describe('CrossModule: GovernanceObserver with debug events', () => {
         expect(spans[0]!.status?.code).toBe(SpanStatusCode.OK);
     });
 
-    it('records exception in tracing span on failure', () => {
+    it('records exception in tracing span on failure', async () => {
         const { tracer, spans } = createMockTracer();
         const exceptions: (Error | string)[] = [];
         const origStartSpan = tracer.startSpan.bind(tracer);
@@ -1147,13 +1144,13 @@ describe('CrossModule: GovernanceObserver with debug events', () => {
         expect((events[0] as GovernanceEvent).detail).toBe('ENOENT');
     });
 
-    it('noop observer has zero overhead', () => {
+    it('noop observer has zero overhead', async () => {
         const noop = createNoopObserver();
         const result = noop.observe('contract.compile', 'test', () => 42);
         expect(result).toBe(42);
     });
 
-    it('both debug and tracer fire simultaneously', () => {
+    it('both debug and tracer fire simultaneously', async () => {
         const events: DebugEvent[] = [];
         const { tracer, spans } = createMockTracer();
         const observer = createGovernanceObserver({
@@ -1171,7 +1168,7 @@ describe('CrossModule: GovernanceObserver with debug events', () => {
 });
 
 describe('CrossModule: Governance observer with createDebugObserver', () => {
-    it('governance events format correctly through default observer', () => {
+    it('governance events format correctly through default observer', async () => {
         const output: string[] = [];
         const originalDebug = console.debug;
         console.debug = (...args: unknown[]) => { output.push(args.join(' ')); };
@@ -1190,11 +1187,11 @@ describe('CrossModule: Governance observer with createDebugObserver', () => {
 describe('CrossModule: Attestation ↔ Lockfile integrity', () => {
     it('lockfile integrityDigest matches attestation computedDigest', async () => {
         const contracts = {
-            users: makeContract({ name: 'users' }),
-            projects: makeContract({ name: 'projects' }),
+            users: await makeContract({ name: 'users' }),
+            projects: await makeContract({ name: 'projects' }),
         };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
-        const serverDigest = computeServerDigest(contracts);
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
+        const serverDigest = await computeServerDigest(contracts);
 
         const signer = createHmacSigner('test-secret');
         const attestation = await attestServerDigest(serverDigest, { signer });
@@ -1205,14 +1202,14 @@ describe('CrossModule: Attestation ↔ Lockfile integrity', () => {
     });
 
     it('lockfile drift detected when attestation expected digest changes', async () => {
-        const contractsV1 = { users: makeContract({ name: 'users', description: 'V1' }) };
-        const contractsV2 = { users: makeContract({ name: 'users', description: 'V2' }) };
+        const contractsV1 = { users: await makeContract({ name: 'users', description: 'V1' }) };
+        const contractsV2 = { users: await makeContract({ name: 'users', description: 'V2' }) };
 
-        const lockfileV1 = generateLockfile('test', contractsV1, '1.0.0');
-        const serverDigestV2 = computeServerDigest(contractsV2);
+        const lockfileV1 = await generateLockfile('test', contractsV1, '1.0.0');
+        const serverDigestV2 = await computeServerDigest(contractsV2);
 
         // Lockfile check detects drift
-        const check = checkLockfile(lockfileV1, contractsV2);
+        const check = await checkLockfile(lockfileV1, contractsV2);
         expect(check.ok).toBe(false);
 
         // Attestation with expected V1 digest also fails
@@ -1234,7 +1231,7 @@ describe('CrossModule: Full governance pipeline with observability', () => {
         });
 
         // Step 1: Compile contracts
-        const contract = makeContract({
+        const contract = await makeContract({
             name: 'tasks',
             description: 'Task management',
             filesystem: true,
@@ -1244,17 +1241,17 @@ describe('CrossModule: Full governance pipeline with observability', () => {
         });
 
         // Step 2: Compute digests
-        const digest = observer.observe('digest.compute', 'Computing digests', () => {
+        const digest = await observer.observeAsync('digest.compute', 'Computing digests', async () => {
             return computeServerDigest(contracts);
         });
 
         // Step 3: Generate lockfile
-        const lockfile = observer.observe('lockfile.generate', 'Generating lockfile', () => {
+        const lockfile = await observer.observeAsync('lockfile.generate', 'Generating lockfile', async () => {
             return generateLockfile('pipeline-test', contracts, '1.0.0');
         });
 
         // Step 4: Check lockfile (should match)
-        const check = observer.observe('lockfile.check', 'Checking lockfile', () => {
+        const check = await observer.observeAsync('lockfile.check', 'Checking lockfile', async () => {
             return checkLockfile(lockfile, contracts);
         });
         expect(check.ok).toBe(true);
@@ -1287,14 +1284,14 @@ describe('CrossModule: Full governance pipeline with observability', () => {
 });
 
 describe('CrossModule: ContractDiff → SelfHealing integration', () => {
-    it('self-healing enriches validation errors with diff context', () => {
-        const before = makeContract({
+    it('self-healing enriches validation errors with diff context', async () => {
+        const before = await makeContract({
             name: 'users',
-            egressSchemaDigest: sha256('old-egress'),
+            egressSchemaDigest: await sha256('old-egress'),
         });
-        const after = makeContract({
+        const after = await makeContract({
             name: 'users',
-            egressSchemaDigest: sha256('new-egress'),
+            egressSchemaDigest: await sha256('new-egress'),
         });
         const diff = diffContracts(before, after);
         expect(diff.maxSeverity).toBe('BREAKING');
@@ -1313,7 +1310,7 @@ describe('CrossModule: ContractDiff → SelfHealing integration', () => {
         expect(result.deltaCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('self-healing skips injection when no relevant deltas exist', () => {
+    it('self-healing skips injection when no relevant deltas exist', async () => {
         const config = {
             activeDeltas: new Map<string, ContractDiffResult>(),
         };
@@ -1327,7 +1324,7 @@ describe('CrossModule: ContractDiff → SelfHealing integration', () => {
         expect(result.enrichedError).toBe('Bad input');
     });
 
-    it('createToolEnhancer returns identity function when no deltas', () => {
+    it('createToolEnhancer returns identity function when no deltas', async () => {
         const config = {
             activeDeltas: new Map<string, ContractDiffResult>(),
         };
@@ -1336,17 +1333,17 @@ describe('CrossModule: ContractDiff → SelfHealing integration', () => {
         expect(enhancer(original, 'action')).toBe(original);
     });
 
-    it('self-healing respects maxDeltasPerError limit', () => {
-        const before = makeContract({
+    it('self-healing respects maxDeltasPerError limit', async () => {
+        const before = await makeContract({
             name: 'tools',
-            egressSchemaDigest: sha256('old'),
+            egressSchemaDigest: await sha256('old'),
             systemRulesFingerprint: 'old-rules',
             middlewareChain: ['auth'],
             affordanceTopology: ['linked-tool'],
         });
-        const after = makeContract({
+        const after = await makeContract({
             name: 'tools',
-            egressSchemaDigest: sha256('new'),
+            egressSchemaDigest: await sha256('new'),
             systemRulesFingerprint: 'new-rules',
             middlewareChain: ['auth', 'logging'],
             affordanceTopology: ['different-tool'],
@@ -1370,15 +1367,15 @@ describe('CrossModule: ContractDiff → SelfHealing integration', () => {
 });
 
 describe('CrossModule: TokenEconomics ↔ Lockfile', () => {
-    it('lockfile accurately captures token economics from contracts', () => {
-        const contract = makeContract({
+    it('lockfile accurately captures token economics from contracts', async () => {
+        const contract = await makeContract({
             name: 'analytics',
             inflationRisk: 'high',
             unboundedCollection: true,
             schemaFieldCount: 25,
         });
         const contracts = { analytics: contract };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const tool = lockfile.capabilities.tools['analytics']!;
         expect(tool.tokenEconomics.inflationRisk).toBe('high');
         expect(tool.tokenEconomics.unboundedCollection).toBe(true);
@@ -1387,8 +1384,8 @@ describe('CrossModule: TokenEconomics ↔ Lockfile', () => {
 });
 
 describe('CrossModule: EntitlementScanner ↔ Lockfile', () => {
-    it('lockfile captures entitlements accurately', () => {
-        const contract = makeContract({
+    it('lockfile captures entitlements accurately', async () => {
+        const contract = await makeContract({
             name: 'deployer',
             filesystem: true,
             network: true,
@@ -1396,7 +1393,7 @@ describe('CrossModule: EntitlementScanner ↔ Lockfile', () => {
             crypto: true,
         });
         const contracts = { deployer: contract };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const tool = lockfile.capabilities.tools['deployer']!;
         expect(tool.entitlements.filesystem).toBe(true);
         expect(tool.entitlements.network).toBe(true);
@@ -1410,7 +1407,7 @@ describe('CrossModule: EntitlementScanner ↔ Lockfile', () => {
 // ============================================================================
 
 describe('CLI: ProgressTracker', () => {
-    it('tracks step lifecycle: start → done', () => {
+    it('tracks step lifecycle: start → done', async () => {
         const steps: ProgressStep[] = [];
         const reporter: ProgressReporter = (step) => { steps.push({ ...step }); };
         const tracker = new ProgressTracker(reporter);
@@ -1425,7 +1422,7 @@ describe('CLI: ProgressTracker', () => {
         expect(steps[1]!.durationMs).toBeGreaterThanOrEqual(0);
     });
 
-    it('tracks step lifecycle: start → fail', () => {
+    it('tracks step lifecycle: start → fail', async () => {
         const steps: ProgressStep[] = [];
         const reporter: ProgressReporter = (step) => { steps.push({ ...step }); };
         const tracker = new ProgressTracker(reporter);
@@ -1438,7 +1435,7 @@ describe('CLI: ProgressTracker', () => {
         expect(steps[1]!.detail).toBe('not found');
     });
 
-    it('done without prior start has undefined durationMs', () => {
+    it('done without prior start has undefined durationMs', async () => {
         const steps: ProgressStep[] = [];
         const reporter: ProgressReporter = (step) => { steps.push({ ...step }); };
         const tracker = new ProgressTracker(reporter);
@@ -1448,7 +1445,7 @@ describe('CLI: ProgressTracker', () => {
         expect(steps[0]!.durationMs).toBeUndefined();
     });
 
-    it('uses default reporter when none provided', () => {
+    it('uses default reporter when none provided', async () => {
         const tracker = new ProgressTracker();
         // Should not throw
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
@@ -1458,7 +1455,7 @@ describe('CLI: ProgressTracker', () => {
         stderrSpy.mockRestore();
     });
 
-    it('createDefaultReporter formats output correctly', () => {
+    it('createDefaultReporter formats output correctly', async () => {
         const reporter = createDefaultReporter();
         const output: string[] = [];
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((data) => {
@@ -1480,7 +1477,7 @@ describe('CLI: ProgressTracker', () => {
         stderrSpy.mockRestore();
     });
 
-    it('detail is omitted from output when undefined', () => {
+    it('detail is omitted from output when undefined', async () => {
         const reporter = createDefaultReporter();
         const output: string[] = [];
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((data) => {
@@ -1496,35 +1493,35 @@ describe('CLI: ProgressTracker', () => {
 });
 
 describe('CLI: parseArgs edge cases', () => {
-    it('handles unknown flags gracefully', () => {
+    it('handles unknown flags gracefully', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', '--verbose', '--format', 'json']);
         expect(args.command).toBe('lock');
         // Unknown flags are ignored silently
     });
 
-    it('handles --server without value (dangling flag)', () => {
+    it('handles --server without value (dangling flag)', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', '--server']);
         expect(args.command).toBe('lock');
         expect(args.server).toBeUndefined();
     });
 
-    it('handles --name without value', () => {
+    it('handles --name without value', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', '--name']);
         expect(args.command).toBe('lock');
         expect(args.name).toBeUndefined();
     });
 
-    it('handles paths with spaces', () => {
+    it('handles paths with spaces', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', '--server', 'path with spaces/server.ts']);
         expect(args.server).toBe('path with spaces/server.ts');
     });
 
-    it('handles multiple commands (first wins)', () => {
+    it('handles multiple commands (first wins)', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', 'check']);
         expect(args.command).toBe('lock');
     });
 
-    it('handles short flags', () => {
+    it('handles short flags', async () => {
         const args = parseArgs(['node', 'fusion', 'lock', '-s', './server.ts', '-n', 'my-server', '-h']);
         expect(args.server).toBe('./server.ts');
         expect(args.name).toBe('my-server');
@@ -1537,17 +1534,17 @@ describe('CLI: parseArgs edge cases', () => {
 // ============================================================================
 
 describe('ContractDiff: Disjoint action sets', () => {
-    it('handles completely different action sets', () => {
-        const before = makeContract({
+    it('handles completely different action sets', async () => {
+        const before = await makeContract({
             actions: {
-                create: makeAction({ description: 'Create' }),
-                delete: makeAction({ description: 'Delete', destructive: true }),
+                create: await makeAction({ description: 'Create' }),
+                delete: await makeAction({ description: 'Delete', destructive: true }),
             },
         });
-        const after = makeContract({
+        const after = await makeContract({
             actions: {
-                list: makeAction({ description: 'List', readOnly: true }),
-                update: makeAction({ description: 'Update' }),
+                list: await makeAction({ description: 'List', readOnly: true }),
+                update: await makeAction({ description: 'Update' }),
             },
         });
         const diff = diffContracts(before, after);
@@ -1561,24 +1558,24 @@ describe('ContractDiff: Disjoint action sets', () => {
 });
 
 describe('BehaviorDigest: Edge cases', () => {
-    it('empty contracts produce deterministic server digest', () => {
-        const d1 = computeServerDigest({});
-        const d2 = computeServerDigest({});
+    it('empty contracts produce deterministic server digest', async () => {
+        const d1 = await computeServerDigest({});
+        const d2 = await computeServerDigest({});
         expect(d1.digest).toBe(d2.digest);
     });
 
-    it('compareServerDigests with completely disjoint sets', () => {
+    it('compareServerDigests with completely disjoint sets', async () => {
         const before: ServerDigest = {
-            digest: sha256('before'),
+            digest: await sha256('before'),
             tools: {
-                alpha: { digest: sha256('a'), components: { surface: '', behavior: '', tokenEconomics: '', entitlements: '' }, computedAt: '', toolName: 'alpha' },
+                alpha: { digest: await sha256('a'), components: { surface: '', behavior: '', tokenEconomics: '', entitlements: '' }, computedAt: '', toolName: 'alpha' },
             },
             computedAt: '',
         };
         const after: ServerDigest = {
-            digest: sha256('after'),
+            digest: await sha256('after'),
             tools: {
-                beta: { digest: sha256('b'), components: { surface: '', behavior: '', tokenEconomics: '', entitlements: '' }, computedAt: '', toolName: 'beta' },
+                beta: { digest: await sha256('b'), components: { surface: '', behavior: '', tokenEconomics: '', entitlements: '' }, computedAt: '', toolName: 'beta' },
             },
             computedAt: '',
         };
@@ -1592,7 +1589,7 @@ describe('BehaviorDigest: Edge cases', () => {
 });
 
 describe('formatDiffReport: Edge cases', () => {
-    it('empty deltas produce minimal report', () => {
+    it('empty deltas produce minimal report', async () => {
         const result: ContractDiffResult = {
             toolName: 'test',
             deltas: [],
@@ -1605,7 +1602,7 @@ describe('formatDiffReport: Edge cases', () => {
         expect(report).toBeTruthy();
     });
 
-    it('formatDeltasAsXml with empty array', () => {
+    it('formatDeltasAsXml with empty array', async () => {
         const xml = formatDeltasAsXml([]);
         // Empty array returns empty string (no deltas = no XML)
         expect(xml).toBe('');
@@ -1617,29 +1614,29 @@ describe('formatDiffReport: Edge cases', () => {
 // ============================================================================
 
 describe('Lockfile: Cross-version behavior', () => {
-    it('lockfiles from different fusionVersions are not stale', () => {
-        const contracts = { t: makeContract() };
-        const lockfileV1 = generateLockfile('test', contracts, '1.0.0');
+    it('lockfiles from different fusionVersions are not stale', async () => {
+        const contracts = { t: await makeContract() };
+        const lockfileV1 = await generateLockfile('test', contracts, '1.0.0');
         // Check against same contracts but different version — lockfile was generated with 1.0.0
-        const result = checkLockfile(lockfileV1, contracts);
+        const result = await checkLockfile(lockfileV1, contracts);
         expect(result.ok).toBe(true);
     });
 
-    it('serializeLockfile produces sorted keys at all levels', () => {
+    it('serializeLockfile produces sorted keys at all levels', async () => {
         const contracts = {
-            zebra: makeContract({ name: 'zebra' }),
-            alpha: makeContract({ name: 'alpha' }),
+            zebra: await makeContract({ name: 'zebra' }),
+            alpha: await makeContract({ name: 'alpha' }),
         };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
         const json = serializeLockfile(lockfile);
         const topKeys = Object.keys(JSON.parse(json));
         expect(topKeys).toEqual([...topKeys].sort());
     });
 
-    it('lockfile JSON roundtrip preserves integrity', () => {
-        const contracts = { users: makeContract({ name: 'users' }) };
+    it('lockfile JSON roundtrip preserves integrity', async () => {
+        const contracts = { users: await makeContract({ name: 'users' }) };
         const prompt = createPromptBuilder({ name: 'helper' });
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
         expect(parsed).not.toBeNull();
@@ -1649,32 +1646,32 @@ describe('Lockfile: Cross-version behavior', () => {
 });
 
 describe('Lockfile: Prompt edge cases', () => {
-    it('duplicate prompt names — last one wins', () => {
-        const contracts = { t: makeContract() };
+    it('duplicate prompt names — last one wins', async () => {
+        const contracts = { t: await makeContract() };
         const p1 = createPromptBuilder({ name: 'dup', description: 'First' });
         const p2 = createPromptBuilder({ name: 'dup', description: 'Second' });
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [p1, p2] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [p1, p2] });
         // Both have same name; the implementation finds first match when generating
         const prompt = lockfile.capabilities.prompts!['dup']!;
         expect(prompt).toBeDefined();
     });
 
-    it('prompt with empty name', () => {
-        const contracts = { t: makeContract() };
+    it('prompt with empty name', async () => {
+        const contracts = { t: await makeContract() };
         const prompt = createPromptBuilder({ name: '' });
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         expect(lockfile.capabilities.prompts!['']).toBeDefined();
     });
 
-    it('prompt with no arguments', () => {
-        const contracts = { t: makeContract() };
+    it('prompt with no arguments', async () => {
+        const contracts = { t: await makeContract() };
         const prompt = createPromptBuilder({ arguments: [] });
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         expect(lockfile.capabilities.prompts!['test-prompt']!.arguments).toHaveLength(0);
     });
 
-    it('prompt description null handling', () => {
-        const contracts = { t: makeContract() };
+    it('prompt description null handling', async () => {
+        const contracts = { t: await makeContract() };
         const prompt: PromptBuilderLike = {
             getName: () => 'nil-desc',
             getDescription: () => undefined,
@@ -1686,7 +1683,7 @@ describe('Lockfile: Prompt edge cases', () => {
                 arguments: [],
             }),
         };
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         const p = lockfile.capabilities.prompts!['nil-desc']!;
         expect(p.description).toBeNull();
         expect(p.title).toBeNull();
@@ -1699,7 +1696,7 @@ describe('Lockfile: Prompt edge cases', () => {
 // ============================================================================
 
 describe('Integration: Real GroupedToolBuilder through full pipeline', () => {
-    it('materializes, diffs, digests, and locks a real builder', () => {
+    it('materializes, diffs, digests, and locks a real builder', async () => {
         const builder = new GroupedToolBuilder('users', 'User management')
             .tags('crud', 'admin')
             .action({
@@ -1716,27 +1713,27 @@ describe('Integration: Real GroupedToolBuilder through full pipeline', () => {
             });
 
         // Materialize
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
         expect(contract.surface.name).toBe('users');
         expect(Object.keys(contract.surface.actions)).toEqual(['list', 'create']);
 
         // Compile
-        const contracts = compileContracts([builder]);
+        const contracts = await compileContracts([builder]);
         expect(contracts['users']).toBeDefined();
 
         // Digest
-        const digest = computeServerDigest(contracts);
+        const digest = await computeServerDigest(contracts);
         expect(digest.tools['users']).toBeDefined();
 
         // Lockfile
-        const lockfile = generateLockfile('integration', contracts, '1.0.0');
+        const lockfile = await generateLockfile('integration', contracts, '1.0.0');
         const tool = lockfile.capabilities.tools['users']!;
         expect(tool.surface.actions).toContain('create');
         expect(tool.surface.actions).toContain('list');
         expect(tool.surface.tags).toEqual(['admin', 'crud']); // sorted
 
         // Check
-        const check = checkLockfile(lockfile, contracts);
+        const check = await checkLockfile(lockfile, contracts);
         expect(check.ok).toBe(true);
 
         // Diff (identical)
@@ -1747,7 +1744,7 @@ describe('Integration: Real GroupedToolBuilder through full pipeline', () => {
 });
 
 describe('Integration: Real definePrompt through lockfile', () => {
-    it('real definePrompt prompt builder integrates with lockfile', () => {
+    it('real definePrompt prompt builder integrates with lockfile', async () => {
         const prompt = definePrompt('code-review', {
             description: 'Review code for best practices',
             tags: ['engineering', 'quality'],
@@ -1761,8 +1758,8 @@ describe('Integration: Real definePrompt through lockfile', () => {
             }),
         });
 
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
         const p = lockfile.capabilities.prompts!['code-review']!;
         expect(p.description).toBe('Review code for best practices');
         expect(p.tags).toEqual(['engineering', 'quality']);
@@ -1778,14 +1775,14 @@ describe('Integration: Real definePrompt through lockfile', () => {
 // ============================================================================
 
 describe('Determinism: Multiple generations produce identical output', () => {
-    it('lockfile generation is deterministic (modulo timestamp)', () => {
+    it('lockfile generation is deterministic (modulo timestamp)', async () => {
         const contracts = {
-            users: makeContract({ name: 'users' }),
-            projects: makeContract({ name: 'projects' }),
+            users: await makeContract({ name: 'users' }),
+            projects: await makeContract({ name: 'projects' }),
         };
         const prompt = createPromptBuilder({ name: 'helper' });
-        const l1 = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
-        const l2 = generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const l1 = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
+        const l2 = await generateLockfile('test', contracts, '1.0.0', { prompts: [prompt] });
 
         expect(l1.integrityDigest).toBe(l2.integrityDigest);
         expect(Object.keys(l1.capabilities.tools)).toEqual(Object.keys(l2.capabilities.tools));
@@ -1793,14 +1790,14 @@ describe('Determinism: Multiple generations produce identical output', () => {
             .toBe(l2.capabilities.prompts!['helper']!.integrityDigest);
     });
 
-    it('sha256 is deterministic for all input types', () => {
+    it('sha256 is deterministic for all input types', async () => {
         const inputs = ['', 'hello', '用户', '🚀', 'A'.repeat(100000)];
         for (const input of inputs) {
-            expect(sha256(input)).toBe(sha256(input));
+            expect(await sha256(input)).toBe(await sha256(input));
         }
     });
 
-    it('canonicalize is order-independent for object keys', () => {
+    it('canonicalize is order-independent for object keys', async () => {
         const a = canonicalize({ z: 1, a: 2, m: 3 });
         const b = canonicalize({ a: 2, m: 3, z: 1 });
         const c = canonicalize({ m: 3, z: 1, a: 2 });
@@ -1808,7 +1805,7 @@ describe('Determinism: Multiple generations produce identical output', () => {
         expect(b).toBe(c);
     });
 
-    it('canonicalize preserves array order', () => {
+    it('canonicalize preserves array order', async () => {
         const a = canonicalize([3, 1, 2]);
         const b = canonicalize([1, 2, 3]);
         expect(a).not.toBe(b);
@@ -1820,7 +1817,7 @@ describe('Determinism: Multiple generations produce identical output', () => {
 // ============================================================================
 
 describe('Error Paths: validateClaims strict checking', () => {
-    it('readOnly + filesystem write ops → error violations', () => {
+    it('readOnly + filesystem write ops → error violations', async () => {
         const source = `
 import fs from 'fs';
 fs.writeFileSync('output.json', data);
@@ -1831,7 +1828,7 @@ fs.writeFileSync('output.json', data);
         expect(errors.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('readOnly + subprocess → error', () => {
+    it('readOnly + subprocess → error', async () => {
         const source = `
 import { exec } from 'child_process';
 exec('rm -rf /');
@@ -1842,7 +1839,7 @@ exec('rm -rf /');
         expect(subErrors.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('destructive: false + subprocess → warning', () => {
+    it('destructive: false + subprocess → warning', async () => {
         const source = `
 import { exec } from 'child_process';
 exec('deploy.sh');
@@ -1855,9 +1852,9 @@ exec('deploy.sh');
 });
 
 describe('Error Paths: Self-Healing severity filtering', () => {
-    it('includeAllSeverities shows SAFE and COSMETIC deltas too', () => {
-        const before = makeContract({ name: 'users', description: 'V1' });
-        const after = makeContract({ name: 'users', description: 'V2' });
+    it('includeAllSeverities shows SAFE and COSMETIC deltas too', async () => {
+        const before = await makeContract({ name: 'users', description: 'V1' });
+        const after = await makeContract({ name: 'users', description: 'V2' });
         const diff = diffContracts(before, after);
         // Description change is COSMETIC
         expect(diff.deltas.some(d => d.severity === 'COSMETIC')).toBe(true);
@@ -1876,16 +1873,16 @@ describe('Error Paths: Self-Healing severity filtering', () => {
         expect(result.deltaCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('SAFE-only deltas are skipped by default', () => {
-        const before = makeContract({
+    it('SAFE-only deltas are skipped by default', async () => {
+        const before = await makeContract({
             name: 'users',
-            actions: { run: makeAction() },
+            actions: { run: await makeAction() },
         });
-        const after = makeContract({
+        const after = await makeContract({
             name: 'users',
             actions: {
-                run: makeAction(),
-                newAction: makeAction({ description: 'New action' }),
+                run: await makeAction(),
+                newAction: await makeAction({ description: 'New action' }),
             },
         });
         const diff = diffContracts(before, after);
@@ -1907,36 +1904,36 @@ describe('Error Paths: Self-Healing severity filtering', () => {
 });
 
 describe('Error Paths: Entitlement diff severity', () => {
-    it('gaining filesystem entitlement is BREAKING', () => {
-        const before = makeContract({ filesystem: false });
-        const after = makeContract({ filesystem: true });
+    it('gaining filesystem entitlement is BREAKING', async () => {
+        const before = await makeContract({ filesystem: false });
+        const after = await makeContract({ filesystem: true });
         const diff = diffContracts(before, after);
         const fsDelta = diff.deltas.find(d => d.field.includes('filesystem'));
         expect(fsDelta).toBeDefined();
         expect(fsDelta!.severity).toBe('BREAKING');
     });
 
-    it('losing filesystem entitlement is SAFE', () => {
-        const before = makeContract({ filesystem: true });
-        const after = makeContract({ filesystem: false });
+    it('losing filesystem entitlement is SAFE', async () => {
+        const before = await makeContract({ filesystem: true });
+        const after = await makeContract({ filesystem: false });
         const diff = diffContracts(before, after);
         const fsDelta = diff.deltas.find(d => d.field.includes('filesystem'));
         expect(fsDelta).toBeDefined();
         expect(fsDelta!.severity).toBe('SAFE');
     });
 
-    it('inflationRisk escalation is BREAKING', () => {
-        const before = makeContract({ inflationRisk: 'low' });
-        const after = makeContract({ inflationRisk: 'critical' });
+    it('inflationRisk escalation is BREAKING', async () => {
+        const before = await makeContract({ inflationRisk: 'low' });
+        const after = await makeContract({ inflationRisk: 'critical' });
         const diff = diffContracts(before, after);
         const riskDelta = diff.deltas.find(d => d.field.includes('inflationRisk'));
         expect(riskDelta).toBeDefined();
         expect(riskDelta!.severity).toBe('BREAKING');
     });
 
-    it('inflationRisk de-escalation is SAFE', () => {
-        const before = makeContract({ inflationRisk: 'critical' });
-        const after = makeContract({ inflationRisk: 'low' });
+    it('inflationRisk de-escalation is SAFE', async () => {
+        const before = await makeContract({ inflationRisk: 'critical' });
+        const after = await makeContract({ inflationRisk: 'low' });
         const diff = diffContracts(before, after);
         const riskDelta = diff.deltas.find(d => d.field.includes('inflationRisk'));
         expect(riskDelta).toBeDefined();
@@ -1949,7 +1946,7 @@ describe('Error Paths: Entitlement diff severity', () => {
 // ============================================================================
 
 describe('Canonicalize: Deep edge cases', () => {
-    it('deeply nested objects are sorted at all levels', () => {
+    it('deeply nested objects are sorted at all levels', async () => {
         const obj = { z: { b: { d: 1, a: 2 }, a: 3 }, a: 4 };
         const result = JSON.parse(canonicalize(obj));
         const keys1 = Object.keys(result);
@@ -1960,19 +1957,19 @@ describe('Canonicalize: Deep edge cases', () => {
         expect(keys3).toEqual(['a', 'd']);
     });
 
-    it('arrays inside objects are not reordered', () => {
+    it('arrays inside objects are not reordered', async () => {
         const obj = { items: [3, 1, 2], name: 'test' };
         const result = JSON.parse(canonicalize(obj));
         expect(result.items).toEqual([3, 1, 2]);
     });
 
-    it('null values are preserved', () => {
+    it('null values are preserved', async () => {
         const obj = { a: null, b: 1 };
         const result = JSON.parse(canonicalize(obj));
         expect(result.a).toBeNull();
     });
 
-    it('mixed arrays with objects are handled', () => {
+    it('mixed arrays with objects are handled', async () => {
         const obj = [{ z: 1, a: 2 }, { b: 3, a: 4 }];
         const result = JSON.parse(canonicalize(obj));
         expect(Object.keys(result[0])).toEqual(['a', 'z']);
@@ -1985,10 +1982,10 @@ describe('Canonicalize: Deep edge cases', () => {
 // ============================================================================
 
 describe('LockfileCheckResult: structural guarantees', () => {
-    it('always has all 8 array fields defined', () => {
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
-        const result = checkLockfile(lockfile, contracts);
+    it('always has all 8 array fields defined', async () => {
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
+        const result = await checkLockfile(lockfile, contracts);
 
         expect(Array.isArray(result.added)).toBe(true);
         expect(Array.isArray(result.removed)).toBe(true);
@@ -2000,10 +1997,10 @@ describe('LockfileCheckResult: structural guarantees', () => {
         expect(Array.isArray(result.unchangedPrompts)).toBe(true);
     });
 
-    it('ok=true implies no drift arrays are populated', () => {
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
-        const result = checkLockfile(lockfile, contracts);
+    it('ok=true implies no drift arrays are populated', async () => {
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
+        const result = await checkLockfile(lockfile, contracts);
         expect(result.ok).toBe(true);
         expect(result.added).toHaveLength(0);
         expect(result.removed).toHaveLength(0);
@@ -2013,23 +2010,23 @@ describe('LockfileCheckResult: structural guarantees', () => {
         expect(result.changedPrompts).toHaveLength(0);
     });
 
-    it('ok=false always has a descriptive message', () => {
-        const contracts = { t: makeContract() };
-        const lockfile = generateLockfile('test', contracts, '1.0.0');
-        const result = checkLockfile(lockfile, { t: makeContract(), newTool: makeContract({ name: 'newTool' }) });
+    it('ok=false always has a descriptive message', async () => {
+        const contracts = { t: await makeContract() };
+        const lockfile = await generateLockfile('test', contracts, '1.0.0');
+        const result = await checkLockfile(lockfile, { t: await makeContract(), newTool: await makeContract({ name: 'newTool' }) });
         expect(result.ok).toBe(false);
         expect(result.message.length).toBeGreaterThan(10);
         expect(result.message).toContain('stale');
     });
 
-    it('simultaneous tool + prompt drift in single check', () => {
-        const contracts1 = { t: makeContract() };
+    it('simultaneous tool + prompt drift in single check', async () => {
+        const contracts1 = { t: await makeContract() };
         const prompt1 = createPromptBuilder({ name: 'p1', description: 'v1' });
-        const lockfile = generateLockfile('test', contracts1, '1.0.0', { prompts: [prompt1] });
+        const lockfile = await generateLockfile('test', contracts1, '1.0.0', { prompts: [prompt1] });
 
-        const contracts2 = { t: makeContract(), newTool: makeContract({ name: 'newTool' }) };
+        const contracts2 = { t: await makeContract(), newTool: await makeContract({ name: 'newTool' }) };
         const prompt2 = createPromptBuilder({ name: 'p1', description: 'v2' });
-        const result = checkLockfile(lockfile, contracts2, { prompts: [prompt2] });
+        const result = await checkLockfile(lockfile, contracts2, { prompts: [prompt2] });
 
         expect(result.ok).toBe(false);
         expect(result.added).toContain('newTool');
@@ -2042,73 +2039,73 @@ describe('LockfileCheckResult: structural guarantees', () => {
 // ============================================================================
 
 describe('Hardened: Code Evaluation Detection', () => {
-    it('detects eval() as codeEvaluation', () => {
+    it('detects eval() as codeEvaluation', async () => {
         const source = `const result = eval('require("child_process").exec("rm -rf /")');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'eval')).toBe(true);
     });
 
-    it('detects indirect eval (0, eval)()', () => {
+    it('detects indirect eval (0, eval)()', async () => {
         const source = `const result = (0, eval)('dangerous code');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'eval-indirect')).toBe(true);
     });
 
-    it('detects new Function()', () => {
+    it('detects new Function()', async () => {
         const source = `const factory = new Function('a', 'b', 'return a + b');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Function')).toBe(true);
     });
 
-    it('detects vm module import', () => {
+    it('detects vm module import', async () => {
         const source = `import { runInNewContext } from 'node:vm';`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm')).toBe(true);
     });
 
-    it('detects vm.runInNewContext()', () => {
+    it('detects vm.runInNewContext()', async () => {
         const source = `vm.runInNewContext('1+1', {});`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.runInNewContext')).toBe(true);
     });
 
-    it('detects vm.runInThisContext()', () => {
+    it('detects vm.runInThisContext()', async () => {
         const source = `const result = runInThisContext('code');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.runInThisContext')).toBe(true);
     });
 
-    it('detects new vm.Script()', () => {
+    it('detects new vm.Script()', async () => {
         const source = `const script = new vm.Script('console.log(42)');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'vm.Script')).toBe(true);
     });
 
-    it('detects globalThis.eval()', () => {
+    it('detects globalThis.eval()', async () => {
         const source = `const r = globalThis.eval('x');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'globalThis.eval')).toBe(true);
     });
 
-    it('detects Reflect.construct(Function, ...)', () => {
+    it('detects Reflect.construct(Function, ...)', async () => {
         const source = `const fn = Reflect.construct(Function, ['return 42']);`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'Reflect.construct-Function')).toBe(true);
     });
 
-    it('detects process.binding()', () => {
+    it('detects process.binding()', async () => {
         const source = `const binding = process.binding('spawn_sync');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'process.binding')).toBe(true);
     });
 
-    it('detects process.dlopen()', () => {
+    it('detects process.dlopen()', async () => {
         const source = `process.dlopen(module, '/path/to/native.node');`;
         const matches = scanSource(source);
         expect(matches.some(m => m.category === 'codeEvaluation' && m.identifier === 'process.dlopen')).toBe(true);
     });
 
-    it('buildEntitlements includes codeEvaluation flag', () => {
+    it('buildEntitlements includes codeEvaluation flag', async () => {
         const source = `eval('x'); const fs = require('fs');`;
         const matches = scanSource(source);
         const entitlements = buildEntitlements(matches);
@@ -2116,7 +2113,7 @@ describe('Hardened: Code Evaluation Detection', () => {
         expect(entitlements.filesystem).toBe(true);
     });
 
-    it('codeEvaluation is false for sandboxed code', () => {
+    it('codeEvaluation is false for sandboxed code', async () => {
         const source = `function add(a, b) { return a + b; }`;
         const entitlements = buildEntitlements(scanSource(source));
         expect(entitlements.codeEvaluation).toBe(false);
@@ -2124,14 +2121,14 @@ describe('Hardened: Code Evaluation Detection', () => {
 });
 
 describe('Hardened: Violation Rules for Code Evaluation', () => {
-    it('codeEvaluation always produces error violation', () => {
+    it('codeEvaluation always produces error violation', async () => {
         const source = `const r = eval('1');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, {});
         expect(violations.some(v => v.category === 'codeEvaluation' && v.severity === 'error')).toBe(true);
     });
 
-    it('codeEvaluation violation describes unbounded blast radius', () => {
+    it('codeEvaluation violation describes unbounded blast radius', async () => {
         const source = `const r = eval('1');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, {});
@@ -2140,7 +2137,7 @@ describe('Hardened: Violation Rules for Code Evaluation', () => {
         expect(evalViolation!.description).toContain('unbounded');
     });
 
-    it('readOnly + codeEvaluation (even if allowed) is still error', () => {
+    it('readOnly + codeEvaluation (even if allowed) is still error', async () => {
         const source = `eval('something');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, {
@@ -2152,7 +2149,7 @@ describe('Hardened: Violation Rules for Code Evaluation', () => {
         expect(violations.some(v => v.severity === 'error')).toBe(true);
     });
 
-    it('codeEvaluation can be explicitly allowed (no general violation)', () => {
+    it('codeEvaluation can be explicitly allowed (no general violation)', async () => {
         const source = `eval('safe');`;
         const matches = scanSource(source);
         const violations = validateClaims(matches, {
@@ -2167,73 +2164,73 @@ describe('Hardened: Violation Rules for Code Evaluation', () => {
 });
 
 describe('Hardened: Evasion Indicator Detection', () => {
-    it('detects String.fromCharCode (high confidence)', () => {
+    it('detects String.fromCharCode (high confidence)', async () => {
         const source = `const r = String.fromCharCode(114, 101, 113);`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'high')).toBe(true);
     });
 
-    it('detects atob (low confidence)', () => {
+    it('detects atob (low confidence)', async () => {
         const source = `const decoded = atob('Y2hpbGRfcHJvY2Vzcw==');`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'low')).toBe(true);
     });
 
-    it('detects Buffer.from base64 (low confidence)', () => {
+    it('detects Buffer.from base64 (low confidence)', async () => {
         const source = `const buf = Buffer.from('Y2hpbGRfcHJvY2Vzcw==', 'base64');`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'low')).toBe(true);
     });
 
-    it('detects bracket-notation on globalThis with string (medium)', () => {
+    it('detects bracket-notation on globalThis with string (medium)', async () => {
         const source = `const fn = globalThis['eval'];`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'medium')).toBe(true);
     });
 
-    it('detects bracket-notation on globalThis with expression (high)', () => {
+    it('detects bracket-notation on globalThis with expression (high)', async () => {
         const source = `const fn = globalThis['ev' + 'al'];`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'high')).toBe(true);
     });
 
-    it('detects bracket-notation on process (high)', () => {
+    it('detects bracket-notation on process (high)', async () => {
         const source = `const b = process['binding']('spawn_sync');`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'indirect-access' && i.confidence === 'high')).toBe(true);
     });
 
-    it('detects computed require (high)', () => {
+    it('detects computed require (high)', async () => {
         const source = `const mod = require(moduleName);`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'computed-import' && i.confidence === 'high')).toBe(true);
     });
 
-    it('detects computed dynamic import (high)', () => {
+    it('detects computed dynamic import (high)', async () => {
         const source = `const mod = await import(getModuleName());`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'computed-import' && i.confidence === 'high')).toBe(true);
     });
 
-    it('does NOT flag static require as computed import', () => {
+    it('does NOT flag static require as computed import', async () => {
         const source = `const fs = require('fs');`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'computed-import')).toBe(false);
     });
 
-    it('does NOT flag static dynamic import as computed import', () => {
+    it('does NOT flag static dynamic import as computed import', async () => {
         const source = `const mod = await import('fs');`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'computed-import')).toBe(false);
     });
 
-    it('returns empty for clean code', () => {
+    it('returns empty for clean code', async () => {
         const source = `function add(a, b) { return a + b; }`;
         const indicators = scanEvasionIndicators(source);
         expect(indicators).toHaveLength(0);
     });
 
-    it('detects high encoding density', () => {
+    it('detects high encoding density', async () => {
         // Generate source with high density of hex escapes
         const hex = '\\x63'.repeat(50);
         const source = `const s = "${hex}";`;
@@ -2241,7 +2238,7 @@ describe('Hardened: Evasion Indicator Detection', () => {
         expect(indicators.some(i => i.type === 'encoding-density')).toBe(true);
     });
 
-    it('detects String.raw template', () => {
+    it('detects String.raw template', async () => {
         const source = 'const s = String.raw`\\x63\\x68\\x69`;';
         const indicators = scanEvasionIndicators(source);
         expect(indicators.some(i => i.type === 'string-construction' && i.confidence === 'medium')).toBe(true);
@@ -2249,21 +2246,21 @@ describe('Hardened: Evasion Indicator Detection', () => {
 });
 
 describe('Hardened: scanAndValidate integration with evasion', () => {
-    it('evasionIndicators are included in report', () => {
+    it('evasionIndicators are included in report', async () => {
         const source = `const fn = globalThis['eval'];\nfn('code');`;
         const report = scanAndValidate(source);
         expect(report.evasionIndicators).toBeDefined();
         expect(Array.isArray(report.evasionIndicators)).toBe(true);
     });
 
-    it('high-confidence evasion makes handler UNSAFE', () => {
+    it('high-confidence evasion makes handler UNSAFE', async () => {
         const source = `const mod = require(getModule());`;
         const report = scanAndValidate(source);
         expect(report.safe).toBe(false);
         expect(report.evasionIndicators.some(e => e.confidence === 'high')).toBe(true);
     });
 
-    it('low-confidence evasion alone does NOT make handler UNSAFE', () => {
+    it('low-confidence evasion alone does NOT make handler UNSAFE', async () => {
         const source = `const decoded = atob('SGVsbG8=');`;
         const report = scanAndValidate(source);
         // atob is low confidence — should not alone make unsafe
@@ -2274,13 +2271,13 @@ describe('Hardened: scanAndValidate integration with evasion', () => {
         }
     });
 
-    it('summary includes evasion indicator count', () => {
+    it('summary includes evasion indicator count', async () => {
         const source = `const fn = String.fromCharCode(114, 101, 113);`;
         const report = scanAndValidate(source);
         expect(report.summary).toContain('evasion');
     });
 
-    it('sandboxed code with no evasion is safe with correct summary', () => {
+    it('sandboxed code with no evasion is safe with correct summary', async () => {
         const source = `function pure(x) { return x * 2; }`;
         const report = scanAndValidate(source);
         expect(report.safe).toBe(true);
@@ -2288,7 +2285,7 @@ describe('Hardened: scanAndValidate integration with evasion', () => {
         expect(report.evasionIndicators).toHaveLength(0);
     });
 
-    it('eval produces both match AND violation', () => {
+    it('eval produces both match AND violation', async () => {
         const source = `const r = eval('payload');`;
         const report = scanAndValidate(source);
         expect(report.matches.some(m => m.category === 'codeEvaluation')).toBe(true);
@@ -2299,7 +2296,7 @@ describe('Hardened: scanAndValidate integration with evasion', () => {
 });
 
 describe('Hardened: Adversarial evasion scenarios', () => {
-    it('string concatenation to build module name detected as computed require', () => {
+    it('string concatenation to build module name detected as computed require', async () => {
         const source = `const m = 'child' + '_process'; const cp = require(m);`;
         const report = scanAndValidate(source);
         // require(m) is computed require — high confidence evasion
@@ -2307,28 +2304,28 @@ describe('Hardened: Adversarial evasion scenarios', () => {
         expect(report.safe).toBe(false);
     });
 
-    it('bracket notation global access to hide eval', () => {
+    it('bracket notation global access to hide eval', async () => {
         const source = `globalThis['ev' + 'al']('rm -rf /');`;
         const report = scanAndValidate(source);
         expect(report.evasionIndicators.some(i => i.type === 'indirect-access')).toBe(true);
         expect(report.safe).toBe(false);
     });
 
-    it('process bracket notation to access binding', () => {
+    it('process bracket notation to access binding', async () => {
         const source = `process['binding']('spawn_sync');`;
         const report = scanAndValidate(source);
         expect(report.evasionIndicators.some(i => i.type === 'indirect-access')).toBe(true);
         expect(report.safe).toBe(false);
     });
 
-    it('fromCharCode to build require string', () => {
+    it('fromCharCode to build require string', async () => {
         const source = `const r = String.fromCharCode(114,101,113,117,105,114,101);\nglobalThis[r]('child_process');`;
         const report = scanAndValidate(source);
         expect(report.evasionIndicators.length).toBeGreaterThanOrEqual(1);
         expect(report.safe).toBe(false);
     });
 
-    it('combined evasion: multiple techniques in single handler', () => {
+    it('combined evasion: multiple techniques in single handler', async () => {
         const source = `
             const a = String.fromCharCode(101, 118, 97, 108);
             const b = globalThis[a];
@@ -2343,9 +2340,9 @@ describe('Hardened: Adversarial evasion scenarios', () => {
 });
 
 describe('Hardened: ContractDiff detects codeEvaluation changes', () => {
-    it('gaining codeEvaluation is BREAKING', () => {
-        const before = makeContract({ codeEvaluation: false });
-        const after = makeContract({ codeEvaluation: true });
+    it('gaining codeEvaluation is BREAKING', async () => {
+        const before = await makeContract({ codeEvaluation: false });
+        const after = await makeContract({ codeEvaluation: true });
         const diff = diffContracts(before, after);
         const delta = diff.deltas.find(d => d.field === 'codeEvaluation');
         expect(delta).toBeDefined();
@@ -2353,9 +2350,9 @@ describe('Hardened: ContractDiff detects codeEvaluation changes', () => {
         expect(delta!.description).toContain('blast radius');
     });
 
-    it('losing codeEvaluation is SAFE', () => {
-        const before = makeContract({ codeEvaluation: true });
-        const after = makeContract({ codeEvaluation: false });
+    it('losing codeEvaluation is SAFE', async () => {
+        const before = await makeContract({ codeEvaluation: true });
+        const after = await makeContract({ codeEvaluation: false });
         const diff = diffContracts(before, after);
         const delta = diff.deltas.find(d => d.field === 'codeEvaluation');
         expect(delta).toBeDefined();

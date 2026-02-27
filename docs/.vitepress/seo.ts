@@ -696,6 +696,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'Can I use DeviceAuthenticator and TokenManager without mcp-fusion?', a: 'Yes. Both classes are standalone and have no dependency on mcp-fusion internals. You can use DeviceAuthenticator for the Device Flow handshake and TokenManager for token persistence in any Node.js application. Only createAuthTool() and requireAuth() depend on mcp-fusion.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // CLOUDFLARE WORKERS ADAPTER
+  // ═══════════════════════════════════════════════════════
+  'cloudflare-adapter.md': {
+    title: 'Cloudflare Workers Adapter — Edge Deployment for MCP Servers',
+    description: 'Deploy MCP Fusion servers to Cloudflare Workers edge with zero configuration. Stateless JSON-RPC, cold-start caching, D1/KV/R2 bindings, and full MVA Presenter support.',
+    faqs: [
+      { q: 'What is @vinkius-core/mcp-fusion-cloudflare?', a: '@vinkius-core/mcp-fusion-cloudflare is a companion package that deploys any MCP Fusion ToolRegistry to Cloudflare Workers with one function call. It uses the MCP SDK\'s native WebStandardStreamableHTTPServerTransport with enableJsonResponse: true for stateless JSON-RPC — no SSE sessions, no streaming state, no transport bridging.' },
+      { q: 'How does the Cloudflare adapter handle cold starts?', a: 'The adapter separates cold start from warm request. At module scope (cold start), the ToolRegistry compiles all Zod schemas, Presenter pipelines, and middleware chains — this is cached across warm requests by the V8 isolate. Each incoming request only creates a lightweight McpServer and Transport, achieving sub-millisecond overhead on warm paths.' },
+      { q: 'Why does the adapter use stateless JSON-RPC instead of SSE?', a: 'Cloudflare Workers are ephemeral — they have no long-lived processes, no sticky sessions, and no persistent connections. SSE-based MCP transports require session affinity and streaming state management. The adapter uses enableJsonResponse: true to enforce stateless JSON-RPC, which is compatible with the Workers execution model where each request is independent.' },
+      { q: 'How do I inject Cloudflare bindings (D1, KV, R2) into my handlers?', a: 'The contextFactory receives the Cloudflare env object as its second argument: contextFactory: async (req, env, ctx) => ({ db: env.DB, cache: env.KV_CACHE, tenantId: req.headers.get("x-tenant-id") }). All Cloudflare bindings declared in wrangler.toml are available in env with full type safety via the TEnv generic.' },
+      { q: 'Do Presenters and middleware work on Cloudflare Workers?', a: 'Yes. The adapter runs the full MCP Fusion pipeline: Zod validation, middleware chains, handler execution, Presenter rendering, and response formatting. All MVA features — system rules, UI blocks, cognitive guardrails, select reflection, self-healing errors — work identically on the edge.' },
+      { q: 'What MCP features are NOT supported on Cloudflare Workers?', a: 'Features requiring persistent state: SSE streaming sessions, filesystem-based autoDiscover(), and the HMR dev server (createDevServer). PromptRegistry and StateSyncLayer work normally since they are stateless per-request. All core tool execution, validation, and Presenter features are fully supported.' },
+      { q: 'Is the Cloudflare adapter compatible with the official MCP SDK?', a: 'Yes. The adapter uses the official @modelcontextprotocol/sdk (^1.12.0) as a peer dependency. It instantiates a standard McpServer and uses the SDK\'s WebStandardStreamableHTTPServerTransport — no monkey-patching or custom protocol implementation. Any MCP client that supports HTTP/JSON-RPC can connect to a Workers-deployed server.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

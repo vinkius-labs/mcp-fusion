@@ -5,10 +5,12 @@
  * used across governance modules. Single source of truth
  * eliminates duplication and guarantees behavioral consistency.
  *
+ * Uses Web Crypto API (globalThis.crypto.subtle) for runtime
+ * agnosticism — works on Node.js 20+, Cloudflare Workers, Deno, Bun.
+ *
  * @module
  * @internal
  */
-import { createHash } from 'node:crypto';
 
 // ============================================================================
 // Hashing
@@ -17,11 +19,25 @@ import { createHash } from 'node:crypto';
 /**
  * SHA-256 hash of a string, returned as lowercase hex.
  *
+ * Uses the Web Crypto API (crypto.subtle) for runtime agnosticism.
+ *
  * @param input - The string to hash
  * @returns 64-character hex digest
  */
-export function sha256(input: string): string {
-    return createHash('sha256').update(input, 'utf8').digest('hex');
+export async function sha256(input: string): Promise<string> {
+    const data = new TextEncoder().encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return hexFromBuffer(hashBuffer);
+}
+
+/**
+ * Convert an ArrayBuffer to lowercase hex string.
+ * @internal
+ */
+function hexFromBuffer(buffer: ArrayBuffer): string {
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 // ============================================================================

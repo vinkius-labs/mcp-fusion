@@ -1167,6 +1167,54 @@ const auth = createAuthTool({
 });
 ```
 
+### Cloudflare Workers Adapter (from '@vinkius-core/mcp-fusion-cloudflare')
+
+Deploy MCP Fusion servers to Cloudflare Workers edge. Stateless JSON-RPC — no SSE sessions, no streaming state. Registry compiles at cold start (Zod reflection, Presenter compilation cached). Warm requests only instantiate McpServer + Transport. Uses the MCP SDK's native `WebStandardStreamableHTTPServerTransport` with `enableJsonResponse: true`.
+
+- `cloudflareWorkersAdapter<TEnv, TContext>(options)` → CloudflareWorkerHandler — creates a Workers `fetch()` handler
+  - options: { registry, serverName?, serverVersion?, contextFactory?, attachOptions? }
+  - `registry` — pre-compiled ToolRegistry (built at module scope, cached across warm requests)
+  - `contextFactory(req, env, ctx)` — creates per-request context from Cloudflare bindings (D1, KV, R2, secrets, ExecutionContext)
+  - `serverName` — MCP server name (default: `'mcp-fusion-edge'`)
+  - `serverVersion` — version string (default: `'1.0.0'`)
+  - `attachOptions` — forwarded to `registry.attachToServer()` (filter, stateSync, debug, etc.)
+- `CloudflareWorkerHandler<TEnv>` — { fetch(request, env, ctx): Promise<Response> }
+- `CloudflareAdapterOptions<TEnv, TContext>` — full configuration interface
+- `RegistryLike` — duck-typed interface (any object with `attachToServer()`)
+- `ExecutionContext` — inline Cloudflare Workers types (waitUntil, passThroughOnException)
+
+Peer dependencies: `@vinkius-core/mcp-fusion` (^2.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
+
+```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+import { z } from 'zod';
+
+interface AppContext { db: D1Database; tenantId: string }
+const f = initFusion<AppContext>();
+
+const listUsers = f.tool({
+  name: 'users.list',
+  input: z.object({ limit: z.number().optional().default(20) }),
+  readOnly: true,
+  handler: async ({ input, ctx }) =>
+    ctx.db.prepare('SELECT id, name FROM users LIMIT ?').bind(input.limit).all(),
+});
+
+const registry = f.registry();
+registry.register(listUsers);
+
+export interface Env { DB: D1Database }
+
+export default cloudflareWorkersAdapter<Env, AppContext>({
+  registry,
+  contextFactory: async (req, env) => ({
+    db: env.DB,
+    tenantId: req.headers.get('x-tenant-id') || 'public',
+  }),
+});
+```
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups

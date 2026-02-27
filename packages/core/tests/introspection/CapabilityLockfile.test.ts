@@ -25,7 +25,7 @@ import { sha256 } from '../../src/introspection/ToolContract.js';
 // Helpers
 // ============================================================================
 
-function createContract(overrides: Partial<{
+async function createContract(overrides: Partial<{
     name: string;
     description: string;
     actions: Record<string, { destructive: boolean; readOnly: boolean }>;
@@ -51,7 +51,7 @@ function createContract(overrides: Partial<{
             readOnly: meta.readOnly,
             requiredFields: [],
             presenterName: undefined,
-            inputSchemaDigest: sha256(`${key}-schema`),
+            inputSchemaDigest: await sha256(`${key}-schema`),
             hasMiddleware: false,
         };
     }
@@ -61,11 +61,11 @@ function createContract(overrides: Partial<{
             name,
             description: overrides.description ?? `Manage ${name}`,
             tags: ['crud'],
-            inputSchemaDigest: sha256(`${name}-schema`),
+            inputSchemaDigest: await sha256(`${name}-schema`),
             actions: actionContracts,
         },
         behavior: {
-            egressSchemaDigest: overrides.egressSchemaDigest ?? sha256('egress-v1'),
+            egressSchemaDigest: overrides.egressSchemaDigest ?? await sha256('egress-v1'),
             systemRulesFingerprint: overrides.systemRulesFingerprint ?? 'static:abc',
             cognitiveGuardrails: { agentLimitMax: 50, egressMaxBytes: null },
             middlewareChain: [],
@@ -96,7 +96,7 @@ function createContract(overrides: Partial<{
 // ============================================================================
 
 describe('LOCKFILE_NAME', () => {
-    it('is mcp-fusion.lock', () => {
+    it('is mcp-fusion.lock', async () => {
         expect(LOCKFILE_NAME).toBe('mcp-fusion.lock');
     });
 });
@@ -106,13 +106,13 @@ describe('LOCKFILE_NAME', () => {
 // ============================================================================
 
 describe('generateLockfile', () => {
-    it('generates a valid lockfile from contracts', () => {
+    it('generates a valid lockfile from contracts', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
-        const lockfile = generateLockfile('my-server', contracts, '1.1.0');
+        const lockfile = await generateLockfile('my-server', contracts, '1.1.0');
 
         expect(lockfile.lockfileVersion).toBe(1);
         expect(lockfile.serverName).toBe('my-server');
@@ -121,41 +121,41 @@ describe('generateLockfile', () => {
         expect(lockfile.generatedAt).toBeTruthy();
     });
 
-    it('captures all tools in capabilities', () => {
+    it('captures all tools in capabilities', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const toolNames = Object.keys(lockfile.capabilities.tools);
 
         expect(toolNames).toContain('users');
         expect(toolNames).toContain('tasks');
     });
 
-    it('sorts tool names alphabetically', () => {
+    it('sorts tool names alphabetically', async () => {
         const contracts = {
-            zebra: createContract({ name: 'zebra' }),
-            alpha: createContract({ name: 'alpha' }),
-            middle: createContract({ name: 'middle' }),
+            zebra: await createContract({ name: 'zebra' }),
+            alpha: await createContract({ name: 'alpha' }),
+            middle: await createContract({ name: 'middle' }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const toolNames = Object.keys(lockfile.capabilities.tools);
 
         expect(toolNames).toEqual(['alpha', 'middle', 'zebra']);
     });
 
-    it('captures tool surface correctly', () => {
+    it('captures tool surface correctly', async () => {
         const contracts = {
-            users: createContract({
+            users: await createContract({
                 name: 'users',
                 description: 'Manage users',
             }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['users']!;
 
         expect(tool.surface.description).toBe('Manage users');
@@ -164,9 +164,9 @@ describe('generateLockfile', () => {
         expect(tool.surface.tags).toEqual(['crud']);
     });
 
-    it('captures destructive and readOnly action hints', () => {
+    it('captures destructive and readOnly action hints', async () => {
         const contracts = {
-            tasks: createContract({
+            tasks: await createContract({
                 name: 'tasks',
                 actions: {
                     list: { destructive: false, readOnly: true },
@@ -175,23 +175,23 @@ describe('generateLockfile', () => {
             }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['tasks']!;
 
         expect(tool.behavior.destructiveActions).toEqual(['delete_all']);
         expect(tool.behavior.readOnlyActions).toEqual(['list']);
     });
 
-    it('captures entitlements', () => {
+    it('captures entitlements', async () => {
         const contracts = {
-            upload: createContract({
+            upload: await createContract({
                 name: 'upload',
                 filesystem: true,
                 network: true,
             }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['upload']!;
 
         expect(tool.entitlements.filesystem).toBe(true);
@@ -200,15 +200,15 @@ describe('generateLockfile', () => {
         expect(tool.entitlements.crypto).toBe(false);
     });
 
-    it('captures token economics', () => {
+    it('captures token economics', async () => {
         const contracts = {
-            heavy: createContract({
+            heavy: await createContract({
                 name: 'heavy',
                 inflationRisk: 'critical',
             }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['heavy']!;
 
         expect(tool.tokenEconomics.inflationRisk).toBe('critical');
@@ -216,16 +216,16 @@ describe('generateLockfile', () => {
         expect(tool.tokenEconomics.unboundedCollection).toBe(false);
     });
 
-    it('captures behavior metadata', () => {
+    it('captures behavior metadata', async () => {
         const contracts = {
-            users: createContract({
+            users: await createContract({
                 name: 'users',
-                egressSchemaDigest: sha256('egress'),
+                egressSchemaDigest: await sha256('egress'),
                 systemRulesFingerprint: 'dynamic',
             }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['users']!;
 
         expect(tool.behavior.egressSchemaDigest).toMatch(/^sha256:/);
@@ -233,32 +233,32 @@ describe('generateLockfile', () => {
         expect(tool.behavior.cognitiveGuardrails.agentLimitMax).toBe(50);
     });
 
-    it('produces per-tool integrity digests', () => {
+    it('produces per-tool integrity digests', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
+            users: await createContract({ name: 'users' }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['users']!;
 
         expect(tool.integrityDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
     });
 
-    it('is deterministic — same contracts produce same digests', () => {
+    it('is deterministic — same contracts produce same digests', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
+            users: await createContract({ name: 'users' }),
         };
 
-        const lockfile1 = generateLockfile('srv', contracts, '1.1.0');
-        const lockfile2 = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile1 = await generateLockfile('srv', contracts, '1.1.0');
+        const lockfile2 = await generateLockfile('srv', contracts, '1.1.0');
 
         expect(lockfile1.integrityDigest).toBe(lockfile2.integrityDigest);
         expect(lockfile1.capabilities.tools['users']!.integrityDigest)
             .toBe(lockfile2.capabilities.tools['users']!.integrityDigest);
     });
 
-    it('handles empty server (no tools)', () => {
-        const lockfile = generateLockfile('empty-server', {}, '1.1.0');
+    it('handles empty server (no tools)', async () => {
+        const lockfile = await generateLockfile('empty-server', {}, '1.1.0');
 
         expect(lockfile.lockfileVersion).toBe(1);
         expect(Object.keys(lockfile.capabilities.tools)).toHaveLength(0);
@@ -271,9 +271,9 @@ describe('generateLockfile', () => {
 // ============================================================================
 
 describe('serializeLockfile', () => {
-    it('produces valid JSON with trailing newline', () => {
-        const lockfile = generateLockfile('srv', {
-            users: createContract({ name: 'users' }),
+    it('produces valid JSON with trailing newline', async () => {
+        const lockfile = await generateLockfile('srv', {
+            users: await createContract({ name: 'users' }),
         }, '1.1.0');
 
         const serialized = serializeLockfile(lockfile);
@@ -282,9 +282,9 @@ describe('serializeLockfile', () => {
         expect(() => JSON.parse(serialized)).not.toThrow();
     });
 
-    it('uses 2-space indentation', () => {
-        const lockfile = generateLockfile('srv', {
-            users: createContract({ name: 'users' }),
+    it('uses 2-space indentation', async () => {
+        const lockfile = await generateLockfile('srv', {
+            users: await createContract({ name: 'users' }),
         }, '1.1.0');
 
         const serialized = serializeLockfile(lockfile);
@@ -294,9 +294,9 @@ describe('serializeLockfile', () => {
         expect(lines[1]).toMatch(/^ {2}"/);
     });
 
-    it('is deterministic — same lockfile produces same string (except timestamp)', () => {
-        const contracts = { users: createContract({ name: 'users' }) };
-        const lockfile1 = generateLockfile('srv', contracts, '1.1.0');
+    it('is deterministic — same lockfile produces same string (except timestamp)', async () => {
+        const contracts = { users: await createContract({ name: 'users' }) };
+        const lockfile1 = await generateLockfile('srv', contracts, '1.1.0');
         const lockfile2 = { ...lockfile1 }; // same timestamp
 
         const s1 = serializeLockfile(lockfile1);
@@ -311,9 +311,9 @@ describe('serializeLockfile', () => {
 // ============================================================================
 
 describe('parseLockfile', () => {
-    it('parses a valid lockfile', () => {
-        const lockfile = generateLockfile('srv', {
-            users: createContract({ name: 'users' }),
+    it('parses a valid lockfile', async () => {
+        const lockfile = await generateLockfile('srv', {
+            users: await createContract({ name: 'users' }),
         }, '1.1.0');
 
         const serialized = serializeLockfile(lockfile);
@@ -325,19 +325,19 @@ describe('parseLockfile', () => {
         expect(parsed!.integrityDigest).toBe(lockfile.integrityDigest);
     });
 
-    it('returns null for invalid JSON', () => {
+    it('returns null for invalid JSON', async () => {
         expect(parseLockfile('not json')).toBeNull();
     });
 
-    it('returns null for wrong version', () => {
+    it('returns null for wrong version', async () => {
         expect(parseLockfile('{"lockfileVersion": 999}')).toBeNull();
     });
 
-    it('returns null for missing required fields', () => {
+    it('returns null for missing required fields', async () => {
         expect(parseLockfile('{"lockfileVersion": 1}')).toBeNull();
     });
 
-    it('returns null for missing generatedAt', () => {
+    it('returns null for missing generatedAt', async () => {
         expect(parseLockfile(JSON.stringify({
             lockfileVersion: 1,
             serverName: 'srv',
@@ -347,7 +347,7 @@ describe('parseLockfile', () => {
         }))).toBeNull();
     });
 
-    it('returns null for missing fusionVersion', () => {
+    it('returns null for missing fusionVersion', async () => {
         expect(parseLockfile(JSON.stringify({
             lockfileVersion: 1,
             serverName: 'srv',
@@ -357,7 +357,7 @@ describe('parseLockfile', () => {
         }))).toBeNull();
     });
 
-    it('returns null for missing capabilities.tools', () => {
+    it('returns null for missing capabilities.tools', async () => {
         expect(parseLockfile(JSON.stringify({
             lockfileVersion: 1,
             serverName: 'srv',
@@ -368,13 +368,13 @@ describe('parseLockfile', () => {
         }))).toBeNull();
     });
 
-    it('roundtrips cleanly', () => {
+    it('roundtrips cleanly', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
-        const original = generateLockfile('srv', contracts, '1.1.0');
+        const original = await generateLockfile('srv', contracts, '1.1.0');
         const serialized = serializeLockfile(original);
         const parsed = parseLockfile(serialized)!;
 
@@ -392,14 +392,14 @@ describe('parseLockfile', () => {
 // ============================================================================
 
 describe('checkLockfile', () => {
-    it('returns ok when lockfile matches current contracts', () => {
+    it('returns ok when lockfile matches current contracts', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
-        const result = checkLockfile(lockfile, contracts);
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
+        const result = await checkLockfile(lockfile, contracts);
 
         expect(result.ok).toBe(true);
         expect(result.message).toContain('up to date');
@@ -409,19 +409,19 @@ describe('checkLockfile', () => {
         expect(result.unchanged).toEqual(['tasks', 'users']);
     });
 
-    it('detects added tools', () => {
+    it('detects added tools', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
+            users: await createContract({ name: 'users' }),
         };
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
 
         // Add a new tool
         const updated = {
             ...contracts,
-            tasks: createContract({ name: 'tasks' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
-        const result = checkLockfile(lockfile, updated);
+        const result = await checkLockfile(lockfile, updated);
 
         expect(result.ok).toBe(false);
         expect(result.added).toContain('tasks');
@@ -429,60 +429,60 @@ describe('checkLockfile', () => {
         expect(result.message).toContain('fusion lock');
     });
 
-    it('detects removed tools', () => {
+    it('detects removed tools', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
 
         // Remove a tool
         const { tasks: _, ...remaining } = contracts;
 
-        const result = checkLockfile(lockfile, remaining);
+        const result = await checkLockfile(lockfile, remaining);
 
         expect(result.ok).toBe(false);
         expect(result.removed).toContain('tasks');
     });
 
-    it('detects changed tools', () => {
+    it('detects changed tools', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
+            users: await createContract({ name: 'users' }),
         };
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
 
         // Change the tool's behavior
         const updated = {
-            users: createContract({
+            users: await createContract({
                 name: 'users',
                 systemRulesFingerprint: 'changed-fingerprint',
             }),
         };
 
-        const result = checkLockfile(lockfile, updated);
+        const result = await checkLockfile(lockfile, updated);
 
         expect(result.ok).toBe(false);
         expect(result.changed).toContain('users');
     });
 
-    it('reports unchanged tools alongside changes', () => {
+    it('reports unchanged tools alongside changes', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
-            projects: createContract({ name: 'projects' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
+            projects: await createContract({ name: 'projects' }),
         };
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
 
         // Change only tasks
         const updated = {
             ...contracts,
-            tasks: createContract({
+            tasks: await createContract({
                 name: 'tasks',
-                egressSchemaDigest: sha256('changed-egress'),
+                egressSchemaDigest: await sha256('changed-egress'),
             }),
         };
 
-        const result = checkLockfile(lockfile, updated);
+        const result = await checkLockfile(lockfile, updated);
 
         expect(result.ok).toBe(false);
         expect(result.changed).toEqual(['tasks']);
@@ -492,23 +492,23 @@ describe('checkLockfile', () => {
         expect(result.removed).toHaveLength(0);
     });
 
-    it('detects simultaneous add, remove, and change', () => {
+    it('detects simultaneous add, remove, and change', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
-        const lockfile = generateLockfile('srv', contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', contracts, '1.1.0');
 
         // Remove tasks, change users, add projects
         const updated = {
-            users: createContract({
+            users: await createContract({
                 name: 'users',
                 filesystem: true, // behavioral change
             }),
-            projects: createContract({ name: 'projects' }),
+            projects: await createContract({ name: 'projects' }),
         };
 
-        const result = checkLockfile(lockfile, updated);
+        const result = await checkLockfile(lockfile, updated);
 
         expect(result.ok).toBe(false);
         expect(result.added).toContain('projects');
@@ -516,12 +516,12 @@ describe('checkLockfile', () => {
         expect(result.changed).toContain('users');
     });
 
-    it('message suggests running fusion lock', () => {
-        const lockfile = generateLockfile('srv', {
-            users: createContract({ name: 'users' }),
+    it('message suggests running fusion lock', async () => {
+        const lockfile = await generateLockfile('srv', {
+            users: await createContract({ name: 'users' }),
         }, '1.1.0');
 
-        const result = checkLockfile(lockfile, {});
+        const result = await checkLockfile(lockfile, {});
 
         expect(result.ok).toBe(false);
         expect(result.message).toContain('fusion lock');
@@ -533,14 +533,14 @@ describe('checkLockfile', () => {
 // ============================================================================
 
 describe('Lockfile workflow', () => {
-    it('generate → serialize → parse → check roundtrip', () => {
+    it('generate → serialize → parse → check roundtrip', async () => {
         const contracts = {
-            users: createContract({ name: 'users' }),
-            tasks: createContract({ name: 'tasks' }),
+            users: await createContract({ name: 'users' }),
+            tasks: await createContract({ name: 'tasks' }),
         };
 
         // Step 1: Generate
-        const lockfile = generateLockfile('demo-server', contracts, '1.1.0');
+        const lockfile = await generateLockfile('demo-server', contracts, '1.1.0');
 
         // Step 2: Serialize (simulates writing to disk)
         const json = serializeLockfile(lockfile);
@@ -550,35 +550,35 @@ describe('Lockfile workflow', () => {
         expect(parsed).not.toBeNull();
 
         // Step 4: Check (simulates CI gate)
-        const result = checkLockfile(parsed, contracts);
+        const result = await checkLockfile(parsed, contracts);
         expect(result.ok).toBe(true);
     });
 
-    it('detects behavioral drift after code change', () => {
+    it('detects behavioral drift after code change', async () => {
         // Initial state
         const v1Contracts = {
-            users: createContract({ name: 'users', description: 'V1' }),
+            users: await createContract({ name: 'users', description: 'V1' }),
         };
-        const lockfile = generateLockfile('srv', v1Contracts, '1.1.0');
+        const lockfile = await generateLockfile('srv', v1Contracts, '1.1.0');
         const json = serializeLockfile(lockfile);
 
         // Developer changes code (adds filesystem access)
         const v2Contracts = {
-            users: createContract({ name: 'users', description: 'V1', filesystem: true }),
+            users: await createContract({ name: 'users', description: 'V1', filesystem: true }),
         };
 
         // CI runs `fusion lock --check`
         const parsed = parseLockfile(json)!;
-        const result = checkLockfile(parsed, v2Contracts);
+        const result = await checkLockfile(parsed, v2Contracts);
 
         // CI should fail — behavioral surface changed
         expect(result.ok).toBe(false);
         expect(result.changed).toContain('users');
     });
 
-    it('lockfile format matches expected structure', () => {
+    it('lockfile format matches expected structure', async () => {
         const contracts = {
-            task: createContract({
+            task: await createContract({
                 name: 'task',
                 actions: {
                     list: { destructive: false, readOnly: true },
@@ -588,7 +588,7 @@ describe('Lockfile workflow', () => {
             }),
         };
 
-        const lockfile = generateLockfile('protocol-gap-demo', contracts, '1.1.0');
+        const lockfile = await generateLockfile('protocol-gap-demo', contracts, '1.1.0');
         const tool = lockfile.capabilities.tools['task']!;
 
         // Verify structure matches the documented format

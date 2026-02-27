@@ -253,13 +253,13 @@ export interface GenerateLockfileOptions {
  * @param options       - Optional: prompt builders to include
  * @returns A fully materialized lockfile
  */
-export function generateLockfile(
+export async function generateLockfile(
     serverName: string,
     contracts: Readonly<Record<string, ToolContract>>,
     fusionVersion: string,
     options?: GenerateLockfileOptions,
-): CapabilityLockfile {
-    const serverDigest = computeServerDigest(contracts);
+): Promise<CapabilityLockfile> {
+    const serverDigest = await computeServerDigest(contracts);
 
     const sortedNames = Object.keys(contracts).sort();
     const tools: Record<string, LockfileTool> = {};
@@ -281,7 +281,7 @@ export function generateLockfile(
 
         for (const name of sortedPromptNames) {
             const builder = promptBuilders.find(b => b.getName() === name)!;
-            const snapshot = snapshotPrompt(builder);
+            const snapshot = await snapshotPrompt(builder);
             prompts[name] = snapshot;
             promptDigestParts.push(`${name}:${snapshot.integrityDigest}`);
         }
@@ -292,7 +292,7 @@ export function generateLockfile(
         ? `${serverDigest.digest}\n---prompts---\n${promptDigestParts.join('\n')}`
         : serverDigest.digest;
     const integrityDigest = promptDigestParts.length > 0
-        ? sha256(digestInput)
+        ? await sha256(digestInput)
         : serverDigest.digest;
 
     const capabilities: LockfileCapabilities = prompts
@@ -373,13 +373,13 @@ export interface LockfileCheckResult {
  * @param options   - Optional: prompt builders for prompt verification
  * @returns Check result with per-tool and per-prompt diff details
  */
-export function checkLockfile(
+export async function checkLockfile(
     lockfile: CapabilityLockfile,
     contracts: Readonly<Record<string, ToolContract>>,
     options?: GenerateLockfileOptions,
-): LockfileCheckResult {
+): Promise<LockfileCheckResult> {
     // Regenerate a fresh lockfile to compare digests
-    const fresh = generateLockfile(lockfile.serverName, contracts, lockfile.fusionVersion, options);
+    const fresh = await generateLockfile(lockfile.serverName, contracts, lockfile.fusionVersion, options);
 
     // Fast path: integrity digest matches → everything is identical
     if (lockfile.integrityDigest === fresh.integrityDigest) {
@@ -605,7 +605,7 @@ function snapshotTool(
  *
  * @internal
  */
-function snapshotPrompt(builder: PromptBuilderLike): LockfilePrompt {
+async function snapshotPrompt(builder: PromptBuilderLike): Promise<LockfilePrompt> {
     const def = builder.buildPromptDefinition();
     const tags = [...builder.getTags()].sort();
     const hasMiddleware = builder.hasMiddleware();
@@ -620,7 +620,7 @@ function snapshotPrompt(builder: PromptBuilderLike): LockfilePrompt {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    const argumentsDigest = `sha256:${sha256(canonicalize(args))}`;
+    const argumentsDigest = `sha256:${await sha256(canonicalize(args))}`;
 
     // Compute integrity digest over all declarative fields
     const surface = {
@@ -632,7 +632,7 @@ function snapshotPrompt(builder: PromptBuilderLike): LockfilePrompt {
         hasMiddleware,
         hydrationTimeout,
     };
-    const integrityDigest = `sha256:${sha256(canonicalize(surface))}`;
+    const integrityDigest = `sha256:${await sha256(canonicalize(surface))}`;
 
     return {
         integrityDigest,

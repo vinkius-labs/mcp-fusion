@@ -538,11 +538,11 @@ function createDetachFn(
  * @param options - Filter and context factory options
  * @returns A detach function to remove the handlers
  */
-export function attachToServer<TContext>(
+export async function attachToServer<TContext>(
     server: unknown,
     registry: RegistryDelegate<TContext>,
     options: AttachOptions<TContext> = {},
-): DetachFn {
+): Promise<DetachFn> {
     const resolved = resolveServer(server) as McpServerTyped;
 
     const {
@@ -572,8 +572,8 @@ export function attachToServer<TContext>(
     // 3b. Zero-Trust: compile contracts, compute digest, verify attestation
     //     Zero overhead when not configured — no crypto operations run.
     if (zeroTrust) {
-        const contracts = compileContracts(registry.getBuilders());
-        const serverDigest = computeServerDigest(contracts);
+        const contracts = await compileContracts(registry.getBuilders());
+        const serverDigest = await computeServerDigest(contracts);
 
         // Synchronous digest comparison (no signer needed for pinning)
         if (zeroTrust.expectedDigest && serverDigest.digest !== zeroTrust.expectedDigest) {

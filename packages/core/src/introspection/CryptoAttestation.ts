@@ -23,9 +23,11 @@
  * no cryptographic operations execute — the attach flow is
  * identical to the default path.
  *
+ * Uses Web Crypto API (globalThis.crypto.subtle) for runtime
+ * agnosticism — works on Node.js 20+, Cloudflare Workers, Deno, Bun.
+ *
  * @module
  */
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { ToolContract } from './ToolContract.js';
 import type { ServerDigest, BehaviorDigestResult } from './BehaviorDigest.js';
 
@@ -146,7 +148,7 @@ export function createHmacSigner(secret: string): AttestationSigner {
             return hmacSign(digest, secret);
         },
         async verify(digest: string, signature: string): Promise<boolean> {
-            const expected = hmacSign(digest, secret);
+            const expected = await hmacSign(digest, secret);
             return timingSafeCompare(expected, signature);
         },
     };
@@ -310,20 +312,40 @@ function resolveSigner(config: ZeroTrustConfig): AttestationSigner {
 }
 
 /**
- * HMAC-SHA256 sign.
+ * HMAC-SHA256 sign using Web Crypto API.
  * @internal
  */
-function hmacSign(data: string, secret: string): string {
-    return createHmac('sha256', secret).update(data, 'utf8').digest('hex');
+async function hmacSign(data: string, secret: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const msgData = encoder.encode(data);
+
+    const key = await crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' },
+        false, ['sign'],
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', key, msgData);
+    return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 /**
- * Timing-safe string comparison to prevent timing attacks.
+ * Constant-time string comparison to prevent timing attacks.
+ *
+ * Compares byte-by-byte using XOR accumulation — the comparison
+ * always processes all bytes regardless of where differences occur.
  * @internal
  */
 function timingSafeCompare(a: string, b: string): boolean {
     if (a.length !== b.length) return false;
-    const bufA = Buffer.from(a, 'utf8');
-    const bufB = Buffer.from(b, 'utf8');
-    return timingSafeEqual(bufA, bufB);
+    const encoder = new TextEncoder();
+    const bufA = encoder.encode(a);
+    const bufB = encoder.encode(b);
+    let diff = 0;
+    for (let i = 0; i < bufA.length; i++) {
+        diff |= bufA[i]! ^ bufB[i]!;
+    }
+    return diff === 0;
 }

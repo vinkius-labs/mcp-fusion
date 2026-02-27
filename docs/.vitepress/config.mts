@@ -259,6 +259,15 @@ export default defineConfig({
         ]
       },
 
+      // ── Adapters ────────────────────────────────────────
+      {
+        text: 'Adapters',
+        collapsed: true,
+        items: [
+          { text: 'Cloudflare Workers', link: '/cloudflare-adapter' },
+        ]
+      },
+
       // ── Reference ──────────────────────────────────────
       {
         text: 'Reference',

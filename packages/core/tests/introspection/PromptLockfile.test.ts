@@ -26,13 +26,13 @@ import { sha256, canonicalize } from '../../src/introspection/ToolContract.js';
 // ============================================================================
 
 /** Minimal ToolContract factory for tests that need at least one tool. */
-function createContract(name = 'test-tool'): ToolContract {
+async function createContract(name = 'test-tool'): ToolContract {
     return {
         surface: {
             name,
             description: `Manage ${name}`,
             tags: ['test'],
-            inputSchemaDigest: sha256(`${name}-schema`),
+            inputSchemaDigest: await sha256(`${name}-schema`),
             actions: {
                 run: {
                     description: 'Run action',
@@ -41,7 +41,7 @@ function createContract(name = 'test-tool'): ToolContract {
                     readOnly: true,
                     requiredFields: [],
                     presenterName: undefined,
-                    inputSchemaDigest: sha256('run-schema'),
+                    inputSchemaDigest: await sha256('run-schema'),
                     hasMiddleware: false,
                 },
             },
@@ -112,85 +112,85 @@ function createPromptBuilder(overrides: Partial<{
 // ============================================================================
 
 describe('Prompt Lockfile — generateLockfile with prompts', () => {
-    it('generates lockfile with prompts section when prompts are provided', () => {
-        const contracts = { tool: createContract('tool') };
+    it('generates lockfile with prompts section when prompts are provided', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'greet', description: 'Greeting prompt' })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
 
         expect(lockfile.capabilities.prompts).toBeDefined();
         expect(lockfile.capabilities.prompts!['greet']).toBeDefined();
     });
 
-    it('omits prompts section when no prompts are provided', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0');
+    it('omits prompts section when no prompts are provided', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0');
 
         expect(lockfile.capabilities.prompts).toBeUndefined();
     });
 
-    it('omits prompts section when empty prompts array is provided', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts: [] });
+    it('omits prompts section when empty prompts array is provided', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts: [] });
 
         expect(lockfile.capabilities.prompts).toBeUndefined();
     });
 
-    it('sorts prompts alphabetically by name', () => {
-        const contracts = { tool: createContract('tool') };
+    it('sorts prompts alphabetically by name', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [
             createPromptBuilder({ name: 'zebra' }),
             createPromptBuilder({ name: 'alpha' }),
             createPromptBuilder({ name: 'middle' }),
         ];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const keys = Object.keys(lockfile.capabilities.prompts!);
 
         expect(keys).toEqual(['alpha', 'middle', 'zebra']);
     });
 
-    it('captures prompt description and title', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures prompt description and title', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'audit',
             title: 'Daily Audit',
             description: 'Generates a daily audit report',
         })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['audit']!;
 
         expect(entry.description).toBe('Generates a daily audit report');
         expect(entry.title).toBe('Daily Audit');
     });
 
-    it('captures null for missing description and title', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures null for missing description and title', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'bare' })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['bare']!;
 
         expect(entry.description).toBeNull();
         expect(entry.title).toBeNull();
     });
 
-    it('captures sorted tags', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures sorted tags', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'tagged',
             tags: ['compliance', 'audit', 'billing'],
         })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['tagged']!;
 
         expect(entry.tags).toEqual(['audit', 'billing', 'compliance']);
     });
 
-    it('captures argument definitions sorted by name', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures argument definitions sorted by name', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'with-args',
             arguments: [
@@ -200,7 +200,7 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
             ],
         })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['with-args']!;
 
         expect(entry.arguments).toHaveLength(3);
@@ -218,18 +218,18 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
         expect(entry.arguments[2]!.description).toBe('Output format');
     });
 
-    it('captures empty arguments array when no args defined', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures empty arguments array when no args defined', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'no-args' })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['no-args']!;
 
         expect(entry.arguments).toEqual([]);
     });
 
-    it('computes argumentsDigest from canonical arguments', () => {
-        const contracts = { tool: createContract('tool') };
+    it('computes argumentsDigest from canonical arguments', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'digest-test',
             arguments: [
@@ -238,7 +238,7 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
             ],
         })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['digest-test']!;
 
         expect(entry.argumentsDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
@@ -247,49 +247,49 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
             { name: 'a', description: 'First arg', required: false },
             { name: 'b', description: null, required: true },
         ];
-        const expected = `sha256:${sha256(canonicalize(sortedArgs))}`;
+        const expected = `sha256:${await sha256(canonicalize(sortedArgs))}`;
         expect(entry.argumentsDigest).toBe(expected);
     });
 
-    it('captures hasMiddleware flag', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures hasMiddleware flag', async () => {
+        const contracts = { tool: await createContract('tool') };
         const withMw = createPromptBuilder({ name: 'with-mw', hasMiddleware: true });
         const withoutMw = createPromptBuilder({ name: 'without-mw', hasMiddleware: false });
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts: [withMw, withoutMw] });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts: [withMw, withoutMw] });
 
         expect(lockfile.capabilities.prompts!['with-mw']!.hasMiddleware).toBe(true);
         expect(lockfile.capabilities.prompts!['without-mw']!.hasMiddleware).toBe(false);
     });
 
-    it('captures hydrationTimeout as number or null', () => {
-        const contracts = { tool: createContract('tool') };
+    it('captures hydrationTimeout as number or null', async () => {
+        const contracts = { tool: await createContract('tool') };
         const withTimeout = createPromptBuilder({ name: 'timed', hydrationTimeout: 5000 });
         const noTimeout = createPromptBuilder({ name: 'untimed' });
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts: [withTimeout, noTimeout] });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts: [withTimeout, noTimeout] });
 
         expect(lockfile.capabilities.prompts!['timed']!.hydrationTimeout).toBe(5000);
         expect(lockfile.capabilities.prompts!['untimed']!.hydrationTimeout).toBeNull();
     });
 
-    it('produces per-prompt integrity digests', () => {
-        const contracts = { tool: createContract('tool') };
+    it('produces per-prompt integrity digests', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'p1', description: 'Prompt 1' })];
 
-        const lockfile = generateLockfile('test-server', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('test-server', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['p1']!;
 
         expect(entry.integrityDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
     });
 
-    it('produces different integrity digests for different prompts', () => {
-        const contracts = { tool: createContract('tool') };
+    it('produces different integrity digests for different prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
 
-        const lockA = generateLockfile('s', contracts, '1.0.0', {
+        const lockA = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({ name: 'p', description: 'version A' })],
         });
-        const lockB = generateLockfile('s', contracts, '1.0.0', {
+        const lockB = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({ name: 'p', description: 'version B' })],
         });
 
@@ -297,15 +297,15 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
             .not.toBe(lockB.capabilities.prompts!['p']!.integrityDigest);
     });
 
-    it('is deterministic — same prompts produce same digests', () => {
-        const contracts = { tool: createContract('tool') };
+    it('is deterministic — same prompts produce same digests', async () => {
+        const contracts = { tool: await createContract('tool') };
         const makePrompts = () => [
             createPromptBuilder({ name: 'a', description: 'Alpha', tags: ['x'] }),
             createPromptBuilder({ name: 'b', description: 'Beta', arguments: [{ name: 'id', required: true }] }),
         ];
 
-        const lock1 = generateLockfile('s', contracts, '1.0.0', { prompts: makePrompts() });
-        const lock2 = generateLockfile('s', contracts, '1.0.0', { prompts: makePrompts() });
+        const lock1 = await generateLockfile('s', contracts, '1.0.0', { prompts: makePrompts() });
+        const lock2 = await generateLockfile('s', contracts, '1.0.0', { prompts: makePrompts() });
 
         expect(lock1.capabilities.prompts!['a']!.integrityDigest)
             .toBe(lock2.capabilities.prompts!['a']!.integrityDigest);
@@ -315,44 +315,44 @@ describe('Prompt Lockfile — generateLockfile with prompts', () => {
 });
 
 describe('Prompt Lockfile — integrity digest includes prompts', () => {
-    it('overall integrityDigest changes when prompts are added', () => {
-        const contracts = { tool: createContract('tool') };
+    it('overall integrityDigest changes when prompts are added', async () => {
+        const contracts = { tool: await createContract('tool') };
 
-        const withoutPrompts = generateLockfile('s', contracts, '1.0.0');
-        const withPrompts = generateLockfile('s', contracts, '1.0.0', {
+        const withoutPrompts = await generateLockfile('s', contracts, '1.0.0');
+        const withPrompts = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({ name: 'p1' })],
         });
 
         expect(withoutPrompts.integrityDigest).not.toBe(withPrompts.integrityDigest);
     });
 
-    it('overall integrityDigest changes when prompt content changes', () => {
-        const contracts = { tool: createContract('tool') };
+    it('overall integrityDigest changes when prompt content changes', async () => {
+        const contracts = { tool: await createContract('tool') };
 
-        const v1 = generateLockfile('s', contracts, '1.0.0', {
+        const v1 = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({ name: 'p', description: 'v1' })],
         });
-        const v2 = generateLockfile('s', contracts, '1.0.0', {
+        const v2 = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({ name: 'p', description: 'v2' })],
         });
 
         expect(v1.integrityDigest).not.toBe(v2.integrityDigest);
     });
 
-    it('integrityDigest remains same for tool-only lockfile (backward compat)', () => {
-        const contracts = { tool: createContract('tool') };
-        const lock1 = generateLockfile('s', contracts, '1.0.0');
-        const lock2 = generateLockfile('s', contracts, '1.0.0');
+    it('integrityDigest remains same for tool-only lockfile (backward compat)', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lock1 = await generateLockfile('s', contracts, '1.0.0');
+        const lock2 = await generateLockfile('s', contracts, '1.0.0');
 
         expect(lock1.integrityDigest).toBe(lock2.integrityDigest);
     });
 });
 
 describe('Prompt Lockfile — serialization', () => {
-    it('serialized lockfile includes prompts section', () => {
-        const contracts = { tool: createContract('tool') };
+    it('serialized lockfile includes prompts section', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'hello', description: 'Hello world' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
 
         const json = serializeLockfile(lockfile);
         const parsed = JSON.parse(json) as Record<string, unknown>;
@@ -363,8 +363,8 @@ describe('Prompt Lockfile — serialization', () => {
         expect(prompsObj['hello']).toBeDefined();
     });
 
-    it('prompt arguments are serialized with sorted keys', () => {
-        const contracts = { tool: createContract('tool') };
+    it('prompt arguments are serialized with sorted keys', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'sorted',
             arguments: [
@@ -372,7 +372,7 @@ describe('Prompt Lockfile — serialization', () => {
                 { name: 'a_param', description: 'First', required: true },
             ],
         })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
         const json = serializeLockfile(lockfile);
 
         // Verify keys are sorted in JSON
@@ -381,8 +381,8 @@ describe('Prompt Lockfile — serialization', () => {
         expect(aIdx).toBeLessThan(zIdx);
     });
 
-    it('roundtrip: generate → serialize → parse preserves prompts', () => {
-        const contracts = { tool: createContract('tool') };
+    it('roundtrip: generate → serialize → parse preserves prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [
             createPromptBuilder({
                 name: 'audit',
@@ -394,7 +394,7 @@ describe('Prompt Lockfile — serialization', () => {
                 arguments: [{ name: 'date', description: 'Date', required: true }],
             }),
         ];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
 
@@ -415,12 +415,12 @@ describe('Prompt Lockfile — serialization', () => {
 });
 
 describe('Prompt Lockfile — checkLockfile with prompts', () => {
-    it('returns ok when lockfile matches current tools and prompts', () => {
-        const contracts = { tool: createContract('tool') };
+    it('returns ok when lockfile matches current tools and prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'p1', description: 'Prompt 1' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
 
-        const result = checkLockfile(lockfile, contracts, { prompts });
+        const result = await checkLockfile(lockfile, contracts, { prompts });
 
         expect(result.ok).toBe(true);
         expect(result.unchangedPrompts).toEqual(['p1']);
@@ -429,84 +429,84 @@ describe('Prompt Lockfile — checkLockfile with prompts', () => {
         expect(result.changedPrompts).toEqual([]);
     });
 
-    it('detects added prompts', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('s', contracts, '1.0.0');
+    it('detects added prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('s', contracts, '1.0.0');
 
         // Now add prompts
         const prompts = [createPromptBuilder({ name: 'new-prompt' })];
-        const result = checkLockfile(lockfile, contracts, { prompts });
+        const result = await checkLockfile(lockfile, contracts, { prompts });
 
         expect(result.ok).toBe(false);
         expect(result.addedPrompts).toEqual(['new-prompt']);
         expect(result.message).toContain('prompts added');
     });
 
-    it('detects removed prompts', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects removed prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'old-prompt' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
 
         // Now remove prompts
-        const result = checkLockfile(lockfile, contracts);
+        const result = await checkLockfile(lockfile, contracts);
 
         expect(result.ok).toBe(false);
         expect(result.removedPrompts).toEqual(['old-prompt']);
         expect(result.message).toContain('prompts removed');
     });
 
-    it('detects changed prompts', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects changed prompts', async () => {
+        const contracts = { tool: await createContract('tool') };
         const promptsV1 = [createPromptBuilder({ name: 'evolving', description: 'v1' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
 
         const promptsV2 = [createPromptBuilder({ name: 'evolving', description: 'v2' })];
-        const result = checkLockfile(lockfile, contracts, { prompts: promptsV2 });
+        const result = await checkLockfile(lockfile, contracts, { prompts: promptsV2 });
 
         expect(result.ok).toBe(false);
         expect(result.changedPrompts).toEqual(['evolving']);
         expect(result.message).toContain('prompts changed');
     });
 
-    it('detects simultaneous tool and prompt drift', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects simultaneous tool and prompt drift', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'p1' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
 
         // Change both: add a tool, change a prompt
         const newContracts = {
-            tool: createContract('tool'),
-            newTool: createContract('newTool'),
+            tool: await createContract('tool'),
+            newTool: await createContract('newTool'),
         };
         const newPrompts = [createPromptBuilder({ name: 'p1', description: 'changed' })];
-        const result = checkLockfile(lockfile, newContracts, { prompts: newPrompts });
+        const result = await checkLockfile(lockfile, newContracts, { prompts: newPrompts });
 
         expect(result.ok).toBe(false);
         expect(result.added).toEqual(['newTool']);
         expect(result.changedPrompts).toEqual(['p1']);
     });
 
-    it('fast path works when tools and prompts all match', () => {
-        const contracts = { a: createContract('a'), b: createContract('b') };
+    it('fast path works when tools and prompts all match', async () => {
+        const contracts = { a: await createContract('a'), b: await createContract('b') };
         const prompts = [
             createPromptBuilder({ name: 'x', description: 'X' }),
             createPromptBuilder({ name: 'y', description: 'Y' }),
         ];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
-        const result = checkLockfile(lockfile, contracts, { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
+        const result = await checkLockfile(lockfile, contracts, { prompts });
 
         expect(result.ok).toBe(true);
         expect(result.unchanged).toEqual(['a', 'b']);
         expect(result.unchangedPrompts).toEqual(['x', 'y']);
     });
 
-    it('detects prompt argument changes', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects prompt argument changes', async () => {
+        const contracts = { tool: await createContract('tool') };
         const promptsV1 = [createPromptBuilder({
             name: 'argchange',
             arguments: [{ name: 'date', required: true }],
         })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
 
         const promptsV2 = [createPromptBuilder({
             name: 'argchange',
@@ -515,55 +515,55 @@ describe('Prompt Lockfile — checkLockfile with prompts', () => {
                 { name: 'format', required: false },
             ],
         })];
-        const result = checkLockfile(lockfile, contracts, { prompts: promptsV2 });
+        const result = await checkLockfile(lockfile, contracts, { prompts: promptsV2 });
 
         expect(result.ok).toBe(false);
         expect(result.changedPrompts).toEqual(['argchange']);
     });
 
-    it('detects prompt tag changes', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects prompt tag changes', async () => {
+        const contracts = { tool: await createContract('tool') };
         const promptsV1 = [createPromptBuilder({ name: 'tagged', tags: ['billing'] })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
 
         const promptsV2 = [createPromptBuilder({ name: 'tagged', tags: ['billing', 'compliance'] })];
-        const result = checkLockfile(lockfile, contracts, { prompts: promptsV2 });
+        const result = await checkLockfile(lockfile, contracts, { prompts: promptsV2 });
 
         expect(result.ok).toBe(false);
         expect(result.changedPrompts).toEqual(['tagged']);
     });
 
-    it('detects middleware change', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects middleware change', async () => {
+        const contracts = { tool: await createContract('tool') };
         const promptsV1 = [createPromptBuilder({ name: 'mw', hasMiddleware: false })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
 
         const promptsV2 = [createPromptBuilder({ name: 'mw', hasMiddleware: true })];
-        const result = checkLockfile(lockfile, contracts, { prompts: promptsV2 });
+        const result = await checkLockfile(lockfile, contracts, { prompts: promptsV2 });
 
         expect(result.ok).toBe(false);
         expect(result.changedPrompts).toEqual(['mw']);
     });
 
-    it('detects hydration timeout change', () => {
-        const contracts = { tool: createContract('tool') };
+    it('detects hydration timeout change', async () => {
+        const contracts = { tool: await createContract('tool') };
         const promptsV1 = [createPromptBuilder({ name: 'timeout', hydrationTimeout: 3000 })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts: promptsV1 });
 
         const promptsV2 = [createPromptBuilder({ name: 'timeout', hydrationTimeout: 5000 })];
-        const result = checkLockfile(lockfile, contracts, { prompts: promptsV2 });
+        const result = await checkLockfile(lockfile, contracts, { prompts: promptsV2 });
 
         expect(result.ok).toBe(false);
         expect(result.changedPrompts).toEqual(['timeout']);
     });
 
-    it('message includes both tool and prompt drift details', () => {
-        const contracts = { tool: createContract('tool') };
+    it('message includes both tool and prompt drift details', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({ name: 'p1' })];
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
 
         // Remove tool, add new prompt
-        const result = checkLockfile(lockfile, {}, {
+        const result = await checkLockfile(lockfile, {}, {
             prompts: [
                 createPromptBuilder({ name: 'p1' }),
                 createPromptBuilder({ name: 'p2' }),
@@ -578,9 +578,9 @@ describe('Prompt Lockfile — checkLockfile with prompts', () => {
 });
 
 describe('Prompt Lockfile — backward compatibility', () => {
-    it('tool-only lockfile without prompts field is still valid', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('s', contracts, '1.0.0');
+    it('tool-only lockfile without prompts field is still valid', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('s', contracts, '1.0.0');
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json);
 
@@ -588,21 +588,21 @@ describe('Prompt Lockfile — backward compatibility', () => {
         expect(parsed!.capabilities.prompts).toBeUndefined();
     });
 
-    it('check against tool-only lockfile with no current prompts returns ok', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('s', contracts, '1.0.0');
+    it('check against tool-only lockfile with no current prompts returns ok', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('s', contracts, '1.0.0');
 
-        const result = checkLockfile(lockfile, contracts);
+        const result = await checkLockfile(lockfile, contracts);
 
         expect(result.ok).toBe(true);
         expect(result.addedPrompts).toEqual([]);
         expect(result.unchangedPrompts).toEqual([]);
     });
 
-    it('LockfileCheckResult always has prompt arrays (never undefined)', () => {
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('s', contracts, '1.0.0');
-        const result = checkLockfile(lockfile, contracts);
+    it('LockfileCheckResult always has prompt arrays (never undefined)', async () => {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('s', contracts, '1.0.0');
+        const result = await checkLockfile(lockfile, contracts);
 
         expect(Array.isArray(result.addedPrompts)).toBe(true);
         expect(Array.isArray(result.removedPrompts)).toBe(true);
@@ -612,8 +612,8 @@ describe('Prompt Lockfile — backward compatibility', () => {
 });
 
 describe('Prompt Lockfile — LockfilePrompt shape', () => {
-    it('has all expected fields', () => {
-        const contracts = { tool: createContract('tool') };
+    it('has all expected fields', async () => {
+        const contracts = { tool: await createContract('tool') };
         const prompts = [createPromptBuilder({
             name: 'full',
             title: 'Full Prompt',
@@ -624,7 +624,7 @@ describe('Prompt Lockfile — LockfilePrompt shape', () => {
             arguments: [{ name: 'id', description: 'Entity ID', required: true }],
         })];
 
-        const lockfile = generateLockfile('s', contracts, '1.0.0', { prompts });
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', { prompts });
         const entry = lockfile.capabilities.prompts!['full']! satisfies LockfilePrompt;
 
         expect(entry).toEqual(expect.objectContaining({
@@ -643,10 +643,10 @@ describe('Prompt Lockfile — LockfilePrompt shape', () => {
 });
 
 describe('Prompt Lockfile — git diff readability', () => {
-    it('prompt changes produce human-readable diffs', () => {
-        const contracts = { tool: createContract('tool') };
+    it('prompt changes produce human-readable diffs', async () => {
+        const contracts = { tool: await createContract('tool') };
 
-        const v1 = generateLockfile('s', contracts, '1.0.0', {
+        const v1 = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({
                 name: 'report',
                 description: 'Generate report',
@@ -655,7 +655,7 @@ describe('Prompt Lockfile — git diff readability', () => {
             })],
         });
 
-        const v2 = generateLockfile('s', contracts, '1.0.0', {
+        const v2 = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [createPromptBuilder({
                 name: 'report',
                 description: 'Generate enhanced report',
@@ -703,8 +703,8 @@ describe('Prompt Lockfile — real PromptBuilder via definePrompt', () => {
             }),
         });
 
-        const contracts = { tool: createContract('tool') };
-        const lockfile = generateLockfile('s', contracts, '1.0.0', {
+        const contracts = { tool: await createContract('tool') };
+        const lockfile = await generateLockfile('s', contracts, '1.0.0', {
             prompts: [prompt as unknown as PromptBuilderLike],
         });
 

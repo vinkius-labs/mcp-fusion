@@ -70,9 +70,9 @@ function createTestBuilder() {
 // ============================================================================
 
 describe('ToolContract', () => {
-    it('materializes a contract from a builder', () => {
+    it('materializes a contract from a builder', async () => {
         const builder = createTestBuilder();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         expect(contract.surface.name).toBe('users');
         expect(contract.surface.description).toContain('Manage users');
@@ -80,9 +80,9 @@ describe('ToolContract', () => {
         expect(contract.surface.inputSchemaDigest).toBeTruthy();
     });
 
-    it('captures per-action contracts', () => {
+    it('captures per-action contracts', async () => {
         const builder = createTestBuilder();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         expect(Object.keys(contract.surface.actions)).toContain('list');
         expect(Object.keys(contract.surface.actions)).toContain('create');
@@ -96,36 +96,36 @@ describe('ToolContract', () => {
         expect(deleteAction.destructive).toBe(true);
     });
 
-    it('captures Presenter metadata in behavior', () => {
+    it('captures Presenter metadata in behavior', async () => {
         const builder = createTestBuilder();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         // The list action uses UserPresenter
         expect(contract.behavior.egressSchemaDigest).toBeTruthy();
     });
 
-    it('computes token economics profile', () => {
+    it('computes token economics profile', async () => {
         const builder = createTestBuilder();
-        const contract = materializeContract(builder);
+        const contract = await materializeContract(builder);
 
         expect(contract.tokenEconomics.schemaFieldCount).toBeGreaterThan(0);
         expect(contract.tokenEconomics.inflationRisk).toBeDefined();
     });
 
-    it('compileContracts produces a record keyed by tool name', () => {
+    it('compileContracts produces a record keyed by tool name', async () => {
         const builder = createTestBuilder();
-        const contracts = compileContracts([builder]);
+        const contracts = await compileContracts([builder]);
 
         expect(contracts).toHaveProperty('users');
         expect(contracts['users']!.surface.name).toBe('users');
     });
 
-    it('produces deterministic contracts for identical builders', () => {
+    it('produces deterministic contracts for identical builders', async () => {
         const builder1 = createTestBuilder();
         const builder2 = createTestBuilder();
 
-        const contract1 = materializeContract(builder1);
-        const contract2 = materializeContract(builder2);
+        const contract1 = await materializeContract(builder1);
+        const contract2 = await materializeContract(builder2);
 
         expect(contract1.surface.inputSchemaDigest).toBe(contract2.surface.inputSchemaDigest);
     });
@@ -136,23 +136,23 @@ describe('ToolContract', () => {
 // ============================================================================
 
 describe('sha256 / canonicalize', () => {
-    it('produces 64-character hex digests', () => {
-        const hash = sha256('hello');
+    it('produces 64-character hex digests', async () => {
+        const hash = await sha256('hello');
         expect(hash).toHaveLength(64);
         expect(/^[a-f0-9]+$/.test(hash)).toBe(true);
     });
 
-    it('produces deterministic hashes', () => {
-        expect(sha256('test')).toBe(sha256('test'));
+    it('produces deterministic hashes', async () => {
+        expect(await sha256('test')).toBe(await sha256('test'));
     });
 
-    it('canonicalizes object key order', () => {
+    it('canonicalizes object key order', async () => {
         const obj1 = { b: 2, a: 1 };
         const obj2 = { a: 1, b: 2 };
         expect(canonicalize(obj1)).toBe(canonicalize(obj2));
     });
 
-    it('canonicalizes nested objects', () => {
+    it('canonicalizes nested objects', async () => {
         const obj1 = { z: { b: 2, a: 1 }, y: 1 };
         const obj2 = { y: 1, z: { a: 1, b: 2 } };
         expect(canonicalize(obj1)).toBe(canonicalize(obj2));
@@ -164,13 +164,13 @@ describe('sha256 / canonicalize', () => {
 // ============================================================================
 
 describe('ContractDiff', () => {
-    function createBaseContract(): ToolContract {
+    async function createBaseContract(): ToolContract {
         return {
             surface: {
                 name: 'users',
                 description: 'Manage users',
                 tags: ['crud'],
-                inputSchemaDigest: sha256('schema-v1'),
+                inputSchemaDigest: await sha256('schema-v1'),
                 actions: {
                     list: {
                         description: 'List users',
@@ -179,7 +179,7 @@ describe('ContractDiff', () => {
                         readOnly: true,
                         requiredFields: [],
                         presenterName: 'UserPresenter',
-                        inputSchemaDigest: sha256('list-schema'),
+                        inputSchemaDigest: await sha256('list-schema'),
                         hasMiddleware: false,
                     },
                     create: {
@@ -189,13 +189,13 @@ describe('ContractDiff', () => {
                         readOnly: false,
                         requiredFields: ['name', 'email'],
                         presenterName: undefined,
-                        inputSchemaDigest: sha256('create-schema'),
+                        inputSchemaDigest: await sha256('create-schema'),
                         hasMiddleware: false,
                     },
                 },
             },
             behavior: {
-                egressSchemaDigest: sha256('egress-v1'),
+                egressSchemaDigest: await sha256('egress-v1'),
                 systemRulesFingerprint: 'static:abc',
                 cognitiveGuardrails: { agentLimitMax: 50, egressMaxBytes: null },
                 middlewareChain: [],
@@ -221,8 +221,8 @@ describe('ContractDiff', () => {
         };
     }
 
-    it('detects no changes for identical contracts', () => {
-        const base = createBaseContract();
+    it('detects no changes for identical contracts', async () => {
+        const base = await createBaseContract();
         const result = diffContracts(base, base);
 
         expect(result.deltas).toHaveLength(0);
@@ -230,11 +230,11 @@ describe('ContractDiff', () => {
         expect(result.isBackwardsCompatible).toBe(true);
     });
 
-    it('detects BREAKING changes — input schema', () => {
-        const before = createBaseContract();
+    it('detects BREAKING changes — input schema', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
-            surface: { ...before.surface, inputSchemaDigest: sha256('schema-v2') },
+            surface: { ...before.surface, inputSchemaDigest: await sha256('schema-v2') },
         };
 
         const result = diffContracts(before, after);
@@ -243,11 +243,11 @@ describe('ContractDiff', () => {
         expect(schemaDeltas[0]!.severity).toBe('BREAKING');
     });
 
-    it('detects BREAKING changes — egress schema', () => {
-        const before = createBaseContract();
+    it('detects BREAKING changes — egress schema', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
-            behavior: { ...before.behavior, egressSchemaDigest: sha256('egress-v2') },
+            behavior: { ...before.behavior, egressSchemaDigest: await sha256('egress-v2') },
         };
 
         const result = diffContracts(before, after);
@@ -255,8 +255,8 @@ describe('ContractDiff', () => {
         expect(result.digestChanged).toBe(true);
     });
 
-    it('detects BREAKING changes — action removed', () => {
-        const before = createBaseContract();
+    it('detects BREAKING changes — action removed', async () => {
+        const before = await createBaseContract();
         const { create: _, ...remainingActions } = before.surface.actions;
         const after: ToolContract = {
             ...before,
@@ -269,8 +269,8 @@ describe('ContractDiff', () => {
         expect(removedDeltas[0]!.severity).toBe('BREAKING');
     });
 
-    it('detects SAFE changes — action added', () => {
-        const before = createBaseContract();
+    it('detects SAFE changes — action added', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             surface: {
@@ -284,7 +284,7 @@ describe('ContractDiff', () => {
                         readOnly: false,
                         requiredFields: ['id', 'name'],
                         presenterName: undefined,
-                        inputSchemaDigest: sha256('update-schema'),
+                        inputSchemaDigest: await sha256('update-schema'),
                         hasMiddleware: false,
                     },
                 },
@@ -297,8 +297,8 @@ describe('ContractDiff', () => {
         expect(addedDeltas[0]!.severity).toBe('SAFE');
     });
 
-    it('detects BREAKING changes — entitlement gained', () => {
-        const before = createBaseContract();
+    it('detects BREAKING changes — entitlement gained', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             entitlements: { ...before.entitlements, filesystem: true },
@@ -310,14 +310,14 @@ describe('ContractDiff', () => {
         expect(entitlementDeltas[0]!.severity).toBe('BREAKING');
     });
 
-    it('sorts deltas by severity (BREAKING first)', () => {
-        const before = createBaseContract();
+    it('sorts deltas by severity (BREAKING first)', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             surface: {
                 ...before.surface,
                 description: 'Updated description', // COSMETIC
-                inputSchemaDigest: sha256('schema-v2'), // BREAKING
+                inputSchemaDigest: await sha256('schema-v2'), // BREAKING
             },
         };
 
@@ -326,11 +326,11 @@ describe('ContractDiff', () => {
         expect(result.deltas[0]!.severity).toBe('BREAKING');
     });
 
-    it('formats diff report as human-readable text', () => {
-        const before = createBaseContract();
+    it('formats diff report as human-readable text', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
-            surface: { ...before.surface, inputSchemaDigest: sha256('schema-v2') },
+            surface: { ...before.surface, inputSchemaDigest: await sha256('schema-v2') },
         };
 
         const result = diffContracts(before, after);
@@ -339,8 +339,8 @@ describe('ContractDiff', () => {
         expect(report).toContain('BREAKING');
     });
 
-    it('formats deltas as XML for LLM injection', () => {
-        const before = createBaseContract();
+    it('formats deltas as XML for LLM injection', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             behavior: { ...before.behavior, systemRulesFingerprint: 'dynamic' },
@@ -353,8 +353,8 @@ describe('ContractDiff', () => {
         expect(xml).toContain('severity="BREAKING"');
     });
 
-    it('detects RISKY changes — egressMaxBytes removed', () => {
-        const before = createBaseContract();
+    it('detects RISKY changes — egressMaxBytes removed', async () => {
+        const before = await createBaseContract();
         const withBytes: ToolContract = {
             ...before,
             behavior: {
@@ -376,8 +376,8 @@ describe('ContractDiff', () => {
         expect(bytesDeltas[0]!.severity).toBe('RISKY');
     });
 
-    it('detects RISKY changes — concurrency fingerprint changed', () => {
-        const before = createBaseContract();
+    it('detects RISKY changes — concurrency fingerprint changed', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             behavior: { ...before.behavior, concurrencyFingerprint: 'mutex:abc' },
@@ -389,8 +389,8 @@ describe('ContractDiff', () => {
         expect(concurrencyDeltas[0]!.severity).toBe('RISKY');
     });
 
-    it('detects RISKY changes — embedded presenters changed', () => {
-        const before = createBaseContract();
+    it('detects RISKY changes — embedded presenters changed', async () => {
+        const before = await createBaseContract();
         const after: ToolContract = {
             ...before,
             behavior: { ...before.behavior, embeddedPresenters: ['ChildPresenter'] },
@@ -408,13 +408,13 @@ describe('ContractDiff', () => {
 // ============================================================================
 
 describe('BehaviorDigest', () => {
-    function createContract(): ToolContract {
+    async function createContract(): ToolContract {
         return {
             surface: {
                 name: 'projects',
                 description: 'Project management',
                 tags: ['core'],
-                inputSchemaDigest: sha256('projects-schema'),
+                inputSchemaDigest: await sha256('projects-schema'),
                 actions: {
                     list: {
                         description: 'List projects',
@@ -423,13 +423,13 @@ describe('BehaviorDigest', () => {
                         readOnly: true,
                         requiredFields: [],
                         presenterName: 'ProjectPresenter',
-                        inputSchemaDigest: sha256('list-schema'),
+                        inputSchemaDigest: await sha256('list-schema'),
                         hasMiddleware: false,
                     },
                 },
             },
             behavior: {
-                egressSchemaDigest: sha256('egress'),
+                egressSchemaDigest: await sha256('egress'),
                 systemRulesFingerprint: 'static:xyz',
                 cognitiveGuardrails: { agentLimitMax: 25, egressMaxBytes: null },
                 middlewareChain: [],
@@ -455,18 +455,18 @@ describe('BehaviorDigest', () => {
         };
     }
 
-    it('computes a deterministic digest', () => {
-        const contract = createContract();
-        const d1 = computeDigest(contract);
-        const d2 = computeDigest(contract);
+    it('computes a deterministic digest', async () => {
+        const contract = await createContract();
+        const d1 = await computeDigest(contract);
+        const d2 = await computeDigest(contract);
 
         expect(d1.digest).toBe(d2.digest);
         expect(d1.digest).toHaveLength(64);
     });
 
-    it('provides per-section component digests', () => {
-        const contract = createContract();
-        const result = computeDigest(contract);
+    it('provides per-section component digests', async () => {
+        const contract = await createContract();
+        const result = await computeDigest(contract);
 
         expect(result.components.surface).toBeTruthy();
         expect(result.components.behavior).toBeTruthy();
@@ -474,8 +474,8 @@ describe('BehaviorDigest', () => {
         expect(result.components.entitlements).toBeTruthy();
     });
 
-    it('digest changes when behavior changes', () => {
-        const contract1 = createContract();
+    it('digest changes when behavior changes', async () => {
+        const contract1 = await createContract();
         const contract2 = {
             ...contract1,
             behavior: {
@@ -484,8 +484,8 @@ describe('BehaviorDigest', () => {
             },
         };
 
-        const d1 = computeDigest(contract1);
-        const d2 = computeDigest(contract2);
+        const d1 = await computeDigest(contract1);
+        const d2 = await computeDigest(contract2);
 
         expect(d1.digest).not.toBe(d2.digest);
         expect(d1.components.behavior).not.toBe(d2.components.behavior);
@@ -493,32 +493,32 @@ describe('BehaviorDigest', () => {
         expect(d1.components.surface).toBe(d2.components.surface);
     });
 
-    it('computes a server digest over all tools', () => {
+    it('computes a server digest over all tools', async () => {
         const contracts: Record<string, ToolContract> = {
-            projects: createContract(),
+            projects: await createContract(),
         };
 
-        const serverDigest = computeServerDigest(contracts);
+        const serverDigest = await computeServerDigest(contracts);
         expect(serverDigest.digest).toHaveLength(64);
         expect(serverDigest.tools).toHaveProperty('projects');
     });
 
-    it('compares server digests', () => {
+    it('compares server digests', async () => {
         const contracts1: Record<string, ToolContract> = {
-            projects: createContract(),
+            projects: await createContract(),
         };
         const contracts2: Record<string, ToolContract> = {
             projects: {
-                ...createContract(),
+                ...(await createContract()),
                 behavior: {
-                    ...createContract().behavior,
-                    egressSchemaDigest: sha256('changed'),
+                    ...(await createContract()).behavior,
+                    egressSchemaDigest: await sha256('changed'),
                 },
             },
         };
 
-        const sd1 = computeServerDigest(contracts1);
-        const sd2 = computeServerDigest(contracts2);
+        const sd1 = await computeServerDigest(contracts1);
+        const sd2 = await computeServerDigest(contracts2);
 
         const comparison = compareServerDigests(sd1, sd2);
         expect(comparison.serverDigestChanged).toBe(true);
@@ -527,10 +527,10 @@ describe('BehaviorDigest', () => {
         expect(comparison.removed).toHaveLength(0);
     });
 
-    it('detects added and removed tools', () => {
-        const sd1 = computeServerDigest({ projects: createContract() });
-        const sd2 = computeServerDigest({
-            tasks: { ...createContract(), surface: { ...createContract().surface, name: 'tasks' } },
+    it('detects added and removed tools', async () => {
+        const sd1 = await computeServerDigest({ projects: await createContract() });
+        const sd2 = await computeServerDigest({
+            tasks: { ...(await createContract()), surface: { ...(await createContract()).surface, name: 'tasks' } },
         });
 
         const comparison = compareServerDigests(sd1, sd2);
