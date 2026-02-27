@@ -376,7 +376,7 @@ describe('Template output — core files', () => {
         it('includes database deps for database vector', () => {
             const pkg = JSON.parse(tpl.packageJson({ ...baseConfig, vector: 'prisma' }));
             expect(pkg.dependencies['@prisma/client']).toBeDefined();
-            expect(pkg.dependencies['mcp-fusion-prisma-gen']).toBeDefined();
+            expect(pkg.dependencies['@vinkius-core/mcp-fusion-prisma-gen']).toBeDefined();
             expect(pkg.devDependencies['prisma']).toBeDefined();
             expect(pkg.scripts['db:generate']).toBeDefined();
             expect(pkg.scripts['db:push']).toBeDefined();
@@ -384,12 +384,12 @@ describe('Template output — core files', () => {
 
         it('includes workflow deps for workflow vector', () => {
             const pkg = JSON.parse(tpl.packageJson({ ...baseConfig, vector: 'n8n' }));
-            expect(pkg.dependencies['mcp-fusion-n8n']).toBeDefined();
+            expect(pkg.dependencies['@vinkius-core/mcp-fusion-n8n']).toBeDefined();
         });
 
         it('includes openapi deps for openapi vector', () => {
             const pkg = JSON.parse(tpl.packageJson({ ...baseConfig, vector: 'openapi' }));
-            expect(pkg.dependencies['mcp-fusion-openapi-gen']).toBeDefined();
+            expect(pkg.dependencies['@vinkius-core/mcp-fusion-openapi-gen']).toBeDefined();
         });
 
         it('includes oauth deps for oauth vector', () => {
@@ -778,7 +778,7 @@ describe('Vector-specific templates', () => {
     it('prismaSchema has both generators (client + fusion)', () => {
         const content = tpl.prismaSchema();
         expect(content).toContain('provider = "prisma-client-js"');
-        expect(content).toContain('provider = "mcp-fusion-prisma-gen"');
+        expect(content).toContain('provider = "@vinkius-core/mcp-fusion-prisma-gen"');
     });
 
     it('prismaSchema has User and Post models', () => {

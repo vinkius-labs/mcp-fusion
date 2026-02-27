@@ -212,7 +212,7 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
 
         // n8n deps
         const pkg = JSON.parse(readProjectFile(projectDir, 'package.json'));
-        expect(pkg.dependencies['mcp-fusion-n8n']).toBeDefined();
+        expect(pkg.dependencies['@vinkius-core/mcp-fusion-n8n']).toBeDefined();
 
         // NO database or openapi files
         expect(existsSync(join(projectDir, 'prisma', 'schema.prisma'))).toBe(false);
@@ -237,12 +237,12 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
 
         // SETUP.md has instructions
         const setup = readProjectFile(projectDir, 'SETUP.md');
-        expect(setup).toContain('mcp-fusion-openapi-gen');
+        expect(setup).toContain('@vinkius-core/mcp-fusion-openapi-gen');
         expect(setup).toContain('--outDir');
 
         // OpenAPI deps
         const pkg = JSON.parse(readProjectFile(projectDir, 'package.json'));
-        expect(pkg.dependencies['mcp-fusion-openapi-gen']).toBeDefined();
+        expect(pkg.dependencies['@vinkius-core/mcp-fusion-openapi-gen']).toBeDefined();
 
         // NO database or workflow files
         expect(existsSync(join(projectDir, 'prisma'))).toBe(false);
@@ -953,7 +953,7 @@ describe('E2E: README — content accuracy across configs', () => {
 
         const readme = readProjectFile(projectDir, 'README.md');
         expect(readme).toContain('openapi.yaml');
-        expect(readme).toContain('mcp-fusion-openapi-gen');
+        expect(readme).toContain('@vinkius-core/mcp-fusion-openapi-gen');
     });
 
     it('README mentions Cursor zero-click integration', async () => {
