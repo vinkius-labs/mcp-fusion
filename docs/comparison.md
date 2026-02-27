@@ -28,9 +28,9 @@ This architecture makes it the ultimate strategy for **Legacy API Migration**, a
 | **Error recovery** | `throw new Error('not found')` — AI gives up | `toolError()` with recovery hints and retry args |
 | **Middleware** | Copy-paste auth checks | tRPC-style `defineMiddleware()` with context derivation |
 | **Cache signals** | None — AI re-fetches stale data forever | State sync — RFC 7234-inspired temporal awareness |
-| **Deployment** | Stdio only — manual HTTP bridging | One-line adapters for [Vercel Edge](/vercel-adapter), [Cloudflare Workers](/cloudflare-adapter), and [AWS Lambda](/generators/aws) |
+| **Deployment** | Stdio only — manual HTTP bridging | One-line adapters for [Vercel Edge](/vercel-adapter), [Cloudflare Workers](/cloudflare-adapter), and [AWS Lambda](/aws-connector) |
 | **Code generation** | Write every tool by hand | [OpenAPI Generator](/openapi-gen) turns any spec into a typed MCP server. [Prisma Generator](/prisma-gen) creates CRUD tools from schema. |
-| **Integrations** | Build connectors from scratch | [n8n bridge](/generators/n8n) exposes workflows as tools. [OAuth Device Flow](/oauth) for enterprise auth. |
+| **Integrations** | Build connectors from scratch | [n8n bridge](/n8n-connector) exposes workflows as tools. [OAuth Device Flow](/oauth) for enterprise auth. |
 | **Type safety** | Manual casting | `createFusionClient()` with end-to-end inference |
 
 ## Before & After: Invoice {#invoice}

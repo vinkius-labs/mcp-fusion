@@ -104,11 +104,11 @@ Node.js 18+. Works with any MCP SDK-compatible transport (Stdio, HTTP/SSE, WebSo
 |---|---|
 | [@vinkius-core/mcp-fusion-vercel](/vercel-adapter) | Deploy to Vercel — App Router, Edge or Node.js Runtime |
 | [@vinkius-core/mcp-fusion-cloudflare](/cloudflare-adapter) | Deploy to Cloudflare Workers — D1, KV, R2 bindings |
-| [@vinkius-core/mcp-fusion-aws](/generators/aws) | AWS Lambda & Step Functions connector |
+| [@vinkius-core/mcp-fusion-aws](/aws-connector) | AWS Lambda & Step Functions connector |
 | [@vinkius-core/mcp-fusion-oauth](/oauth) | OAuth Device Flow (RFC 8628) — enterprise authentication |
-| [@vinkius-core/mcp-fusion-prisma-gen](/generators/prisma) | Auto-generate MCP tools from Prisma schema |
-| [@vinkius-core/mcp-fusion-openapi-gen](/generators/openapi) | Generate tools from OpenAPI/Swagger specs |
-| [@vinkius-core/mcp-fusion-n8n](/generators/n8n) | Bridge n8n workflows as MCP tools |
+| [@vinkius-core/mcp-fusion-prisma-gen](/prisma-gen) | Auto-generate MCP tools from Prisma schema |
+| [@vinkius-core/mcp-fusion-openapi-gen](/openapi-gen) | Generate tools from OpenAPI/Swagger specs |
+| [@vinkius-core/mcp-fusion-n8n](/n8n-connector) | Bridge n8n workflows as MCP tools |
 | [@vinkius-core/mcp-fusion-testing](/testing) | Test harness — assertions, blast radius, snapshot testing |
 
 ## Why This Matters {#benefits}

@@ -15,7 +15,7 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 
 Every tool definition in `tools/list` includes a name, description, and full JSON Schema. The LLM receives this entire payload as system context. As tool count grows, three failures cascade: context saturation (fewer tokens for reasoning), semantic collision (similar tool names confuse routing), and parameter confusion (overlapping field names like `id` or `status` cause cross-contamination).
 
-MCP Fusion provides four mechanisms to keep tool payloads manageable as your server scales — especially critical when using generators like [@vinkius-core/mcp-fusion-prisma-gen](/generators/prisma), [@vinkius-core/mcp-fusion-openapi-gen](/generators/openapi), or [@vinkius-core/mcp-fusion-n8n](/generators/n8n) that can produce dozens of tools from a single schema.
+MCP Fusion provides four mechanisms to keep tool payloads manageable as your server scales — especially critical when using generators like [@vinkius-core/mcp-fusion-prisma-gen](/prisma-gen), [@vinkius-core/mcp-fusion-openapi-gen](/openapi-gen), or [@vinkius-core/mcp-fusion-n8n](/n8n-connector) that can produce dozens of tools from a single schema.
 
 ## Grouping Reduces Tool Count {#grouping}
 
