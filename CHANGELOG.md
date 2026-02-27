@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [@vinkius-core/mcp-fusion-vercel@1.0.0] - 2026-02-27
+
+### 🚀 Vercel Adapter — Serverless & Edge Deployment in One Line
+
+New `@vinkius-core/mcp-fusion-vercel` package. Deploys any MCP Fusion ToolRegistry to Vercel Functions (Edge or Node.js) with zero configuration. Returns a POST handler compatible with Next.js App Router route handlers and standalone Vercel Functions. Stateless JSON-RPC via the MCP SDK's native `WebStandardStreamableHTTPServerTransport`.
+
+### Added
+
+- **`vercelAdapter<TContext>(options)`** — creates a Vercel-compatible POST handler from a pre-compiled `ToolRegistry`
+  - `contextFactory(req)` — creates per-request context from the Request object (use `process.env` for environment variables)
+  - `enableJsonResponse: true` — stateless JSON-RPC, no SSE, no session state
+  - Ephemeral `McpServer` per request — isolates concurrent invocations
+  - Cold-start caching — Zod reflection, Presenter compilation, and schema generation happen once at module scope
+  - **Dual Runtime** — works on both Vercel Edge Runtime (V8) and Node.js Runtime
+- **`VercelAdapterOptions<TContext>`** — full typed configuration interface
+- **`VercelHandler`** — `(req: Request) => Promise<Response>` type alias
+- **`RegistryLike`** — duck-typed interface for `ToolRegistry` (decoupled from core import)
+
+### Documentation
+
+- **`docs/vercel-adapter.md`** — full documentation page: deployment pain points, plug-and-play solution, architecture diagram, step-by-step setup, Edge vs Node.js comparison, Vercel services integration (Postgres, KV, Blob), middleware, Presenters, config reference, compatibility matrix
+- **VitePress sidebar** — Vercel entry under Adapters section
+- **`llms.txt`** — Vercel Adapter API reference with usage example
+- **SEO** — 7 FAQs with structured data for search optimization
+
+### Test Suite
+
+- **27 tests** — handler creation, method rejection (GET/PUT/DELETE → 405), McpServer configuration (defaults and overrides), transport enableJsonResponse, registry wiring and attachOptions forwarding, context factory invocation and injection, request lifecycle ordering (connect → handle → close), cleanup on error, request isolation, edge cases
+
 ## [@vinkius-core/mcp-fusion-cloudflare@1.0.0] - 2026-02-27
 
 ### ☁️ Cloudflare Workers Adapter — Edge Deployment in One Line
