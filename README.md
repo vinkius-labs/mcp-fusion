@@ -116,7 +116,7 @@ const listUsers = f.tool({
 });
 ```
 
-> **Full setup guide**: [mcp-fusion.vinkius.com/getting-started](https://mcp-fusion.vinkius.com/getting-started)
+> **Full setup guide**: [mcp-fusion.vinkius.com/quickstart](https://mcp-fusion.vinkius.com/quickstart)
 
 ---
 
@@ -181,7 +181,7 @@ const middleware = f.middleware(async (ctx) => ({ ... }));
 const registry = f.registry();
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/init-fusion](https://mcp-fusion.vinkius.com/init-fusion)
+> **Docs**: [mcp-fusion.vinkius.com/introduction#in-practice](https://mcp-fusion.vinkius.com/introduction#in-practice)
 
 ### `autoDiscover()` — File-based routing
 
@@ -201,7 +201,7 @@ src/tools/
 await autoDiscover(registry, './src/tools');
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/auto-discover](https://mcp-fusion.vinkius.com/auto-discover)
+> **Docs**: [mcp-fusion.vinkius.com/routing](https://mcp-fusion.vinkius.com/routing)
 
 ### Presenters — The View in MVA
 
@@ -228,7 +228,7 @@ Key capabilities:
 - **UI Blocks**: `ui.echarts()`, `ui.mermaid()`, `ui.table()`, `ui.markdown()`
 - **Embeds**: Relational Presenter composition for DRY nested data
 
-> **Docs**: [mcp-fusion.vinkius.com/presenters](https://mcp-fusion.vinkius.com/presenters)
+> **Docs**: [mcp-fusion.vinkius.com/presenter](https://mcp-fusion.vinkius.com/presenter)
 
 ### Self-Healing Errors
 
@@ -244,7 +244,7 @@ return toolError('NOT_FOUND', {
 
 The client-side `FusionClientError` parses these into typed objects with `.code`, `.recovery`, `.availableActions`.
 
-> **Docs**: [mcp-fusion.vinkius.com/self-healing](https://mcp-fusion.vinkius.com/self-healing)
+> **Docs**: [mcp-fusion.vinkius.com/error-handling#tool-error](https://mcp-fusion.vinkius.com/error-handling#tool-error)
 
 ### TOON Encoding — Token reduction
 
@@ -259,7 +259,7 @@ return toonSuccess(users);
 // → "id|name|email\n1|Alice|alice@co.io\n2|Bob|bob@co.io"
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/toon](https://mcp-fusion.vinkius.com/toon)
+> **Docs**: [mcp-fusion.vinkius.com/performance#toon-token-compression-30-50-fewer-tokens](https://mcp-fusion.vinkius.com/performance#toon-token-compression-30-50-fewer-tokens)
 
 ---
 
@@ -289,7 +289,7 @@ Pull request diffs show exactly which behavioral surfaces changed:
   }
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/lockfile](https://mcp-fusion.vinkius.com/lockfile)
+> **Docs**: [mcp-fusion.vinkius.com/governance/capability-lockfile](https://mcp-fusion.vinkius.com/governance/capability-lockfile)
 
 ### Contract Diff Engine
 
@@ -302,7 +302,7 @@ const diff = diffContracts(beforeContract, afterContract);
 // diff.deltas[0].description === 'System rules changed — LLM behavioral calibration invalidated'
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/contract-diff](https://mcp-fusion.vinkius.com/contract-diff)
+> **Docs**: [mcp-fusion.vinkius.com/governance/contract-diffing](https://mcp-fusion.vinkius.com/governance/contract-diffing)
 
 ### Crypto Attestation
 
@@ -314,7 +314,7 @@ const attestation = attestServerDigest(serverDigest, signer);
 const valid = verifyAttestation(attestation, secretKey);
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/attestation](https://mcp-fusion.vinkius.com/attestation)
+> **Docs**: [mcp-fusion.vinkius.com/governance/zero-trust-attestation](https://mcp-fusion.vinkius.com/governance/zero-trust-attestation)
 
 ### Semantic Probing — LLM-as-a-Judge
 
@@ -327,7 +327,7 @@ const result = await evaluateProbe(probe, { adapter: myLlmAdapter });
 // result.contractViolated === false
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/semantic-probing](https://mcp-fusion.vinkius.com/semantic-probing)
+> **Docs**: [mcp-fusion.vinkius.com/governance/semantic-probe](https://mcp-fusion.vinkius.com/governance/semantic-probe)
 
 ### Entitlement Scanner
 
@@ -338,7 +338,7 @@ const report = scanSource(handlerSourceCode);
 // report.matches → [{ category: 'network', pattern: 'fetch', ... }]
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/entitlements](https://mcp-fusion.vinkius.com/entitlements)
+> **Docs**: [mcp-fusion.vinkius.com/governance/blast-radius](https://mcp-fusion.vinkius.com/governance/blast-radius)
 
 ---
 
@@ -457,7 +457,7 @@ const greetPrompt = f.prompt('greet', {
 npx fusion create my-api --vector prisma --transport sse
 ```
 
-> **Docs**: [mcp-fusion.vinkius.com/vectors](https://mcp-fusion.vinkius.com/vectors)
+> **Docs**: [mcp-fusion.vinkius.com/introduction](https://mcp-fusion.vinkius.com/introduction)
 
 ---
 
