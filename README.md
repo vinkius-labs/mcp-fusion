@@ -461,21 +461,32 @@ npx fusion create my-api --vector prisma --transport sse
 
 ---
 
-## Generators & Connectors
+## Adapters
 
-First-party packages that generate MCP tools from external sources:
+Deploy your MCP server to serverless and edge environments with one function call:
 
 | Package | What it does |
 |---|---|
-| [`mcp-fusion-openapi-gen`](https://mcp-fusion.vinkius.com/openapi-gen) | Generate typed MCP tools from any OpenAPI 3.x spec |
-| [`mcp-fusion-prisma-gen`](https://mcp-fusion.vinkius.com/prisma-gen) | Generate CRUD tools from your Prisma schema |
-| [`mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Auto-discover n8n webhook workflows and expose them as tools |
-| [`mcp-fusion-aws`](https://mcp-fusion.vinkius.com/aws-connector) | Auto-discover tagged AWS Lambda & Step Functions as grouped tools |
-| [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | RFC 8628 Device Flow authentication with `createAuthTool()` |
+| [`@vinkius-core/mcp-fusion-vercel`](https://mcp-fusion.vinkius.com/vercel-adapter) | Deploy to Vercel Functions (Edge or Node.js) as an App Router route handler |
+| [`@vinkius-core/mcp-fusion-cloudflare`](https://mcp-fusion.vinkius.com/cloudflare-adapter) | Deploy to Cloudflare Workers with zero polyfills and stateless JSON-RPC |
 
 ---
-
-## Testing
+ 
+ ## Generators & Connectors
+ 
+ First-party packages that generate MCP tools from external sources:
+ 
+ | Package | What it does |
+ |---|---|
+ | [`mcp-fusion-openapi-gen`](https://mcp-fusion.vinkius.com/openapi-gen) | Generate typed MCP tools from any OpenAPI 3.x spec |
+ | [`mcp-fusion-prisma-gen`](https://mcp-fusion.vinkius.com/prisma-gen) | Generate CRUD tools from your Prisma schema |
+ | [`mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Auto-discover n8n webhook workflows and expose them as tools |
+ | [`mcp-fusion-aws`](https://mcp-fusion.vinkius.com/aws-connector) | Auto-discover tagged AWS Lambda & Step Functions as grouped tools |
+ | [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | RFC 8628 Device Flow authentication with `createAuthTool()` |
+ 
+ ---
+ 
+ ## Testing
 
 The scaffolded project includes Vitest configuration with a system test:
 
