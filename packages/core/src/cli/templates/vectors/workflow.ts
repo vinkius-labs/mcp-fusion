@@ -16,7 +16,7 @@ export function n8nConnectorTs(): string {
         ' *',
         ' * Configure N8N_BASE_URL and N8N_API_KEY in your .env file.',
         ' */',
-        "import { N8nConnector } from 'mcp-fusion-n8n';",
+        "import { N8nConnector } from '@vinkius-core/mcp-fusion-n8n';",
         "import type { ToolRegistry } from '@vinkius-core/mcp-fusion';",
         '',
         'export async function discoverWorkflows<TContext>(',

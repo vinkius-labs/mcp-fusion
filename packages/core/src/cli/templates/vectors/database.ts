@@ -7,7 +7,7 @@
 export function prismaSchema(): string {
     return `// Prisma Schema — Database-Driven MCP Server
 //
-// The mcp-fusion-prisma-gen generator reads annotations
+// The @vinkius-core/mcp-fusion-prisma-gen generator reads annotations
 // and auto-generates Presenters + ToolBuilders with:
 // - Field-level security (/// @fusion.hide)
 // - Tenant isolation
@@ -18,7 +18,7 @@ generator client {
 }
 
 generator fusion {
-    provider = "mcp-fusion-prisma-gen"
+    provider = "@vinkius-core/mcp-fusion-prisma-gen"
 }
 
 datasource db {

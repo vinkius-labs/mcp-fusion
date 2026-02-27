@@ -15,13 +15,13 @@ export function packageJson(config: ProjectConfig): string {
 
     if (config.vector === 'prisma') {
         deps['@prisma/client'] = '^6.0.0';
-        deps['mcp-fusion-prisma-gen'] = '^1.0.0';
+        deps['@vinkius-core/mcp-fusion-prisma-gen'] = '^1.0.0';
     }
     if (config.vector === 'n8n') {
-        deps['mcp-fusion-n8n'] = '^1.0.0';
+        deps['@vinkius-core/mcp-fusion-n8n'] = '^1.0.0';
     }
     if (config.vector === 'openapi') {
-        deps['mcp-fusion-openapi-gen'] = '^1.0.0';
+        deps['@vinkius-core/mcp-fusion-openapi-gen'] = '^1.0.0';
     }
     if (config.vector === 'oauth') {
         deps['@vinkius-core/mcp-fusion-oauth'] = '^1.0.0';

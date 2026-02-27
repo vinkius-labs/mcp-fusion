@@ -151,7 +151,7 @@ Use \`/// @fusion.hide\` on sensitive fields to strip them from the Egress Firew
 
 2. Generate the MCP server from the spec:
    \`\`\`bash
-   npx mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
+   npx @vinkius-core/mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
    \`\`\`
 
 3. Import and register the generated tools in \`src/server.ts\`

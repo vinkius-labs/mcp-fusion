@@ -9,7 +9,7 @@ export function openapiYaml(config: ProjectConfig): string {
     return `# OpenAPI 3.0 Specification — Sample
 #
 # Replace this with your actual API spec, then run:
-#   npx mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
+#   npx @vinkius-core/mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
 #
 # The generator creates Presenters, Tools, Registry, and server
 # bootstrap — all configurable via YAML annotations.
@@ -91,7 +91,7 @@ This project is configured for the **Legacy API Proxy** ingestion vector.
 
 2. Generate the MCP server from the spec:
    \`\`\`bash
-   npx mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
+   npx @vinkius-core/mcp-fusion-openapi-gen ./openapi.yaml --outDir ./src/generated
    \`\`\`
 
 3. The generator creates:

@@ -4,124 +4,32 @@ layout: home
 hero:
   name: "Stop Writing MCP Servers Like It's 2024."
   text: ""
-  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. **MCP Fusion** introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer with a Structured Perception Layer on your data like trained engineers, not guessing machines."
+  tagline: "Most MCP servers today dump raw database JSON and pray the LLM figures it out. MCP Fusion introduces the MVA (Model-View-Agent) architecture — giving your tools a deterministic View layer with a Structured Perception Layer on your data like trained engineers, not guessing machines."
   actions:
     - theme: brand
       text: The MVA Pattern →
       link: /mva-pattern
     - theme: alt
-      text: 5-Minute Quickstart
-      link: /quickstart
-    - theme: alt
-      text: Cookbook & Examples
-      link: /examples
+      text: 30-Second Quickstart
+      link: /quickstart-lightspeed
 
   textAfterActions: "Open Source. Built by Vinkius Labs."
 ---
 
-<div class="ms-badges">
 
-[![First Release](https://img.shields.io/badge/First%20Release-Feb%2012%2C%202026-blue)](https://github.com/vinkius-labs/mcp-fusion/releases) [![Downloads](https://img.shields.io/npm/dt/@vinkius-core/mcp-fusion)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![Weekly Downloads](https://img.shields.io/npm/dw/@vinkius-core/mcp-fusion)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion) [![Package Size](https://img.shields.io/bundlephobia/minzip/@vinkius-core/mcp-fusion)](https://bundlephobia.com/package/@vinkius-core/mcp-fusion) [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/) [![MCP SDK](https://img.shields.io/badge/MCP-Standard-purple.svg?style=flat-square)](https://modelcontextprotocol.io/) [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE) [![GitHub Stars](https://img.shields.io/github/stars/vinkius-labs/mcp-fusion?style=flat-square&color=gold)](https://github.com/vinkius-labs/mcp-fusion/stargazers) ![Built with 🚀 by Vinkius](https://img.shields.io/badge/Built%20with-%F0%9F%9A%80%20by%20Vinkius-%23000000)
-
-</div>
-
-<!-- ═══ Section 1: The Problem ═══ -->
-<div class="ms-section">
-<div class="ms-left">
-<div class="ms-label">DOMAIN: MCP SERVERS</div>
-<h2 class="ms-headline">Raw JSON.<br>Switch/case.<br><span class="ms-dim">Hope the AI doesn't hallucinate.</span></h2>
-<p class="ms-sub">That's how every MCP server works today.</p>
-</div>
-<div class="ms-right">
-<p class="ms-body">**MCP Fusion** introduces MVA (Model-View-Agent) — a completely new way to build MCP servers where every response is a structured perception package: validated data, domain rules, server-rendered charts, and explicit next-action hints. The AI doesn't guess. It knows.</p>
-<div class="ms-metrics">
-<div class="ms-metric">
-<div class="ms-metric-label">CAPABILITIES</div>
-<div class="ms-metric-value">20+</div>
-</div>
-<div class="ms-metric">
-<div class="ms-metric-label">ARCHITECTURE</div>
-<div class="ms-metric-value">MVA</div>
-</div>
-<div class="ms-metric">
-<div class="ms-metric-label">CONTEXT CONTROL</div>
-<div class="ms-metric-value">Deterministic</div>
-</div>
-</div>
-</div>
-</div>
-
-<!-- ═══ Section 2: Code ═══ -->
-<div class="ms-code-section">
-<div class="ms-code-header">
-<div class="ms-dots"><span></span><span></span><span></span></div>
-<p class="ms-code-title">Semantic verbs. AI-First DX. Your handler returns raw data — the framework does the rest.</p>
-</div>
-<div class="ms-code-box">
-
-```typescript
-import { initFusion, createPresenter, ui, suggest } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-const f = initFusion<AppContext>();
-
-// ── Presenter — the MVA View Layer ─────────────────────
-const InvoicePresenter = createPresenter('Invoice')
-    .schema(z.object({
-        id: z.string(),
-        amount_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
-        status: z.enum(['paid', 'pending', 'overdue']),
-    }))
-    .ui((inv) => [
-        ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
-    ])
-    .suggest((inv) =>
-        inv.status === 'pending'
-            ? [suggest('billing.pay', 'Process payment')]
-            : []
-    );
-
-// ── Query — read-only, type-safe, AI-guided ────────────
-const getInvoice = f.query('billing.get')
-    .describe('Retrieve an invoice by ID')
-    .instructions('Use ONLY when user asks about a specific invoice.')
-    .withString('id', 'Invoice ID')
-    .returns(InvoicePresenter)
-    .handle(async (input, ctx) => {
-        return ctx.db.invoices.findUnique(input.id);
-    });
-
-// ── Mutation — destructive, with context derivation ────
-const payInvoice = f.mutation('billing.pay')
-    .describe('Process payment for an invoice')
-    .instructions('ALWAYS confirm with the user before processing payment.')
-    .withString('invoice_id', 'Invoice ID')
-    .withNumber('amount', 'Amount in cents')
-    .use(async ({ ctx, next }) => next({ ...ctx, audit: { action: 'payment' } }))
-    .handle(async (input, ctx) => {
-        return ctx.billing.charge(input.invoice_id, input.amount);
-    });
-```
-
-</div>
-<div class="ms-cli">
-<span class="ms-cli-prompt">~</span>
-<span class="ms-cli-text">npm install <span>@vinkius-core/mcp-fusion</span> zod</span>
-</div>
-</div>
 
 <!-- ═══ Section 2.5: Comparison Table ═══ -->
 <div class="ms-compare">
 <div class="ms-compare-header">
 <div class="ms-label">WHAT CHANGES</div>
 <h2 class="ms-headline">Without MVA vs With MVA</h2>
-<p class="ms-sub">Every line is a capability that exists in **MCP Fusion** today. Not a roadmap. Not a promise.</p>
+<p class="ms-sub">Every line is a capability that exists in <strong>MCP Fusion</strong> today. Not a roadmap. Not a promise.</p>
 </div>
 <div class="ms-compare-table">
 <div class="ms-compare-row ms-compare-head">
 <div class="ms-compare-aspect"></div>
 <div class="ms-compare-before">Without MVA</div>
-<div class="ms-compare-after">With MVA (**MCP Fusion**)</div>
+<div class="ms-compare-after">With MVA (<strong>MCP Fusion</strong>)</div>
 </div>
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Tool count</div>

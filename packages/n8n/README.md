@@ -1,4 +1,4 @@
-# mcp-fusion-n8n
+# @vinkius-core/mcp-fusion-n8n
 
 A bidirectional translation driver: **n8n REST API ↔ MCP In-Memory Objects**.
 
@@ -54,7 +54,7 @@ The perfect balance between the insane agility of low-code integrations and hard
 ## Install
 
 ```bash
-npm install mcp-fusion-n8n @vinkius-core/mcp-fusion zod
+npm install @vinkius-core/mcp-fusion-n8n @vinkius-core/mcp-fusion zod
 ```
 
 ## Documentation

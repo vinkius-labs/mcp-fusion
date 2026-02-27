@@ -10,21 +10,73 @@ export default defineConfig({
   appearance: 'force-dark',
 
   head: [
+    // ── Logo + title layout fix (in head to beat VitePress scoped styles) ──
+    ['style', {}, `
+      .VPNavBarTitle .title {
+        display: grid !important;
+        grid-template-columns: 36px auto !important;
+        grid-template-rows: auto auto !important;
+        align-items: center !important;
+        align-content: center !important;
+        gap: 2px 10px !important;
+      }
+      .VPNavBarTitle .title img,
+      .VPNavBarTitle .title .VPImage {
+        grid-row: 1 / span 2 !important;
+        grid-column: 1 !important;
+        height: 36px !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        flex-shrink: 0 !important;
+        object-fit: contain !important;
+        margin: 0 !important;
+      }
+      .VPNavBarTitle .title > span {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        align-self: end !important;
+      }
+      .VPNavBarTitle .title .nav-subtitle {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+        align-self: start !important;
+      }
+    `],
+
     // ── Google Analytics ──
     ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-346DSQJMFD' }],
     ['script', {}, "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-346DSQJMFD');"],
 
+    // ── Favicons ──
+    ['link', { rel: 'icon', type: 'image/x-icon', href: 'https://site-assets.vinkius.com/vk/favicon/favicon.ico' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '16x16', href: 'https://site-assets.vinkius.com/vk/favicon/favicon.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '96x96', href: 'https://site-assets.vinkius.com/vk/favicon/favicon-96x96.png' }],
+
+    // ── PWA & Apple ──
+    ['meta', { name: 'theme-color', content: '#000000' }],
+    ['meta', { name: 'msapplication-TileColor', content: '#30363D' }],
+    ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
+    ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }],
+    ['meta', { name: 'apple-mobile-web-app-title', content: 'MCP Fusion' }],
+    ['meta', { name: 'application-name', content: 'MCP Fusion' }],
+
     // ── Open Graph ──
-    ['meta', { property: 'og:title', content: 'mcp-fusion — The MVA Framework for MCP Servers' }],
-    ['meta', { property: 'og:description', content: 'A TypeScript framework with a Structured Perception Layer for AI agents. MVA (Model-View-Agent) architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
     ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'MCP Fusion' }],
+    ['meta', { property: 'og:title', content: 'MCP Fusion — AI-First DX for the Model Context Protocol' }],
+    ['meta', { property: 'og:description', content: 'Build production-grade MCP servers with type safety, behavioral governance, and zero boilerplate. MVA architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
     ['meta', { property: 'og:url', content: 'https://mcp-fusion.vinkius.com/' }],
-    ['meta', { property: 'og:site_name', content: 'mcp-fusion' }],
+    ['meta', { property: 'og:image', content: 'https://site-assets.vinkius.com/vk/logo-v-black.png' }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
 
     // ── Twitter Card ──
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'mcp-fusion — MVA Framework for MCP Servers' }],
-    ['meta', { name: 'twitter:description', content: 'Stop dumping raw JSON. Build MCP servers with structured perception packages — validated data, domain rules, charts, and action affordances.' }],
+    ['meta', { name: 'twitter:site', content: '@vinkiuslabs' }],
+    ['meta', { name: 'twitter:creator', content: '@vinkiuslabs' }],
+    ['meta', { name: 'twitter:title', content: 'MCP Fusion — AI-First DX for the Model Context Protocol' }],
+    ['meta', { name: 'twitter:description', content: 'Build production-grade MCP servers with type safety, behavioral governance, and zero boilerplate.' }],
+    ['meta', { name: 'twitter:image', content: 'https://site-assets.vinkius.com/vk/logo-v-black.png' }],
 
     // ── JSON-LD: SoftwareSourceCode ──
     ['script', { type: 'application/ld+json' }, JSON.stringify({
@@ -75,21 +127,15 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: 'https://site-assets.vinkius.com/vk/icon-v-black-min.png',
+    logo: { src: 'https://site-assets.vinkius.com/vk/icon-v-black-min.png', width: 36, height: 36 },
     
     search: {
       provider: 'local'
     },
 
     nav: [
-      { text: 'Documentation', link: '/introduction' },
-      { text: 'Enterprise', link: '/enterprise-quickstart' },
-      { text: 'MVA Architecture', link: '/mva/' },
-      { text: 'API', link: '/api/' },
-      {
-        text: '⭐ Star on GitHub',
-        link: 'https://github.com/vinkius-labs/mcp-fusion'
-      }
+      { text: 'Create MCP-Server Now', link: '/quickstart-lightspeed' },
+      { text: 'API Reference', link: '/api/' },
     ],
 
     sidebar: [

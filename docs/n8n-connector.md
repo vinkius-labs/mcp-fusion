@@ -12,7 +12,7 @@
 Turn n8n webhook workflows into MCP tools. Tag filtering controls what the AI can see, and Presenters strip sensitive data before it leaves your process.
 
 ```typescript
-import { createN8nConnector, defineN8nTool } from 'mcp-fusion-n8n';
+import { createN8nConnector, defineN8nTool } from '@vinkius-core/mcp-fusion-n8n';
 import { defineTool, ToolRegistry } from '@vinkius-core/mcp-fusion';
 
 const n8n = await createN8nConnector({
@@ -32,7 +32,7 @@ for (const tool of n8n.tools()) {
 ## Install {#install}
 
 ```bash
-npm install mcp-fusion-n8n
+npm install @vinkius-core/mcp-fusion-n8n
 ```
 
 Peer dependencies: `@vinkius-core/mcp-fusion` and `zod`.
@@ -154,7 +154,7 @@ process.on('SIGTERM', () => { n8n.stop(); process.exit(0); });
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { defineTool, ToolRegistry, createServerAttachment } from '@vinkius-core/mcp-fusion';
-import { createN8nConnector, defineN8nTool } from 'mcp-fusion-n8n';
+import { createN8nConnector, defineN8nTool } from '@vinkius-core/mcp-fusion-n8n';
 
 const n8n = await createN8nConnector({
   url: process.env.N8N_URL!,

@@ -25,7 +25,7 @@ API_BASE_URL=https://api.example.com npx tsx ./generated/server.ts
 ## Install {#install}
 
 ```bash
-npm install mcp-fusion-openapi-gen
+npm install @vinkius-core/mcp-fusion-openapi-gen
 ```
 
 Peer dependencies: `@vinkius-core/mcp-fusion` and `zod`.
@@ -98,7 +98,7 @@ export const petTools = defineTool<ApiContext>('pet', {
 Four compilation stages transform the spec into production-ready TypeScript. Each stage is independently importable:
 
 ```typescript
-import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from 'mcp-fusion-openapi-gen';
+import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from '@vinkius-core/mcp-fusion-openapi-gen';
 
 const spec = parseOpenAPI(yamlString);
 const mapped = mapEndpoints(spec);
@@ -123,7 +123,7 @@ The generated code is fully editable — modify handlers, add middleware, attach
 For rapid prototyping, `loadOpenAPI()` parses the spec at startup and creates live proxy handlers with no code generation step:
 
 ```typescript
-import { loadOpenAPI } from 'mcp-fusion-openapi-gen';
+import { loadOpenAPI } from '@vinkius-core/mcp-fusion-openapi-gen';
 import { defineTool, ToolRegistry } from '@vinkius-core/mcp-fusion';
 
 const tools = loadOpenAPI(specYaml, {
@@ -154,7 +154,7 @@ When the API spec changes, restart the server and the tools update automatically
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { defineTool, ToolRegistry, createServerAttachment } from '@vinkius-core/mcp-fusion';
-import { loadOpenAPI } from 'mcp-fusion-openapi-gen';
+import { loadOpenAPI } from '@vinkius-core/mcp-fusion-openapi-gen';
 import { readFileSync } from 'node:fs';
 
 const specYaml = readFileSync('./petstore.yaml', 'utf-8');

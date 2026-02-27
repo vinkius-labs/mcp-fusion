@@ -244,7 +244,7 @@ The `--vector` flag changes what gets scaffolded:
 | Vector | What it adds |
 |---|---|
 | `vanilla` | `autoDiscover()` file-based routing. Zero external deps |
-| `prisma` | `prisma/schema.prisma` + DB tool stubs + `mcp-fusion-prisma-gen` generator |
+| `prisma` | `prisma/schema.prisma` + DB tool stubs + `@vinkius-core/mcp-fusion-prisma-gen` generator |
 | `n8n` | `src/n8n.ts` — `N8nConnector` auto-discovers webhook workflows as MCP tools |
 | `openapi` | `openapi.yaml` + `SETUP.md` — generates Models/Views/Agents from spec |
 | `oauth` | `src/auth.ts` + `src/middleware/auth.ts` — RFC 8628 Device Flow with `requireAuth()` |

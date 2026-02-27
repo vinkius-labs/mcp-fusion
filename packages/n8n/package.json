@@ -1,5 +1,5 @@
 {
-    "name": "mcp-fusion-n8n",
+    "name": "@vinkius-core/mcp-fusion-n8n",
     "version": "1.0.0",
     "description": "n8n connector for MCP Fusion. Auto-discovers webhook workflows and produces ToolBuilders — so AI agents can call your automations natively.",
     "type": "module",

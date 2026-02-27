@@ -19,7 +19,7 @@ import type {
  *
  * ```typescript
  * import { LambdaClient } from '@aws-sdk/client-lambda';
- * import { createLambdaAdapter, createAwsConnector } from 'mcp-fusion-aws';
+ * import { createLambdaAdapter, createAwsConnector } from '@vinkius-core/mcp-fusion-aws';
  *
  * const aws = await createAwsConnector({
  *     lambdaClient: await createLambdaAdapter(new LambdaClient({ region: 'us-east-1' })),

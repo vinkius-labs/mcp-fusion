@@ -1,4 +1,4 @@
-# mcp-fusion-prisma-gen
+# @vinkius-core/mcp-fusion-prisma-gen
 
 A compile-time Prisma Generator that reads `schema.prisma` annotations and emits hardened **MCP Fusion** Presenters and ToolBuilders — with field-level security, tenant isolation, and OOM protection baked into the generated code.
 
@@ -53,7 +53,7 @@ The generator produces `ToolBuilder` instances and `Presenter` files. It does **
 ## Install
 
 ```bash
-npm install mcp-fusion-prisma-gen @vinkius-core/mcp-fusion zod
+npm install @vinkius-core/mcp-fusion-prisma-gen @vinkius-core/mcp-fusion zod
 ```
 
 ## Documentation

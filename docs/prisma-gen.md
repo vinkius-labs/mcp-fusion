@@ -37,7 +37,7 @@ npx prisma generate
 ## Install {#install}
 
 ```bash
-npm install mcp-fusion-prisma-gen
+npm install @vinkius-core/mcp-fusion-prisma-gen
 ```
 
 Peer dependencies: `@vinkius-core/mcp-fusion`, `zod`, and `@prisma/generator-helper`.

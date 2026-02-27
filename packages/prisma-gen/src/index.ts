@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { parseAnnotations, emitPresenter, emitTool } from 'mcp-fusion-prisma-gen';
+ * import { parseAnnotations, emitPresenter, emitTool } from '@vinkius-core/mcp-fusion-prisma-gen';
  * ```
  *
  * @module

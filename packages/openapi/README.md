@@ -1,8 +1,8 @@
-# mcp-fusion-openapi-gen
+# @vinkius-core/mcp-fusion-openapi-gen
 
 > OpenAPI 3.x → **MCP Fusion** Server Generator
 
-[![npm version](https://img.shields.io/npm/v/mcp-fusion-openapi-gen.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/mcp-fusion-openapi-gen)
+[![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-openapi-gen.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion-openapi-gen)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](../../LICENSE)
 
@@ -34,7 +34,7 @@ Every file follows the **[MVA Convention](/mva-convention)** — the standard di
 ## Installation
 
 ```bash
-npm install mcp-fusion-openapi-gen
+npm install @vinkius-core/mcp-fusion-openapi-gen
 ```
 
 ## Quick Start
@@ -167,7 +167,7 @@ const petTools = defineTool<AppCtx>('pet', { ... });
 ## Programmatic API
 
 ```typescript
-import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from 'mcp-fusion-openapi-gen';
+import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from '@vinkius-core/mcp-fusion-openapi-gen';
 
 const spec = parseOpenAPI(yamlString);
 const mapped = mapEndpoints(spec);
