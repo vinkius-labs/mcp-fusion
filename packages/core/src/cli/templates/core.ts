@@ -11,9 +11,9 @@ export function fusionTs(): string {
     return `/**
  * Fusion Instance — Context Initialization
  *
- * Define your context type ONCE. Every f.tool(), f.presenter(),
- * f.prompt(), and f.middleware() call inherits AppContext —
- * zero generic repetition anywhere in the codebase.
+ * Define your context type ONCE. Every f.query(), f.mutation(),
+ * f.presenter(), f.prompt(), and f.middleware() call inherits
+ * AppContext — zero generic repetition anywhere in the codebase.
  */
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import type { AppContext } from './context.js';
@@ -27,8 +27,8 @@ export function contextTs(): string {
     return `/**
  * Application Context — Shared State for Every Tool Handler
  *
- * Every f.tool() handler receives { input, ctx } where ctx
- * is this AppContext. Extend it with your own services
+ * Every f.query() / f.mutation() handler receives (input, ctx)
+ * where ctx is this AppContext. Extend it with your own services
  * (DB client, auth, external APIs, etc.)
  */
 
