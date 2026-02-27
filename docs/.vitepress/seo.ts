@@ -730,27 +730,448 @@ const pages: Record<string, PageSEO> = {
       { q: 'Is the Vercel adapter compatible with the official MCP SDK?', a: 'Yes. The adapter uses the official @modelcontextprotocol/sdk (^1.12.0) as a peer dependency. It instantiates a standard McpServer and uses the SDK\'s WebStandardStreamableHTTPServerTransport — no monkey-patching or custom protocol implementation. Any MCP client that supports HTTP/JSON-RPC can connect to a Vercel-deployed server.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // DX GUIDE
+  // ═══════════════════════════════════════════════════════
+  'dx-guide.md': {
+    title: 'DX Guide — Developer Experience Best Practices',
+    description: 'Master the MCP Fusion developer workflow: HMR dev server, autoDiscover routing, Cursor integration, Claude Code, and debugging tips for maximum productivity.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // MVA ARCHITECTURE PAGES
+  // ═══════════════════════════════════════════════════════
+  'mva/index.md': {
+    title: 'MVA At a Glance — Model-View-Agent Architecture Overview',
+    description: 'Understand the MVA architecture in 5 minutes. How Model, View (Presenter), and Agent layers compose to deliver deterministic AI tool responses with zero hallucination.',
+    faqs: [],
+  },
+
+  'mva/theory.md': {
+    title: 'MVA Theory & Axioms — The Science Behind Structured Perception',
+    description: 'The theoretical foundations of MVA: why AI agents need structured perception, the axioms that drive Presenter design, and the mathematics of action consolidation.',
+    faqs: [],
+  },
+
+  'mva/mva-vs-mvc.md': {
+    title: 'MVA vs MVC — Why MVC Fails for AI Agents',
+    description: 'Side-by-side comparison of MVA and MVC. Why the traditional View layer fails for AI agents and how the Presenter replaces it with structured perception packages.',
+    faqs: [],
+  },
+
+  'mva/presenter-anatomy.md': {
+    title: 'Presenter Anatomy & Lifecycle — How Presenters Transform Data',
+    description: 'Deep dive into the Presenter execution lifecycle: schema validation, system rule injection, UI block rendering, affordance evaluation, and response composition.',
+    faqs: [],
+  },
+
+  'mva/perception-package.md': {
+    title: 'Perception Package — Structured Output for AI Agents',
+    description: 'What is a perception package? How MCP Fusion structures data, rules, charts, and actions into a single coherent response that AI agents can consume deterministically.',
+    faqs: [],
+  },
+
+  'mva/affordances.md': {
+    title: 'Agentic Affordances — HATEOAS for AI Tools',
+    description: 'Guide AI agents to the right next action with suggestActions(). Agentic HATEOAS eliminates tool-selection hallucination by providing explicit action hints based on data state.',
+    faqs: [],
+  },
+
+  'mva/context-tree-shaking.md': {
+    title: 'Context Tree-Shaking — Eliminate Irrelevant Rules from AI Context',
+    description: 'Reduce token waste by delivering only relevant system rules per response. Context tree-shaking ensures User rules never appear in Order responses and vice versa.',
+    faqs: [],
+  },
+
+  'mva/cognitive-guardrails.md': {
+    title: 'Cognitive Guardrails — Prevent Context Window Overflow',
+    description: 'Protect AI agents from data overload with .agentLimit(). Automatically truncate large datasets, inject filter guidance, and reduce LLM costs by up to 100x.',
+    faqs: [],
+  },
+
+  'mva/select-reflection.md': {
+    title: 'Select Reflection — Contextual Rule Resolution',
+    description: 'Dynamic system rules that adapt based on data content and user context. Select Reflection evaluates rules at response time for context-aware AI governance.',
+    faqs: [],
+  },
+
+  'mva-convention.md': {
+    title: 'MVA Convention — File Structure & Naming Standards',
+    description: 'The recommended project structure for MCP Fusion: tools/, presenters/, middleware/ directories, file naming patterns, and conventions for scalable MVA projects.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // TOOL EXPOSITION & PROMPTS
+  // ═══════════════════════════════════════════════════════
+  'tool-exposition.md': {
+    title: 'Tool Exposition — Control What the AI Sees',
+    description: 'Fine-tune how tools appear to AI agents. Custom descriptions, TOON-optimized descriptions, annotations, and semantic hints that improve tool selection accuracy.',
+    faqs: [],
+  },
+
+  'prompts.md': {
+    title: 'Prompt Engine — Dynamic MCP Prompts with Fluent API',
+    description: 'Define reusable MCP prompts with the Fluent API. Prompt arguments, message builders, registry integration, middleware pipelines, and Presenter-powered prompt responses.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // CAPABILITY GOVERNANCE
+  // ═══════════════════════════════════════════════════════
+  'governance/index.md': {
+    title: 'Capability Governance — AI Tool Safety & Compliance',
+    description: 'Enterprise governance for MCP servers: capability lockfiles, surface integrity, contract diffing, zero-trust attestation, blast radius analysis, and token economics.',
+    faqs: [],
+  },
+
+  'governance/capability-lockfile.md': {
+    title: 'Capability Lockfile — Freeze & Audit Your AI Tool Surface',
+    description: 'Lock your MCP tool definitions into a version-controlled manifest. Detect unauthorized changes, audit tool surface drift, and enforce immutable capability contracts.',
+    faqs: [],
+  },
+
+  'governance/surface-integrity.md': {
+    title: 'Surface Integrity — Validate Tool Schema Consistency',
+    description: 'Ensure every tool schema matches its lockfile at startup. Surface integrity checks detect schema drift, missing actions, and unauthorized parameter changes in CI/CD.',
+    faqs: [],
+  },
+
+  'governance/contract-diffing.md': {
+    title: 'Contract Diffing — Track Tool Surface Changes Over Time',
+    description: 'Generate human-readable diffs between lockfile versions. See exactly which tools, actions, and parameters changed between deployments for audit and compliance.',
+    faqs: [],
+  },
+
+  'governance/zero-trust-attestation.md': {
+    title: 'Zero-Trust Attestation — Cryptographic Tool Integrity',
+    description: 'Verify tool definitions have not been tampered with using cryptographic attestation. Zero-trust validation ensures only authorized tool surfaces reach production.',
+    faqs: [],
+  },
+
+  'governance/blast-radius.md': {
+    title: 'Blast Radius Analysis — Measure Tool Change Impact',
+    description: 'Quantify the impact of tool surface changes before deployment. Blast radius analysis shows affected actions, consumers, and risk scores for every modification.',
+    faqs: [],
+  },
+
+  'governance/token-economics.md': {
+    title: 'Token Economics — Predict & Optimize LLM Token Costs',
+    description: 'Estimate token consumption per tool, per action, per response. Token economics helps you budget LLM costs, identify expensive tools, and optimize prompt size.',
+    faqs: [],
+  },
+
+  'governance/semantic-probe.md': {
+    title: 'Semantic Probing — AI-Powered Tool Description Audit',
+    description: 'Use AI to evaluate whether your tool descriptions are clear, unambiguous, and effective. Semantic probing detects confusing descriptions before they cause hallucination.',
+    faqs: [],
+  },
+
+  'governance/self-healing.md': {
+    title: 'Self-Healing Context — Automatic Error Recovery',
+    description: 'How MCP Fusion tools self-correct when AI agents make mistakes. Structured error recovery with toolError(), retry suggestions, and automatic parameter correction.',
+    faqs: [],
+  },
+
+  'governance/cli.md': {
+    title: 'Governance CLI — Command-Line Tool Surface Management',
+    description: 'Complete CLI reference for MCP Fusion governance: generate lockfiles, diff contracts, analyze blast radius, run surface integrity checks, and manage attestation.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // DATA CONNECTORS
+  // ═══════════════════════════════════════════════════════
+  'openapi-gen.md': {
+    title: 'OpenAPI Generator — Generate MCP Tools from Any OpenAPI Spec',
+    description: 'Transform any OpenAPI 3.x specification into fully typed MCP tools with one command. Auto-generates Models, Views, and Agents with Zod validation and Presenters.',
+    faqs: [],
+  },
+
+  'prisma-gen.md': {
+    title: 'Prisma Generator — Generate CRUD MCP Tools from Prisma Schema',
+    description: 'Auto-generate type-safe CRUD MCP tools from your Prisma schema. One command creates find, create, update, and delete actions with full Presenter support.',
+    faqs: [],
+  },
+
+  'n8n-connector.md': {
+    title: 'n8n Connector — Auto-Discover Workflows as MCP Tools',
+    description: 'Connect n8n to MCP Fusion and expose webhook workflows as AI-consumable tools. Auto-discovery scans your n8n instance and registers workflows with zero config.',
+    faqs: [],
+  },
+
+  'aws-connector.md': {
+    title: 'AWS Connector — Lambda & Step Functions as MCP Tools',
+    description: 'Auto-discover tagged AWS Lambda functions and Step Functions as grouped MCP tools. Tag-based discovery, IAM integration, and structured error handling for serverless AI.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — GETTING STARTED
+  // ═══════════════════════════════════════════════════════
+  'cookbook/crud.md': {
+    title: 'CRUD Operations Recipe — Build Database Tools in Minutes',
+    description: 'Copy-pasteable CRUD tool pattern for MCP Fusion. Create, read, update, delete actions with Zod validation, Presenters, and self-healing errors.',
+    faqs: [],
+  },
+
+  'cookbook/request-lifecycle.md': {
+    title: 'Request Lifecycle Recipe — Understand the Execution Pipeline',
+    description: 'Step-by-step walkthrough of an MCP tool call: routing, validation, middleware, handler execution, Presenter rendering, and response composition.',
+    faqs: [],
+  },
+
+  'cookbook/hmr-dev-server.md': {
+    title: 'HMR Dev Server Recipe — Hot Module Reload for MCP Servers',
+    description: 'Set up a development server with hot module reload for MCP tools. Change a handler, see the result instantly — no restart, no reconnect, no lost state.',
+    faqs: [],
+  },
+
+  'cookbook/production-server.md': {
+    title: 'Production Server Recipe — Deploy MCP Servers to Production',
+    description: 'Production-ready MCP server configuration: transport setup, graceful shutdown, health checks, environment variables, and deployment best practices.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — PRESENTER & MVA
+  // ═══════════════════════════════════════════════════════
+  'cookbook/mva-presenter.md': {
+    title: 'MVA Presenter Recipe — Build Your First Presenter',
+    description: 'Step-by-step guide to creating a Presenter with schema, system rules, UI blocks, and suggested actions. Transform raw data into structured perception packages.',
+    faqs: [],
+  },
+
+  'cookbook/presenter-composition.md': {
+    title: 'Presenter Composition Recipe — Nested Presenters with embed()',
+    description: 'Compose complex responses by embedding child Presenters into parent Presenters. DRY, reusable perception architecture with automatic rule and UI block merging.',
+    faqs: [],
+  },
+
+  'cookbook/custom-responses.md': {
+    title: 'Custom Responses Recipe — ResponseBuilder for Advanced Output',
+    description: 'Build custom MCP responses with ResponseBuilder. Combine data, system rules, UI blocks, and affordances manually for maximum control over perception packages.',
+    faqs: [],
+  },
+
+  'cookbook/context-aware-rules.md': {
+    title: 'Context-Aware Rules Recipe — Dynamic Presenter System Rules',
+    description: 'Create system rules that adapt to data and user context. Show admin-only rules for admins, filter sensitive guidance for guests, and inject role-aware directives.',
+    faqs: [],
+  },
+
+  'cookbook/context-tree-shaking.md': {
+    title: 'Context Tree-Shaking Recipe — Reduce Token Waste',
+    description: 'Practical examples of context tree-shaking. Ensure each response only includes relevant system rules, eliminating cross-entity rule pollution and token waste.',
+    faqs: [],
+  },
+
+  'cookbook/select-reflection.md': {
+    title: 'Select Reflection Recipe — Conditional Rule Resolution',
+    description: 'Implement select reflection to resolve which system rules apply at response time. Data-driven, context-aware rule selection for fine-grained AI governance.',
+    faqs: [],
+  },
+
+  'cookbook/agentic-affordances.md': {
+    title: 'Agentic Affordances Recipe — Guide AI to the Next Action',
+    description: 'Implement suggestActions() to provide explicit next-step hints. Reduce tool-selection hallucination by telling the AI exactly what to do next based on data state.',
+    faqs: [],
+  },
+
+  'cookbook/cognitive-guardrails.md': {
+    title: 'Cognitive Guardrails Recipe — Cap Response Size for AI Safety',
+    description: 'Implement .agentLimit() to prevent context overflow. Practical examples of truncation, filter guidance injection, and cost reduction with cognitive guardrails.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — TOOL BUILDING
+  // ═══════════════════════════════════════════════════════
+  'cookbook/hierarchical-groups.md': {
+    title: 'Hierarchical Groups Recipe — Organize Thousands of Actions',
+    description: 'Use nested .group() to organize 5,000+ operations into a clean hierarchy. Practical pattern for platform-level tools with multi-domain action consolidation.',
+    faqs: [],
+  },
+
+  'cookbook/functional-groups.md': {
+    title: 'Functional Groups Recipe — Domain-Based Tool Organization',
+    description: 'Organize related actions into functional groups by domain. Users, billing, projects — each group with its own middleware, descriptions, and action handlers.',
+    faqs: [],
+  },
+
+  'cookbook/tool-exposition.md': {
+    title: 'Tool Exposition Recipe — Optimize Tool Visibility to AI',
+    description: 'Control how tools appear to AI agents. Set descriptions, TOON descriptions, annotations, and semantic hints for optimal tool selection and minimal token usage.',
+    faqs: [],
+  },
+
+  'cookbook/error-handling.md': {
+    title: 'Error Handling Recipe — Self-Healing Errors in Practice',
+    description: 'Implement toolError() with recovery hints, suggested arguments, and error codes. Practical patterns for not-found, validation, auth, and rate-limit errors.',
+    faqs: [],
+  },
+
+  'cookbook/result-monad.md': {
+    title: 'Result Monad Recipe — Composable Type-Safe Error Handling',
+    description: 'Use succeed() and fail() to build composable, exception-free error pipelines. Chain validations, database lookups, and permission checks with full type narrowing.',
+    faqs: [],
+  },
+
+  'cookbook/streaming.md': {
+    title: 'Streaming Recipe — Real-Time Progress Updates for AI Tools',
+    description: 'Use generator handlers with yield progress() for real-time streaming. Show completion percentage, status messages, and incremental results during long operations.',
+    faqs: [],
+  },
+
+  'cookbook/cancellation.md': {
+    title: 'Cancellation Recipe — Cooperative AbortSignal Patterns',
+    description: 'Pass AbortSignal through handlers to cancel fetch, database queries, and generators. Prevent zombie operations when users click Stop in MCP clients.',
+    faqs: [],
+  },
+
+  'cookbook/auth-middleware.md': {
+    title: 'Auth Middleware Recipe — Authentication & Authorization Guards',
+    description: 'Implement authentication middleware with context derivation. Verify tokens, resolve user identity, enforce RBAC, and short-circuit unauthorized requests.',
+    faqs: [],
+  },
+
+  'cookbook/prompts.md': {
+    title: 'Prompts Recipe — Define & Register MCP Prompts',
+    description: 'Create reusable MCP prompts with arguments, message builders, and Presenter integration. Register prompts in PromptRegistry for discoverable AI instructions.',
+    faqs: [],
+  },
+
+  'cookbook/runtime-guards.md': {
+    title: 'Runtime Guards Recipe — Concurrency & Payload Protection',
+    description: 'Configure concurrency bulkhead and egress limiters per tool. Prevent thundering herd, OOM crashes, and context overflow with built-in runtime safety guards.',
+    faqs: [],
+  },
+
+  'cookbook/self-healing-context.md': {
+    title: 'Self-Healing Context Recipe — Automatic Error Recovery Loops',
+    description: 'Build self-healing tools where AI agents automatically retry with corrected parameters. Recovery actions, suggested args, and structured error flows.',
+    faqs: [],
+  },
+
+  'cookbook/toon.md': {
+    title: 'TOON Encoding Recipe — Save 40% on LLM Tokens',
+    description: 'Use TOON (Token-Oriented Object Notation) for compact responses. Pipe-delimited tabular data that reduces token count by 30-50% while remaining LLM-parseable.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — GOVERNANCE
+  // ═══════════════════════════════════════════════════════
+  'cookbook/capability-lockfile.md': {
+    title: 'Capability Lockfile Recipe — Lock Your Tool Surface',
+    description: 'Generate, commit, and validate capability lockfiles in CI/CD. Step-by-step guide to freezing your MCP tool surface for audit and compliance.',
+    faqs: [],
+  },
+
+  'cookbook/contract-diffing.md': {
+    title: 'Contract Diffing Recipe — Track Tool Definition Changes',
+    description: 'Generate diffs between lockfile versions to see exactly what changed. Integrate contract diffing into PR reviews for safe tool surface evolution.',
+    faqs: [],
+  },
+
+  'cookbook/blast-radius.md': {
+    title: 'Blast Radius Recipe — Measure Change Impact Before Deploy',
+    description: 'Quantify the blast radius of tool surface changes. Identify affected actions, consumers, and risk level before merging changes to production.',
+    faqs: [],
+  },
+
+  'cookbook/token-economics.md': {
+    title: 'Token Economics Recipe — Budget & Optimize LLM Costs',
+    description: 'Estimate per-tool token consumption, identify expensive patterns, and optimize prompt size. Practical patterns for reducing LLM API spend.',
+    faqs: [],
+  },
+
+  'cookbook/semantic-probe.md': {
+    title: 'Semantic Probe Recipe — Audit Tool Descriptions with AI',
+    description: 'Use semantic probing to evaluate tool description quality. Detect ambiguous, confusing, or misleading descriptions before they cause AI hallucination.',
+    faqs: [],
+  },
+
+  'cookbook/zero-trust-attestation.md': {
+    title: 'Zero-Trust Attestation Recipe — Verify Tool Integrity',
+    description: 'Implement cryptographic attestation for tool definitions. Verify tool surface integrity at startup and reject tampered definitions in production.',
+    faqs: [],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — PRODUCTION
+  // ═══════════════════════════════════════════════════════
+  'cookbook/observability.md': {
+    title: 'Observability Recipe — Debug Observer for MCP Tools',
+    description: 'Set up createDebugObserver() for real-time tool execution logging. Typed events for tool:start, tool:end, tool:error, and middleware stages.',
+    faqs: [],
+  },
+
+  'cookbook/tracing.md': {
+    title: 'Tracing Recipe — OpenTelemetry Spans for MCP Tools',
+    description: 'Add OpenTelemetry-compatible tracing to your MCP server. One line enables spans for all tools with enterprise error classification and zero-overhead when disabled.',
+    faqs: [],
+  },
+
+  'cookbook/introspection.md': {
+    title: 'Introspection Recipe — Runtime Tool Inspection',
+    description: 'Use getActionNames(), getActionMetadata(), and previewPrompt() to inspect tools at runtime. Debug, document, and optimize your tool definitions.',
+    faqs: [],
+  },
+
+  'cookbook/state-sync.md': {
+    title: 'State Sync Recipe — Cache Signals for AI Agents',
+    description: 'Implement cacheSignal() and invalidates() for temporal awareness. Prevent stale data reads and reduce redundant API calls with RFC 7234-inspired patterns.',
+    faqs: [],
+  },
+
+  'cookbook/testing.md': {
+    title: 'Testing Recipe — FusionTester Quick Patterns',
+    description: 'Common testing patterns with FusionTester: assert PII stripping, verify system rules, check RBAC guards, and validate UI blocks — all in-memory, zero tokens.',
+    faqs: [],
+  },
 };
 
 // ═══════════════════════════════════════════════════════
 // HEAD TAG GENERATOR
 // ═══════════════════════════════════════════════════════
-export function getPageHeadTags(relativePath: string): HeadConfig[] {
-  const page = pages[relativePath];
-  if (!page) return [];
+export function getPageHeadTags(pageData: { relativePath: string; title: string; description: string; frontmatter: Record<string, unknown> }): HeadConfig[] {
+  const page = pages[pageData.relativePath];
 
-  const slug = relativePath.replace('.md', '').replace('index', '');
+  // Dynamic per-page: use curated SEO data or fall back to VitePress pageData
+  const title = page?.title ?? pageData.title ?? 'MCP Fusion';
+  const description = page?.description
+    ?? pageData.description
+    ?? 'AI-First DX for the Model Context Protocol.';
+
+  const slug = pageData.relativePath.replace('.md', '').replace('index', '');
   const url = `${BASE_URL}/${slug}`;
+  const ogImage = 'https://site-assets.vinkius.com/vk/logo-v-black.png';
 
   const heads: HeadConfig[] = [];
 
-  // Page-specific Open Graph
-  heads.push(['meta', { property: 'og:title', content: page.title }]);
-  heads.push(['meta', { property: 'og:description', content: page.description }]);
+  // ── Open Graph (dynamic per page) ──
+  heads.push(['meta', { property: 'og:type', content: 'website' }]);
+  heads.push(['meta', { property: 'og:site_name', content: 'MCP Fusion' }]);
+  heads.push(['meta', { property: 'og:title', content: title }]);
+  heads.push(['meta', { property: 'og:description', content: description }]);
   heads.push(['meta', { property: 'og:url', content: url }]);
+  heads.push(['meta', { property: 'og:image', content: ogImage }]);
+  heads.push(['meta', { property: 'og:image:width', content: '1200' }]);
+  heads.push(['meta', { property: 'og:image:height', content: '630' }]);
 
-  // FAQPage JSON-LD
-  if (page.faqs.length > 0) {
+  // ── Twitter Card (dynamic per page) ──
+  heads.push(['meta', { name: 'twitter:card', content: 'summary_large_image' }]);
+  heads.push(['meta', { name: 'twitter:site', content: '@vinkiuslabs' }]);
+  heads.push(['meta', { name: 'twitter:creator', content: '@vinkiuslabs' }]);
+  heads.push(['meta', { name: 'twitter:title', content: title }]);
+  heads.push(['meta', { name: 'twitter:description', content: description }]);
+  heads.push(['meta', { name: 'twitter:image', content: ogImage }]);
+
+  // ── FAQPage JSON-LD (only for pages with curated FAQs) ──
+  if (page && page.faqs.length > 0) {
     heads.push(['script', { type: 'application/ld+json' }, JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
@@ -765,12 +1186,12 @@ export function getPageHeadTags(relativePath: string): HeadConfig[] {
     })]);
   }
 
-  // TechArticle JSON-LD per page
+  // ── TechArticle JSON-LD per page ──
   heads.push(['script', { type: 'application/ld+json' }, JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'TechArticle',
-    'headline': page.title,
-    'description': page.description,
+    'headline': title,
+    'description': description,
     'url': url,
     'author': { '@type': 'Person', 'name': 'Renato Marinho' },
     'publisher': { '@type': 'Organization', 'name': 'Vinkius Labs' },
@@ -778,4 +1199,12 @@ export function getPageHeadTags(relativePath: string): HeadConfig[] {
   })]);
 
   return heads;
+}
+
+/**
+ * Get curated SEO data for a page.
+ * Used by transformPageData to override the <title> tag with keyword-rich titles.
+ */
+export function getPageSEO(relativePath: string): { title: string; description: string } | undefined {
+  return pages[relativePath];
 }

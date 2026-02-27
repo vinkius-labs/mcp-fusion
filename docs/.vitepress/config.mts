@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitepress'
-import { getPageHeadTags } from './seo'
+import { getPageHeadTags, getPageSEO } from './seo'
 import typedocSidebar from '../api/typedoc-sidebar.json'
 
 export default defineConfig({
@@ -60,24 +60,6 @@ export default defineConfig({
     ['meta', { name: 'apple-mobile-web-app-title', content: 'MCP Fusion' }],
     ['meta', { name: 'application-name', content: 'MCP Fusion' }],
 
-    // ── Open Graph ──
-    ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'MCP Fusion' }],
-    ['meta', { property: 'og:title', content: 'MCP Fusion — AI-First DX for the Model Context Protocol' }],
-    ['meta', { property: 'og:description', content: 'Build production-grade MCP servers with type safety, behavioral governance, and zero boilerplate. MVA architecture with Presenters, cognitive guardrails, and structured perception packages.' }],
-    ['meta', { property: 'og:url', content: 'https://mcp-fusion.vinkius.com/' }],
-    ['meta', { property: 'og:image', content: 'https://site-assets.vinkius.com/vk/logo-v-black.png' }],
-    ['meta', { property: 'og:image:width', content: '1200' }],
-    ['meta', { property: 'og:image:height', content: '630' }],
-
-    // ── Twitter Card ──
-    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:site', content: '@vinkiuslabs' }],
-    ['meta', { name: 'twitter:creator', content: '@vinkiuslabs' }],
-    ['meta', { name: 'twitter:title', content: 'MCP Fusion — AI-First DX for the Model Context Protocol' }],
-    ['meta', { name: 'twitter:description', content: 'Build production-grade MCP servers with type safety, behavioral governance, and zero boilerplate.' }],
-    ['meta', { name: 'twitter:image', content: 'https://site-assets.vinkius.com/vk/logo-v-black.png' }],
-
     // ── JSON-LD: SoftwareSourceCode ──
     ['script', { type: 'application/ld+json' }, JSON.stringify({
       '@context': 'https://schema.org',
@@ -122,8 +104,17 @@ export default defineConfig({
 
   ],
 
+  transformPageData(pageData) {
+    const seo = getPageSEO(pageData.relativePath);
+    if (seo) {
+      pageData.title = seo.title;
+      pageData.titleTemplate = ':title';
+      pageData.description = seo.description;
+    }
+  },
+
   transformHead({ pageData }) {
-    return getPageHeadTags(pageData.relativePath);
+    return getPageHeadTags(pageData);
   },
 
   themeConfig: {
