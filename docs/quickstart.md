@@ -100,7 +100,11 @@ main().catch(console.error);
 
 ## Test It {#test}
 
-Add to your Claude Desktop config:
+Connect to any MCP client:
+
+### Cursor
+
+Add `.cursor/mcp.json` to your project root (or use [`npx fusion create`](/quickstart-lightspeed) which generates it automatically):
 
 ```json
 {
@@ -112,6 +116,31 @@ Add to your Claude Desktop config:
   }
 }
 ```
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-first-server": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"]
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add my-first-server npx tsx src/index.ts
+```
+
+### Windsurf · Cline · VS Code + Copilot
+
+All three use the same JSON format as Claude Desktop — add the `mcpServers` block to the respective config file: `~/.codeium/windsurf/mcp_config.json` (Windsurf), `cline_mcp_settings.json` (Cline), or `.vscode/mcp.json` (VS Code Copilot — uses `"servers"` key instead of `"mcpServers"`).
 
 Ask: *"What's the weather in San Francisco?"* — the agent calls `weather_get` and receives the structured response.
 

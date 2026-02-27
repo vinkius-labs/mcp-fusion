@@ -16,6 +16,9 @@ Long-running operations — data exports, repository analysis, batch processing 
 
 MCP Fusion supports **generator handlers** that `yield` progress updates. When attached to an MCP server, each `yield progress()` is automatically forwarded as a `notifications/progress` message to the client. Zero configuration.
 
+> [!IMPORTANT]
+> Streaming progress requires a persistent transport (Stdio or SSE). Stateless deployments on [Vercel](/vercel-adapter) and [Cloudflare Workers](/cloudflare-adapter) use JSON-RPC request/response — progress notifications are not supported. For edge runtimes, return final results directly without generator handlers.
+
 ## Generator Handlers {#generators}
 
 Instead of `async (input, ctx) => { ... }`, use `async function*` to create a generator handler. Use `yield` to send progress updates during execution:

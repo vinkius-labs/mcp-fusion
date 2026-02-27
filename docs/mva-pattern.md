@@ -31,7 +31,7 @@ Domain Data   →   Presenter    →   LLM/AI
                    Affordances)
 ```
 
-The Presenter is **domain-level, not tool-level.** Define `InvoicePresenter` once — every tool that returns invoices uses the same Presenter. The agent always perceives invoices identically.
+The Presenter is **domain-level, not tool-level.** Define `InvoicePresenter` once — every tool that returns invoices uses the same Presenter. The agent always perceives invoices identically. Tools can be hand-written with the Fluent API, or auto-generated from an OpenAPI spec ([@vinkius-core/mcp-fusion-openapi-gen](/openapi-gen)) or a Prisma schema ([@vinkius-core/mcp-fusion-prisma-gen](/prisma-gen)) — the Presenter layer works identically regardless of how the Model layer is authored.
 
 ## The Presenter {#presenter-responsibilities}
 

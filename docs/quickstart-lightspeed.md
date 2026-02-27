@@ -35,7 +35,7 @@ The interactive wizard runs:
   ✔ Done
 
   $ cd my-server
-  $ npm run dev
+  $ fusion dev
   $ npm test
 ```
 
@@ -79,14 +79,14 @@ Every file is real code — not stubs. The server boots, the tests pass, Cursor 
 
 ```bash
 cd my-server
-npm run dev
+fusion dev
 ```
 
 The server starts on stdio. Connect it to your MCP client:
 
-### Cursor
+### Cursor — Zero-Click Integration
 
-Already configured. The CLI generates `.cursor/mcp.json` — open the project in Cursor and the MCP connection is live. Zero setup.
+Already configured. The CLI generates `.cursor/mcp.json` automatically — open the project in Cursor and the MCP connection is live. No manual setup, no config editing. This is the fastest path from scaffold to working MCP server.
 
 ### Claude Desktop
 
@@ -109,6 +109,51 @@ Add to your `claude_desktop_config.json`:
 claude mcp add my-server npx tsx src/server.ts
 ```
 
+### Windsurf
+
+Add to your Windsurf MCP config (`~/.codeium/windsurf/mcp_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}
+```
+
+### Cline (VS Code Extension)
+
+Add via Cline's MCP settings in VS Code — `cline_mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}
+```
+
+### VS Code + GitHub Copilot
+
+Add to your `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}
+```
+
 ### SSE transport
 
 For network-accessible servers (multi-client, remote deployment):
@@ -116,7 +161,7 @@ For network-accessible servers (multi-client, remote deployment):
 ```bash
 npx fusion create my-api --transport sse
 cd my-api
-npm start
+fusion dev
 # Server running on http://localhost:3001/sse
 ```
 

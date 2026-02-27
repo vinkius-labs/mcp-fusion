@@ -9,7 +9,7 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 - [Before & After: Error Recovery](#errors)
 - [The Architecture Difference](#architecture)
 
-Every tool response in a raw MCP server is `JSON.stringify()` — the AI receives a flat blob and guesses what it means. MCP Fusion's MVA pattern replaces guessing with a structured perception package: validated data + domain rules + UI blocks + suggested next actions.
+Every tool response in a raw MCP server is `JSON.stringify()` — the AI receives a flat blob and guesses what it means. MCP Fusion's MVA pattern replaces guessing with a structured perception package: validated data + domain rules + UI blocks + suggested next actions. The resulting server works with every MCP client: Cursor, Claude Desktop, Claude Code, Windsurf, Cline, and VS Code with GitHub Copilot.
 
 | Aspect | Without MVA | With MVA |
 |---|---|---|
@@ -26,7 +26,9 @@ Every tool response in a raw MCP server is `JSON.stringify()` — the AI receive
 | **Error recovery** | `throw new Error('not found')` — AI gives up | `toolError()` with recovery hints and retry args |
 | **Middleware** | Copy-paste auth checks | tRPC-style `defineMiddleware()` with context derivation |
 | **Cache signals** | None — AI re-fetches stale data forever | State sync — RFC 7234-inspired temporal awareness |
-| **Deployment** | Stdio only — manual HTTP bridging | One-line adapters for [Vercel Edge](/vercel-adapter) and [Cloudflare Workers](/cloudflare-adapter) |
+| **Deployment** | Stdio only — manual HTTP bridging | One-line adapters for [Vercel Edge](/vercel-adapter), [Cloudflare Workers](/cloudflare-adapter), and [AWS Lambda](/generators/aws) |
+| **Code generation** | Write every tool by hand | [OpenAPI Generator](/openapi-gen) turns any spec into a typed MCP server. [Prisma Generator](/prisma-gen) creates CRUD tools from schema. |
+| **Integrations** | Build connectors from scratch | [n8n bridge](/generators/n8n) exposes workflows as tools. [OAuth Device Flow](/oauth) for enterprise auth. |
 | **Type safety** | Manual casting | `createFusionClient()` with end-to-end inference |
 
 ## Before & After: Invoice {#invoice}

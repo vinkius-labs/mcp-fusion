@@ -1,6 +1,6 @@
 # Enterprise Quickstart
 
-A production-grade MCP server with JWT authentication, tenant isolation, field-level data protection, audit logging, and cognitive affordances. About 5 minutes of work.
+A production-grade MCP server with JWT authentication, tenant isolation, field-level data protection, audit logging, and cognitive affordances. Uses [@vinkius-core/mcp-fusion-oauth](/oauth) for OAuth Device Flow (RFC 8628). About 5 minutes of work.
 
 By the end, unauthenticated requests are rejected before any handler runs. A `viewer`-role agent receives user records _without_ email addresses. An `admin`-role agent sees everything — same tool, same handler, different perception.
 
@@ -189,7 +189,7 @@ fusion dev
 
 Connect it to your MCP client:
 
-### Cursor
+### Cursor — Zero-Click Integration
 
 Already configured — the CLI generates `.cursor/mcp.json`. Open the project in Cursor and the MCP connection is live.
 
@@ -198,6 +198,25 @@ Already configured — the CLI generates `.cursor/mcp.json`. Open the project in
 ```bash
 claude mcp add secure-api npx tsx src/server.ts
 ```
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "secure-api": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}
+```
+
+### Windsurf · Cline · VS Code + Copilot
+
+Same JSON format — add to `~/.codeium/windsurf/mcp_config.json` (Windsurf), `cline_mcp_settings.json` (Cline), or `.vscode/mcp.json` (VS Code Copilot — uses `"servers"` key).
 
 ## Step 7 — Deploy to Production {#step-7-deploy}
 

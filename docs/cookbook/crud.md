@@ -15,6 +15,9 @@ Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-
 
 Every SaaS application has entities — projects, invoices, users, tasks. MCP Fusion's Fluent API makes defining CRUD operations for these entities a joy. Instead of writing verbose JSON schemas or tangled Zod objects, you declare your tool's intent with semantic verbs and chainable parameter methods.
 
+> [!TIP]
+> Already using Prisma? Skip manual tool definitions — [@vinkius-core/mcp-fusion-prisma-gen](/generators/prisma) auto-generates CRUD tools directly from your `prisma/schema.prisma`. Scaffold a Prisma project with `npx fusion create my-api --vector prisma`.
+
 By the end of this page you'll have a complete, production-ready CRUD module that any developer can read and understand in seconds.
 
 ## Defining Your Context {#context}
@@ -187,6 +190,24 @@ registry.attachToServer(server, {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
+
+The same registry deploys to serverless with zero tool code changes:
+
+### Vercel — CRUD API as a Route Handler
+
+```typescript
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+export const POST = vercelAdapter({ registry, contextFactory });
+```
+
+### Cloudflare Workers — CRUD at the Edge
+
+```typescript
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+```
+
+Full guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter)
 
 ## Semantic Verb Reference {#verbs}
 

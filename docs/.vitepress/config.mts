@@ -78,7 +78,15 @@ export default defineConfig({
         'AI agents', 'LLM tools', 'TypeScript framework',
         'Presenter pattern', 'action consolidation', 'agentic HATEOAS',
         'cognitive guardrails', 'structured perception', 'self-healing errors',
-        'tool routing', 'Zod validation', 'tRPC-style client'
+        'tool routing', 'Zod validation', 'tRPC-style client',
+        'Cursor MCP', 'Claude Desktop MCP', 'Claude Code MCP',
+        'Windsurf MCP', 'Cline MCP', 'VS Code Copilot MCP',
+        'Vercel MCP server', 'Cloudflare Workers MCP', 'AWS Lambda MCP',
+        'OpenAPI to MCP', 'Prisma to MCP', 'n8n MCP',
+        'mcp-fusion-vercel', 'mcp-fusion-cloudflare', 'mcp-fusion-aws',
+        'mcp-fusion-openapi-gen', 'mcp-fusion-prisma-gen', 'mcp-fusion-n8n',
+        'mcp-fusion-oauth', 'mcp-fusion-testing',
+        'MCP server framework', 'build MCP server', 'MCP tool builder'
       ],
       'author': {
         '@type': 'Person',

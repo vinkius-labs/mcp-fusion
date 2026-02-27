@@ -107,6 +107,9 @@ export const getInvoice = f.query('billing.get_invoice')
 
 The handler's only job is to fetch data. The framework calls `presenter.make(data, ctx).build()` automatically — validation, rules, UI blocks, and affordances are all applied.
 
+> [!TIP]
+> Presenters work identically on [Vercel Edge Functions](/vercel-adapter) and [Cloudflare Workers](/cloudflare-adapter) — Zod validation runs in any JavaScript runtime. Schema compilation is cached at cold start, so edge Presenters add near-zero latency per request.
+
 ## System Rules — JIT Context {#rules}
 
 Rules travel with the data, not in the system prompt. This is **Context Tree-Shaking** — domain rules only appear when that entity is in the response.

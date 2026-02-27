@@ -6,7 +6,7 @@
 npm install @vinkius-core/mcp-fusion-testing
 ```
 
-Works with Vitest, Jest, Mocha, or `node:test`. The tester returns plain objects — your runner, your choice.
+Works with Vitest, Jest, Mocha, or `node:test`. The tester returns plain objects — your runner, your choice. Ideal for validating hand-written tools and auto-generated tools from [@vinkius-core/mcp-fusion-openapi-gen](/openapi-gen) or [@vinkius-core/mcp-fusion-prisma-gen](/prisma-gen).
 
 ## Create a Tester
 

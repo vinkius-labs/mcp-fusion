@@ -4,7 +4,7 @@
 Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
 :::
 
-The Presenter separates what the agent sees from how data is fetched. Your handler returns raw data. The Presenter validates, strips, enriches, truncates, and governs the response. Define `InvoicePresenter` once — every tool and prompt that touches invoices uses the same schema, rules, and affordances.
+The Presenter separates what the agent sees from how data is fetched. Your handler returns raw data. The Presenter validates, strips, enriches, truncates, and governs the response. Define `InvoicePresenter` once — every tool and prompt that touches invoices uses the same schema, rules, and affordances. Presenters can also be [auto-generated from OpenAPI response schemas](/openapi-gen) via `@vinkius-core/mcp-fusion-openapi-gen`.
 
 This is the **View** in the [MVA (Model-View-Agent)](/mva-pattern) pattern.
 

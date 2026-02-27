@@ -15,7 +15,7 @@
 
 MCP Fusion is an architecture layer for the Model Context Protocol. It separates three concerns that every raw MCP server mixes into a single handler: **who can call what** (middleware pipeline), **what the agent sees** (Presenter with Zod schema), and **whether the surface is trustworthy** (governance lockfile + HMAC attestation).
 
-This separation is the **MVA (Model-View-Agent)** pattern. The handler returns raw data (Model). The Presenter shapes perception (View). The middleware governs access (Agent).
+This separation is the **MVA (Model-View-Agent)** pattern. The handler returns raw data (Model). The Presenter shapes perception (View). The middleware governs access (Agent). The resulting server works with any MCP client — Cursor, Claude Desktop, Claude Code, Windsurf, Cline, and VS Code with GitHub Copilot.
 
 ## How It Looks {#in-practice}
 
@@ -87,7 +87,20 @@ export const getInvoice = f.query('billing.get')
 npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
 ```
 
-Node.js 18+. Works with any MCP SDK-compatible transport (Stdio, HTTP/SSE, WebSocket). For serverless deployment, add [@vinkius-core/mcp-fusion-vercel](/vercel-adapter) or [@vinkius-core/mcp-fusion-cloudflare](/cloudflare-adapter).
+Node.js 18+. Works with any MCP SDK-compatible transport (Stdio, HTTP/SSE, WebSocket).
+
+### Ecosystem Packages
+
+| Package | Purpose |
+|---|---|
+| [@vinkius-core/mcp-fusion-vercel](/vercel-adapter) | Deploy to Vercel — App Router, Edge or Node.js Runtime |
+| [@vinkius-core/mcp-fusion-cloudflare](/cloudflare-adapter) | Deploy to Cloudflare Workers — D1, KV, R2 bindings |
+| [@vinkius-core/mcp-fusion-aws](/generators/aws) | AWS Lambda & Step Functions connector |
+| [@vinkius-core/mcp-fusion-oauth](/oauth) | OAuth Device Flow (RFC 8628) — enterprise authentication |
+| [@vinkius-core/mcp-fusion-prisma-gen](/generators/prisma) | Auto-generate MCP tools from Prisma schema |
+| [@vinkius-core/mcp-fusion-openapi-gen](/generators/openapi) | Generate tools from OpenAPI/Swagger specs |
+| [@vinkius-core/mcp-fusion-n8n](/generators/n8n) | Bridge n8n workflows as MCP tools |
+| [@vinkius-core/mcp-fusion-testing](/testing) | Test harness — assertions, blast radius, snapshot testing |
 
 ## Why This Matters {#benefits}
 

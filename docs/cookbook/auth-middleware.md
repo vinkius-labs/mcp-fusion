@@ -17,6 +17,9 @@ Every production MCP server needs authentication. Without it, anyone with transp
 
 Middleware in MCP Fusion follows the **onion model**: each layer wraps the next, and the returned object gets merged into `ctx` for downstream layers and handlers. Define it once, apply it everywhere.
 
+> [!TIP]
+> Need OAuth Device Flow (RFC 8628) instead of raw JWT? Use [@vinkius-core/mcp-fusion-oauth](/oauth) — it provides `createAuthTool()` and `requireAuth()` out of the box. Scaffold with `npx fusion create my-api --vector oauth`.
+
 ## Defining Middleware {#defining}
 
 Use `f.middleware()` to create a reusable middleware function. It receives the current `ctx` and returns an object to merge into context:
@@ -145,3 +148,35 @@ registry.attachToServer(server, {
 ```
 
 `extra` is the MCP SDK's `RequestHandlerExtra` — it carries `session` (from HTTP/SSE/WebSocket transports) and `signal` (the cancellation `AbortSignal`). The factory is async and runs per-request, so you can resolve dynamically renewing tokens, rotated credentials, or per-request config.
+
+On serverless, `contextFactory` receives the HTTP request instead:
+
+### Vercel — Extract Token from Headers
+
+```typescript
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+
+export const POST = vercelAdapter({
+  registry,
+  contextFactory: async (req) => ({
+    token: req.headers.get('authorization')?.replace('Bearer ', '') ?? '',
+    db: getDatabaseInstance(),
+  }),
+});
+```
+
+### Cloudflare Workers — Token + D1 from Env Bindings
+
+```typescript
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+
+export default cloudflareWorkersAdapter({
+  registry,
+  contextFactory: async (req, env) => ({
+    token: req.headers.get('authorization')?.replace('Bearer ', '') ?? '',
+    db: env.DB,
+  }),
+});
+```
+
+The middleware chain (`withAuth → withTenant`) executes identically on every runtime. Full guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter)

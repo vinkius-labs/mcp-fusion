@@ -13,7 +13,7 @@ Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-
 
 Production MCP servers need observability: how many tool calls per minute, which tools are slowest, which tenants are most active. MCP Fusion doesn't ship a built-in observability layer — instead, the middleware system gives you full control to integrate with any stack: structured logging, Prometheus, Datadog, StatsD, or Sentry.
 
-The pattern is simple: create a shared middleware that captures timing and context, then apply it to all your tools via a [functional group](/cookbook/functional-groups).
+The pattern is simple: create a shared middleware that captures timing and context, then apply it to all your tools via a [functional group](/cookbook/functional-groups). These patterns work identically on Stdio, [Vercel Edge Functions](/vercel-adapter) (pass `debug` via `attachOptions`), and [Cloudflare Workers](/cloudflare-adapter) (use `executionCtx.waitUntil()` to flush metrics without blocking the response).
 
 ## Logging Middleware {#logging-middleware}
 

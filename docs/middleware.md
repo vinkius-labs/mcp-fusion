@@ -15,7 +15,7 @@ Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-f
 
 ## Introduction {#introduction}
 
-Every production application has cross-cutting concerns — authentication, authorization, auditing, rate limiting, tenant resolution. Without middleware, you'd duplicate these checks in every handler:
+Every production application has cross-cutting concerns — authentication, authorization, auditing, rate limiting, tenant resolution. Without middleware, you'd duplicate these checks in every handler. This is especially painful when generating tools from [@vinkius-core/mcp-fusion-openapi-gen](/openapi-gen) or [@vinkius-core/mcp-fusion-prisma-gen](/prisma-gen) — dozens of auto-generated handlers that all need the same auth and audit layer:
 
 ```typescript
 // ❌ Without middleware — validation repeated in every tool
