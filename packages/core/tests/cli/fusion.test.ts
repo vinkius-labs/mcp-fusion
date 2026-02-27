@@ -191,10 +191,10 @@ describe('CLI end-to-end lockfile flow', () => {
         return registry;
     }
 
-    it('compileContracts produces valid contracts from real ToolRegistry', () => {
+    it('compileContracts produces valid contracts from real ToolRegistry', async () => {
         const registry = buildRealRegistry();
         const builders = [...registry.getBuilders()];
-        const contracts = compileContracts(builders);
+        const contracts = await compileContracts(builders);
 
         expect(Object.keys(contracts)).toContain('users');
         expect(Object.keys(contracts)).toContain('tasks');
@@ -210,10 +210,10 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(usersContract.surface.actions['delete']!.destructive).toBe(true);
     });
 
-    it('generates lockfile from real registry contracts', () => {
+    it('generates lockfile from real registry contracts', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         expect(lockfile.lockfileVersion).toBe(1);
         expect(lockfile.serverName).toBe('test-server');
@@ -234,10 +234,10 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(users.entitlements.network).toBe(false);
     });
 
-    it('serializes lockfile to canonical JSON', () => {
+    it('serializes lockfile to canonical JSON', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         const json = serializeLockfile(lockfile);
 
@@ -257,8 +257,8 @@ describe('CLI end-to-end lockfile flow', () => {
 
     it('writes and reads lockfile from disk', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         // Write
         await writeLockfile(lockfile, tmpDir);
@@ -274,8 +274,8 @@ describe('CLI end-to-end lockfile flow', () => {
 
     it('checkLockfile passes when surface matches', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         // Write to disk
         await writeLockfile(lockfile, tmpDir);
@@ -285,15 +285,15 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(loaded).not.toBeNull();
 
         // Check — should pass
-        const result = checkLockfile(loaded!, contracts);
+        const result = await checkLockfile(loaded!, contracts);
         expect(result.ok).toBe(true);
         expect(result.unchanged).toEqual(['tasks', 'users']);
     });
 
     it('checkLockfile fails when a tool is added', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         await writeLockfile(lockfile, tmpDir);
 
@@ -308,10 +308,10 @@ describe('CLI end-to-end lockfile flow', () => {
             });
 
         registry.register(newTool);
-        const updatedContracts = compileContracts([...registry.getBuilders()]);
+        const updatedContracts = await compileContracts([...registry.getBuilders()]);
 
         const loaded = await readLockfile(tmpDir);
-        const result = checkLockfile(loaded!, updatedContracts);
+        const result = await checkLockfile(loaded!, updatedContracts);
 
         expect(result.ok).toBe(false);
         expect(result.added).toContain('reports');
@@ -319,8 +319,8 @@ describe('CLI end-to-end lockfile flow', () => {
 
     it('checkLockfile fails when a tool is removed', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         await writeLockfile(lockfile, tmpDir);
 
@@ -328,7 +328,7 @@ describe('CLI end-to-end lockfile flow', () => {
         const { tasks: _, ...remaining } = contracts;
 
         const loaded = await readLockfile(tmpDir);
-        const result = checkLockfile(loaded!, remaining);
+        const result = await checkLockfile(loaded!, remaining);
 
         expect(result.ok).toBe(false);
         expect(result.removed).toContain('tasks');
@@ -336,8 +336,8 @@ describe('CLI end-to-end lockfile flow', () => {
 
     it('checkLockfile fails when behavioral surface changes', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('test-server', contracts, MCP_FUSION_VERSION);
 
         await writeLockfile(lockfile, tmpDir);
 
@@ -384,9 +384,9 @@ describe('CLI end-to-end lockfile flow', () => {
                 handler: async () => ({ content: [{ type: 'text' as const, text: '[]' }] }),
             }));
 
-        const updatedContracts = compileContracts([...registry2.getBuilders()]);
+        const updatedContracts = await compileContracts([...registry2.getBuilders()]);
         const loaded = await readLockfile(tmpDir);
-        const result = checkLockfile(loaded!, updatedContracts);
+        const result = await checkLockfile(loaded!, updatedContracts);
 
         expect(result.ok).toBe(false);
         expect(result.changed).toContain('users');
@@ -398,11 +398,11 @@ describe('CLI end-to-end lockfile flow', () => {
         const builders = [...registry.getBuilders()];
 
         // Step 1 — compileContracts
-        const contracts = compileContracts(builders);
+        const contracts = await compileContracts(builders);
         expect(Object.keys(contracts).length).toBe(2);
 
         // Step 2 — generateLockfile
-        const lockfile = generateLockfile('roundtrip-test', contracts, MCP_FUSION_VERSION);
+        const lockfile = await generateLockfile('roundtrip-test', contracts, MCP_FUSION_VERSION);
         expect(lockfile.lockfileVersion).toBe(1);
 
         // Step 3 — serializeLockfile
@@ -424,7 +424,7 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(parsed!.integrityDigest).toBe(lockfile.integrityDigest);
 
         // Step 7 — checkLockfile (CI gate)
-        const result = checkLockfile(loaded!, contracts);
+        const result = await checkLockfile(loaded!, contracts);
         expect(result.ok).toBe(true);
         expect(result.message).toContain('up to date');
         expect(result.unchanged).toEqual(['tasks', 'users']);
@@ -433,12 +433,12 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(result.changed).toHaveLength(0);
     });
 
-    it('lockfile is deterministic across multiple generations (same contracts)', () => {
+    it('lockfile is deterministic across multiple generations (same contracts)', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
+        const contracts = await compileContracts([...registry.getBuilders()]);
 
-        const lockfile1 = generateLockfile('det-test', contracts, MCP_FUSION_VERSION);
-        const lockfile2 = generateLockfile('det-test', contracts, MCP_FUSION_VERSION);
+        const lockfile1 = await generateLockfile('det-test', contracts, MCP_FUSION_VERSION);
+        const lockfile2 = await generateLockfile('det-test', contracts, MCP_FUSION_VERSION);
 
         // Integrity digests are always identical
         expect(lockfile1.integrityDigest).toBe(lockfile2.integrityDigest);
@@ -450,10 +450,10 @@ describe('CLI end-to-end lockfile flow', () => {
         }
     });
 
-    it('lockfile records correct action metadata', () => {
+    it('lockfile records correct action metadata', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('metadata-test', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('metadata-test', contracts, MCP_FUSION_VERSION);
 
         const users = lockfile.capabilities.tools['users']!;
 
@@ -482,10 +482,10 @@ describe('CLI end-to-end lockfile flow', () => {
         expect(result).toBeNull();
     });
 
-    it('serialized lockfile keys are alphabetically sorted', () => {
+    it('serialized lockfile keys are alphabetically sorted', async () => {
         const registry = buildRealRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('sort-test', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('sort-test', contracts, MCP_FUSION_VERSION);
         const json = serializeLockfile(lockfile);
         const parsed = JSON.parse(json);
 
@@ -506,10 +506,10 @@ describe('CLI end-to-end lockfile flow', () => {
 // ============================================================================
 
 describe('CLI edge cases', () => {
-    it('empty registry produces valid lockfile', () => {
+    it('empty registry produces valid lockfile', async () => {
         const registry = new ToolRegistry();
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('empty', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('empty', contracts, MCP_FUSION_VERSION);
 
         expect(Object.keys(lockfile.capabilities.tools)).toHaveLength(0);
         expect(lockfile.integrityDigest).toMatch(/^sha256:/);
@@ -523,11 +523,11 @@ describe('CLI edge cases', () => {
         expect(parsed).not.toBeNull();
 
         // checkLockfile on empty passes
-        const result = checkLockfile(parsed!, contracts);
+        const result = await checkLockfile(parsed!, contracts);
         expect(result.ok).toBe(true);
     });
 
-    it('single-tool registry roundtrips correctly', () => {
+    it('single-tool registry roundtrips correctly', async () => {
         const registry = new ToolRegistry();
         registry.register(createTool('ping')
             .description('Ping')
@@ -539,17 +539,17 @@ describe('CLI edge cases', () => {
                 handler: async () => ({ content: [{ type: 'text' as const, text: 'pong' }] }),
             }));
 
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('single', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('single', contracts, MCP_FUSION_VERSION);
         const json = serializeLockfile(lockfile);
         const parsed = parseLockfile(json)!;
-        const result = checkLockfile(parsed, contracts);
+        const result = await checkLockfile(parsed, contracts);
 
         expect(result.ok).toBe(true);
         expect(result.unchanged).toEqual(['ping']);
     });
 
-    it('tool with many actions produces sorted action list in lockfile', () => {
+    it('tool with many actions produces sorted action list in lockfile', async () => {
         const registry = new ToolRegistry();
         const tool = createTool('multi')
             .description('Multi action')
@@ -559,8 +559,8 @@ describe('CLI edge cases', () => {
             .action({ name: 'middle', schema: z.object({}), handler: async () => ({ content: [{ type: 'text' as const, text: '' }] }) });
 
         registry.register(tool);
-        const contracts = compileContracts([...registry.getBuilders()]);
-        const lockfile = generateLockfile('sort', contracts, MCP_FUSION_VERSION);
+        const contracts = await compileContracts([...registry.getBuilders()]);
+        const lockfile = await generateLockfile('sort', contracts, MCP_FUSION_VERSION);
 
         expect(lockfile.capabilities.tools['multi']!.surface.actions)
             .toEqual(['alpha', 'middle', 'zebra']);
