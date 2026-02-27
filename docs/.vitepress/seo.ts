@@ -713,6 +713,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'Is the Cloudflare adapter compatible with the official MCP SDK?', a: 'Yes. The adapter uses the official @modelcontextprotocol/sdk (^1.12.0) as a peer dependency. It instantiates a standard McpServer and uses the SDK\'s WebStandardStreamableHTTPServerTransport — no monkey-patching or custom protocol implementation. Any MCP client that supports HTTP/JSON-RPC can connect to a Workers-deployed server.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // VERCEL ADAPTER
+  // ═══════════════════════════════════════════════════════
+  'vercel-adapter.md': {
+    title: 'Vercel Adapter — Serverless & Edge Deployment for MCP Servers',
+    description: 'Deploy MCP Fusion servers to Vercel Functions with zero configuration. Next.js App Router route handlers, Edge or Node.js runtime, stateless JSON-RPC, and full MVA Presenter support.',
+    faqs: [
+      { q: 'What is @vinkius-core/mcp-fusion-vercel?', a: '@vinkius-core/mcp-fusion-vercel is a companion package that deploys any MCP Fusion ToolRegistry to Vercel Functions with one function call. It returns a POST handler compatible with Next.js App Router route handlers and standalone Vercel Functions. Uses the MCP SDK\'s native WebStandardStreamableHTTPServerTransport with enableJsonResponse: true for stateless JSON-RPC.' },
+      { q: 'Does the Vercel adapter work with both Edge and Node.js runtime?', a: 'Yes. The adapter uses the Web Standard Request/Response API, which works on both Vercel\'s Edge Runtime (V8) and Node.js runtime. Add export const runtime = \'edge\' to your route file for Edge Runtime, or omit it to use Node.js. The same adapter code works on both runtimes without changes.' },
+      { q: 'How do I use the adapter with Next.js App Router?', a: 'Create a route handler at app/api/mcp/route.ts, build your ToolRegistry at module scope (cold start), and export const POST = vercelAdapter({ registry, contextFactory }). The adapter returns a standard POST handler function that Next.js recognizes as a route handler.' },
+      { q: 'How does the Vercel adapter handle environment variables?', a: 'Unlike the Cloudflare adapter which receives env as a function parameter, Vercel uses standard process.env. The contextFactory receives only the Request object, and you access environment variables via process.env.YOUR_VAR inside the factory function.' },
+      { q: 'How does cold start caching work on Vercel?', a: 'The adapter separates cold start from warm request. At module scope (cold start), the ToolRegistry compiles all Zod schemas, Presenter pipelines, and middleware chains — cached across warm requests by the function instance. Each incoming request only creates a lightweight McpServer and Transport, achieving sub-millisecond overhead on warm paths.' },
+      { q: 'Can I use Vercel Postgres, KV, and Blob with the adapter?', a: 'Yes. Import Vercel service SDKs (@vercel/postgres, @vercel/kv, @vercel/blob) directly in your tool handlers. They work seamlessly with both Edge and Node.js runtimes. The contextFactory can also inject these services into your application context for dependency injection.' },
+      { q: 'Is the Vercel adapter compatible with the official MCP SDK?', a: 'Yes. The adapter uses the official @modelcontextprotocol/sdk (^1.12.0) as a peer dependency. It instantiates a standard McpServer and uses the SDK\'s WebStandardStreamableHTTPServerTransport — no monkey-patching or custom protocol implementation. Any MCP client that supports HTTP/JSON-RPC can connect to a Vercel-deployed server.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

@@ -265,6 +265,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Cloudflare Workers', link: '/cloudflare-adapter' },
+          { text: 'Vercel', link: '/vercel-adapter' },
         ]
       },
 

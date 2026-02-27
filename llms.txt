@@ -1215,6 +1215,54 @@ export default cloudflareWorkersAdapter<Env, AppContext>({
 });
 ```
 
+### Vercel Adapter (from '@vinkius-core/mcp-fusion-vercel')
+
+Deploy MCP Fusion servers to Vercel Functions (Edge or Node.js). Stateless JSON-RPC — no SSE sessions, no streaming state. Registry compiles at cold start (Zod reflection, Presenter compilation cached). Warm requests only instantiate McpServer + Transport. Uses the MCP SDK's native `WebStandardStreamableHTTPServerTransport` with `enableJsonResponse: true`.
+
+- `vercelAdapter<TContext>(options)` → VercelHandler — creates a POST handler for Next.js App Router or standalone Vercel Functions
+  - options: { registry, serverName?, serverVersion?, contextFactory?, attachOptions? }
+  - `registry` — pre-compiled ToolRegistry (built at module scope, cached across warm requests)
+  - `contextFactory(req)` — creates per-request context from the Request object (use `process.env` for environment variables)
+  - `serverName` — MCP server name (default: `'mcp-fusion-vercel'`)
+  - `serverVersion` — version string (default: `'1.0.0'`)
+  - `attachOptions` — forwarded to `registry.attachToServer()` (filter, stateSync, debug, etc.)
+- `VercelHandler` — (req: Request) => Promise<Response>
+- `VercelAdapterOptions<TContext>` — full configuration interface
+- `RegistryLike` — duck-typed interface (any object with `attachToServer()`)
+
+Peer dependencies: `@vinkius-core/mcp-fusion` (^2.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
+
+```typescript
+// app/api/mcp/route.ts
+import { initFusion } from '@vinkius-core/mcp-fusion';
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+import { z } from 'zod';
+
+interface AppContext { tenantId: string; dbUrl: string }
+const f = initFusion<AppContext>();
+
+const listUsers = f.tool({
+  name: 'users.list',
+  input: z.object({ limit: z.number().optional().default(20) }),
+  readOnly: true,
+  handler: async ({ input, ctx }) =>
+    fetch(`${ctx.dbUrl}/users?limit=${input.limit}&tenant=${ctx.tenantId}`).then(r => r.json()),
+});
+
+const registry = f.registry();
+registry.register(listUsers);
+
+export const POST = vercelAdapter<AppContext>({
+  registry,
+  contextFactory: async (req) => ({
+    tenantId: req.headers.get('x-tenant-id') || 'public',
+    dbUrl: process.env.DATABASE_URL!,
+  }),
+});
+
+export const runtime = 'edge';
+```
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups
