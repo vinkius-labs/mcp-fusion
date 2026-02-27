@@ -26,7 +26,7 @@ export class ErrorBuilder {
     private _details: Record<string, string> = {};
     private _retryAfter?: number;
     /** @internal Cached build result — invalidated by any setter */
-    private _cached?: ToolResponse;
+    private _cached: ToolResponse | undefined = undefined;
 
     constructor(code: ErrorCode, message: string) {
         this._code = code;
