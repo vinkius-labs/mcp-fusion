@@ -795,7 +795,7 @@ describe('Server attachment — tracing option', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { tracing: tracer });
+        await registry.attachToServer(server, { tracing: tracer });
 
         const result = await server.callTool('server-test', { action: 'ping' });
         expect(result.content[0].text).toBe('pong');

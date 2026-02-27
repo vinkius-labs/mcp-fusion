@@ -404,11 +404,11 @@ describe('IntrospectionResource: RBAC Filter Integration', () => {
 // ============================================================================
 
 describe('attachToServer: Introspection Wiring', () => {
-    it('should NOT register resource handlers when introspection is disabled', () => {
+    it('should NOT register resource handlers when introspection is disabled', async () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             introspection: { enabled: false },
         });
 
@@ -418,21 +418,21 @@ describe('attachToServer: Introspection Wiring', () => {
         expect(server.hasHandler('resources/read')).toBe(false);
     });
 
-    it('should NOT register resource handlers when introspection is omitted', () => {
+    it('should NOT register resource handlers when introspection is omitted', async () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server);  // no introspection option
+        await registry.attachToServer(server);  // no introspection option
 
         expect(server.hasHandler('resources/list')).toBe(false);
         expect(server.hasHandler('resources/read')).toBe(false);
     });
 
-    it('should register resource handlers when introspection is enabled', () => {
+    it('should register resource handlers when introspection is enabled', async () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             introspection: { enabled: true },
         });
 
@@ -446,7 +446,7 @@ describe('attachToServer: Introspection Wiring', () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             introspection: { enabled: true },
             serverName: 'coexist-test',
         });
@@ -469,7 +469,7 @@ describe('attachToServer: Introspection Wiring', () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             introspection: { enabled: true },
             // no serverName
         });
@@ -483,7 +483,7 @@ describe('attachToServer: Introspection Wiring', () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             contextFactory: (extra: any) => ({
                 role: extra?.role ?? 'viewer',
                 tenantId: extra?.tenantId ?? 'default',

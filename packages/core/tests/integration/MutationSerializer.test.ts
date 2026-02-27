@@ -71,7 +71,7 @@ describe('MutationSerializer: Destructive Serialization', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Fire 5 concurrent destructive calls
         const results = await Promise.all([
@@ -115,7 +115,7 @@ describe('MutationSerializer: Destructive Serialization', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Fire 5 concurrent read-only calls
         const results = await Promise.all(
@@ -173,7 +173,7 @@ describe('MutationSerializer: Cross-key Isolation', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Different action keys should run in parallel
         const results = await Promise.all([
@@ -223,7 +223,7 @@ describe('MutationSerializer: Mixed Traffic', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Interleave destructive and read-only calls
         const results = await Promise.all([

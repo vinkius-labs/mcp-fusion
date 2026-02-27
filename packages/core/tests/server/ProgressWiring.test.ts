@@ -158,7 +158,7 @@ describe('ProgressWiring — MCP ServerAttachment integration', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
         const server = createMockServer();
-        registry.attachToServer(server);
+        await registry.attachToServer(server);
 
         // Simulate MCP extra object with progressToken and sendNotification
         const mockExtra = {
@@ -221,7 +221,7 @@ describe('ProgressWiring — MCP ServerAttachment integration', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
         const server = createMockServer();
-        registry.attachToServer(server);
+        await registry.attachToServer(server);
 
         // Extra WITHOUT progressToken
         const result = await server.callTool(
@@ -246,7 +246,7 @@ describe('ProgressWiring — MCP ServerAttachment integration', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
         const server = createMockServer();
-        registry.attachToServer(server);
+        await registry.attachToServer(server);
 
         // Extra is a plain object without MCP fields — should not crash
         const result = await server.callTool(
@@ -275,7 +275,7 @@ describe('ProgressWiring — MCP ServerAttachment integration', () => {
         const registry = new ToolRegistry();
         registry.register(tool);
         const server = createMockServer();
-        registry.attachToServer(server);
+        await registry.attachToServer(server);
 
         await server.callTool(
             'num_token',

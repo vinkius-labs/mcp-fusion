@@ -912,7 +912,7 @@ describe('Integration: Detach → Re-attach lifecycle', () => {
         const server = createMockServer();
 
         // First attach
-        const detach = registry.attachToServer(server, { toolExposition: 'grouped' });
+        const detach = await registry.attachToServer(server, { toolExposition: 'grouped' });
         const r1 = await server.callTool('lifecycle', { action: 'ping' });
         expect(r1.content[0].text).toBe('pong');
 
@@ -923,7 +923,7 @@ describe('Integration: Detach → Re-attach lifecycle', () => {
         expect(r2.content[0].text).toContain('detached');
 
         // Re-attach with same exposition
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
         const r3 = await server.callTool('lifecycle', { action: 'ping' });
         expect(r3.content[0].text).toBe('pong');
     });
@@ -1587,7 +1587,7 @@ describe('Integration Sad Path: defineTool Param Descriptor Errors', () => {
 // ============================================================================
 
 describe('Integration Sad Path: StateSync Config Errors', () => {
-    it('should throw on invalid cacheControl directive at attach time', () => {
+    it('should throw on invalid cacheControl directive at attach time', async () => {
         const registry = new ToolRegistry<void>();
         registry.register(
             createTool<void>('tasks').action({
@@ -1597,8 +1597,7 @@ describe('Integration Sad Path: StateSync Config Errors', () => {
         );
 
         const server = createMockServer();
-
-        expect(() => registry.attachToServer(server, {
+        await expect(registry.attachToServer(server, {
             toolExposition: 'grouped',
             stateSync: {
                 defaults: { cacheControl: 'no-store' },
@@ -1606,10 +1605,10 @@ describe('Integration Sad Path: StateSync Config Errors', () => {
                     { match: 'tasks.list', cacheControl: 'max-age=60' as any },
                 ],
             },
-        })).toThrow('invalid cacheControl');
+        })).rejects.toThrow('invalid cacheControl');
     });
 
-    it('should throw on invalid default cacheControl directive', () => {
+    it('should throw on invalid default cacheControl directive', async () => {
         const registry = new ToolRegistry<void>();
         registry.register(
             createTool<void>('tasks').action({
@@ -1619,14 +1618,13 @@ describe('Integration Sad Path: StateSync Config Errors', () => {
         );
 
         const server = createMockServer();
-
-        expect(() => registry.attachToServer(server, {
+        await expect(registry.attachToServer(server, {
             toolExposition: 'grouped',
             stateSync: {
                 defaults: { cacheControl: 'must-revalidate' as any },
                 policies: [],
             },
-        })).toThrow('is invalid');
+        })).rejects.toThrow('is invalid');
     });
 });
 
@@ -1645,7 +1643,7 @@ describe('Integration Sad Path: Detach Error Handling', () => {
         );
 
         const server = createMockServer();
-        const detach = registry.attachToServer(server, { toolExposition: 'grouped' });
+        const detach = await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Works before detach
         const r1 = await server.callTool('temp', { action: 'run' });
@@ -1673,7 +1671,7 @@ describe('Integration Sad Path: Detach Error Handling', () => {
         );
 
         const server = createMockServer();
-        const detach = registry.attachToServer(server, { toolExposition: 'grouped' });
+        const detach = await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         detach();
         // Second detach should not throw

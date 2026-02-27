@@ -102,7 +102,7 @@ describe('Prompt Engine: Middleware Chain', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -152,7 +152,7 @@ describe('Prompt Engine: Schema Coercion', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -202,7 +202,7 @@ describe('Prompt Engine: Validation Errors', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -236,7 +236,7 @@ describe('Prompt Engine: Validation Errors', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -283,7 +283,7 @@ describe('Prompt Engine: Interceptors via Server', () => {
         });
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: (extra: unknown) => createCtx(extra as Partial<PromptCtx>),
             prompts: promptRegistry,
@@ -333,7 +333,7 @@ describe('Prompt Engine: Hydration Deadline', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -367,7 +367,7 @@ describe('Prompt Engine: Hydration Deadline', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -394,7 +394,7 @@ describe('Prompt Engine: Hydration Deadline', () => {
         promptRegistry.register(prompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -436,7 +436,7 @@ describe('Prompt Engine: Tag Filtering', () => {
         promptRegistry.registerAll(adminPrompt, userPrompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,
@@ -504,7 +504,7 @@ describe('Prompt Engine: Loopback Dispatcher', () => {
         promptRegistry.register(summaryPrompt);
 
         const server = createMockServer();
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: () => createCtx(),
             prompts: promptRegistry,

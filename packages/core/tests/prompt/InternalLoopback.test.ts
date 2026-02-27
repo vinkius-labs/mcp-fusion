@@ -99,7 +99,7 @@ const restrictedTool = defineTool<TestContext>('admin', {
 // ── Tests ────────────────────────────────────────────────
 
 describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
-    function setupServer() {
+    async function setupServer() {
         const { server, handlers } = createMockServer();
 
         const toolRegistry = new ToolRegistry<TestContext>();
@@ -109,8 +109,10 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
 
         const promptRegistry = new PromptRegistry<TestContext>();
 
-        toolRegistry.attachToServer(server, {
-            contextFactory: () => ({ user: { id: 'user-1', role: 'editor' } }),
+        await toolRegistry.attachToServer(server, {
+            contextFactory: () => ({
+                user: { id: 'user-1', role: 'editor' },
+            }),
             prompts: promptRegistry,
         });
 
@@ -118,7 +120,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     }
 
     it('should invoke a tool and receive rendered text', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const briefing = definePrompt<TestContext>('morning_briefing', {
             handler: async (ctx, _args) => {
@@ -145,7 +147,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should aggregate data from multiple tools', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const briefing = definePrompt<TestContext>('multi_tool', {
             handler: async (ctx, _args) => {
@@ -178,7 +180,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should return Presenter-rendered output with domain rules', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const auditPrompt = definePrompt<TestContext>('audit', {
             handler: async (ctx, _args) => {
@@ -201,7 +203,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should propagate tool errors in result.isError', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const errorPrompt = definePrompt<TestContext>('error_test', {
             handler: async (ctx, _args) => {
@@ -226,7 +228,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should enforce RBAC via middleware on internal calls', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const rbacPrompt = definePrompt<TestContext>('rbac_test', {
             handler: async (ctx, _args) => {
@@ -250,7 +252,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should return isError for unknown tools', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const unknownPrompt = definePrompt<TestContext>('unknown_test', {
             handler: async (ctx, _args) => {
@@ -273,7 +275,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should support parallel invocations via Promise.all', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const parallelPrompt = definePrompt<TestContext>('parallel_test', {
             handler: async (ctx, _args) => {
@@ -307,7 +309,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should default to empty args when none provided', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const defaultArgsPrompt = definePrompt<TestContext>('default_args', {
             handler: async (ctx, _args) => {
@@ -330,7 +332,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should provide raw ToolResponse in result.raw', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const rawPrompt = definePrompt<TestContext>('raw_test', {
             handler: async (ctx, _args) => {
@@ -353,7 +355,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
     });
 
     it('should work with fromView() for MVA-Driven Prompt composition', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const mvaPrompt = definePrompt<TestContext>('mva_composition', {
             handler: async (ctx, _args) => {
@@ -387,7 +389,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
 // ── Adversarial & Edge-Case Tests ────────────────────────
 
 describe('Internal Loopback — Adversarial & Edge Cases', () => {
-    function setupServer(contextOverride?: Partial<TestContext['user']>) {
+    async function setupServer(contextOverride?: Partial<TestContext['user']>) {
         const handlers = new Map<unknown, (...args: unknown[]) => unknown>();
         const server = {
             setRequestHandler: (schema: unknown, handler: (...args: unknown[]) => unknown) => {
@@ -402,7 +404,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
 
         const promptRegistry = new PromptRegistry<TestContext>();
 
-        toolRegistry.attachToServer(server, {
+        await toolRegistry.attachToServer(server, {
             contextFactory: () => ({
                 user: {
                     id: contextOverride?.id ?? 'user-1',
@@ -416,7 +418,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     }
 
     it('should propagate handler exceptions as isError without crashing the Prompt', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const crashPrompt = definePrompt<TestContext>('crash_handler', {
             handler: async (ctx) => {
@@ -446,7 +448,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should share the same context identity across multiple invocations', async () => {
-        const { promptRegistry, handlers } = setupServer({ id: 'ctx-shared-test', role: 'editor' });
+        const { promptRegistry, handlers } = await setupServer({ id: 'ctx-shared-test', role: 'editor' });
 
         const sharedCtxPrompt = definePrompt<TestContext>('shared_ctx', {
             handler: async (ctx) => {
@@ -466,7 +468,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should handle chained sequential invocations where output feeds the next call', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const chainedPrompt = definePrompt<TestContext>('chained', {
             handler: async (ctx) => {
@@ -510,7 +512,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should reject unknown args via Zod strict validation (isError)', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const strictPrompt = definePrompt<TestContext>('strict_args', {
             handler: async (ctx) => {
@@ -538,7 +540,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should handle concurrent duplicate tool calls without interference', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const concurrentPrompt = definePrompt<TestContext>('concurrent_dupes', {
             handler: async (ctx) => {
@@ -577,7 +579,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
 
     it('should enforce RBAC on admin tools, then succeed with elevated context', async () => {
         // First: editor role → Forbidden
-        const { promptRegistry: pr1, handlers: h1 } = setupServer({ role: 'editor' });
+        const { promptRegistry: pr1, handlers: h1 } = await setupServer({ role: 'editor' });
 
         const rbacContrastPrompt1 = definePrompt<TestContext>('rbac_editor', {
             handler: async (ctx) => {
@@ -597,7 +599,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         expect(r1.messages[0].content.text).toBe('editor: isError=true');
 
         // Second: admin role → success
-        const { promptRegistry: pr2, handlers: h2 } = setupServer({ role: 'admin' });
+        const { promptRegistry: pr2, handlers: h2 } = await setupServer({ role: 'admin' });
 
         const rbacContrastPrompt2 = definePrompt<TestContext>('rbac_admin', {
             handler: async (ctx) => {
@@ -618,7 +620,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should handle conditional branching — invoke tool B only if tool A succeeds', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const branchPrompt = definePrompt<TestContext>('branch_logic', {
             handler: async (ctx) => {
@@ -655,7 +657,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should handle invokeTool with completely empty name string', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const emptyNamePrompt = definePrompt<TestContext>('empty_name', {
             handler: async (ctx) => {
@@ -673,7 +675,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should handle massive parallel fan-out (10 concurrent tools) without deadlock', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const fanOutPrompt = definePrompt<TestContext>('fan_out', {
             handler: async (ctx) => {
@@ -707,7 +709,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should survive mixed success/failure in parallel batch', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         const mixedPrompt = definePrompt<TestContext>('mixed_batch', {
             handler: async (ctx) => {
@@ -741,7 +743,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
     });
 
     it('should return text from multi-content-block responses (joins all text blocks)', async () => {
-        const { promptRegistry, handlers } = setupServer();
+        const { promptRegistry, handlers } = await setupServer();
 
         // billing.list_invoices with Presenter returns system_rules + data = multiple text blocks
         const multiBlockPrompt = definePrompt<TestContext>('multi_block', {

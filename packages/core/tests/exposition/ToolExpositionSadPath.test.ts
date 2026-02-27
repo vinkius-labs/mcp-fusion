@@ -209,7 +209,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Calling the grouped name still works via fallback dispatch
         const result = await server.callTool('projects', { action: 'list' });
@@ -226,7 +226,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         const list = await server.callListTools();
         const names = list.tools.map((t: any) => t.name);
@@ -249,7 +249,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Junior sends args WITHOUT "action" field — that's the correct behavior in flat mode
         const result = await server.callTool('orders_get', { id: 'ord-123' });
@@ -270,7 +270,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Passes action: 'get' redundantly — should still work (hydration overwrites to same value)
         const result = await server.callTool('orders_get', { action: 'get', id: 'ord-456' });
@@ -286,7 +286,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Junior types wrong name: "task_list" instead of "tasks_list"
         const result = await server.callTool('task_list', {});
@@ -303,7 +303,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Junior types "tasks_lis" instead of "tasks_list"
         const result = await server.callTool('tasks_lis', {});
@@ -313,7 +313,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
     it('should handle empty registry in flat mode', async () => {
         const registry = new ToolRegistry<void>();
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         const list = await server.callListTools();
         expect(list.tools).toHaveLength(0);
@@ -330,7 +330,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        const detach = registry.attachToServer(server, { toolExposition: 'flat' });
+        const detach = await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Before detach
         const r1 = await server.callListTools();
@@ -355,7 +355,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
     it('should pick up late-registered tools in flat mode', async () => {
         const registry = new ToolRegistry<void>();
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Attach first, register later (junior mistake but valid use case)
         const r1 = await server.callListTools();
@@ -391,7 +391,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         const result = await server.callTool('api_status', {});
         expect(result.isError).toBeUndefined();
@@ -406,7 +406,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             toolExposition: 'flat',
             actionSeparator: '.',
         });
@@ -433,7 +433,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Should not throw at protocol level — should return error response
         const result = await server.callTool('boom_crash', {});
@@ -455,7 +455,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             toolExposition: 'flat',
             filter: { exclude: ['internal'] },
         });
@@ -477,13 +477,13 @@ describe('Flat Exposition — E2E Sad Path', () => {
         const server = createMockServer();
 
         // First attach: flat
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
         let list = await server.callListTools();
         expect(list.tools.map((t: any) => t.name)).toContain('svc_list');
         expect(list.tools).toHaveLength(2);
 
         // Re-attach: grouped (overwrites)
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
         list = await server.callListTools();
         expect(list.tools).toHaveLength(1);
         expect(list.tools[0].name).toBe('svc');
@@ -509,7 +509,7 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'flat' });
+        await registry.attachToServer(server, { toolExposition: 'flat' });
 
         // Junior sends wrong field names
         const result = await server.callTool('tasks_create', {
@@ -535,8 +535,8 @@ describe('Flat Exposition — E2E Sad Path', () => {
         );
 
         const server = createMockServer();
-        registry1.attachToServer(server, { toolExposition: 'flat' });
-        registry2.attachToServer(server, { toolExposition: 'flat' }); // Overwrites
+        await registry1.attachToServer(server, { toolExposition: 'flat' });
+        await registry2.attachToServer(server, { toolExposition: 'flat' }); // Overwrites
 
         const list = await server.callListTools();
         const names = list.tools.map((t: any) => t.name);

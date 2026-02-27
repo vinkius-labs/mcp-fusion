@@ -59,7 +59,7 @@ describe('Cancellation Propagation: Signal via contextFactory', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             toolExposition: 'grouped',
             contextFactory: (extra) => {
                 // The developer extracts signal from extra and puts it on ctx
@@ -102,7 +102,7 @@ describe('Cancellation Propagation: Pre-execution Abort', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // Abort BEFORE calling
         const controller = new AbortController();
@@ -137,7 +137,7 @@ describe('Cancellation Propagation: Pre-execution Abort', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, { toolExposition: 'grouped' });
+        await registry.attachToServer(server, { toolExposition: 'grouped' });
 
         // No extra at all
         const result = await server.callTool('normal', { action: 'work' });
@@ -234,7 +234,7 @@ describe('Cancellation Propagation: Flat Exposition Mode', () => {
         registry.register(tool);
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             toolExposition: 'flat',
             actionSeparator: '_',
         });
