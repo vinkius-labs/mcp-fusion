@@ -134,6 +134,11 @@ export class FluentRouter<TContext> {
             builder._tags.push(...this._tags);
         }
 
+        // Inherit router description as fallback
+        if (this._description && !builder._description) {
+            builder._description = this._description;
+        }
+
         return builder;
     }
 }

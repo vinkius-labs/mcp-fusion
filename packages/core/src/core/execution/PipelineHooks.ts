@@ -36,15 +36,20 @@ export interface PipelineHooks {
 // ── Utilities ────────────────────────────────────────────
 
 /**
- * Compute the text byte size of a ToolResponse.
+ * Compute the UTF-8 byte size of a ToolResponse.
  *
- * Sums the `.text` length of all text content blocks.
+ * Sums the byte length of all text content blocks.
+ * Uses TextEncoder for UTF-8 accurate byte measurement,
+ * consistent with EgressGuard's byte measurement.
+ *
  * Used by tracing to record `mcp.response_size` on spans.
  */
+const _sizeEncoder = new TextEncoder();
+
 export function computeResponseSize(response: ToolResponse): number {
     let size = 0;
     for (const c of response.content) {
-        if ('text' in c && typeof c.text === 'string') size += c.text.length;
+        if ('text' in c && typeof c.text === 'string') size += _sizeEncoder.encode(c.text).byteLength;
     }
     return size;
 }

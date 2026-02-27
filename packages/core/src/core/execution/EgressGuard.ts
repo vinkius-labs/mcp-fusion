@@ -158,6 +158,7 @@ export function applyEgressGuard(
  * Uses TextEncoder for cross-platform compatibility.
  */
 const encoder = new TextEncoder();
+const decoder = new TextDecoder('utf-8', { fatal: false });
 
 function byteLength(str: string): number {
     return encoder.encode(str).byteLength;
@@ -174,7 +175,6 @@ function truncateToByteLimit(str: string, maxBytes: number): string {
     // Slice at byte boundary, then decode back to string
     // TextDecoder with 'fatal: false' replaces incomplete sequences
     const sliced = encoded.slice(0, maxBytes);
-    const decoder = new TextDecoder('utf-8', { fatal: false });
     return decoder.decode(sliced);
 }
 

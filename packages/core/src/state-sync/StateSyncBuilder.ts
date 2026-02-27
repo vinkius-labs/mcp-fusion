@@ -56,11 +56,24 @@ export class StateSyncBuilder {
 
     /**
      * Set global default cache-control directives.
+     *
+     * Only cache-control directives are valid for defaults.
+     * Invalidation patterns are NOT allowed here — use `.policy()` instead.
      */
     defaults(fn: (p: Omit<PolicyBuilder, 'invalidates'>) => void): this {
         const builder = new PolicyBuilder();
         fn(builder);
         const built = builder.build();
+
+        // Runtime guard: invalidates() is hidden by Omit<> at compile time
+        // but still callable at runtime — catch this mistake early.
+        if (built.invalidates && built.invalidates.length > 0) {
+            throw new Error(
+                'StateSyncBuilder.defaults(): invalidates() is not allowed in defaults. ' +
+                'Use .policy(match, p => p.invalidates(...)) for scoped invalidation.',
+            );
+        }
+
         if (built.cacheControl) {
             this._defaults.cacheControl = built.cacheControl;
         }

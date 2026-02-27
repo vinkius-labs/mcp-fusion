@@ -392,13 +392,16 @@ export class FluentToolBuilder<
     }
 
     /**
-     * Set capability tags for selective tool exposure.
+     * Add capability tags for selective tool exposure.
+     *
+     * Tags are accumulated — calling `.tags()` multiple times
+     * (or inheriting from a router) appends rather than replaces.
      *
      * @param tags - Tag strings for filtering
      * @returns `this` for chaining
      */
     tags(...tags: string[]): FluentToolBuilder<TContext, TInput, TCtx> {
-        this._tags = tags;
+        this._tags.push(...tags);
         return this;
     }
 

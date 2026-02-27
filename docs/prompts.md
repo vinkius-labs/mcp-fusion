@@ -4,9 +4,87 @@ MCP Prompts are server-side templates that return structured messages — instru
 
 Prompt arguments must be **flat primitives** (string, number, boolean, enum). MCP clients render them as form controls — a nested object can't become a text field. The engine enforces this at definition time.
 
-## Defining a Prompt {#defining}
+## Defining a Prompt — Fluent Builder (Recommended) {#fluent}
 
-Use `f.prompt()` (inherits context from `initFusion()`) or `definePrompt()` (explicit generic). Both return a `PromptBuilder`.
+The Fluent Prompt Builder provides a chainable API that mirrors the Fluent Tool Builder. Use `f.prompt(name)` (no config object) to start the chain:
+
+```typescript
+import { initFusion, PromptMessage } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+const SummarizePrompt = f.prompt('summarize')
+  .title('Summarize Text')
+  .describe('Summarize text with a given style.')
+  .tags('public', 'writing')
+  .input({
+    text: { type: 'string', description: 'The text to summarize' },
+    style: { enum: ['brief', 'detailed', 'bullet-points'] as const },
+  })
+  .handler(async (ctx, { text, style }) => ({
+    messages: [
+      PromptMessage.system('You are a professional summarizer.'),
+      PromptMessage.user(`Style: ${style}\n\nText:\n${text}`),
+    ],
+  }));
+```
+
+### Fluent Prompt Builder Methods
+
+| Method | What It Does |
+|---|---|
+| `.title(text)` | Human-readable title for UI display |
+| `.describe(text)` | Slash command palette description |
+| `.icons({ light?, dark? })` | Theme-aware icons |
+| `.tags(...tags)` | Capability tags for selective exposure |
+| `.input(schema \| params)` | Accept Zod schema or JSON params (same as tool params) |
+| `.use(...fns)` | Middleware — same `MiddlewareFn` as tools |
+| `.timeout(ms)` | Hydration timeout in milliseconds |
+| `.handler(fn)` | **Terminal** — sets `(ctx, args) => Promise<PromptResult>` handler |
+
+### Real-World Example — Incident Analysis with All Features
+
+```typescript
+const IncidentAnalysis = f.prompt('incident_analysis')
+  .title('Incident Analysis')
+  .describe('Perform a structured analysis of a production incident')
+  .icons({ light: '🔍', dark: '🔎' })
+  .tags('engineering', 'ops')
+  .input({
+    incident_id: { type: 'string', description: 'Incident ticket ID' },
+    severity: { enum: ['sev1', 'sev2', 'sev3'] as const },
+    include_timeline: { type: 'boolean', description: 'Include event timeline' },
+  })
+  .use(requireAuth, requireRole('engineer'))
+  .timeout(10_000) // 10s — data fetching may be slow
+  .handler(async (ctx, { incident_id, severity, include_timeline }) => {
+    const incident = await ctx.db.incidents.findUnique({ where: { id: incident_id } });
+    const logs = include_timeline
+      ? await ctx.monitoring.getTimeline(incident_id)
+      : [];
+
+    return {
+      messages: [
+        PromptMessage.system(
+          `You are a Senior SRE performing a ${severity.toUpperCase()} incident analysis.\n` +
+          `Follow the 5-Whys methodology. Be specific, not generic.`,
+        ),
+        ...PromptMessage.fromView(IncidentPresenter.make(incident, ctx)),
+        ...(logs.length > 0
+          ? [PromptMessage.user(`Timeline:\n${logs.map(l => `[${l.time}] ${l.event}`).join('\n')}`)]
+          : []),
+        PromptMessage.user('Begin the root cause analysis.'),
+        PromptMessage.assistant('## Incident Analysis\n\n### Impact Assessment\n\n'),
+      ],
+    };
+  });
+```
+
+This example combines: middleware (auth + role), timeout, multimodal messages, Presenter bridge (`fromView()`), conditional timeline, and multi-turn seeding.
+
+## Defining a Prompt — Config-Bag (Alternative) {#config-bag}
+
+Use `f.prompt(name, config)` or `definePrompt(name, config)` for the config-bag approach:
 
 ### JSON-First Args
 
@@ -15,8 +93,7 @@ import { initFusion, PromptMessage, PromptRegistry } from '@vinkius-core/mcp-fus
 
 const f = initFusion<AppContext>();
 
-const SummarizePrompt = f.prompt({
-  name: 'summarize',
+const SummarizePrompt = f.prompt('summarize', {
   description: 'Summarize text with a given style.',
   args: {
     text: { type: 'string', description: 'The text to summarize' },
@@ -69,6 +146,7 @@ Both paths enforce flat primitives. Passing `ZodArray`, `ZodObject`, `ZodTuple`,
 ### Config Options
 
 `title` (string), `description` (string), `icons` (`{ light?, dark? }`), `tags` (string[]), `middleware` (MiddlewareFn[]), `hydrationTimeout` (ms), `args` (PromptParamsMap | ZodObject), `handler` ((ctx, args) → Promise\<PromptResult\>).
+
 
 ## PromptMessage {#messages}
 
@@ -174,16 +252,32 @@ After coercion:  { "limit": 50,   "strict": true,   "month": "january" }
 
 ## Middleware {#middleware}
 
-Same `MiddlewareFn` signature as tool middleware — share handlers between tools and prompts:
+Same `MiddlewareFn` signature as tool middleware — share handlers between tools and prompts.
+
+### Fluent Builder (Recommended)
 
 ```typescript
-const requireAuth: MiddlewareFn<AppContext> = async (ctx, args, next) => {
-  if (!ctx.session?.userId) {
-    return { messages: [PromptMessage.user('Authentication required.')] };
-  }
-  return next();
-};
+const SecureReport = f.prompt('secure_report')
+  .describe('Generate a quarterly financial report')
+  .tags('finance', 'internal')
+  .input({
+    quarter: { enum: ['Q1', 'Q2', 'Q3', 'Q4'] as const },
+  })
+  .use(requireAuth, requireRole('finance'))
+  .handler(async (ctx, { quarter }) => {
+    const data = await ctx.db.finance.getQuarterlyReport(quarter);
+    return {
+      messages: [
+        PromptMessage.system('You are a financial analyst. Data is CONFIDENTIAL.'),
+        PromptMessage.user(`Analyze ${quarter} performance:\n${JSON.stringify(data)}`),
+      ],
+    };
+  });
+```
 
+### Config-Bag
+
+```typescript
 const SecurePrompt = definePrompt<AppContext>('secure_report', {
   middleware: [requireAuth, requireRole('finance')],
   args: { quarter: { enum: ['Q1', 'Q2', 'Q3', 'Q4'] as const } } as const,
@@ -219,6 +313,27 @@ Interceptors run even after timeouts or errors, ensuring compliance content is a
 ## Hydration Timeout {#timeout}
 
 Wraps the handler in `Promise.race`. If the handler exceeds the deadline, the framework returns an XML alert and unblocks the UI:
+
+### Fluent Builder (Recommended)
+
+```typescript
+const MorningBriefing = f.prompt('morning_briefing')
+  .title('Morning Briefing')
+  .describe('Prepare context for the daily standup')
+  .timeout(3000) // 3s strict deadline
+  .handler(async (ctx, args) => {
+    const tickets = await ctx.invokeTool('jira.get_assigned', { user: ctx.user.id });
+    const invoices = await ctx.invokeTool('billing.list_invoices', {});
+    return {
+      messages: [
+        PromptMessage.system('Plan my day based on this context:'),
+        PromptMessage.user(`Tickets:\n${tickets.text}\n\nInvoices:\n${invoices.text}`),
+      ],
+    };
+  });
+```
+
+### Config-Bag
 
 ```typescript
 const MorningBriefing = definePrompt<AppContext>('morning_briefing', {
@@ -308,7 +423,11 @@ Prompt lookup is O(1) (Map-based). Coercion and validation are O(N) where N = ar
 
 ## API Reference {#api}
 
-### `definePrompt(name, config)` / `f.prompt(config)`
+### `f.prompt(name)` — Fluent Builder (Recommended)
+
+Returns `FluentPromptBuilder<TContext>`. Chain `.title()`, `.describe()`, `.icons()`, `.tags()`, `.input()`, `.use()`, `.timeout()`, `.handler()`.
+
+### `f.prompt(name, config)` / `definePrompt(name, config)` — Config-Bag
 
 Returns `PromptBuilder<TContext>`.
 

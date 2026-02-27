@@ -385,8 +385,10 @@ describe('PostProcessor adversarial', () => {
     });
 
     it('should handle postProcessResult with BigInt', () => {
-        // JSON.stringify(BigInt) throws — postProcessResult should handle or propagate
-        expect(() => postProcessResult(BigInt(42), undefined)).toThrow();
+        // BigInt is not a string or object, so it goes through String(result)
+        // which produces "42" — graceful handling instead of crash
+        const result = postProcessResult(BigInt(42), undefined);
+        expect(result.content[0]!.text).toBe('42');
     });
 
     it('should handle postProcessResult with nested ToolResponse in ResponseBuilder', () => {

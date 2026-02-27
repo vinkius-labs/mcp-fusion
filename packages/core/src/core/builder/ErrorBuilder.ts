@@ -25,6 +25,8 @@ export class ErrorBuilder {
     private _severity: ErrorSeverity = 'error';
     private _details: Record<string, string> = {};
     private _retryAfter?: number;
+    /** @internal Cached build result — invalidated by any setter */
+    private _cached?: ToolResponse;
 
     constructor(code: ErrorCode, message: string) {
         this._code = code;
@@ -34,18 +36,21 @@ export class ErrorBuilder {
     /** Add a recovery suggestion for the LLM agent */
     suggest(suggestion: string): this {
         this._suggestion = suggestion;
+        this._cached = undefined;
         return this;
     }
 
     /** List tool names the agent should try instead */
     actions(...names: string[]): this {
         this._actions.push(...names);
+        this._cached = undefined;
         return this;
     }
 
     /** Set error severity (default: 'error') */
     severity(level: ErrorSeverity): this {
         this._severity = level;
+        this._cached = undefined;
         return this;
     }
 
@@ -60,12 +65,14 @@ export class ErrorBuilder {
         for (const [key, value] of Object.entries(data)) {
             this._details[key] = String(value);
         }
+        this._cached = undefined;
         return this;
     }
 
     /** Suggest a retry delay in seconds for transient errors */
     retryAfter(seconds: number): this {
         this._retryAfter = seconds;
+        this._cached = undefined;
         return this;
     }
 
@@ -94,7 +101,13 @@ export class ErrorBuilder {
         return toolError(this._code, opts);
     }
 
+    /** @internal Ensure the response is built and cached */
+    private _ensureBuilt(): ToolResponse {
+        if (!this._cached) this._cached = this.build();
+        return this._cached;
+    }
+
     /** Implementation of ToolResponse for direct return in handlers */
-    get content() { return this.build().content; }
-    get isError() { return this.build().isError; }
+    get content() { return this._ensureBuilt().content; }
+    get isError() { return this._ensureBuilt().isError; }
 }

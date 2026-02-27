@@ -21,8 +21,17 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Presenter**: **THE core differentiator** — domain-level Egress Firewall. Schema validation, JIT system rules, server-rendered UI, action affordances, cognitive guardrails, relational composition. Define once, reuse across every tool and prompt.
 - **definePresenter()**: Declarative object-config API — auto-rules from Zod `.describe()`, embeds, agentLimit, suggestActions
 - **createPresenter()**: Fluent builder for domain-level Presenters — `.schema()`, `.systemRules()`, `.uiBlocks()`, `.embed()`
-- **initFusion()**: tRPC-style context initialization — define context once, every f.tool/f.presenter/f.prompt inherits it
-- **GroupedToolBuilder**: Fluent builder that groups related actions into a single MCP tool
+- **initFusion()**: tRPC-style context initialization — define context once, every `f.query()`, `f.mutation()`, `f.action()`, `f.prompt()`, `f.router()`, `f.presenter()` inherits it
+- **Fluent API (Recommended)**: The primary API surface — Semantic Verbs (`f.query()`, `f.mutation()`, `f.action()`) return a `FluentToolBuilder` with type-chaining `with*()` methods. Each method narrows the TypeScript generic so `input` and `ctx` are fully typed inside `.handle()` — zero manual interface declarations.
+- **FluentToolBuilder**: Type-chaining builder behind semantic verbs. 12 parameter methods (`.withString()`, `.withOptionalString()`, `.withNumber()`, `.withOptionalNumber()`, `.withBoolean()`, `.withOptionalBoolean()`, `.withEnum()`, `.withOptionalEnum()`, `.withArray()`, `.withOptionalArray()`), plus `.describe()`, `.instructions()`, `.use()`, `.returns()`, `.tags()`, `.readOnly()`, `.destructive()`, `.idempotent()`, `.invalidates()`, `.cached()`, `.stale()`, `.concurrency()`, `.egress()`, `.annotations()`, `.toonDescription()`, `.handle()` (terminal).
+- **FluentRouter**: Prefix grouping — shares prefix, middleware, and tags across child tools. `f.router('users').use(authMw)` → `users.query('list')`, `users.mutation('delete')`. Eliminates repetitive `'users.'` prefixes.
+- **FluentPromptBuilder**: Chainable prompt builder — `.describe()`, `.input()`, `.tags()`, `.use()`, `.timeout()`, `.handler()`. Accepts Zod or fluent param descriptors.
+- **ErrorBuilder**: Fluent self-healing errors via `f.error(code, message)` — `.suggest()`, `.actions()`, `.critical()`, `.warning()`, `.details()`, `.retryAfter()`. Returned directly from handlers.
+- **StateSyncBuilder**: Fluent cache/invalidation configuration via `f.stateSync()` — `.defaults()`, `.policy()`, `.onInvalidation()`, `.notificationSink()`, `.build()`.
+- **Semantic Verbs**: `f.query()` = readOnly:true by default, `f.mutation()` = destructive:true by default, `f.action()` = neutral (no defaults). Semantic overrides (`.readOnly()`, `.destructive()`, `.idempotent()`) take precedence.
+- **Implicit success()**: `.handle()` auto-wraps raw data with `success()` — handlers just return data, no ToolResponse boilerplate.
+- **AI-First Instructions**: `.instructions('Use ONLY when...')` injects system-level guidance into the tool description as `[INSTRUCTIONS]`, reducing hallucination.
+- **GroupedToolBuilder**: Builder that groups related actions into a single MCP tool (for config-bag API: `f.tool()`, `defineTool()`, `createTool()`)
 - **createTool()**: Factory function to create a GroupedToolBuilder with full Zod power
 - **defineTool()**: JSON-first factory — define tools without Zod imports using plain strings/objects
 - **ResponseBuilder**: Fine-grained manual response composition
@@ -47,7 +56,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **GovernanceObserver**: Observability bridge — wraps governance operations with DebugEvent emission and optional OTel tracing spans
 - **CLI**: `fusion lock` / `fusion lock --check` — generate, update, and CI-gate the capability lockfile
 
-## Quick Start — initFusion() (Recommended)
+## Quick Start — Fluent API with Semantic Verbs (Recommended)
 
 ```typescript
 import { initFusion, definePresenter, ui, PromptMessage } from '@vinkius-core/mcp-fusion';
@@ -58,9 +67,6 @@ export const f = initFusion<AppContext>();
 
 // ═══════════════════════════════════════════════════════════
 // STEP 1: THE PRESENTER — Egress Firewall & Perception Layer
-// Define once. Every tool and prompt that returns invoices uses it.
-// BEFORE: handler formats its own response, fields leak, rules live in global prompt
-// AFTER:  Presenter validates, strips, renders, truncates, suggests — domain-level contract
 // ═══════════════════════════════════════════════════════════
 export const InvoicePresenter = definePresenter({
     name: 'Invoice',
@@ -70,7 +76,6 @@ export const InvoicePresenter = definePresenter({
         status: z.enum(['paid', 'pending', 'overdue']),
         client_name: z.string(),
     }),
-    // autoRules: true (default) — .describe() annotations become JIT system rules
     ui: (inv) => [ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] })],
     agentLimit: { max: 50, onTruncate: (n) => ui.summary({ omitted: n, hint: 'Use filters.' }) },
     suggestActions: (inv) => inv.status === 'pending'
@@ -78,45 +83,291 @@ export const InvoicePresenter = definePresenter({
         : [],
     embeds: [{ key: 'client', presenter: ClientPresenter }],
 });
-// What the Presenter does on EVERY response:
-// 📄 Zod-validated — undeclared fields (password_hash, internal IDs) STRIPPED in RAM
-// 📋 JIT rules — "amount is in CENTS" only when invoices are returned
-// 📊 Server-rendered UI — ECharts gauge, deterministic
-// ⚠️ Guardrails — 10,000 rows → 50 shown + "Use filters."
-// 🔗 Affordances — pending → "→ billing.pay"
-// 👶 Embeds — child Presenters inherit the same pipeline
 
 // ═══════════════════════════════════════════════════════════
-// STEP 2: TOOLS — No Zod Required (JSON descriptors)
-// Handler returns raw data. Presenter does the rest.
+// STEP 2: TOOLS — Fluent API with Type-Chaining
+// f.query() = readOnly, f.mutation() = destructive, f.action() = neutral
+// with*() methods accumulate TypeScript generics — input is fully typed
+// .handle() auto-wraps raw data with success() — no boilerplate
 // ═══════════════════════════════════════════════════════════
+const getInvoice = f.query('billing.get_invoice')
+    .describe('Get an invoice by ID')
+    .withString('id', 'The invoice ID')
+    .returns(InvoicePresenter)
+    .handle(async (input, ctx) => {
+        // input.id: string ✅ — fully typed, zero manual interfaces
+        return await ctx.db.invoices.findUnique({ where: { id: input.id } });
+        // ↑ Returns raw data — Presenter validates, strips, renders automatically
+    });
+
+const createInvoice = f.mutation('billing.create_invoice')
+    .describe('Create a new invoice')
+    .withString('client_id', 'Client identifier')
+    .withNumber('amount', 'Invoice amount in cents')
+    .withEnum('currency', ['USD', 'EUR', 'BRL'] as const, 'Currency code')
+    .withOptionalString('notes', 'Optional notes')
+    .handle(async (input, ctx) => {
+        // input.client_id: string, input.amount: number,
+        // input.currency: 'USD'|'EUR'|'BRL', input.notes?: string
+        return await ctx.db.invoices.create({ data: input });
+    });
+
+// ═══════════════════════════════════════════════════════════
+// STEP 3: PROMPTS — Fluent Builder or Config-Bag
+// ═══════════════════════════════════════════════════════════
+const AuditPrompt = f.prompt('financial_audit')
+    .describe('Perform a financial audit on an invoice')
+    .input({ invoiceId: f.string(), depth: f.enum('quick', 'thorough') })
+    .handler(async (ctx, { invoiceId, depth }) => {
+        const invoice = await ctx.db.invoices.get(invoiceId);
+        return {
+            messages: [
+                PromptMessage.system('You are a Senior Financial Auditor.'),
+                ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
+                PromptMessage.user(`Perform a ${depth} audit on this invoice.`),
+            ],
+        };
+    });
+
+// f.registry() — pre-typed
+const registry = f.registry();
+registry.register(getInvoice);
+registry.register(createInvoice);
+```
+
+## Fluent API — Semantic Verbs & Type-Chaining
+
+The Fluent API is the primary tool definition surface. Three semantic verbs set behavioral defaults at creation:
+
+| Verb | Default | Use Case |
+|---|---|---|
+| `f.query(name)` | `readOnly: true` | Read operations — no side effects |
+| `f.mutation(name)` | `destructive: true` | Write operations — irreversible |
+| `f.action(name)` | *neutral* | Updates, syncs — no assumptions |
+
+Every verb returns a `FluentToolBuilder` with type-chaining `.with*()` methods:
+
+```typescript
+const listUsers = f.query('users.list')
+    .describe('List users from the database')
+    .instructions('Use ONLY for listing users. For search, use users.search.')
+    .withNumber('limit', 'Max results to return')
+    .withOptionalEnum('status', ['active', 'inactive'], 'Filter by status')
+    .withOptionalString('search', 'Search by name')
+    .returns(UserPresenter)
+    .handle(async (input, ctx) => {
+        // input.limit: number ✅
+        // input.status?: 'active' | 'inactive' ✅
+        // input.search?: string ✅
+        return ctx.db.user.findMany({ take: input.limit, where: { status: input.status } });
+    });
+```
+
+### FluentToolBuilder — with*() Type-Chaining Methods
+
+Each `with*()` call narrows the TypeScript generic `TInput` — the IDE provides full autocomplete inside `.handle()` without any manual interface declaration.
+
+| Method | Adds to Input Type |
+|---|---|
+| `.withString(name, desc?)` | `Record<K, string>` |
+| `.withOptionalString(name, desc?)` | `Partial<Record<K, string>>` |
+| `.withNumber(name, desc?)` | `Record<K, number>` |
+| `.withOptionalNumber(name, desc?)` | `Partial<Record<K, number>>` |
+| `.withBoolean(name, desc?)` | `Record<K, boolean>` |
+| `.withOptionalBoolean(name, desc?)` | `Partial<Record<K, boolean>>` |
+| `.withEnum(name, values, desc?)` | `Record<K, V>` (literal union) |
+| `.withOptionalEnum(name, values, desc?)` | `Partial<Record<K, V>>` |
+| `.withArray(name, itemType, desc?)` | `Record<K, T[]>` |
+| `.withOptionalArray(name, itemType, desc?)` | `Partial<Record<K, T[]>>` |
+
+### FluentToolBuilder — Configuration Methods
+
+| Method | What It Does |
+|---|---|
+| `.describe(text)` | Tool description shown to the LLM |
+| `.instructions(text)` | AI-First instructions injected as `[INSTRUCTIONS]` — prompt engineering in the framework |
+| `.use(mw)` | tRPC-style context derivation — enriches `TCtx` type for `.handle()` |
+| `.returns(presenter)` | Attach MVA Presenter for automatic response formatting |
+| `.tags(...tags)` | Capability tags for selective tool exposure |
+| `.readOnly()` | Override: mark as read-only |
+| `.destructive()` | Override: mark as destructive |
+| `.idempotent()` | Override: mark as idempotent (safe to retry) |
+| `.annotations(a)` | Custom MCP tool annotations |
+| `.toonDescription()` | TOON-formatted descriptions for token optimization |
+| `.invalidates(...patterns)` | State Sync: glob patterns invalidated on success |
+| `.cached()` | State Sync: immutable (safe to cache forever) |
+| `.stale()` | State Sync: volatile (never cache) |
+| `.concurrency(config)` | Runtime guard: semaphore + queue |
+| `.egress(bytes)` | Runtime guard: max payload size |
+| `.handle(handler)` | **Terminal** — sets handler, builds GroupedToolBuilder |
+
+### Implicit success() Wrapping
+
+`.handle()` auto-wraps raw data — handlers just return data, no `success()` boilerplate:
+
+```typescript
+// BEFORE (manual wrapping):
+.handle(async (input, ctx) => {
+    return success(await ctx.db.users.findMany());
+});
+
+// AFTER (implicit wrapping — same result):
+.handle(async (input, ctx) => {
+    return await ctx.db.users.findMany();  // ← raw data, framework wraps
+});
+```
+
+### AI-First Instructions
+
+`.instructions()` injects system-level guidance into the tool description, telling the LLM WHEN and HOW to use the tool:
+
+```typescript
+f.query('docs.search')
+    .describe('Search internal documentation')
+    .instructions('Use ONLY when the user asks about internal policies. Do NOT use for general questions.')
+    .withString('query', 'Search term')
+    .handle(async (input, ctx) => ctx.docs.search(input.query));
+// Generated description: "[INSTRUCTIONS] Use ONLY when...\n\nSearch internal documentation"
+```
+
+### Context Derivation — .use() Middleware
+
+The `.use()` method follows tRPC-style `{ ctx, next }` signature. It enriches the context type — the TypeScript compiler automatically extends `TCtx` in `.handle()`:
+
+```typescript
+f.mutation('users.delete')
+    .use(async ({ ctx, next }) => {
+        const admin = await requireAdmin(ctx.headers);
+        return next({ ...ctx, adminUser: admin });
+    })
+    .use(async ({ ctx, next }) => {
+        return next({ ...ctx, auditLog: createAuditLog(ctx.adminUser) });
+    })
+    .withString('id', 'User ID to delete')
+    .handle(async (input, ctx) => {
+        // ctx.adminUser is typed! ctx.auditLog is typed! Zero casting.
+        ctx.auditLog.record(`${ctx.adminUser.name} deleting ${input.id}`);
+        await ctx.db.users.delete({ where: { id: input.id } });
+    });
+```
+
+## FluentRouter — Prefix Grouping
+
+Eliminates repetitive prefixes across dozens of tools. A router shares a common prefix, description, middleware chain, and tags:
+
+```typescript
+const users = f.router('users')
+    .describe('User management')
+    .use(requireAuth)
+    .tags('core');
+
+// Tool name: "users", action: "list" — inherits middleware + tags
+const listUsers = users.query('list')
+    .withOptionalNumber('limit', 'Max results')
+    .handle(async (input, ctx) => ctx.db.users.findMany({ take: input.limit }));
+
+// Tool name: "users", action: "delete" — inherits middleware + tags
+const deleteUser = users.mutation('delete')
+    .withString('id', 'User ID')
+    .handle(async (input, ctx) => ctx.db.users.delete({ where: { id: input.id } }));
+
+// Tool name: "users", action: "update" — neutral, explicitly idempotent
+const updateUser = users.action('update')
+    .idempotent()
+    .withString('id', 'User ID')
+    .withOptionalString('name', 'New name')
+    .withOptionalString('email', 'New email')
+    .handle(async (input, ctx) => ctx.db.users.update({ where: { id: input.id }, data: input }));
+```
+
+## ErrorBuilder — Fluent Self-Healing Errors
+
+`f.error()` creates a chainable error builder that produces structured, self-healing error responses:
+
+```typescript
+// Inside a handler:
+const project = await ctx.db.projects.findUnique({ where: { id: input.id } });
+if (!project) {
+    return f.error('NOT_FOUND', `Project "${input.id}" not found`)
+        .suggest('Check the ID. Use projects.list to see valid IDs.')
+        .actions('projects.list', 'projects.search')
+        .details({ searched_id: input.id })
+        .retryAfter(0);  // retry immediately
+}
+
+// Severity shortcuts:
+return f.error('RATE_LIMITED', 'Too many requests').warning().retryAfter(30);
+return f.error('INTERNAL_ERROR', 'Database unreachable').critical();
+```
+
+## StateSyncBuilder — Fluent Cache Policies
+
+`f.stateSync()` creates a chainable builder for centralized State Sync configuration:
+
+```typescript
+const sync = f.stateSync()
+    .defaults(p => p.stale())           // default: no caching
+    .policy('countries.*', p => p.cached()) // reference data: cache forever
+    .policy('billing.*', p => p.stale().invalidates('billing.*', 'reports.*'))
+    .policy('tasks.update', p => p.invalidates('tasks.*', 'sprints.*'))
+    .onInvalidation(event => metrics.increment('cache.invalidations', { tool: event.causedBy }))
+    .notificationSink(n => server.notification(n))
+    .build();
+
+registry.attachToServer(server, { stateSync: sync });
+```
+
+### Inline State Sync on FluentToolBuilder
+
+Alternatively, declare state sync policies directly on each tool:
+
+```typescript
+const updateSprint = f.mutation('sprints.update')
+    .invalidates('sprints.*', 'tasks.*')   // ← inline invalidation
+    .withString('id', 'Sprint ID')
+    .handle(async (input, ctx) => ctx.db.sprints.update(input));
+
+const getCountries = f.query('geo.countries')
+    .cached()                               // ← immutable reference data
+    .handle(async (input, ctx) => ctx.db.countries.findMany());
+
+const getBalance = f.query('billing.balance')
+    .stale()                                // ← always fresh, never cache
+    .withString('account_id', 'Account ID')
+    .handle(async (input, ctx) => ctx.billing.getBalance(input.account_id));
+```
+
+### Inline Runtime Guards on FluentToolBuilder
+
+```typescript
+const processInvoice = f.mutation('billing.process')
+    .concurrency({ maxActive: 5, maxQueue: 20 })  // semaphore + queue
+    .egress(2 * 1024 * 1024)                       // 2MB max payload
+    .withString('id', 'Invoice ID')
+    .handle(async (input, ctx) => ctx.stripe.charges.create(input));
+```
+
+## Quick Start — f.tool() Config-Bag API (Alternative)
+
+```typescript
+import { initFusion, definePresenter, ui, PromptMessage } from '@vinkius-core/mcp-fusion';
+import { z } from 'zod';
+
+interface AppContext { db: PrismaClient; user: { id: string; role: string } }
+export const f = initFusion<AppContext>();
+
+// Config-bag style — pass a config object to f.tool()
 const getInvoice = f.tool({
     name: 'billing.get_invoice',
     input: { id: 'string' },              // ← JSON descriptor, no Zod import
     readOnly: true,
-    returns: InvoicePresenter,             // ← Presenter validates, strips, renders
+    returns: InvoicePresenter,
     handler: async ({ input, ctx }) => {
         return await ctx.db.invoices.findUnique({ where: { id: input.id } });
     },
 });
 
-const createInvoice = f.tool({
-    name: 'billing.create_invoice',
-    input: {
-        client_id: 'string',
-        amount: { type: 'number', min: 0 },
-        currency: { enum: ['USD', 'EUR', 'BRL'] as const },
-        notes: { type: 'string', optional: true },
-    },
-    handler: async ({ input, ctx }) => {
-        return await ctx.db.invoices.create({ data: input });
-    },
-});
-
-// ═══════════════════════════════════════════════════════════
-// STEP 3: PROMPTS — Powered by the Presenter
-// fromView() decomposes Presenter data into XML-tagged messages
-// ═══════════════════════════════════════════════════════════
+// Config-bag prompt — pass config as second argument
 const AuditPrompt = f.prompt('financial_audit', {
     args: {
         invoiceId: 'string',
@@ -127,18 +378,12 @@ const AuditPrompt = f.prompt('financial_audit', {
         return {
             messages: [
                 PromptMessage.system('You are a Senior Financial Auditor.'),
-                // ↓ THE BRIDGE — same Presenter, same source of truth
                 ...PromptMessage.fromView(InvoicePresenter.make(invoice, ctx)),
                 PromptMessage.user(`Perform a ${depth} audit on this invoice.`),
             ],
         };
     },
 });
-
-// f.registry() — pre-typed
-const registry = f.registry();
-registry.register(getInvoice);
-registry.register(createInvoice);
 ```
 
 ## JSON Param Descriptors (No-Zod API)
@@ -763,16 +1008,93 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 
 ## Public API (all from '@vinkius-core/mcp-fusion')
 
-### Context Initialization (v2.7+)
+### Context Initialization & Fluent Factory
 - `initFusion<TContext>()` → FusionInstance — define context once, inherit everywhere
-- `FusionInstance<TContext>` — .tool(), .presenter(), .prompt(), .middleware(), .defineTool(), .registry()
-- `f.tool(config)` → GroupedToolBuilder — handler receives `{ input, ctx }` (tRPC-style)
+- `FusionInstance<TContext>` — .query(), .mutation(), .action(), .router(), .prompt(), .presenter(), .middleware(), .registry(), .error(), .stateSync(), .tool(), .defineTool()
+- `f.query(name)` → FluentToolBuilder — semantic verb: readOnly:true by default
+- `f.mutation(name)` → FluentToolBuilder — semantic verb: destructive:true by default
+- `f.action(name)` → FluentToolBuilder — semantic verb: neutral (no defaults)
+- `f.router(prefix)` → FluentRouter — prefix grouping with shared middleware/tags
+- `f.prompt(name)` → FluentPromptBuilder — chainable prompt builder
+- `f.prompt(name, config)` → PromptBuilder — config-bag alternative
 - `f.presenter(config)` → Presenter — delegates to `definePresenter()`
-- `f.prompt(name, config)` → PromptBuilder — context-typed prompt
 - `f.middleware(deriveFn)` → MiddlewareDefinition — context derivation
-- `f.defineTool(name, config)` → GroupedToolBuilder — full ToolConfig power
 - `f.registry()` → ToolRegistry — pre-typed registry
+- `f.error(code, message)` → ErrorBuilder — fluent self-healing error builder
+- `f.stateSync()` → StateSyncBuilder — fluent cache/invalidation configuration
+- `f.tool(config)` → GroupedToolBuilder — config-bag alternative, handler receives `{ input, ctx }`
+- `f.defineTool(name, config)` → GroupedToolBuilder — full ToolConfig power
 - `FusionToolConfig<TContext, TInput>` — { name, description?, input?, tags?, annotations?, readOnly?, destructive?, idempotent?, middleware?, returns?, handler }
+
+### FluentToolBuilder — Type-Chaining Tool Builder
+- `FluentToolBuilder<TContext, TInput, TCtx>` — accumulated generics narrow at each step
+- `.describe(text)` → FluentToolBuilder — tool description shown to LLM
+- `.instructions(text)` → FluentToolBuilder — AI-First system guidance injected as `[INSTRUCTIONS]`
+- `.withString(name, desc?)` → FluentToolBuilder<..., TInput & Record<K, string>, ...>
+- `.withOptionalString(name, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, string>>, ...>
+- `.withNumber(name, desc?)` → FluentToolBuilder<..., TInput & Record<K, number>, ...>
+- `.withOptionalNumber(name, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, number>>, ...>
+- `.withBoolean(name, desc?)` → FluentToolBuilder<..., TInput & Record<K, boolean>, ...>
+- `.withOptionalBoolean(name, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, boolean>>, ...>
+- `.withEnum(name, values, desc?)` → FluentToolBuilder<..., TInput & Record<K, V>, ...> (V = literal union)
+- `.withOptionalEnum(name, values, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, V>>, ...>
+- `.withArray(name, itemType, desc?)` → FluentToolBuilder<..., TInput & Record<K, T[]>, ...>
+- `.withOptionalArray(name, itemType, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, T[]>>, ...>
+- `.use(mw)` → FluentToolBuilder<..., ..., TCtx & TDerived> — tRPC-style context derivation, `{ ctx, next }` signature
+- `.returns(presenter)` → FluentToolBuilder — attach MVA Presenter
+- `.tags(...tags)` → FluentToolBuilder — capability tags for filtering
+- `.readOnly()` → FluentToolBuilder — override: mark read-only
+- `.destructive()` → FluentToolBuilder — override: mark destructive
+- `.idempotent()` → FluentToolBuilder — override: mark idempotent
+- `.annotations(a)` → FluentToolBuilder — custom MCP annotations
+- `.toonDescription()` → FluentToolBuilder — TOON-formatted descriptions
+- `.invalidates(...patterns)` → FluentToolBuilder — State Sync: glob patterns invalidated on success
+- `.cached()` → FluentToolBuilder — State Sync: immutable (cacheControl: 'immutable')
+- `.stale()` → FluentToolBuilder — State Sync: volatile (cacheControl: 'no-store')
+- `.concurrency(config)` → FluentToolBuilder — runtime guard: semaphore + queue
+- `.egress(bytes)` → FluentToolBuilder — runtime guard: max payload size
+- `.handle(handler)` → GroupedToolBuilder — **terminal**: sets `(input, ctx) => Promise` handler, builds tool. Implicit `success()` wrapping for raw data.
+
+### FluentRouter — Prefix Grouping
+- `FluentRouter<TContext>` — shares prefix, middleware, tags across child tools
+- `.describe(text)` → this — shared description
+- `.use(mw)` → this — shared middleware (standard MiddlewareFn)
+- `.tags(...tags)` → this — shared capability tags
+- `.query(action)` → FluentToolBuilder — prefixed read-only tool
+- `.mutation(action)` → FluentToolBuilder — prefixed destructive tool
+- `.action(action)` → FluentToolBuilder — prefixed neutral tool
+
+### ErrorBuilder — Fluent Self-Healing Errors
+- `ErrorBuilder(code, message)` — created via `f.error(code, message)`
+- `.suggest(suggestion)` → this — recovery suggestion for LLM agent
+- `.actions(...names)` → this — alternative tool names the agent should try
+- `.severity(level)` → this — set severity ('warning' | 'error' | 'critical')
+- `.critical()` → this — shortcut for `.severity('critical')`
+- `.warning()` → this — shortcut for `.severity('warning')`
+- `.details(data)` → this — structured metadata (Record<string, string|number|boolean>)
+- `.retryAfter(seconds)` → this — retry delay for transient errors
+- `.build()` → ToolResponse — finalize. Also supports direct handler return via `.content` / `.isError` getters.
+
+### StateSyncBuilder — Fluent Cache Policies
+- `StateSyncBuilder` — created via `f.stateSync()`
+- `.defaults(fn)` → this — global default cache-control (fn receives PolicyBuilder)
+- `.policy(match, fn)` → this — scoped policy for tool name/glob pattern
+- `.onInvalidation(fn)` → this — observability hook (event: InvalidationEvent)
+- `.notificationSink(fn)` → this — protocol-level resource update notifications
+- `.build()` → StateSyncLayer — finalize
+- `.layer` → StateSyncLayer — alias for `.build()`
+- `PolicyBuilder` — nested builder: `.cached()`, `.stale()`, `.invalidates(...patterns)`
+
+### FluentPromptBuilder — Chainable Prompt Definition
+- `FluentPromptBuilder<TContext, TArgs>` — created via `f.prompt(name)` (no config argument)
+- `.title(title)` → this — human-readable title for UI display
+- `.describe(description)` → this — slash command palette description
+- `.icons(icons)` → this — light/dark theme icons
+- `.tags(...tags)` → this — capability tags for selective exposure
+- `.input(schema | params)` → this — accepts Zod schema or FluentParamsMap (f.string(), f.number(), etc.)
+- `.use(...fns)` → this — middleware (onion model, same as tool middleware)
+- `.timeout(ms)` → this — hydration timeout in milliseconds
+- `.handler(fn)` → this — **terminal**: sets `(ctx, args) => Promise<PromptResult>` handler
 
 ### Declarative Presenter (v2.7+)
 - `definePresenter(config)` → Presenter — object-config API with auto-rules from Zod `.describe()`

@@ -33,6 +33,64 @@ The agent knows the sprint list is stale and re-fetches before answering.
 
 ## Quick Start {#quickstart}
 
+### Inline Fluent API (Recommended for Simple Cases)
+
+The fastest approach — declare cache behavior directly on the tool builder:
+
+```typescript
+import { initFusion } from '@vinkius-core/mcp-fusion';
+
+const f = initFusion<AppContext>();
+
+// Reference data — safe to cache forever
+const listCountries = f.query('countries.list')
+  .describe('List all country codes')
+  .cached()
+  .handle(async (input, ctx) => ctx.db.countries.findMany());
+
+// Volatile data — always re-fetch
+const listSprints = f.query('sprints.list')
+  .describe('List workspace sprints')
+  .stale()
+  .handle(async (input, ctx) => ctx.db.sprints.findMany());
+
+// Mutation — invalidates sprint cache on success
+const createSprint = f.action('sprints.create')
+  .describe('Create a new sprint')
+  .invalidates('sprints.*')
+  .withString('name', 'Sprint name')
+  .handle(async (input, ctx) => ctx.db.sprints.create({ data: { name: input.name } }));
+
+// Cross-domain invalidation
+const updateTask = f.action('tasks.update')
+  .describe('Update a task')
+  .invalidates('tasks.*', 'sprints.*')
+  .withString('id', 'Task ID')
+  .withOptionalString('title', 'New title')
+  .handle(async (input, ctx) => ctx.db.tasks.update({
+    where: { id: input.id },
+    data: { title: input.title },
+  }));
+```
+
+### Fluent StateSyncBuilder (f.stateSync())
+
+For centralized policies across many tools:
+
+```typescript
+const sync = f.stateSync()
+  .defaults(p => p.stale())                    // all tools default to no-store
+  .policy('countries.*', p => p.cached())      // override: reference data
+  .policy('sprints.create', p => p.invalidates('sprints.*'))
+  .policy('sprints.delete', p => p.invalidates('sprints.*'))
+  .policy('tasks.update', p => p.invalidates('tasks.*', 'sprints.*'))
+  .onInvalidation(event => {
+    console.log(`[invalidation] ${event.causedBy} → ${event.patterns.join(', ')}`);
+  });
+```
+
+### Registry-Level Config (Alternative)
+
 Configure State Sync when attaching the registry to the server:
 
 ```typescript

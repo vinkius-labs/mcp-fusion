@@ -8,7 +8,7 @@
  * @internal
  * @module
  */
-import { type ToolResponse } from '../core/response.js';
+import { type ToolResponse, success as successResponse } from '../core/response.js';
 import { isResponseBuilder, type ResponseBuilder } from './ResponseBuilder.js';
 import { type Presenter } from './Presenter.js';
 
@@ -19,7 +19,7 @@ import { type Presenter } from './Presenter.js';
  * 1. **ToolResponse** → use directly (backward compatibility)
  * 2. **ResponseBuilder** → call `.build()` (auto-build)
  * 3. **Raw data + Presenter** → pipe through `Presenter.make(data).build()`
- * 4. **Raw data without Presenter** → wrap in success response
+ * 4. **Raw data without Presenter** → wrap via canonical `success()` helper
  *
  * @param result - The handler's return value
  * @param presenter - The action's Presenter (from `returns` field), if any
@@ -50,11 +50,12 @@ export function postProcessResult(
         return presenter.make(result, ctx, selectFields).build();
     }
 
-    // Priority 4: Raw data without Presenter → fallback success
-    const text = typeof result === 'string'
-        ? (result || 'OK')
-        : JSON.stringify(result, null, 2);
-    return { content: [{ type: 'text', text }] };
+    // Priority 4: Raw data without Presenter → canonical success() helper
+    return successResponse(
+        typeof result === 'string' || typeof result === 'object'
+            ? (result as string | object)
+            : String(result),
+    );
 }
 
 // ── Type Guard ───────────────────────────────────────────
