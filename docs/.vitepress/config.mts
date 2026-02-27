@@ -4,10 +4,13 @@ import typedocSidebar from '../api/typedoc-sidebar.json'
 
 export default defineConfig({
   title: "MCP Fusion",
-  description: "The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol.",
+  description: "The AI-First DX for the Model Context Protocol: building scalable Agentic APIs with the MVA pattern.",
   base: '/',
   cleanUrls: true,
   appearance: 'force-dark',
+  sitemap: {
+    hostname: 'https://mcp-fusion.vinkius.com'
+  },
 
   head: [
     // ── Logo + title layout fix (in head to beat VitePress scoped styles) ──
@@ -66,7 +69,7 @@ export default defineConfig({
       '@type': 'SoftwareSourceCode',
       'name': 'mcp-fusion',
       'alternateName': 'MCP Fusion',
-      'description': 'The MVA (Model-View-Agent) framework for building scalable Agentic APIs over the Model Context Protocol. Introduces Presenters — a deterministic View layer for AI agents — with action consolidation, cognitive guardrails, structured perception packages, and self-healing errors.',
+      'description': 'The AI-First DX for the Model Context Protocol. Introduces Presenters — a deterministic View layer for AI agents — with action consolidation, cognitive guardrails, structured perception packages, and self-healing errors.',
       'url': 'https://mcp-fusion.vinkius.com/',
       'codeRepository': 'https://github.com/vinkius-labs/mcp-fusion',
       'programmingLanguage': 'TypeScript',

@@ -1,6 +1,6 @@
 # mcp-fusion
 
-> The MVA (Model-View-Agent) framework for building MCP servers where AI agents are first-class consumers.
+> The AI-First DX for the Model Context Protocol, building MCP servers where AI agents are first-class consumers.
 
 ## What is mcp-fusion?
 

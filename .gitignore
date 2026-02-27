@@ -48,6 +48,7 @@ ehthumbs.db
 docs/api/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+docs/.vitepress/.temp/
 
 # Lint artifacts
 lint.json
