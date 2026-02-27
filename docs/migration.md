@@ -1,5 +1,9 @@
 # Migration Guide
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 Convert an existing raw-SDK MCP server to MCP Fusion incrementally — one domain at a time, without breaking your running server. Typical migration: 15-30 minutes per tool domain.
 
 - [Checklist](#checklist)

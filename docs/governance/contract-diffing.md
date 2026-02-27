@@ -5,6 +5,10 @@ description: "Semantic delta engine with BREAKING / RISKY / SAFE / COSMETIC seve
 
 # Contract Diffing
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Severity Classification](#severity)
 - [Using the Diff Engine](#usage)
 - [What Gets Compared](#delta-categories)

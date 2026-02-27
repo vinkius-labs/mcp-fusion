@@ -5,6 +5,10 @@ description: "Automatic contract delta injection into validation errors, enablin
 
 # Self-Healing Context
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Enriching Validation Errors](#enrich)
 - [Tool-Scoped Enhancer](#enhancer)
 - [The `<contract_awareness>` Block](#block)

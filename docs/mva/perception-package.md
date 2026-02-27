@@ -1,5 +1,9 @@
 # The Structured Perception Package
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 When a tool handler returns raw data and a Presenter is attached, mcp-fusion's execution pipeline transforms that data into a **Structured Perception Package** — a multi-block MCP response where each block carries a specific semantic purpose. This page documents the exact structure, the block ordering, and why each layer exists.
 
 ## The Six Blocks

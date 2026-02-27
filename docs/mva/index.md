@@ -1,5 +1,9 @@
 # MVA Architecture
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 Every software architecture in history assumes a human at the end of the pipeline. MVC renders HTML for browsers. MVVM binds state to visual components. REST exposes resources for mobile apps. All of them rely on a consumer that can **interpret ambiguity**, **navigate inconsistency**, and **apply domain knowledge** that the interface never provided.
 
 AI agents can do none of this. When an agent receives `{ "amount_cents": 45000 }`, it does not *know* it's cents. It does not *know* to divide by 100. It does not *know* that the next action is `billing.pay`. It guesses — and when it guesses wrong, it hallucinates.

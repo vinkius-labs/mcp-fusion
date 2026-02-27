@@ -1,5 +1,9 @@
 # Developer Experience Guide
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 `initFusion()` for type inference, JSON descriptors instead of Zod imports, `autoDiscover()` for file-based routing, `createDevServer()` for hot reload, and Standard Schema support for any validator.
 
 ## `initFusion()` — Define Context Once {#init-fusion}

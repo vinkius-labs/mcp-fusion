@@ -5,6 +5,10 @@ description: "Cryptographic surface integrity, behavioral lockfiles, and zero-tr
 
 # Capability Governance
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [What the Protocol Cannot Answer](#the-gap)
 - [Surface Drift Is Silent](#surface-drift)
 - [The Governance Stack](#modules)

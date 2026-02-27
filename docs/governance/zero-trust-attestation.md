@@ -5,6 +5,10 @@ description: "Cryptographic signing, capability pinning, and runtime verificatio
 
 # Zero-Trust Attestation
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Sign at Build Time](#sign)
 - [Verify at Startup](#verify)
 - [Custom Signers](#custom-signers)

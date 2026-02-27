@@ -114,3 +114,23 @@ Add to your Claude Desktop config:
 ```
 
 Ask: *"What's the weather in San Francisco?"* — the agent calls `weather_get` and receives the structured response.
+
+## Take It to Production {#production}
+
+The registry you built above works with any transport — Stdio, SSE, HTTP, or serverless. To deploy as a global HTTP endpoint without changing your tool code:
+
+**Vercel** — one function turns your registry into a Next.js route handler. Zod reflection and schema compilation happen once at cold start; warm invocations route and execute in microseconds:
+
+```typescript
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+export const POST = vercelAdapter({ registry, contextFactory });
+```
+
+**Cloudflare Workers** — the same registry runs on 300+ edge locations with direct access to D1, KV, and R2 via Cloudflare's `env` bindings:
+
+```typescript
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+```
+
+Same tools. Same middleware. Same Presenters. Zero code changes. Full guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter) · [Production Server](/cookbook/production-server)

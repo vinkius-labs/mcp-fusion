@@ -5,6 +5,10 @@ description: "Generate, verify, and integrate mcp-fusion.lock into CI/CD. A dete
 
 # Capability Lockfile
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Generating the Lockfile](#generating)
 - [What the Lockfile Captures](#structure)
 - [Why Canonical Serialization Matters](#canonical)

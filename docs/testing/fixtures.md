@@ -5,6 +5,10 @@ description: "Shared context, per-test overrides, async factories, and isolation
 
 # Fixtures
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 Fixtures are the foundation of every test suite — the shared context, mock data, and configuration that prepare the environment before any assertion runs. In the FusionTester, the fixture is the **`contextFactory`** and the **`setup.ts`** file.
 
 ## The `setup.ts` File

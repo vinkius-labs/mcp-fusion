@@ -1,5 +1,9 @@
 # Cognitive Guardrails
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 Cognitive Guardrails are the protective mechanisms in MVA that prevent the three most expensive failure modes in agent-based systems: **context overflow** (too much data), **parameter injection** (hallucinated fields), and **error spirals** (agents retrying blindly).
 
 Each guardrail is designed to be **zero-configuration by default, explicit when needed, and educational for the agent** — not just protective, but instructive.

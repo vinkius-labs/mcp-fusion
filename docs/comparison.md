@@ -1,5 +1,9 @@
 # Without MVA vs With MVA
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Before & After: Invoice](#invoice)
 - [Before & After: Users](#users)
 - [Before & After: Error Recovery](#errors)

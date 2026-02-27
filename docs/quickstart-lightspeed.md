@@ -2,7 +2,21 @@
 
 From zero to a running MCP server in under 30 seconds. The CLI scaffolds a production-ready project with `autoDiscover()` file-based routing, typed context, Presenters, middleware, testing, and pre-configured connections for Cursor, Claude Desktop, and Claude Code — no boilerplate.
 
+## Prerequisites {#prerequisites}
+
+Node.js **18+** required.
+
+```bash
+npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod
+```
+
+::: tip Already using a project?
+If you're adding MCP Fusion to an existing Node.js project, the install above is all you need — then skip to [Building Tools](/building-tools).
+:::
+
 ## Scaffold {#scaffold}
+
+The CLI creates a complete project with all dependencies pre-installed:
 
 ```bash
 npx fusion create my-server
@@ -273,3 +287,28 @@ Each vector adds its dependencies to `package.json` and environment variables to
 | Run the full test harness | [Testing](/testing) |
 | Lock your capability surface | [Capability Governance](/governance/) |
 | Manual setup without the CLI | [Quickstart — Traditional](/quickstart) |
+
+## Go Live {#go-live}
+
+Your server runs locally over Stdio. To expose it globally as a stateless HTTP endpoint, deploy to **Vercel** or **Cloudflare Workers**. Both adapters bridge the gap between MCP's long-lived process model and serverless runtimes — registry compilation is cached at cold start, warm requests execute with near-zero overhead.
+
+**Vercel** — drops into a Next.js App Router route. Edge Runtime for ~0ms cold starts, or Node.js Runtime for `@vercel/postgres` and heavier computation:
+
+```typescript
+// app/api/mcp/route.ts
+import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
+
+export const POST = vercelAdapter({ registry, contextFactory });
+export const runtime = 'edge'; // optional — global edge distribution
+```
+
+**Cloudflare Workers** — your tools query D1 (SQLite at the edge) and KV with sub-millisecond latency from 300+ locations:
+
+```typescript
+// src/worker.ts
+import { cloudflareWorkersAdapter } from '@vinkius-core/mcp-fusion-cloudflare';
+
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+```
+
+Full guides: [Vercel Adapter](/vercel-adapter) · [Cloudflare Adapter](/cloudflare-adapter) · [Production Server](/cookbook/production-server)

@@ -1,5 +1,9 @@
 # Presenter Composition
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Embedding Child Presenters](#embed)
 - [Multi-Level Embeds](#multi-level)

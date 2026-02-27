@@ -1,5 +1,9 @@
 # TOON — Token-Optimized Responses
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [toonSuccess() — Response-Level Encoding](#response-level)
 - [.toonDescription() — Description Compression](#description-level)

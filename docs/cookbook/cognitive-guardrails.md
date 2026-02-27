@@ -1,5 +1,9 @@
 # Cognitive Guardrails
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [The Token Explosion Problem](#problem)
 - [.limit() — Automatic Truncation](#limit)

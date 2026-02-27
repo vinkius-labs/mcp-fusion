@@ -1,5 +1,9 @@
 # Error Handling
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [error() — Simple Errors](#simple)
 - [required() — Missing Parameters](#required)

@@ -5,6 +5,10 @@ description: "Content-addressed behavioral fingerprinting, temporal comparison, 
 
 # Surface Integrity
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Computing a Digest](#compute)
 - [The Four Digest Components](#components)
 - [Determinism Guarantees](#guarantees)

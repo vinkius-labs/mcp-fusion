@@ -5,6 +5,10 @@ description: "Cognitive overload detection, context window budget profiling, and
 
 # Token Economics
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Risk Classification](#risk)
 - [Static Analysis](#static)
 - [Runtime Profiling](#runtime)

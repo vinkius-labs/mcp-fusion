@@ -5,6 +5,10 @@ description: "Every assertion pattern for MvaTestResult — data, systemRules, u
 
 # Assertions
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 The `FusionTester` returns `MvaTestResult` objects. Every field in the result maps to a specific MVA pipeline layer. This page documents every assertion pattern.
 
 ## `result.data` — Egress Firewall Output

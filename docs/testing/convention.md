@@ -5,6 +5,10 @@ description: "The tests/ layer in the MVA convention — folder structure, file 
 
 # Convention
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 The **MVA Convention** organizes code into three architectural layers: **Model**, **View**, **Agent**. The `@vinkius-core/mcp-fusion-testing` package introduces a fourth layer: **Tests**.
 
 ## Structure

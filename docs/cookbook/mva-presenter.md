@@ -1,5 +1,9 @@
 # MVA Presenter
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [What is a Presenter?](#what)
 - [Creating Your First Presenter](#first)

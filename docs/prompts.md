@@ -1,5 +1,9 @@
 # Prompt Engine
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 MCP Prompts are server-side templates that return structured messages — instructions, fetched data, domain rules — as a ready-to-use array. Clients expose them as slash commands. The Prompt Engine is opt-in: skip the `prompts` option on `attachToServer()` and nothing runs.
 
 Prompt arguments must be **flat primitives** (string, number, boolean, enum). MCP clients render them as form controls — a nested object can't become a text field. The engine enforces this at definition time.

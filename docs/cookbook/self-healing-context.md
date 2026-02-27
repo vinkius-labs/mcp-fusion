@@ -1,5 +1,9 @@
 # Self-Healing Context
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Intent Recovery](#intent)
 - [Context Injection](#injection)

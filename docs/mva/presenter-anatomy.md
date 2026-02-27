@@ -1,5 +1,9 @@
 # Anatomy of the Presenter
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 In MVA, every other layer exists to serve the Presenter. The Model validates data *for* the Presenter. The Agent consumes data *through* the Presenter. The Presenter is the single component that structures raw data into a format an AI agent can parse, interpret, and act on consistently.
 
 This page documents the Presenter's internal anatomy — its six responsibilities, its lifecycle, its composition model, and the patterns that emerge from its use at scale.

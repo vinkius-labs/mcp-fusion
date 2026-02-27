@@ -5,6 +5,10 @@ description: "LLM-as-a-Judge evaluation framework for detecting semantic drift i
 
 # Semantic Probing
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Creating Probes](#probes)
 - [The LLM Adapter](#adapter)
 - [Evaluating Probes](#evaluate)

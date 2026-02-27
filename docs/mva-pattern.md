@@ -1,5 +1,9 @@
 # The MVA Pattern
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Why MVC Fails for Agents](#why-mvc-fails)
 - [The Solution: MVA](#solution)
 - [The Presenter](#presenter-responsibilities)

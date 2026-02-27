@@ -1,5 +1,9 @@
 # Cancellation
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Extracting the Signal](#signal)
 - [Passing the Signal to I/O](#io)

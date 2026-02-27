@@ -1,5 +1,9 @@
 # Agentic Affordances & HATEOAS for AI
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 After receiving data, every AI agent faces the same question: *"What should I do next?"*
 
 Without guidance, agents hallucinate tool names. They call tools that don't exist. They skip valid actions because they don't know those actions are available. Each wrong decision is a wasted round-trip — tokens spent, latency added, accuracy degraded.

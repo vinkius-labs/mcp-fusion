@@ -1,5 +1,9 @@
 # The Theory Behind MVA
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 ## The Consumer Has Changed
 
 For fifty years, software architecture has been shaped by one constant: the human consumer. Every paradigm — MVC, MVVM, REST, GraphQL — was designed around the assumption that a thinking, context-aware human would be the final consumer of the interface.

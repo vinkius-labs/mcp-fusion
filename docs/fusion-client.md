@@ -1,5 +1,9 @@
 # FusionClient
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Server — Export the Router Type](#server)
 - [Client — Import and Call](#client)

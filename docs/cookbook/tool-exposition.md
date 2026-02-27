@@ -1,5 +1,9 @@
 # Tool Exposition Strategies
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Flat — One Tool per Action](#flat)
 - [Grouped — One Tool, Many Actions](#grouped)

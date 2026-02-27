@@ -1,5 +1,9 @@
 # Namespaces & Routing
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [File-Based Routing](#auto-discover)
 - [Fluent Router](#fluent-router)
 - [Discriminators](#discriminators)

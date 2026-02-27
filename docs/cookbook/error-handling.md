@@ -1,5 +1,9 @@
 # Self-Healing Errors
 
+::: info Prerequisites
+Install MCP Fusion before following this recipe: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [Simple Errors](#simple)
 - [Structured Recovery with toolError()](#toolerror)

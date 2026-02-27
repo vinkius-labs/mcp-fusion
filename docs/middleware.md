@@ -1,5 +1,9 @@
 # Middleware
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 - [Introduction](#introduction)
 - [f.middleware() — Context Derivation](#f-middleware)
 - [defineMiddleware() — Standalone Packages](#define-middleware)

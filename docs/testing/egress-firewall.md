@@ -5,6 +5,10 @@ description: "Prove mathematically that sensitive fields never reach the LLM —
 
 # Egress Firewall
 
+::: info Prerequisites
+Install MCP Fusion before following this guide: `npm install @vinkius-core/mcp-fusion @modelcontextprotocol/sdk zod` — or scaffold a project with [`npx fusion create`](/quickstart-lightspeed).
+:::
+
 The Egress Firewall is the Presenter's Zod schema acting as a **physical barrier** between your database and the LLM. Fields not declared in the schema are stripped in RAM — they never exist in the response object.
 
 This is the most critical audit in any AI application: **proving that PII, secrets, and internal identifiers never leak to the model.**
