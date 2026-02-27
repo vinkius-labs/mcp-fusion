@@ -5,8 +5,8 @@
 | **Tool count** | 50 individual tools. Token explosion. | Action consolidation — 5,000+ ops behind ONE tool via `module.action` discriminator |
 | **Response format** | `JSON.stringify()` — AI parses and guesses | Structured perception package — validated data + rules + UI + affordances |
 | **Domain context** | None. `amount_cents: 45000` — dollars? cents? | System rules travel with data: *"amount_cents is in CENTS. Divide by 100."* |
-| **Next actions** | AI hallucinates tool names | Agentic HATEOAS — `.suggestActions()` based on data state |
-| **Large datasets** | 10,000 rows dump — token DDoS | `.agentLimit(50)` truncates and teaches filters |
+| **Next actions** | AI hallucinates tool names | Agentic HATEOAS — `.suggest()` / `.suggestActions()` based on data state |
+| **Large datasets** | 10,000 rows dump — token DDoS | `.limit(50)` / `.agentLimit(50)` truncates and teaches filters |
 | **Security** | Internal fields leak | Schema as boundary — `.strict()` rejects undeclared fields |
 | **Reusability** | Same entity rendered differently per tool | Presenter defined once, reused everywhere |
 | **Charts** | Text only | UI Blocks — ECharts, Mermaid, summaries server-side |
@@ -39,28 +39,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 **With MVA:**
 
 ```typescript
-const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: z.object({
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(z.object({
         id: z.string(),
         amount_cents: z.number().describe('Amount in cents — divide by 100 for display'),
         status: z.enum(['paid', 'pending', 'overdue']),
-    }),
-    autoRules: true,
-    systemRules: [
+    }))
+    .rules([
         'CRITICAL: amount_cents is in CENTS. Divide by 100 for display.',
         'Always show currency as USD.',
-    ],
-    uiBlocks: (inv) => [
+    ])
+    .ui((inv) => [
         ui.echarts({
             series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }]
         }),
-    ],
-    suggestActions: (inv) =>
+    ])
+    .suggest((inv) =>
         inv.status === 'pending'
-            ? [{ tool: 'billing.pay', reason: 'Invoice is pending — process payment' }]
-            : [{ tool: 'billing.archive', reason: 'Invoice is settled — archive it' }],
-});
+            ? [suggest('billing.pay', 'Invoice is pending — process payment')]
+            : [suggest('billing.archive', 'Invoice is settled — archive it')]
+    );
 
 const getInvoice = f.tool({
     name: 'billing.get_invoice',
@@ -85,17 +83,12 @@ case 'list_users':
 **With MVA:**
 
 ```typescript
-const UserPresenter = definePresenter({
-    name: 'User',
-    schema: z.object({ id: z.string(), name: z.string(), role: z.string() }),
-    agentLimit: {
-        max: 50,
-        onTruncate: (n) => ui.summary(`Showing 50 of ${n}. Use filters to narrow results.`),
-    },
-    suggestActions: () => [
-        { tool: 'users.search', reason: 'Search by name or role for specific users' },
-    ],
-});
+const UserPresenter = createPresenter('User')
+    .schema(z.object({ id: z.string(), name: z.string(), role: z.string() }))
+    .limit(50)
+    .suggest(() => [
+        suggest('users.search', 'Search by name or role for specific users'),
+    ]);
 // 50 users shown. Agent guided to filters. ~25,000 tokens instead of ~5,000,000.
 ```
 

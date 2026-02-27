@@ -13,7 +13,7 @@
  * ```
  * Before: [{ type: 'text', text: '{"ok": true}' }]
  * After:  [
- *   { type: 'text', text: '[System: Cache invalidated for sprints.* — caused by sprints.update]' },
+ *   { type: 'text', text: '<cache_invalidation cause="sprints.update" domains="sprints.*" />' },
  *   { type: 'text', text: '{"ok": true}' },
  * ]
  * ```

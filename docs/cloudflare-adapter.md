@@ -273,13 +273,13 @@ const ProjectPresenter = f.presenter({
       ? 'This project is archived. It cannot be modified unless reactivated.'
       : null,
   ],
-  suggestActions: (project) => [
-    { tool: 'projects.get', args: { id: project.id } },
+  suggest: (project) => [
+    suggest('projects.get', 'View details', { id: project.id }),
     project.status === 'active'
-      ? { tool: 'projects.archive', args: { id: project.id } }
+      ? suggest('projects.archive', 'Archive project', { id: project.id })
       : null,
   ].filter(Boolean),
-  agentLimit: { max: 30 },
+  limit: 30,
 });
 
 const listProjects = f.tool({

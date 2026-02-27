@@ -8,7 +8,7 @@
    |_|  |_|\____|_|     |_|    \___/|____/___\___/|_| \_|
 ```
 
-**The MVA framework for the Model Context Protocol.**
+**AI-First DX for the Model Context Protocol.**
 Build production-grade MCP servers with type safety, behavioral governance, and zero boilerplate.
 
 
@@ -66,14 +66,14 @@ Building an MCP server from scratch means solving the same problems every time:
 
 | Problem | What raw MCP gives you | What MCP Fusion gives you |
 |---|---|---|
-| **Tool definition** | Manual JSON schema + handler wiring | `f.tool()` — one function, typed input, typed context |
+| **Tool definition** | Manual JSON schema + handler wiring | `f.query()` / `f.mutation()` — semantic verbs with typed input |
 | **Output control** | Raw JSON dumped into LLM context | **Presenters** — schema-validated egress with system rules |
 | **Context window overflow** | No protection | **Agent Limits** + **TOON encoding** (~40% fewer tokens) |
 | **Self-healing errors** | `isError: true` with a string | Structured XML with error codes, recovery, and available actions |
 | **Tool governance** | Hope nothing changed | **Capability Lockfile** — `mcp-fusion.lock` diffs in every PR |
 | **Type safety** | None (client ↔ server) | **tRPC-style client** with `InferRouter<typeof registry>` |
-| **Multiple tools per file** | One tool = one handler | **Grouped actions** — `projects.list`, `projects.create` in one tool |
-| **Cache control** | Not addressed | **Epistemic State Sync** — glob-based cache policies per tool |
+| **MCP annotations** | Manual JSON | Auto-derived `readOnlyHint`, `destructiveHint` from semantic verbs |
+| **Cache control** | Not addressed | `.invalidates('tasks.*')` / `.cached()` — fluent state sync |
 | **Semantic regression** | Undetectable | **Semantic Probing** — LLM-as-a-Judge for behavioral drift |
 
 ---
@@ -95,25 +95,30 @@ npm install @vinkius-core/mcp-fusion
 ```
 
 ```typescript
-import { initFusion, ToolRegistry, autoDiscover, success } from '@vinkius-core/mcp-fusion';
+import { initFusion, ToolRegistry, autoDiscover } from '@vinkius-core/mcp-fusion';
 
 type AppContext = { db: PrismaClient };
 
 const f = initFusion<AppContext>();
 
-// Define a tool — one function, fully typed
-const listUsers = f.tool({
-    name: 'users.list',
-    description: 'List users from the database',
-    readOnly: true,
-    input: {
-        limit: { type: 'number', min: 1, max: 100, optional: true, description: 'Max results' },
-    },
-    handler: async ({ input, ctx }) => {
-        const users = await ctx.db.user.findMany({ take: input.limit ?? 10 });
-        return success(users);
-    },
-});
+// Fluent API — semantic verbs with auto-derived MCP annotations
+const listUsers = f.query('users.list')
+    .describe('List users from the database')
+    .input({ limit: f.number().min(1).max(100).optional().describe('Max results') })
+    .resolve(async ({ input, ctx }) => {
+        return ctx.db.user.findMany({ take: input.limit ?? 10 });
+    });
+
+// Mutations auto-generate destructiveHint + cache invalidation
+const deleteUser = f.mutation('users.delete')
+    .describe('Permanently remove a user')
+    .destructive()
+    .invalidates('users.*')
+    .input({ id: f.string() })
+    .resolve(async ({ input, ctx }) => {
+        await ctx.db.user.delete({ where: { id: input.id } });
+        return { deleted: input.id };
+    });
 ```
 
 > **Full setup guide**: [mcp-fusion.vinkius.com/quickstart](https://mcp-fusion.vinkius.com/quickstart)
@@ -166,7 +171,7 @@ MCP Fusion implements the **MVA pattern (Model → View → Agent)** — a struc
 
 ### `initFusion<T>()` — Define your context once
 
-Inspired by tRPC. Call `initFusion<AppContext>()` once, and every `f.tool()`, `f.presenter()`, `f.prompt()`, `f.middleware()` inherits the context type. Zero generic repetition.
+Inspired by tRPC. Call `initFusion<AppContext>()` once, and every `f.query()`, `f.mutation()`, `f.presenter()`, `f.prompt()`, `f.middleware()` inherits the context type. Zero generic repetition.
 
 ```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
@@ -175,10 +180,11 @@ type AppContext = { db: PrismaClient; user: User };
 const f = initFusion<AppContext>();
 
 // Every factory method is now typed to AppContext
-const tool = f.tool({ ... });        // handler receives { ctx: AppContext }
+const query    = f.query('users.list').resolve(...);
+const mutation = f.mutation('users.delete').resolve(...);
 const presenter = f.presenter({ ... });
 const middleware = f.middleware(async (ctx) => ({ ... }));
-const registry = f.registry();
+const registry  = f.registry();
 ```
 
 > **Docs**: [mcp-fusion.vinkius.com/introduction#in-practice](https://mcp-fusion.vinkius.com/introduction#in-practice)
@@ -208,24 +214,37 @@ await autoDiscover(registry, './src/tools');
 A Presenter is a domain-level lens that controls what data reaches the LLM. It validates output through a Zod schema, attaches JIT system rules, injects UI blocks (charts, tables, diagrams), and enforces agent limits to prevent context window overflow.
 
 ```typescript
-const InvoicePresenter = f.presenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-    rules: ['CRITICAL: amount_cents is in CENTS. Divide by 100 for display.'],
-    ui: (inv) => [
+import { createPresenter, t, suggest, ui } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = createPresenter('Invoice')
+    .schema({
+        id:           t.string,
+        amount_cents: t.number.describe('CENTS — divide by 100'),
+        status:       t.enum('draft', 'paid', 'overdue'),
+    })
+    .rules(['CRITICAL: amount_cents is in CENTS. Divide by 100 for display.'])
+    .ui((inv) => [
         ui.table(['Field', 'Value'], [
             ['Amount', `$${(inv.amount_cents / 100).toFixed(2)}`],
-            ['Status', inv.paid ? '✅ Paid' : '⚠️ Pending'],
+            ['Status', inv.status === 'paid' ? '✅ Paid' : '⚠️ Pending'],
         ]),
-    ],
-});
+    ])
+    .suggest((inv) => [
+        suggest('invoices.get', 'View invoice details'),
+        inv.status === 'overdue'
+            ? suggest('billing.remind', 'Send collection reminder')
+            : null,
+    ].filter(Boolean))
+    .limit(50);
 ```
 
 Key capabilities:
-- **Egress Firewall**: Zod schema strips undeclared fields before they reach the LLM
-- **System Rules**: JIT directives that travel with the data (context-aware, not static)
-- **Agent Limits**: Truncate collections with overflow messages (`agentLimit(50, ...)`)
+- **`t` Namespace**: Schema helpers (`t.string`, `t.enum(...)`, `t.array(...)`) — no Zod import needed
+- **Egress Firewall**: Only declared fields reach the LLM, everything else is stripped
+- **System Rules**: JIT directives that travel with the data (`.rules()` / `.systemRules()`)
+- **Agent Limits**: `.limit(50)` shorthand or `.agentLimit(50, onTruncate)` for custom messages
 - **UI Blocks**: `ui.echarts()`, `ui.mermaid()`, `ui.table()`, `ui.markdown()`
+- **Action Suggestions**: `suggest(tool, reason)` helper for HATEOAS-style agent guidance
 - **Embeds**: Relational Presenter composition for DRY nested data
 
 > **Docs**: [mcp-fusion.vinkius.com/presenter](https://mcp-fusion.vinkius.com/presenter)
@@ -235,11 +254,9 @@ Key capabilities:
 Structured error responses with error codes, recovery instructions, and available actions — so the LLM self-corrects instead of hallucinating or giving up.
 
 ```typescript
-return toolError('NOT_FOUND', {
-    message: `Project "${id}" does not exist.`,
-    suggestion: 'Call projects.list first to get valid IDs.',
-    availableActions: ['projects.list'],
-});
+return f.error('NOT_FOUND', `Project "${id}" does not exist.`)
+    .suggest('Call projects.list first to get valid IDs.')
+    .actions('projects.list');
 ```
 
 The client-side `FusionClientError` parses these into typed objects with `.code`, `.recovery`, `.availableActions`.
@@ -362,18 +379,22 @@ const withUser = f.middleware(async (ctx) => ({
 
 ### Concurrency Guard
 
-Per-tool concurrency limits with configurable queue behavior:
+Per-tool concurrency limits with configurable queue behavior. Prevents "thundering herd" scenarios.
 
 ```typescript
-{ concurrency: { maxConcurrent: 5, queueTimeout: 10_000 } }
+f.mutation('billing.process')
+    .concurrency({ maxActive: 5, maxQueue: 20 })
+    .resolve(...)
 ```
 
 ### Egress Guard
 
-Response size limits to prevent context window overflow:
+Response size limits to prevent context window overflow or OOM.
 
 ```typescript
-{ egress: { maxResponseBytes: 50_000 } }
+f.query('logs.search')
+    .egress(2 * 1024 * 1024) // 2MB limit
+    .resolve(...)
 ```
 
 ### Mutation Serializer
@@ -384,16 +405,32 @@ Automatic serialization for destructive actions (non-`readOnly`). Prevents concu
 
 ## State Sync — Epistemic Cache-Control
 
-Glob-based cache policies for MCP's `tools/list_changed` notification. The `PolicyEngine` resolves the applicable policy per tool name with O(1) cached lookups.
+Two approaches — fluent (per-tool) or centralized (global policies). Both work together.
+
+### Fluent (recommended)
 
 ```typescript
-const layer = new StateSyncLayer({
-    policies: [
-        { match: 'billing.*', cacheControl: 'no-store' },
-        { match: 'reports.*', cacheControl: 'max-age=300' },
-    ],
-    defaults: { cacheControl: 'no-store' },
-});
+// Declare directly on the tool — auto-collected by the framework
+f.mutation('tasks.update')
+    .invalidates('tasks.*', 'sprints.*')     // cache invalidation on success
+    .resolve(async ({ input, ctx }) => { ... });
+
+f.query('countries.list')
+    .cached()                                 // immutable — LLM sees [Cache-Control: immutable]
+    .resolve(async ({ ctx }) => { ... });
+```
+
+### Centralized (for complex policies)
+
+```typescript
+const layer = f.stateSync()
+    .defaults(p => p.stale())                    // volatile by default
+    .policy('billing.*', p => p.stale())         // explicitly volatile
+    .policy('countries.*', p => p.cached())      // explicitly immutable
+    .policy('tasks.update', p => p.invalidates('tasks.*'))
+    .build();
+
+registry.attachToServer(server, { stateSync: layer });
 ```
 
 > **Docs**: [mcp-fusion.vinkius.com/state-sync](https://mcp-fusion.vinkius.com/state-sync)
@@ -405,19 +442,15 @@ const layer = new StateSyncLayer({
 tRPC-inspired client with compile-time validation and autocomplete.
 
 ```typescript
-// Server exports its router type
 export type AppRouter = InferRouter<typeof registry>;
 
-// Client consumes it — full autocomplete, zero runtime cost
-import type { AppRouter } from './server';
-
 const client = createFusionClient<AppRouter>(transport);
-await client.execute('projects.create', { name: 'Vinkius V2' });
-//                     ^^^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^
-//                     autocomplete!       typed args!
+
+await client.projects.create({ name: 'Vinkius V2' });
+await client.billing.refund({ invoice_id: 'inv_123', amount: 50 });
 ```
 
-Features: `executeBatch()` with parallel/sequential modes, client-side middleware, `throwOnError` with structured `FusionClientError`.
+Features: batch execution, client-side middleware, `throwOnError` with structured `FusionClientError`.
 
 > **Docs**: [mcp-fusion.vinkius.com/client](https://mcp-fusion.vinkius.com/client)
 
@@ -425,15 +458,15 @@ Features: `executeBatch()` with parallel/sequential modes, client-side middlewar
 
 ## Prompt Engine
 
-First-class MCP Prompts with Zod-typed arguments, hydration pipeline, and middleware.
+First-class MCP Prompts with typed arguments, hydration pipeline, and middleware.
 
 ```typescript
-const greetPrompt = f.prompt('greet', {
-    args: z.object({ name: z.string() }),
-    handler: async (ctx, args) => ({
-        messages: [PromptMessage.user(`Hello ${args.name}, welcome to the workspace.`)],
-    }),
-});
+const greetPrompt = f.prompt('greet')
+    .describe('Greet a user by name')
+    .input({ name: f.string() })
+    .handler(async (ctx, { name }) => ({
+        messages: [PromptMessage.user(`Hello ${name}, welcome to the workspace.`)],
+    }));
 ```
 
 > **Docs**: [mcp-fusion.vinkius.com/prompts](https://mcp-fusion.vinkius.com/prompts)
@@ -511,7 +544,6 @@ npm install @vinkius-core/mcp-fusion-oauth
 ```typescript
 import { createAuthTool, requireAuth } from '@vinkius-core/mcp-fusion-oauth';
 
-// Drop-in auth tool — login, complete, status, logout actions
 const auth = createAuthTool({
     clientId: 'your-client-id',
     authorizationEndpoint: 'https://api.example.com/oauth/device/code',
@@ -520,10 +552,9 @@ const auth = createAuthTool({
 });
 registry.register(auth);
 
-// Protect any tool with one line
-const projects = f.tool('projects')
+const listProjects = f.query('projects.list')
     .use(requireAuth({ extractToken: (ctx) => ctx.token }))
-    .handler(async (ctx) => { /* authenticated */ });
+    .resolve(async ({ ctx }) => { /* ctx.token available */ });
 ```
 
 | Component | What it does |

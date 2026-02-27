@@ -20,12 +20,19 @@ export type { Result, Success, Failure } from './result.js';
 export type {
     ToolBuilder, ActionMetadata,
     InternalAction, MiddlewareFn,
-    ActionConfig,
+    ActionConfig, StateSyncHint,
 } from './types.js';
 
 // ── Builder ──────────────────────────────────────────────
 export { GroupedToolBuilder, ActionGroupBuilder, createTool, defineTool } from './builder/index.js';
+export { FluentToolBuilder } from './builder/index.js';
+export { FluentRouter } from './builder/index.js';
+export {
+    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
+} from './builder/index.js';
 export type { GroupConfigurator, ToolConfig, ActionDef, GroupDef } from './builder/index.js';
+export type { SemanticDefaults, InferInputSchema } from './builder/index.js';
+export type { FluentDescriptor, FluentParamsMap, InferFluentParams } from './builder/index.js';
 export type {
     ParamDef, ParamsMap, InferParams,
     StringParamDef, NumberParamDef, BooleanParamDef,

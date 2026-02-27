@@ -84,6 +84,29 @@ export interface ToolBuilder<TContext = void> {
     getCommonSchema?(): ZodObject<ZodRawShape> | undefined;
     /** Check if `_select` reflection is enabled for context window optimization. */
     getSelectEnabled?(): boolean;
+
+    // ── State Sync Hints (Fluent API) ──────────────────────
+
+    /** Get per-action state sync hints declared via fluent `.invalidates()` / `.cached()`. */
+    getStateSyncHints?(): ReadonlyMap<string, StateSyncHint>;
+}
+
+// ── State Sync Hints ─────────────────────────────────────
+
+/**
+ * Per-action hint for automatic State Sync policy generation.
+ *
+ * Declared via fluent API (`.invalidates()`, `.cached()`) and
+ * collected by {@link ServerAttachment} to auto-generate
+ * `SyncPolicy[]` without manual configuration.
+ *
+ * @see {@link StateSyncConfig} for centralized configuration
+ */
+export interface StateSyncHint {
+    /** Cache directive for this action's description. */
+    readonly cacheControl?: 'no-store' | 'immutable';
+    /** Glob patterns of tools invalidated on successful execution. */
+    readonly invalidates?: readonly string[];
 }
 
 // ── Action Metadata (Observability) ──────────────────────

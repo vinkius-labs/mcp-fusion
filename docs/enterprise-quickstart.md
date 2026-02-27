@@ -89,23 +89,17 @@ export const UserPresenter = f.presenter({
       ? 'Email addresses are included for display only.'
       : null,
   ],
-  suggestActions: (user) => [
-    { tool: 'users.get', args: { id: user.id } },
-    { tool: 'users.update', args: { id: user.id } },
+  suggest: (user) => [
+    suggest('users.get', 'View user', { id: user.id }),
+    suggest('users.update', 'Update user', { id: user.id }),
   ],
-  agentLimit: {
-    max: 50,
-    onTruncate: (omitted) => ({
-      type: 'text' as const,
-      text: `${omitted} users omitted. Use "search" to narrow results.`,
-    }),
-  },
+  limit: 50,
 });
 ```
 
 The database row has 10+ fields. The agent sees 5. When a developer adds a new column, it doesn't leak unless explicitly added to the schema.
 
-`suggestActions` gives the agent concrete `{ tool, args }` next-steps instead of hallucinating tool names. `agentLimit` truncates large collections and teaches the agent to use filters.
+`suggest` gives the agent concrete next-steps instead of hallucinating tool names. `limit` truncates large collections and teaches the agent to use filters.
 
 ## Step 5 — Tools {#step-5-tools}
 
@@ -129,7 +123,7 @@ export const listUsers = f.tool({
 });
 ```
 
-The handler has one job — query the database with tenant scope. Authentication is middleware. Column filtering is the Presenter. Collection capping is `agentLimit`. Each concern is independently testable.
+The handler has one job — query the database with tenant scope. Authentication is middleware. Column filtering is the Presenter. Collection capping is `limit`. Each concern is independently testable.
 
 ### Write Tool with Error Recovery
 

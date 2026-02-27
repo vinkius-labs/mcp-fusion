@@ -25,6 +25,12 @@ export { extractZodDescriptions } from './ZodDescriptionExtractor.js';
 // ── Validation Error ─────────────────────────────────────
 export { PresenterValidationError } from './PresenterValidationError.js';
 
+// ── Type Helpers (Fluent Schema Namespace) ───────────────
+export { t } from './typeHelpers.js';
+
+// ── Action Suggestion Helper ─────────────────────────────
+export { suggest } from './suggest.js';
+
 // ── Post-Processing ──────────────────────────────────────
 export { postProcessResult, isToolResponse } from './PostProcessor.js';
 

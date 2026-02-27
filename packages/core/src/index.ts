@@ -67,6 +67,9 @@ export {
     initFusion,
     createGroup,
     toStandardValidator, fromZodSchema, isStandardSchema, autoValidator,
+    // Fluent API
+    FluentToolBuilder, FluentRouter,
+    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
 } from './core/index.js';
 /** @category Core */
 export type {
@@ -86,6 +89,10 @@ export type {
     GroupConfig, GroupAction, CompiledGroup,
     StandardSchemaV1, StandardSchemaIssue, InferStandardOutput,
     FusionValidator, ValidationResult,
+    // Fluent API Types
+    SemanticDefaults, InferInputSchema,
+    FluentDescriptor, FluentParamsMap, InferFluentParams,
+    StateSyncHint,
 } from './core/index.js';
 
 // ── Client (tRPC-style type-safe) ────────────────────────
@@ -109,7 +116,7 @@ export type {
 /** @category Presenter */
 export {
     ResponseBuilder, response, isResponseBuilder,
-    ui,
+    ui, t, suggest,
     Presenter, createPresenter, isPresenter,
     PresenterValidationError,
     definePresenter,

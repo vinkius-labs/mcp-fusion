@@ -53,6 +53,7 @@ import {
     type InternalAction,
     type MiddlewareFn,
     type ActionConfig,
+    type StateSyncHint,
 } from '../types.js';
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';
 import { type FusionTracer, SpanStatusCode } from '../../observability/Tracing.js';
@@ -171,6 +172,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _concurrencyGuard?: ConcurrencyGuard;
     private _egressMaxBytes?: number;
     private _mutationSerializer?: MutationSerializer;
+    private readonly _stateSyncHints = new Map<string, StateSyncHint>();
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -336,6 +338,76 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     toonDescription(): this {
         this._assertNotFrozen();
         this._toonMode = true;
+        return this;
+    }
+
+    // ── State Sync (Fluent) ──────────────────────────────
+
+    /**
+     * Declare glob patterns invalidated when this tool succeeds.
+     *
+     * Eliminates manual `stateSync.policies` configuration —
+     * the framework auto-collects hints from all builders.
+     *
+     * @param patterns - Glob patterns (e.g. `'sprints.*'`, `'tasks.*'`)
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool('tasks')
+     *     .invalidates('tasks.*', 'sprints.*')
+     *     .action({ name: 'update', handler: updateTask });
+     * ```
+     *
+     * @see {@link StateSyncConfig} for centralized configuration
+     */
+    invalidates(...patterns: string[]): this {
+        this._assertNotFrozen();
+        // Store under tool-level key '*' — applies to all actions
+        const existing = this._stateSyncHints.get('*');
+        this._stateSyncHints.set('*', {
+            ...existing,
+            invalidates: [...(existing?.invalidates ?? []), ...patterns],
+        });
+        return this;
+    }
+
+    /**
+     * Mark this tool's data as immutable (safe to cache forever).
+     *
+     * Use for reference data: countries, currencies, ICD-10 codes.
+     * Equivalent to `cacheControl: 'immutable'` in manual policies.
+     *
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool('countries')
+     *     .cached()
+     *     .action({ name: 'list', readOnly: true, handler: listCountries });
+     * ```
+     */
+    cached(): this {
+        return this._setCacheDirective('immutable');
+    }
+
+    /**
+     * Mark this tool's data as volatile (never cache).
+     *
+     * Equivalent to `cacheControl: 'no-store'` in manual policies.
+     * Use for dynamic data that changes frequently.
+     *
+     * @returns `this` for chaining
+     */
+    stale(): this {
+        return this._setCacheDirective('no-store');
+    }
+
+    /** @internal */
+    private _setCacheDirective(directive: 'immutable' | 'no-store'): this {
+        this._assertNotFrozen();
+        const existing = this._stateSyncHints.get('*');
+        this._stateSyncHints.set('*', { ...existing, cacheControl: directive });
         return this;
     }
 
@@ -1094,6 +1166,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
     /** Check if `_select` reflection is enabled. Used by the Exposition Compiler. */
     getSelectEnabled(): boolean { return this._selectEnabled; }
+
+    /** Get per-action state sync hints for auto-policy generation. */
+    getStateSyncHints(): ReadonlyMap<string, StateSyncHint> { return this._stateSyncHints; }
 
     /**
      * Preview the exact MCP protocol payload that the LLM will receive.

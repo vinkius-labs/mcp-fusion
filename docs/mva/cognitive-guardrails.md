@@ -6,7 +6,7 @@ Each guardrail is designed to be **zero-configuration by default, explicit when 
 
 ## The Three Guardrails
 
-## ① Smart Truncation — `.agentLimit()`
+## ① Smart Truncation — `.limit()` / `.agentLimit()`
 
 ### The Problem: Context DDoS
 
@@ -22,9 +22,16 @@ Beyond cost, large responses degrade accuracy. LLMs lose coherence when the cont
 
 ### The Solution: Truncate + Teach
 
-`.agentLimit()` does two things: it truncates the dataset AND injects a teaching block that tells the agent how to get better results.
+`.limit()` is the shorthand; `.agentLimit()` gives full control over the truncation message:
 
 ```typescript
+// Shorthand — auto-generated truncation message
+const TaskPresenter = createPresenter('Task')
+    .schema(taskSchema)
+    .limit(50);
+// → "⚠️ Dataset truncated. 50 shown, {N} hidden. Use filters."
+
+// Full control — custom truncation with filter guidance
 const TaskPresenter = createPresenter('Task')
     .schema(taskSchema)
     .agentLimit(50, (omitted) =>
@@ -242,7 +249,7 @@ All three guardrails work together to create a multi-layered defense:
 **The virtuous cycle:**
 
 1. **First call:** Agent may send hallucinated params → `strict()` rejects → agent self-corrects
-2. **Second call:** Valid params → handler runs → large dataset → `agentLimit()` truncates + teaches
+2. **Second call:** Valid params → handler runs → large dataset → `.limit()` / `.agentLimit()` truncates + teaches
 3. **Third call:** Agent uses filters → smaller dataset → clean data → correct action
 
 By the third call, the agent has learned: which fields are valid, how to filter data, and what actions are available. The guardrails have transformed three potential failure loops into a three-step learning sequence.

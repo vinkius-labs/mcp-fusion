@@ -10,3 +10,16 @@ export type {
     StringParamDef, NumberParamDef, BooleanParamDef,
     EnumParamDef, ArrayParamDef,
 } from './ParamDescriptors.js';
+
+// ── Fluent API ───────────────────────────────────────────
+export { FluentToolBuilder } from './FluentToolBuilder.js';
+export type { SemanticDefaults, InferInputSchema } from './FluentToolBuilder.js';
+export { FluentRouter } from './FluentRouter.js';
+export { ErrorBuilder } from './ErrorBuilder.js';
+export {
+    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
+    isFluentDescriptor, resolveFluentParams,
+} from './FluentSchemaHelpers.js';
+export type {
+    FluentDescriptor, FluentParamsMap, InferFluentParams,
+} from './FluentSchemaHelpers.js';

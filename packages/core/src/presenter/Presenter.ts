@@ -52,7 +52,7 @@
  *
  * @module
  */
-import { type ZodType, ZodError } from 'zod';
+import { z, ZodType, type ZodRawShape, ZodError } from 'zod';
 import { ResponseBuilder } from './ResponseBuilder.js';
 import { type UiBlock } from './ui.js';
 import { PresenterValidationError } from './PresenterValidationError.js';
@@ -193,10 +193,46 @@ export class Presenter<T> {
      */
     schema<TSchema extends ZodType>(
         zodSchema: TSchema,
-    ): Presenter<TSchema['_output']> {
+    ): Presenter<TSchema['_output']>;
+
+    /**
+     * Set the schema from an object of ZodTypes (enables `t.*` shorthand).
+     *
+     * Accepts a plain object where each value is a ZodType.
+     * Internally wraps it into `z.object(shape)` for full validation.
+     *
+     * @param shape - Object shape with ZodType values (e.g. `{ id: t.string, name: t.string }`)
+     * @returns A narrowed Presenter with the inferred output type
+     *
+     * @example
+     * ```typescript
+     * import { createPresenter, t } from '@vinkius-core/mcp-fusion';
+     *
+     * createPresenter('Invoice')
+     *     .schema({
+     *         id:     t.string,
+     *         amount: t.number.describe('in cents'),
+     *         status: t.enum('draft', 'paid'),
+     *     })
+     * ```
+     */
+    schema<TShape extends ZodRawShape>(
+        shape: TShape,
+    ): Presenter<z.infer<z.ZodObject<TShape>>>;
+
+    // Implementation — accepts both ZodType and plain object shapes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    schema(schemaOrShape: any): Presenter<any> {
         this._assertNotSealed();
-        const narrowed = this as unknown as Presenter<TSchema['_output']>;
-        narrowed._schema = zodSchema;
+        const narrowed = this as unknown as Presenter<unknown>;
+
+        // Detect if it's an already-constructed ZodType (has _def property)
+        if (schemaOrShape instanceof ZodType) {
+            narrowed._schema = schemaOrShape;
+        } else {
+            // Plain object shape → wrap in z.object()
+            narrowed._schema = z.object(schemaOrShape as ZodRawShape);
+        }
         return narrowed;
     }
 
@@ -331,6 +367,94 @@ export class Presenter<T> {
         this._assertNotSealed();
         this._suggestActions = fn;
         return this;
+    }
+
+    // ── Fluent Aliases ───────────────────────────────────
+
+    /**
+     * Alias for `.suggestActions()` — fluent shorthand.
+     *
+     * Define HATEOAS-style action suggestions based on data state.
+     * Use with the `suggest()` helper for maximum fluency.
+     *
+     * @param fn - `(data, ctx?) => (ActionSuggestion | null)[]`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * import { suggest } from '@vinkius-core/mcp-fusion';
+     *
+     * .suggest((inv) => [
+     *     suggest('invoices.get', 'View details'),
+     *     inv.status === 'overdue'
+     *         ? suggest('billing.remind', 'Send reminder')
+     *         : null,
+     * ])
+     * ```
+     */
+    suggest(fn: SuggestActionsFn<T>): this {
+        return this.suggestActions(fn);
+    }
+
+    /**
+     * Alias for `.systemRules()` — fluent shorthand.
+     *
+     * @param rules - Static rules array or dynamic `(data, ctx?) => (string | null)[]`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * .rules(['CRITICAL: amounts in CENTS.'])
+     * .rules((inv) => [
+     *     inv.status === 'overdue' ? '⚠️ OVERDUE' : null,
+     * ])
+     * ```
+     */
+    rules(rules: readonly string[] | ((data: T, ctx?: unknown) => (string | null)[])): this {
+        return this.systemRules(rules);
+    }
+
+    /**
+     * Alias for `.uiBlocks()` — fluent shorthand.
+     *
+     * @param fn - `(item, ctx?) => (UiBlock | null)[]`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * .ui((inv) => [
+     *     ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount / 100 }] }] }),
+     * ])
+     * ```
+     */
+    ui(fn: ItemUiBlocksFn<T>): this {
+        return this.uiBlocks(fn);
+    }
+
+    /**
+     * Cognitive guardrail shorthand with auto-generated message.
+     *
+     * Truncates large collections and injects a smart summary block.
+     * For custom truncation messages, use `.agentLimit(max, onTruncate)` instead.
+     *
+     * @param max - Maximum items to keep in the data array
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * // Auto-generated message:
+     * .limit(50)
+     * // → "⚠️ Dataset truncated. 50 shown, {omitted} hidden. Use filters to narrow results."
+     *
+     * // For custom message, use agentLimit():
+     * .agentLimit(50, (omitted) => ui.summary(`Custom: ${omitted} hidden`))
+     * ```
+     */
+    limit(max: number): this {
+        return this.agentLimit(max, (omitted) => ({
+            type: 'summary',
+            content: `📊 **Summary**: ⚠️ Dataset truncated. ${max} shown, ${omitted} hidden. Use filters to narrow results.`,
+        }));
     }
 
     /**

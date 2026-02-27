@@ -25,30 +25,24 @@ The Presenter is **domain-level, not tool-level.** Define `InvoicePresenter` onc
 
 ## The Presenter {#presenter-responsibilities}
 
-Three APIs produce the same internal builder: `definePresenter({})` (declarative), `createPresenter('Name').schema(s).systemRules(r)` (fluent), `f.presenter({})` (context-aware). Pick one.
+Three APIs produce the same result: `createPresenter('Name').schema(s).rules(r)` (fluent), `definePresenter({})` (declarative), `f.presenter({})` (context-aware). Each method has a shorthand (`.rules()`, `.ui()`, `.limit()`, `.suggest()`) and a full-control alias (`.systemRules()`, `.uiBlocks()`, `.agentLimit()`, `.suggestActions()`).
 
 ### Schema Validation {#schema-validation}
 
 The Zod schema is a security boundary. Only declared fields pass through:
 
 ```typescript
-import { definePresenter } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
+import { createPresenter, t } from '@vinkius-core/mcp-fusion';
 
-const invoiceSchema = z.object({
-  id: z.string(),
-  amount_cents: z.number().describe('Amount in cents — divide by 100 for display'),
-  status: z.enum(['paid', 'pending', 'overdue']),
-});
-
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  autoRules: true,
-});
+export const InvoicePresenter = createPresenter('Invoice')
+  .schema({
+    id:           t.string,
+    amount_cents: t.number.describe('Amount in cents — divide by 100 for display'),
+    status:       t.enum('paid', 'pending', 'overdue'),
+  });
 ```
 
-`autoRules: true` extracts `.describe()` annotations as system rules. Fields like `password_hash` or `tenant_id` are never in the schema, so they never reach the agent.
+`.describe()` annotations auto-extract as system rules. Fields like `password_hash` or `tenant_id` are never in the schema, so they never reach the agent.
 
 ### System Rules {#system-rules}
 
@@ -75,7 +69,7 @@ Rules receive data and request context. Return `null` to exclude conditionally:
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
   .schema(invoiceSchema)
-  .systemRules((invoice, ctx) => [
+  .rules((invoice, ctx) => [
     'CRITICAL: amount_cents is in CENTS. Divide by 100.',
     ctx?.user?.role !== 'admin'
       ? 'RESTRICTED: Mask financial totals for non-admin users.'
@@ -115,9 +109,15 @@ export const InvoicePresenter = definePresenter({
 
 ### Cognitive Guardrails {#cognitive-guardrails}
 
-`agentLimit` truncates large datasets and teaches the agent to filter:
+`.limit()` is the shorthand; `.agentLimit()` gives full control with a custom message:
 
 ```typescript
+// Shorthand — auto-generated truncation message
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .limit(50);
+
+// Full control — custom truncation message
 const InvoicePresenter = createPresenter('Invoice')
   .schema(invoiceSchema)
   .agentLimit(50, (omitted) =>
@@ -132,23 +132,22 @@ Without this, 10,000 rows dump into the context window. With it, the agent recei
 
 ### Affordances {#affordances}
 
-`suggestActions` tells the agent what it can do next based on state:
+`.suggest()` with the `suggest()` helper tells the agent what it can do next based on state:
 
 ```typescript
+import { createPresenter, suggest } from '@vinkius-core/mcp-fusion';
+
 const InvoicePresenter = createPresenter('Invoice')
   .schema(invoiceSchema)
-  .suggestActions((invoice) => {
-    if (invoice.status === 'pending') {
-      return [
-        { tool: 'billing.pay', reason: 'Process immediate payment' },
-        { tool: 'billing.send_reminder', reason: 'Send payment reminder' },
-      ];
-    }
-    if (invoice.status === 'overdue') {
-      return [{ tool: 'billing.escalate', reason: 'Escalate to collections' }];
-    }
-    return [];
-  });
+  .suggest((invoice) => [
+    suggest('billing.pay', 'Process immediate payment'),
+    invoice.status === 'pending'
+      ? suggest('billing.send_reminder', 'Send payment reminder')
+      : null,
+    invoice.status === 'overdue'
+      ? suggest('billing.escalate', 'Escalate to collections')
+      : null,
+  ].filter(Boolean));
 ```
 
 The agent receives `→ billing.pay: Process immediate payment` as a system hint. No hallucinated tool names, no skipped workflows.
@@ -160,11 +159,11 @@ The agent receives `→ billing.pay: Process immediate payment` as a system hint
 ```typescript
 const ClientPresenter = createPresenter('Client')
   .schema(clientSchema)
-  .systemRules(['Display company name prominently.']);
+  .rules(['Display company name prominently.']);
 
 const InvoicePresenter = createPresenter('Invoice')
   .schema(invoiceSchema)
-  .systemRules(['amount_cents is in CENTS.'])
+  .rules(['amount_cents is in CENTS.'])
   .embed('client', ClientPresenter);
 ```
 

@@ -11,23 +11,14 @@
  * @example
  * ```typescript
  * createTool<AppContext>('platform')
- *     .group('users', 'User management', g => {
- *         g.use(requireAdmin)  // Group-scoped middleware
- *          .action({
- *              name: 'list',
- *              readOnly: true,
- *              handler: async (ctx, _args) => success(await ctx.db.users.findMany()),
- *          })
- *          .action({
- *              name: 'ban',
- *              destructive: true,
- *              schema: z.object({ user_id: z.string() }),
- *              handler: async (ctx, args) => {
- *                  await ctx.db.users.ban(args.user_id);
- *                  return success('User banned');
- *              },
- *          });
- *     });
+ *     .group('users', 'User management', g => g
+ *         .use(requireAdmin)
+ *         .query('list', async (ctx) => success(await ctx.db.users.findMany()))
+ *         .mutation('ban', async (ctx, args) => {
+ *             await ctx.db.users.ban(args.user_id);
+ *             return success('User banned');
+ *         })
+ *     );
  * ```
  *
  * @see {@link GroupedToolBuilder.group} for creating groups
@@ -53,9 +44,9 @@ import {
  *
  * @example
  * ```typescript
- * const configure: GroupConfigurator<AppContext, { workspace_id: string }> = (g) => {
- *     g.action({ name: 'list', handler: listHandler });
- * };
+ * const configure: GroupConfigurator<AppContext, { workspace_id: string }> = (g) => g
+ *     .query('list', listHandler)
+ *     .mutation('delete', deleteHandler);
  *
  * builder.group('users', 'User management', configure);
  * ```
@@ -98,6 +89,14 @@ export function mapConfigToActionFields<TContext>(
     };
 }
 
+// ── Handler type for semantic verbs ──────────────────────
+
+/**
+ * Handler function type for semantic verb shortcuts.
+ * @typeParam TContext - Application context type
+ */
+type ActionHandler<TContext> = (ctx: TContext, args: Record<string, unknown>) => Promise<ToolResponse>;
+
 // ── ActionGroupBuilder ───────────────────────────────────
 
 export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown> = Record<string, never>> {
@@ -124,10 +123,11 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      *
      * @example
      * ```typescript
-     * builder.group('admin', 'Admin operations', g => {
-     *     g.use(requireAdmin)  // Only runs for admin.* actions
-     *      .action({ name: 'reset', handler: resetHandler });
-     * });
+     * builder.group('admin', 'Admin operations', (g) => g
+     *     .use(requireAdmin)
+     *     .query('list', listHandler)
+     *     .mutation('reset', resetHandler)
+     * );
      * ```
      *
      * @see {@link MiddlewareFn} for the middleware signature
@@ -150,10 +150,10 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      *
      * @example
      * ```typescript
-     * builder.group('profile', 'User profile', g => {
-     *     g.omitCommon('workspace_id')  // All profile.* actions skip workspace_id
-     *      .action({ name: 'me', readOnly: true, handler: meHandler });
-     * });
+     * builder.group('profile', 'User profile', (g) => g
+     *     .omitCommon('workspace_id')
+     *     .query('me', meHandler)
+     * );
      * ```
      */
     omitCommon(...fields: string[]): this {
@@ -161,35 +161,85 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
         return this;
     }
 
+    // ── Semantic Verb Shortcuts ──────────────────────────
+
     /**
-     * Register an action within this group.
+     * Register a **read-only** action (readOnly: true).
      *
-     * The action key is automatically prefixed with the group name
-     * (e.g., action `"create"` in group `"users"` becomes `"users.create"`).
+     * Semantic shortcut — eliminates the need for config objects.
+     * The action name is automatically prefixed with the group name
+     * (e.g., `"list"` in group `"users"` → `"users.list"`).
      *
-     * @param config - Action configuration
+     * @param name - Action name (must not contain dots)
+     * @param handler - Handler function
      * @returns `this` for chaining
      *
      * @example
      * ```typescript
-     * builder.group('billing', 'Billing operations', g => {
-     *     g.action({
-     *         name: 'refund',
-     *         description: 'Issue a refund',
-     *         destructive: true,
-     *         schema: z.object({
-     *             invoice_id: z.string(),
-     *             amount: z.number().positive(),
-     *         }),
-     *         handler: async (ctx, args) => {
-     *             await ctx.billing.refund(args.invoice_id, args.amount);
-     *             return success('Refund issued');
-     *         },
-     *     });
-     * });
-     * // Discriminator value: "billing.refund"
+     * builder.group('users', 'User management', (g) => g
+     *     .query('list', async (ctx) => success(await ctx.db.users.findMany()))
+     *     .query('get', async (ctx, args) => success(await ctx.db.users.find(args.id)))
+     * );
+     * ```
+     */
+    query(name: string, handler: ActionHandler<TContext>): this {
+        return this.action({ name, readOnly: true, handler });
+    }
+
+    /**
+     * Register a **destructive** action (destructive: true).
+     *
+     * Semantic shortcut — eliminates the need for config objects.
+     * Signals to the LLM that this action has irreversible side effects.
+     *
+     * @param name - Action name (must not contain dots)
+     * @param handler - Handler function
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * builder.group('users', 'User management', (g) => g
+     *     .mutation('ban', async (ctx, args) => {
+     *         await ctx.db.users.ban(args.user_id);
+     *         return success('User banned');
+     *     })
+     * );
+     * ```
+     */
+    mutation(name: string, handler: ActionHandler<TContext>): this {
+        return this.action({ name, destructive: true, handler });
+    }
+
+    // ── Full Action Registration ─────────────────────────
+
+    /**
+     * Register an action within this group.
+     *
+     * **As a 2-arg shortcut** `action(name, handler)`: registers a standard
+     * action (neither read-only nor destructive). This completes the
+     * semantic verb trio alongside `.query()` and `.mutation()`.
+     *
+     * **As a config object** `action({ name, schema, ... })`: full control
+     * over all action properties (schema, description, omitCommon, etc.).
+     *
+     * The action key is automatically prefixed with the group name
+     * (e.g., action `"create"` in group `"users"` becomes `"users.create"`).
+     *
+     * @param config - Action configuration OR action name (string)
+     * @param handler - Handler function (only when first arg is a string)
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * builder.group('users', 'User management', (g) => g
+     *     .query('list', listHandler)
+     *     .action('invite', inviteHandler)
+     *     .mutation('ban', banHandler)
+     * );
      * ```
      *
+     * @see {@link ActionGroupBuilder.query} — read-only actions
+     * @see {@link ActionGroupBuilder.mutation} — destructive actions
      * @see {@link ActionConfig} for all configuration options
      */
     action<TSchema extends ZodObject<ZodRawShape>, TOmit extends keyof TCommon = never>(config: {
@@ -202,9 +252,19 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
         omitCommon?: TOmit[];
         handler: (ctx: TContext, args: TSchema["_output"] & Omit<TCommon, TOmit>) => Promise<ToolResponse>;
     }): this;
-    /** Register an action within this group (untyped: no schema) */
+    /** Register a standard action (2-arg shorthand: neither readOnly nor destructive) */
+    action(name: string, handler: ActionHandler<TContext>): this;
+    /** Register an action within this group (config object) */
     action(config: ActionConfig<TContext>): this;
-    action(config: ActionConfig<TContext>): this {
+    action(
+        configOrName: ActionConfig<TContext> | string,
+        maybeHandler?: ActionHandler<TContext>,
+    ): this {
+        // 2-arg shorthand: action('invite', inviteHandler)
+        const config: ActionConfig<TContext> = typeof configOrName === 'string'
+            ? { name: configOrName, handler: maybeHandler! }
+            : configOrName;
+
         if (config.name.includes('.')) {
             throw new Error(
                 `Action name "${config.name}" must not contain dots. ` +
@@ -227,3 +287,4 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
         return this;
     }
 }
+

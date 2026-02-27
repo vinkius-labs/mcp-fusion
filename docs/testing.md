@@ -84,8 +84,8 @@ Four tests, 8 ms, zero tokens.
 // FusionTester reads (Symbol key):
 response[Symbol.for('mcp-fusion.mva-meta')] = {
   data: { id: '1', name: 'Alice', email: 'alice@acme.com' },
-  systemRules: ['Data from Prisma ORM. Do not infer outside this response.'],
-  uiBlocks: [{ type: 'summary', content: 'User: Alice (alice@acme.com)' }],
+  rules: ['Data from Prisma ORM. Do not infer outside this response.'],
+  ui: [{ type: 'summary', content: 'User: Alice (alice@acme.com)' }],
 };
 ```
 

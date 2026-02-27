@@ -22,7 +22,7 @@ import { resolveServer } from './ServerResolver.js';
 import { type DebugObserverFn } from '../observability/DebugObserver.js';
 import { type FusionTracer } from '../observability/Tracing.js';
 import { StateSyncLayer } from '../state-sync/StateSyncLayer.js';
-import { type StateSyncConfig } from '../state-sync/types.js';
+import { type StateSyncConfig, type SyncPolicy } from '../state-sync/types.js';
 import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
 import { type ZeroTrustConfig, AttestationError } from '../introspection/CryptoAttestation.js';
@@ -556,7 +556,9 @@ export async function attachToServer<TContext>(
     propagateObservability(registry, debug, tracing);
 
     // 2. Create State Sync layer (zero overhead when not configured)
-    const syncLayer = stateSync ? new StateSyncLayer(stateSync) : undefined;
+    //    Merge manual policies with fluent hints from builders (.invalidates(), .cached())
+    const mergedSyncConfig = mergeStateSyncConfig(stateSync, registry.getBuilders());
+    const syncLayer = mergedSyncConfig ? new StateSyncLayer(mergedSyncConfig) : undefined;
 
     // 3. Register introspection resource (zero overhead when disabled)
     if (introspection?.enabled) {
@@ -731,4 +733,65 @@ function createProgressSink(extra: unknown): ProgressSink | undefined {
 function extractSignal(extra: unknown): AbortSignal | undefined {
     if (!isMcpExtra(extra)) return undefined;
     return extra.signal;
+}
+
+// ── State Sync Hint Collection ──────────────────────────────
+
+/**
+ * Collect per-builder state sync hints and merge with manual config.
+ *
+ * Three scenarios:
+ * 1. Manual `stateSync` only — returns it unchanged
+ * 2. Fluent hints only — generates policies automatically
+ * 3. Both — fluent-generated policies are appended AFTER manual ones
+ *    (first-match-wins, so manual policies take precedence)
+ *
+ * Zero overhead when neither is configured.
+ */
+function mergeStateSyncConfig<TContext>(
+    manual: StateSyncConfig | undefined,
+    builders: Iterable<ToolBuilder<TContext>>,
+): StateSyncConfig | undefined {
+    const hintPolicies = collectHintPolicies(builders);
+
+    if (hintPolicies.length === 0) return manual;
+    if (!manual) return { policies: hintPolicies };
+
+    // Merge: manual first (higher precedence), then auto-generated
+    return {
+        ...manual,
+        policies: [...manual.policies, ...hintPolicies],
+    };
+}
+
+/**
+ * Walk all builders and convert their StateSyncHints into SyncPolicy[].
+ *
+ * For each builder with hints:
+ * - `'*'` key → tool-level policy matching `{toolName}.*`
+ * - Named action keys → action-level policy matching `{toolName}.{actionKey}`
+ */
+function collectHintPolicies<TContext>(
+    builders: Iterable<ToolBuilder<TContext>>,
+): SyncPolicy[] {
+    const policies: SyncPolicy[] = [];
+
+    for (const builder of builders) {
+        if (!builder.getStateSyncHints) continue;
+        const hints = builder.getStateSyncHints();
+        if (hints.size === 0) continue;
+
+        const toolName = builder.getName();
+
+        for (const [key, hint] of hints) {
+            const match = key === '*' ? `${toolName}.*` : `${toolName}.${key}`;
+            policies.push({
+                match,
+                ...(hint.cacheControl ? { cacheControl: hint.cacheControl } : {}),
+                ...(hint.invalidates?.length ? { invalidates: [...hint.invalidates] } : {}),
+            });
+        }
+    }
+
+    return policies;
 }

@@ -367,7 +367,7 @@ For a 100-row user list, this saves thousands of tokens per response, translatin
 
 ## 10. Cognitive Guardrails (Context DDoS Prevention)
 
-The Presenter's `.agentLimit()` truncates large collections **before serialization**, preventing context overflow:
+The Presenter's `.limit()` / `.agentLimit()` truncates large collections **before serialization**, preventing context overflow:
 
 ```typescript
 // From: packages/core/src/presenter/Presenter.ts — make()
@@ -383,7 +383,7 @@ if (isArray && this._agentLimit && data.length > this._agentLimit.max) {
 | Scenario | Rows | Tokens | Reduction |
 |----------|------|--------|-----------|
 | No guardrail | 10,000 | ~5,000,000 | — |
-| `.agentLimit(50)` | 50 | ~25,000 | **200x** |
+| `.limit(50)` / `.agentLimit(50)` | 50 | ~25,000 | **200x** |
 
 Truncation happens **before Zod validation**, so the schema only processes the capped set — saving CPU on large datasets.
 

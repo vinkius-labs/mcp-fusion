@@ -166,7 +166,7 @@ The AI sees the error as structured XML:
 Complete Presenter with validation, rules, UI blocks, guardrails, and HATEOAS.
 
 ```typescript
-import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+import { createPresenter, ui, suggest } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
 const invoiceSchema = z.object({
@@ -181,13 +181,10 @@ const invoiceSchema = z.object({
     })),
 });
 
-export const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-    autoRules: true, // ← auto-extracts .describe() as system rules
-    systemRules: ['Use currency format: $XX,XXX.00'],
-
-    uiBlocks: (invoice) => [
+export const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .rules(['Use currency format: $XX,XXX.00'])
+    .ui((invoice) => [
         ui.echarts({
             series: [{
                 type: 'gauge',
@@ -195,44 +192,23 @@ export const InvoicePresenter = definePresenter({
                 max: Math.ceil(invoice.amount_cents / 100 * 1.5),
             }],
         }),
-    ],
-
-    collectionUi: (invoices) => [
-        ui.echarts({
-            xAxis: { type: 'category', data: invoices.map(i => i.id) },
-            yAxis: { type: 'value' },
-            series: [{ type: 'bar', data: invoices.map(i => i.amount_cents / 100) }],
-        }),
-        ui.summary(
-            `${invoices.length} invoices. ` +
-            `Total: $${(invoices.reduce((s, i) => s + i.amount_cents, 0) / 100).toLocaleString()}`
-        ),
-    ],
-
-    agentLimit: {
-        max: 50,
-        onTruncate: (omitted) => ui.summary(
-            `⚠️ Dataset truncated. 50 shown, ${omitted} hidden. ` +
-            `Use status or date_range filters to narrow results.`
-        ),
-    },
-
-    suggestActions: (invoice) => {
+    ])
+    .limit(50)
+    .suggest((invoice) => {
         if (invoice.status === 'pending') {
             return [
-                { tool: 'billing.charge', reason: 'Process payment' },
-                { tool: 'billing.send_reminder', reason: 'Send payment reminder email' },
+                suggest('billing.charge', 'Process payment'),
+                suggest('billing.send_reminder', 'Send payment reminder email'),
             ];
         }
         if (invoice.status === 'overdue') {
             return [
-                { tool: 'billing.escalate', reason: 'Escalate to collections' },
-                { tool: 'billing.charge', reason: 'Attempt late payment' },
+                suggest('billing.escalate', 'Escalate to collections'),
+                suggest('billing.charge', 'Attempt late payment'),
             ];
         }
         return [];
-    },
-});
+    });
 ```
 
 ### Using the Presenter in a Tool
@@ -294,7 +270,7 @@ const EmployeePresenter = createPresenter('Employee')
         salary_cents: z.number(),
         department: z.string(),
     }))
-    .systemRules((employee, ctx) => {
+    .rules((employee, ctx) => {
         const rc = ctx as RequestContext | undefined;
         return [
             // Always show
@@ -312,7 +288,7 @@ const EmployeePresenter = createPresenter('Employee')
                 : null,
         ];
     })
-    .uiBlocks((employee, ctx) => {
+    .ui((employee, ctx) => {
         const rc = ctx as RequestContext | undefined;
 
         // Only admins get the salary chart
@@ -532,7 +508,7 @@ const analytics = defineTool<AppContext>('analytics', {
                     .llmHint('Revenue figures are in USD cents. Divide by 100.')
                     .llmHint(`Data covers the last ${args.period ?? '30d'}.`)
                     // Domain rules
-                    .systemRules([
+                    .rules([
                         'Always show percentage change vs. previous period.',
                         'Highlight metrics that changed more than 20%.',
                     ])
@@ -732,16 +708,13 @@ Connect prompts to your MVA Presenters for rich, rule-aware context:
 import { definePresenter, PromptMessage } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-const ProjectPresenter = definePresenter({
-    name: 'Project',
-    schema: z.object({
+const ProjectPresenter = createPresenter('Project')
+    .schema(z.object({
         id: z.string(),
         name: z.string(),
         status: z.enum(['active', 'archived']).describe('Use emojis: 🟢 active, 📦 archived'),
         budget_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
-    }),
-    autoRules: true,
-});
+    }));
 
 const planSprint = f.prompt({
     name: 'plan-sprint',
@@ -817,7 +790,7 @@ const ClientPresenter = createPresenter('Client')
         name: z.string(),
         tier: z.enum(['free', 'pro', 'enterprise']),
     }))
-    .systemRules([
+    .rules([
         'Display company name prominently.',
         'Tier determines available features.',
     ]);
@@ -829,7 +802,7 @@ const InvoicePresenter = createPresenter('Invoice')
         amount_cents: z.number(),
         status: z.enum(['paid', 'pending', 'overdue']),
     }))
-    .systemRules(['amount_cents is in CENTS. Divide by 100.'])
+    .rules(['amount_cents is in CENTS. Divide by 100.'])
     .embed('client', ClientPresenter);   // ← Composition
 
 // ── Contract Presenter (also embeds Client) ─────────────
@@ -840,7 +813,7 @@ const ContractPresenter = createPresenter('Contract')
         end_date: z.string(),
         value_cents: z.number(),
     }))
-    .systemRules(['value_cents is in CENTS.'])
+    .rules(['value_cents is in CENTS.'])
     .embed('client', ClientPresenter);   // ← Same Client, reused
 ```
 

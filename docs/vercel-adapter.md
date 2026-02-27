@@ -6,18 +6,15 @@ Deploy your MCP Fusion server as a Next.js App Router route handler or standalon
 // app/api/mcp/route.ts — the entire file
 import { initFusion } from '@vinkius-core/mcp-fusion';
 import { vercelAdapter } from '@vinkius-core/mcp-fusion-vercel';
-import { z } from 'zod';
 
 interface AppContext { tenantId: string; dbUrl: string }
 const f = initFusion<AppContext>();
 
-const listUsers = f.tool({
-  name: 'users.list',
-  input: z.object({ limit: z.number().optional().default(20) }),
-  readOnly: true,
-  handler: async ({ input, ctx }) =>
-    fetch(`${ctx.dbUrl}/users?limit=${input.limit}&tenant=${ctx.tenantId}`).then(r => r.json()),
-});
+const listUsers = f.query('users.list')
+  .input({ limit: f.number().optional().default(20) })
+  .resolve(async ({ input, ctx }) =>
+    fetch(`${ctx.dbUrl}/users?limit=${input.limit}&tenant=${ctx.tenantId}`).then(r => r.json())
+  );
 
 const registry = f.registry();
 registry.register(listUsers);
@@ -122,7 +119,6 @@ Build tools exactly as you would for a Node.js MCP server. Nothing changes:
 ```typescript
 // src/tools.ts
 import { initFusion } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
 
 interface AppContext {
   tenantId: string;
@@ -131,38 +127,33 @@ interface AppContext {
 
 export const f = initFusion<AppContext>();
 
-export const listProjects = f.tool({
-  name: 'projects.list',
-  description: 'List projects in the current workspace',
-  input: z.object({
-    status: z.enum(['active', 'archived', 'all']).optional().default('active'),
-    limit: z.number().min(1).max(100).optional().default(20),
-  }),
-  readOnly: true,
-  handler: async ({ input, ctx }) => {
+export const listProjects = f.query('projects.list')
+  .describe('List projects in the current workspace')
+  .input({
+    status: f.enum('active', 'archived', 'all').optional().default('active'),
+    limit: f.number().min(1).max(100).optional().default(20),
+  })
+  .resolve(async ({ input, ctx }) => {
     const res = await fetch(
       `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&status=${input.status}&limit=${input.limit}`
     );
     return res.json();
-  },
-});
+  });
 
-export const createProject = f.tool({
-  name: 'projects.create',
-  description: 'Create a new project',
-  input: z.object({
-    name: z.string().min(1).max(128),
-    description: z.string().optional(),
-  }),
-  handler: async ({ input, ctx }) => {
+export const createProject = f.action('projects.create')
+  .describe('Create a new project')
+  .input({
+    name: f.string().min(1).max(128),
+    description: f.string().optional(),
+  })
+  .resolve(async ({ input, ctx }) => {
     const res = await fetch(`${ctx.dbUrl}/api/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...input, tenantId: ctx.tenantId }),
     });
     return res.json();
-  },
-});
+  });
 ```
 
 ### Step 2 — Create the Route Handler {#step-2}
@@ -235,17 +226,15 @@ const authMiddleware = f.middleware(async (ctx) => {
   return { user };
 });
 
-const adminTool = f.tool({
-  name: 'admin.reset',
-  description: 'Reset tenant data — requires admin role',
-  input: z.object({ confirm: z.literal(true) }),
-  middleware: [authMiddleware],
-  tags: ['admin'],
-  handler: async ({ ctx }) => {
+const adminTool = f.mutation('admin.reset')
+  .describe('Reset tenant data — requires admin role')
+  .tags('admin')
+  .use(authMiddleware)
+  .input({ confirm: f.boolean().describe('Must be true to confirm') })
+  .resolve(async ({ ctx }) => {
     if (ctx.user.role !== 'admin') throw new Error('Forbidden');
     // ...
-  },
-});
+  });
 ```
 
 ## Adding Presenters {#presenters}
@@ -253,6 +242,8 @@ const adminTool = f.tool({
 Presenters enforce field-level data protection, inject domain rules, and provide cognitive affordances — exactly as they do on Node.js:
 
 ```typescript
+import { z } from 'zod'; // Presenters require Zod schemas for runtime validation
+
 const ProjectPresenter = f.presenter({
   name: 'Project',
   schema: z.object({
@@ -265,27 +256,24 @@ const ProjectPresenter = f.presenter({
       ? 'This project is archived. It cannot be modified unless reactivated.'
       : null,
   ],
-  suggestActions: (project) => [
-    { tool: 'projects.get', args: { id: project.id } },
+  suggest: (project) => [
+    suggest('projects.get', 'View details', { id: project.id }),
     project.status === 'active'
-      ? { tool: 'projects.archive', args: { id: project.id } }
+      ? suggest('projects.archive', 'Archive project', { id: project.id })
       : null,
   ].filter(Boolean),
-  agentLimit: { max: 30 },
+  limit: 30,
 });
 
-const listProjects = f.tool({
-  name: 'projects.list',
-  input: z.object({ limit: z.number().optional().default(20) }),
-  readOnly: true,
-  returns: ProjectPresenter,
-  handler: async ({ input, ctx }) => {
+const listProjects = f.query('projects.list')
+  .input({ limit: f.number().optional().default(20) })
+  .returns(ProjectPresenter)
+  .resolve(async ({ input, ctx }) => {
     const res = await fetch(
       `${ctx.dbUrl}/api/projects?tenant=${ctx.tenantId}&limit=${input.limit}`
     );
     return res.json();
-  },
-});
+  });
 ```
 
 ## Configuration Reference {#config}
@@ -316,40 +304,32 @@ Use Vercel's managed services directly in your tools:
 // With Vercel Postgres
 import { sql } from '@vercel/postgres';
 
-const listUsers = f.tool({
-  name: 'users.list',
-  input: z.object({ limit: z.number().default(20) }),
-  readOnly: true,
-  handler: async ({ input }) => {
+const listUsers = f.query('users.list')
+  .input({ limit: f.number().default(20) })
+  .resolve(async ({ input }) => {
     const { rows } = await sql`SELECT id, name FROM users LIMIT ${input.limit}`;
     return rows;
-  },
-});
+  });
 
 // With Vercel KV
 import { kv } from '@vercel/kv';
 
-const getCache = f.tool({
-  name: 'cache.get',
-  input: z.object({ key: z.string() }),
-  readOnly: true,
-  handler: async ({ input }) => {
+const getCache = f.query('cache.get')
+  .input({ key: f.string() })
+  .resolve(async ({ input }) => {
     const value = await kv.get(input.key);
     return { key: input.key, value };
-  },
-});
+  });
 
 // With Vercel Blob
 import { put, list } from '@vercel/blob';
 
-const uploadFile = f.tool({
-  name: 'files.upload',
-  input: z.object({ name: z.string(), content: z.string() }),
-  handler: async ({ input }) => {
+const uploadFile = f.action('files.upload')
+  .input({ name: f.string(), content: f.string() })
+  .resolve(async ({ input }) => {
     const blob = await put(input.name, input.content, { access: 'public' });
     return { url: blob.url };
-  },
-});
+  });
 ```
 
 ## What Works on Vercel {#compatibility}

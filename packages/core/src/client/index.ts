@@ -4,6 +4,7 @@ export type {
     FusionClient,
     FusionTransport,
     RouterMap,
+    FluentProxy,
     ClientMiddleware,
     FusionClientOptions,
 } from './FusionClient.js';

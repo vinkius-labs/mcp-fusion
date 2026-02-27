@@ -49,43 +49,54 @@ hero:
 <div class="ms-code-section">
 <div class="ms-code-header">
 <div class="ms-dots"><span></span><span></span><span></span></div>
-<p class="ms-code-title">Your handler returns raw data. The framework does the rest.</p>
+<p class="ms-code-title">Semantic verbs. AI-First DX. Your handler returns raw data — the framework does the rest.</p>
 </div>
 <div class="ms-code-box">
 
 ```typescript
-import { initFusion, definePresenter, ui } from '@vinkius-core/mcp-fusion';
+import { initFusion, createPresenter, ui, suggest } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
-// 1. Initialize Fusion — define context type ONCE
 const f = initFusion<AppContext>();
 
-// 2. Define the Presenter — the MVA View Layer
-export const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: z.object({
+// ── Presenter — the MVA View Layer ─────────────────────
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(z.object({
         id: z.string(),
         amount_cents: z.number().describe('CRITICAL: Value is in CENTS. Divide by 100.'),
         status: z.enum(['paid', 'pending', 'overdue']),
-    }),
-    autoRules: true, // ← auto-extracts .describe() as system rules
-    uiBlocks: (inv) => [
+    }))
+    .ui((inv) => [
         ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
-    ],
-    suggestActions: (inv) =>
+    ])
+    .suggest((inv) =>
         inv.status === 'pending'
-            ? [{ tool: 'billing.pay', reason: 'Process payment' }]
-            : [],
-});
+            ? [suggest('billing.pay', 'Process payment')]
+            : []
+    );
 
-// 3. Attach to any tool — handler returns raw data
-const getInvoice = f.tool({
-    name: 'billing.get_invoice',
-    description: 'Gets an invoice by ID',
-    input: { id: 'string' },              // ← No Zod needed for input!
-    returns: InvoicePresenter,
-    handler: async ({ input, ctx }) => await ctx.db.invoices.findUnique(input.id),
-});
+// ── Query — read-only, type-safe, AI-guided ────────────
+const getInvoice = f.query('billing.get')
+    .describe('Retrieve an invoice by ID')
+    .instructions('Use ONLY when user asks about a specific invoice.')
+    .input({ id: f.string().describe('Invoice ID') })
+    .returns(InvoicePresenter)
+    .resolve(async ({ input, ctx }) => {
+        return ctx.db.invoices.findUnique(input.id);
+    });
+
+// ── Mutation — destructive, with context derivation ────
+const payInvoice = f.mutation('billing.pay')
+    .describe('Process payment for an invoice')
+    .instructions('ALWAYS confirm with the user before processing payment.')
+    .input({
+        invoice_id: f.string(),
+        amount: f.number().min(1).describe('Amount in cents'),
+    })
+    .use(async ({ ctx, next }) => next({ ...ctx, audit: { action: 'payment' } }))
+    .resolve(async ({ input, ctx }) => {
+        return ctx.billing.charge(input.invoice_id, input.amount);
+    });
 ```
 
 </div>
@@ -126,12 +137,12 @@ const getInvoice = f.tool({
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Next actions</div>
 <div class="ms-compare-before">AI hallucinates tool names.</div>
-<div class="ms-compare-after"><strong>Agentic HATEOAS</strong> — .suggestActions() with explicit hints based on data state.</div>
+<div class="ms-compare-after"><strong>Agentic HATEOAS</strong> — .suggest() / .suggestActions() with explicit hints based on data state.</div>
 </div>
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Large datasets</div>
 <div class="ms-compare-before">10,000 rows dump into context window.</div>
-<div class="ms-compare-after"><strong>Cognitive guardrails</strong> — .agentLimit(50) truncation + filter guidance.</div>
+<div class="ms-compare-after"><strong>Cognitive guardrails</strong> — .limit() / .agentLimit() truncation + filter guidance.</div>
 </div>
 <div class="ms-compare-row">
 <div class="ms-compare-aspect">Security</div>
@@ -189,16 +200,14 @@ const getInvoice = f.tool({
 <p class="ms-problem-solution"><strong>The mechanism:</strong> The Zod <code>.schema()</code> on every Presenter physically strips undeclared fields in server RAM via <code>Zod.parse()</code>. Sensitive data is destroyed before serialization — not by developer discipline, but by the framework itself. Combined with <code>.strict()</code> on inputs, this creates a bidirectional data boundary on every tool.</p>
 
 ```typescript
-const UserPresenter = definePresenter({
-    name: 'User',
-    schema: z.object({
+const UserPresenter = createPresenter('User')
+    .schema(z.object({
         id: z.string(),
         name: z.string(),
         email: z.string(),
         // password_hash, tenant_id, internal_flags
         // → physically absent from output. Not filtered. GONE.
-    }),
-});
+    }));
 ```
 
 <a href="/mcp-fusion/presenter" class="ms-card-link">SEE HOW IT WORKS →</a>
@@ -208,27 +217,23 @@ const UserPresenter = definePresenter({
 <div class="ms-problem-number">02</div>
 <h3 class="ms-problem-title">Context Tree-Shaking</h3>
 <p class="ms-problem-pain"><strong>The problem:</strong> To teach the AI about invoices, tasks, sprints, and users, the company writes a 10,000-token system prompt — sent on every call. The LLM loses coherence in the middle of the text, misapplies rules across domains, and the company pays for irrelevant tokens on every request.</p>
-<p class="ms-problem-solution"><strong>The mechanism:</strong> Just like webpack tree-shaking removes unused code from a bundle, <code>.systemRules()</code> removes unused rules from the agent's context window. Domain rules travel <strong>with the data</strong> — the invoice rule only exists in the prompt at the exact millisecond the agent processes an invoice. Token overhead drops from ~2,000/call to ~200/call.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> Just like webpack tree-shaking removes unused code from a bundle, <code>.rules()</code> / <code>.systemRules()</code> removes unused rules from the agent's context window. Domain rules travel <strong>with the data</strong> — the invoice rule only exists in the prompt at the exact millisecond the agent processes an invoice. Token overhead drops from ~2,000/call to ~200/call.</p>
 
 ```typescript
 // Invoice rules — sent ONLY when invoice data is returned
-const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-    systemRules: (invoice, ctx) => [
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .rules((invoice, ctx) => [
         'CRITICAL: amount_cents is in CENTS. Divide by 100.',
         ctx?.user?.role !== 'admin'
             ? 'RESTRICTED: Mask exact totals for non-admin users.'
             : null,
-    ],
-});
+    ]);
 
 // Task rules — sent ONLY when task data is returned
-const TaskPresenter = definePresenter({
-    name: 'Task',
-    schema: taskSchema,
-    systemRules: ['Use emojis: 🔄 In Progress, ✅ Done, ❌ Blocked'],
-});
+const TaskPresenter = createPresenter('Task')
+    .schema(taskSchema)
+    .rules(['Use emojis: 🔄 In Progress, ✅ Done, ❌ Blocked']);
 ```
 
 <a href="/mcp-fusion/mva/context-tree-shaking" class="ms-card-link">SEE HOW IT WORKS →</a>
@@ -238,13 +243,12 @@ const TaskPresenter = definePresenter({
 <div class="ms-problem-number">03</div>
 <h3 class="ms-problem-title">SSR for Agents</h3>
 <p class="ms-problem-pain"><strong>The problem:</strong> The developer begs in the prompt: "Please generate valid ECharts JSON." The AI gets the syntax wrong 20% of the time. The UI breaks. Charts become a probabilistic coinflip instead of deterministic output.</p>
-<p class="ms-problem-solution"><strong>The mechanism:</strong> The agent is demoted to its correct role — a messenger. Complex chart configs, Mermaid diagrams, and Markdown tables are compiled server-side in Node.js (100% deterministic) via <code>.uiBlocks()</code>. The AI receives a <code>[SYSTEM]</code> pass-through directive and forwards the block unchanged. Visual hallucination drops to zero.</p>
+<p class="ms-problem-solution"><strong>The mechanism:</strong> The agent is demoted to its correct role — a messenger. Complex chart configs, Mermaid diagrams, and Markdown tables are compiled server-side in Node.js (100% deterministic) via <code>.ui()</code> / <code>.uiBlocks()</code>. The AI receives a <code>[SYSTEM]</code> pass-through directive and forwards the block unchanged. Visual hallucination drops to zero.</p>
 
 ```typescript
-const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-    uiBlocks: (invoice) => [
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema)
+    .ui((invoice) => [
         ui.echarts({
             series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
         }),
@@ -252,8 +256,7 @@ const InvoicePresenter = definePresenter({
             ['Field', 'Value'],
             [['Status', invoice.status], ['Amount', `$${invoice.amount_cents / 100}`]],
         ),
-    ],
-});
+    ]);
 // The LLM passes the chart config through. It never generates it.
 ```
 
@@ -295,7 +298,7 @@ const InvoicePresenter = definePresenter({
 <div class="ms-card">
 <div class="ms-card-number">01 // MVA</div>
 <h3 class="ms-card-title">Presenter Engine</h3>
-<p class="ms-card-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Use definePresenter() or createPresenter() — both freeze-after-build.</p>
+<p class="ms-card-desc">Domain-level Presenters validate data, inject rules, render charts, and suggest actions. Use createPresenter() (fluent) or definePresenter() (declarative) — both freeze-after-build.</p>
 <a href="/presenter" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
@@ -325,7 +328,7 @@ const InvoicePresenter = definePresenter({
 <div class="ms-card">
 <div class="ms-card-number">06 // AFFORDANCE</div>
 <h3 class="ms-card-title">Agentic HATEOAS</h3>
-<p class="ms-card-desc">.suggestActions() tells agents what to do next based on data state. Reduces action hallucination through explicit affordances.</p>
+<p class="ms-card-desc">.suggest() / .suggestActions() tells agents what to do next based on data state. Reduces action hallucination through explicit affordances.</p>
 <a href="/mva-pattern" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">
@@ -337,7 +340,7 @@ const InvoicePresenter = definePresenter({
 <div class="ms-card">
 <div class="ms-card-number">08 // GUARDRAILS</div>
 <h3 class="ms-card-title">Cognitive Limits</h3>
-<p class="ms-card-desc">.agentLimit() truncates large datasets and teaches agents to use filters. Prevents context DDoS and manages API costs.</p>
+<p class="ms-card-desc">.limit() / .agentLimit() truncates large datasets and teaches agents to use filters. Prevents context DDoS and manages API costs.</p>
 <a href="/presenter" class="ms-card-link">EXPLORE →</a>
 </div>
 <div class="ms-card">

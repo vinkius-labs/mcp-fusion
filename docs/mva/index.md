@@ -42,34 +42,28 @@ When all five are present, the agent perceives the domain consistently. Hallucin
 ## Quick Reference: MVA in Code
 
 ```typescript
-import { createPresenter, ui, defineTool } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
-
-// ── MODEL: Security boundary via Zod schema ──
-const invoiceSchema = z.object({
-    id: z.string(),
-    amount_cents: z.number(),
-    status: z.enum(['paid', 'pending', 'overdue']),
-    // internal_margin, password_hash → rejected by .strict()
-}).strict();  // explicit security boundary
+import { createPresenter, t, suggest, ui, defineTool } from '@vinkius-core/mcp-fusion';
 
 // ── VIEW: The Presenter — agent-centric perception layer ──
 const InvoicePresenter = createPresenter('Invoice')
-    .schema(invoiceSchema)                                // Model
-    .systemRules([                                        // Interpretation
+    .schema({                                             // Model
+        id:           t.string,
+        amount_cents: t.number,
+        status:       t.enum('paid', 'pending', 'overdue'),
+    })
+    .rules([                                              // Interpretation
         'CRITICAL: amount_cents is in CENTS. Divide by 100.',
     ])
-    .uiBlocks((inv) => [                                  // Visualization
+    .ui((inv) => [                                        // Visualization
         ui.echarts({ series: [{ type: 'gauge', data: [{ value: inv.amount_cents / 100 }] }] }),
     ])
-    .agentLimit(50, (omitted) =>                          // Guardrail
-        ui.summary(`⚠️ 50 shown, ${omitted} hidden. Use filters.`)
-    )
-    .suggestActions((inv) =>                               // Affordance
-        inv.status === 'pending'
-            ? [{ tool: 'billing.pay', reason: 'Process payment' }]
-            : []
-    );
+    .limit(50)                                            // Guardrail
+    .suggest((inv) => [                                   // Affordance
+        suggest('billing.pay', 'Process payment'),
+        inv.status === 'overdue'
+            ? suggest('billing.escalate', 'Escalate to collections')
+            : null,
+    ].filter(Boolean));
 
 // ── AGENT: Receives a Structured Perception Package ──
 const billing = defineTool<AppContext>('billing', {

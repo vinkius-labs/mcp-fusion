@@ -7,15 +7,17 @@ You might define three actions — `list`, `create`, `delete` — inside one `pr
 The default. Every action becomes an independent MCP tool with its own name, schema, and annotations:
 
 ```typescript
-const projects = defineTool<void>('projects', {
-  description: 'Manage workspace projects',
-  shared: { workspace_id: 'string' },
-  actions: {
-    list:   { readOnly: true, handler: listProjects },
-    create: { params: { name: 'string' }, handler: createProject },
-    delete: { destructive: true, params: { id: 'string' }, handler: deleteProject },
-  },
-});
+const listProjects = f.query('projects.list')
+  .input({ workspace_id: f.string() })
+  .resolve(async ({ input, ctx }) => { /* ... */ });
+
+const createProject = f.action('projects.create')
+  .input({ workspace_id: f.string(), name: f.string() })
+  .resolve(async ({ input, ctx }) => { /* ... */ });
+
+const deleteProject = f.mutation('projects.delete')
+  .input({ workspace_id: f.string(), id: f.string() })
+  .resolve(async ({ input, ctx }) => { /* ... */ });
 ```
 
 Produces three entries in `tools/list`:
@@ -86,36 +88,23 @@ Shared fields appear once instead of once per action. For 20+ actions sharing `w
 ### When Grouped Shines {#grouped-example}
 
 ```typescript
-const admin = defineTool<AdminContext>('admin', {
-  description: 'SaaS administration panel',
-  shared: { workspace_id: 'string', admin_token: 'string' },
-  groups: {
-    users: {
-      description: 'User lifecycle management',
-      actions: {
-        list:       { readOnly: true, handler: listUsers },
-        invite:     { params: { email: 'string', role: 'string' }, handler: inviteUser },
-        deactivate: { destructive: true, params: { user_id: 'string' }, handler: deactivateUser },
-      },
-    },
-    billing: {
-      description: 'Billing and subscription management',
-      actions: {
-        current_plan: { readOnly: true, handler: getCurrentPlan },
-        upgrade:      { params: { plan: 'string' }, handler: upgradePlan },
-        invoices:     { readOnly: true, handler: listInvoices },
-        refund:       { destructive: true, params: { invoice_id: 'string' }, handler: issueRefund },
-      },
-    },
-    audit: {
-      description: 'Compliance and audit trail',
-      actions: {
-        logs:   { readOnly: true, handler: getAuditLogs },
-        export: { readOnly: true, params: { range: 'string' }, handler: exportLogs },
-      },
-    },
-  },
-});
+const admin = createTool('admin')
+  .description('SaaS administration panel')
+  .group('users', 'User lifecycle management', (g) => g
+    .query('list', listUsers)
+    .action('invite', inviteUser)
+    .mutation('deactivate', deactivateUser)
+  )
+  .group('billing', 'Billing and subscription management', (g) => g
+    .query('current_plan', getCurrentPlan)
+    .action('upgrade', upgradePlan)
+    .query('invoices', listInvoices)
+    .mutation('refund', issueRefund)
+  )
+  .group('audit', 'Compliance and audit trail', (g) => g
+    .query('logs', getAuditLogs)
+    .query('export', exportLogs)
+  );
 ```
 
 One tool, 10 actions, `workspace_id` and `admin_token` appear once.
@@ -150,8 +139,13 @@ registry.attachToServer(server, {
 **Tag Filtering** — tags are resolved from the builder, not individual flat tools:
 
 ```typescript
-const admin = createTool<void>('admin').tags('internal');
-const search = createTool<void>('search').tags('public');
+const admin = f.query('admin.list')
+  .tags('internal')
+  .resolve(async ({ ctx }) => { /* ... */ });
+
+const search = f.query('search.find')
+  .tags('public')
+  .resolve(async ({ ctx }) => { /* ... */ });
 
 registry.attachToServer(server, {
   toolExposition: 'flat',

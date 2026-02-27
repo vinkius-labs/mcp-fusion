@@ -125,10 +125,9 @@ The solution is the **Late Guillotine** — filtering happens *after* all Presen
 Handler returns full data
     ↓
 Zod validates (full object)
-    ↓
-systemRules(fullData)     ← sees ALL fields
-uiBlocks(fullData)        ← sees ALL fields
-suggestActions(fullData)  ← sees ALL fields
+    rules(fullData)           ← sees ALL fields
+    ui(fullData)              ← sees ALL fields
+    suggest(fullData)         ← sees ALL fields
     ↓
 ──── Late Guillotine ────
     ↓
@@ -145,18 +144,18 @@ If filtering happened before the Presenter callbacks:
 
 ```typescript
 // ❌ This would break:
-.uiBlocks((inv) => [
+.ui((inv) => [
     ui.echarts({ data: [{ value: inv.amount_cents / 100 }] })
     //                          ^ undefined if agent selected only 'status'
 ])
 
-.systemRules((inv) => [
+.rules((inv) => [
     inv.amount_cents > 1000000 ? 'High-value invoice' : null
     //                ^ undefined — rule logic breaks silently
 ])
 
-.suggestActions((inv) => [
-    inv.status === 'pending' ? { tool: 'billing.pay', reason: 'Pay' } : null
+.suggest((inv) => [
+    inv.status === 'pending' ? suggest('billing.pay', 'Pay') : null
     //       ^ works only if agent happened to select 'status'
 ])
 ```

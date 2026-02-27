@@ -24,14 +24,12 @@ System Rules are the governance contract between your application and the AI mod
 Static rules are defined as string arrays in the Presenter:
 
 ```typescript
-const UserPresenter = definePresenter({
-    name: 'User',
-    schema: UserSchema,
-    systemRules: [
+const UserPresenter = createPresenter('User')
+    .schema(UserSchema)
+    .rules([
         'All data is from Prisma ORM. Do not infer data outside this response.',
         'Email addresses are PII. Mask when possible.',
-    ],
-});
+    ]);
 ```
 
 Test them:
@@ -68,7 +66,7 @@ Contextual rules are functions that receive the data and context, producing rule
 ```typescript
 const AnalyticsPresenter = createPresenter<AnalyticsDTO>('Analytics')
     .schema(AnalyticsSchema)
-    .systemRules((data, ctx) => [
+    .rules((data, ctx) => [
         'Values are in cents. Divide by 100 for display.',
         ctx.role === 'ADMIN' ? 'User is ADMIN. Show full details.' : null,
         data.length > 100 ? 'Large dataset. Summarize instead of listing.' : null,
@@ -119,7 +117,7 @@ Actions that use the `response()` builder directly (without a Presenter) can als
 // In your handler:
 handler: async () => {
     return response({ status: 'healthy' })
-        .systemRules(['System is operational.', 'No action required.'])
+        .rules(['System is operational.', 'No action required.'])
         .build();
 }
 ```

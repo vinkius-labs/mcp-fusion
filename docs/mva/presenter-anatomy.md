@@ -4,7 +4,7 @@ In MVA, every other layer exists to serve the Presenter. The Model validates dat
 
 This page documents the Presenter's internal anatomy — its six responsibilities, its lifecycle, its composition model, and the patterns that emerge from its use at scale.
 
-The recommended API is `definePresenter({ ... })` — a declarative object-config alternative to the fluent `createPresenter()` builder. Both APIs produce identical `Presenter` instances. See [Presenter Guide](/presenter) for side-by-side comparison.
+MCP Fusion provides both **shorthand** (`.rules()`, `.ui()`, `.limit()`, `.suggest()`) and **full control** (`.systemRules()`, `.uiBlocks()`, `.agentLimit()`, `.suggestActions()`) aliases. Both produce identical results. See [Presenter Guide](/presenter) for side-by-side comparison.
 
 ## The Six Responsibilities
 
@@ -17,24 +17,20 @@ The schema defines the shape of data the agent sees. When you use Zod's `.strict
 The Presenter validates with whatever Zod schema you provide. If you want strict field filtering, you must call `.strict()` on your schema explicitly. The framework auto-applies `.strict()` on **input** validation (tool parameters), but the Presenter's output schema is yours to define.
 
 ```typescript
-import { definePresenter } from '@vinkius-core/mcp-fusion';
-import { z } from 'zod';
+import { createPresenter, t } from '@vinkius-core/mcp-fusion';
 
-const invoiceSchema = z.object({
-    id: z.string(),
-    amount_cents: z.number(),
-    status: z.enum(['paid', 'pending', 'overdue']),
-    client_name: z.string(),
+const invoiceSchema = {
+    id:           t.string,
+    amount_cents: t.number,
+    status:       t.enum('paid', 'pending', 'overdue'),
+    client_name:  t.string,
     // These fields exist in the database but are NOT declared:
     // internal_margin, customer_ssn, tenant_id, password_hash
-    // → rejected IF using .strict()
-}).strict(); // ← explicit .strict() for output security
+    // → stripped automatically by Zod parse
+};
 
-const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-});
-```
+const InvoicePresenter = createPresenter('Invoice')
+    .schema(invoiceSchema);
 
 When the handler returns data with undeclared fields:
 
@@ -63,7 +59,7 @@ System rules are the interpretive layer. They tell the agent what the data **mea
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules([
+    .rules([  // ← shorthand for .systemRules()
         'CRITICAL: amount_cents is in CENTS. Always divide by 100 before display.',
         'Use currency format: $XX,XXX.00 (USD).',
         'Use status emojis: ✅ paid, ⏳ pending, 🔴 overdue.',
@@ -76,7 +72,7 @@ const InvoicePresenter = createPresenter('Invoice')
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules((invoice, ctx) => [
+    .rules((invoice, ctx) => [  // ← shorthand for .systemRules()
         'CRITICAL: amount_cents is in CENTS. Divide by 100.',
         ctx?.user?.role !== 'admin'
             ? 'RESTRICTED: Mask exact totals for non-admin users. Show ranges only.'
@@ -96,14 +92,14 @@ const InvoicePresenter = createPresenter('Invoice')
 
 Presenters generate deterministic visual blocks that the agent renders directly. No guessing about chart types, no agent-side rendering logic.
 
-**Single-item blocks** — `.uiBlocks()` fires for individual objects:
+**Single-item blocks** — `.ui()` fires for individual objects (shorthand for `.uiBlocks()`):
 
 ```typescript
-import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
+import { createPresenter, t, ui } from '@vinkius-core/mcp-fusion';
 
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .uiBlocks((invoice) => [
+    .ui((invoice) => [  // ← shorthand for .uiBlocks()
         ui.echarts({
             series: [{
                 type: 'gauge',
@@ -148,9 +144,16 @@ The Presenter auto-detects whether the data is a single object or an array. `.ui
 
 ### ④ Cognitive Guardrails — Smart Truncation
 
-Large datasets can overwhelm the agent's context window. `.agentLimit()` automatically truncates and teaches the agent to use pagination.
+Large datasets can overwhelm the agent's context window. `.limit()` is the shorthand for `.agentLimit()` — it automatically truncates and teaches the agent to use pagination.
 
 ```typescript
+// Shorthand — auto-generated truncation message
+const TaskPresenter = createPresenter('Task')
+    .schema(taskSchema)
+    .limit(50);
+// → "⚠️ Dataset truncated. 50 shown, {N} hidden. Use filters."
+
+// Full control — custom truncation message
 const TaskPresenter = createPresenter('Task')
     .schema(taskSchema)
     .agentLimit(50, (omitted) =>
@@ -181,32 +184,25 @@ The agent self-corrects: *"Let me filter by status: pending and assignee: john."
 
 ### ⑤ Agentic Affordances — HATEOAS for AI
 
-After receiving data, the agent must decide what to do next. Without guidance, it hallucinates tool names. `.suggestActions()` addresses this by providing explicit, state-driven next-action hints.
+After receiving data, the agent must decide what to do next. Without guidance, it hallucinates tool names. `.suggest()` (shorthand for `.suggestActions()`) addresses this by providing explicit, state-driven next-action hints. Use the `suggest()` helper for maximum fluency.
 
 ```typescript
+import { createPresenter, suggest } from '@vinkius-core/mcp-fusion';
+
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .suggestActions((invoice) => {
-        if (invoice.status === 'pending') {
-            return [
-                { tool: 'billing.pay', reason: 'Process immediate payment' },
-                { tool: 'billing.send_reminder', reason: 'Send payment reminder to client' },
-            ];
-        }
-        if (invoice.status === 'overdue') {
-            return [
-                { tool: 'billing.escalate', reason: 'Escalate to collections team' },
-                { tool: 'billing.send_final_notice', reason: 'Send final payment notice' },
-            ];
-        }
-        if (invoice.status === 'paid') {
-            return [
-                { tool: 'billing.archive', reason: 'Archive completed invoice' },
-                { tool: 'reports.generate', reason: 'Generate payment receipt' },
-            ];
-        }
-        return [];
-    });
+    .suggest((invoice) => [  // ← shorthand for .suggestActions()
+        suggest('billing.pay', 'Process immediate payment'),
+        invoice.status === 'pending'
+            ? suggest('billing.send_reminder', 'Send payment reminder to client')
+            : null,
+        invoice.status === 'overdue'
+            ? suggest('billing.escalate', 'Escalate to collections team')
+            : null,
+        invoice.status === 'paid'
+            ? suggest('billing.archive', 'Archive completed invoice')
+            : null,
+    ].filter(Boolean));
 ```
 
 The agent receives:
@@ -226,15 +222,15 @@ Real domain models have relationships. Invoices have clients. Orders have produc
 ```typescript
 const ClientPresenter = createPresenter('Client')
     .schema(clientSchema)
-    .systemRules(['Display company name prominently. Use formal address.']);
+    .rules(['Display company name prominently. Use formal address.']);
 
 const PaymentMethodPresenter = createPresenter('PaymentMethod')
     .schema(paymentMethodSchema)
-    .systemRules(['RESTRICTED: Show only last 4 digits of card numbers.']);
+    .rules(['RESTRICTED: Show only last 4 digits of card numbers.']);
 
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules(['amount_cents is in CENTS. Divide by 100.'])
+    .rules(['amount_cents is in CENTS. Divide by 100.'])
     .embed('client', ClientPresenter)                     // ← nested composition
     .embed('payment_method', PaymentMethodPresenter);     // ← multiple embeds
 ```
@@ -267,11 +263,11 @@ A Presenter has three phases in its lifecycle:
 Phase 1: Configuration          Phase 2: Sealing          Phase 3: Rendering
 ─────────────────────           ─────────────────          ──────────────────
 .schema()                       First .make() call         .make(data, ctx)
-.systemRules()                  ↓                          ↓
-.uiBlocks()                     Presenter is SEALED        Returns ResponseBuilder
+.rules() / .systemRules()       ↓                          ↓
+.ui() / .uiBlocks()             Presenter is SEALED        Returns ResponseBuilder
 .collectionUiBlocks()           ↓                          ↓
-.agentLimit()                   Configuration methods      .build() → MCP response
-.suggestActions()               now THROW if called
+.limit() / .agentLimit()        Configuration methods      .build() → MCP response
+.suggest() / .suggestActions()  now THROW if called
 .embed()
 ```
 
@@ -282,10 +278,10 @@ All configuration methods return `this` for fluent chaining. The order of method
 ```typescript
 const P = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules([...])
-    .uiBlocks(fn)
-    .agentLimit(50, onTruncate)
-    .suggestActions(fn)
+    .rules([...])
+    .ui(fn)
+    .limit(50)
+    .suggest(fn)
     .embed('client', ClientPresenter);
 ```
 
@@ -346,7 +342,7 @@ Dynamic rules adapt to the user's role, tenant, locale, and permissions:
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules((invoice, ctx) => [
+    .rules((invoice, ctx) => [
         'amount_cents is in CENTS. Divide by 100.',
         // Tenant-specific currency
         `Display currency as ${ctx?.tenant?.currency ?? 'USD'}.`,
@@ -372,8 +368,8 @@ Not every entity needs all six responsibilities. Use only what you need:
 ```typescript
 // A minimal Presenter — schema + rules only
 const CountryPresenter = createPresenter('Country')
-    .schema(z.object({ code: z.string(), name: z.string() }))
-    .systemRules(['Country codes follow ISO 3166-1 alpha-2.']);
+    .schema({ code: t.string, name: t.string })
+    .rules(['Country codes follow ISO 3166-1 alpha-2.']);
 ```
 
 ## Anti-Patterns
@@ -403,7 +399,7 @@ Do not put domain rules in the global system prompt. They will be sent on every 
 // Sent even when the agent is calling users.list
 
 // ✅ RIGHT: Rules in the Presenter
-InvoicePresenter.systemRules(['amount_cents is in CENTS...'])
+InvoicePresenter.rules(['amount_cents is in CENTS...'])
 // Sent only when the agent receives invoice data
 ```
 

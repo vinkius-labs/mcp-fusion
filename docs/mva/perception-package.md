@@ -39,11 +39,11 @@ The data block is the validated output of the handler. The Presenter's Zod schem
 - Fields not declared in the schema (rejected with an actionable error)
 - Fields that fail type/constraint validation (triggers error)
 
-**For arrays:** If `.agentLimit()` is configured and the array exceeds the limit, the data block contains only the truncated subset. A truncation UI block (from the `onTruncate` callback) is appended to the UI Blocks section.
+**For arrays:** If `.limit()` / `.agentLimit()` is configured and the array exceeds the limit, the data block contains only the truncated subset. A truncation UI block (from the `onTruncate` callback) is appended to the UI Blocks section.
 
 ### Block 2: UI Blocks
 
-UI blocks are server-rendered visualizations produced by `.uiBlocks()` (single items) or `.collectionUiBlocks()` (arrays). Each block is a separate MCP content entry.
+UI blocks are server-rendered visualizations produced by `.ui()` / `.uiBlocks()` (single items) or `.collectionUiBlocks()` (arrays). Each block is a separate MCP content entry.
 
 **The pass-through directive:**
 
@@ -84,7 +84,7 @@ When a Presenter uses `.embed()`, the child Presenter's rules and UI blocks are 
 ```typescript
 const InvoicePresenter = createPresenter('Invoice')
     .schema(invoiceSchema)
-    .systemRules(['amount_cents is in CENTS.'])
+    .rules(['amount_cents is in CENTS.'])
     .embed('client', ClientPresenter);  // ClientPresenter has its own rules
 ```
 
@@ -116,7 +116,7 @@ Hints are typically added in the handler or middleware — not in the Presenter 
 
 ### Block 5: Domain Rules
 
-Domain rules are the core of MVA's interpretation layer. They come from `.systemRules()` on the Presenter and follow a strict format:
+Domain rules are the core of MVA's interpretation layer. They come from `.rules()` / `.systemRules()` on the Presenter and follow a strict format:
 
 ```text
 [DOMAIN RULES]:
@@ -134,7 +134,7 @@ Domain rules are the core of MVA's interpretation layer. They come from `.system
 
 ### Block 6: Action Suggestions
 
-The final block contains HATEOAS-style affordances from `.suggestActions()`:
+The final block contains HATEOAS-style affordances from `.suggest()` / `.suggestActions()`:
 
 ```text
 [SYSTEM HINT]: Based on the current state, recommended next tools:
@@ -212,7 +212,7 @@ handler: async (ctx, args) => {
             `graph LR; Revenue-->Costs; Revenue-->Profit`
         ))
         .llmHint('Revenue figures are in USD, not cents.')
-        .systemRules([
+        .rules([
             'Always show percentage change compared to previous month.',
             'Flag any month with negative growth in RED.',
         ])

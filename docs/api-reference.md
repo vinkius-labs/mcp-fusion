@@ -128,11 +128,11 @@ const P = definePresenter({
     name: 'Invoice',
     schema: invoiceSchema,
     autoRules: true,
-    systemRules: ['Use currency format.'],
-    uiBlocks: (inv) => [ui.echarts({ /* ... */ })],
+    systemRules: ['Use currency format.'],       // or use createPresenter().rules()
+    uiBlocks: (inv) => [ui.echarts({ /* ... */ })], // or .ui()
     collectionUi: (items) => [ui.summary(`${items.length} items`)],
-    agentLimit: { max: 50, onTruncate: (n) => ui.summary(`${n} hidden`) },
-    suggestActions: (inv) => [],
+    agentLimit: { max: 50, onTruncate: (n) => ui.summary(`${n} hidden`) }, // or .limit()
+    suggestActions: (inv) => [],                 // or .suggest()
     embeds: [{ key: 'client', presenter: ClientPresenter }],
 });
 ```
@@ -142,11 +142,11 @@ const P = definePresenter({
 | `name` | `string` | Presenter name (used in errors and debugging) |
 | `schema` | `ZodObject` | Zod validation schema (security boundary) |
 | `autoRules` | `boolean?` | Auto-extract `.describe()` annotations as system rules (default: `true`) |
-| `systemRules` | `string[] \| Function?` | Static or dynamic domain rules |
-| `uiBlocks` | `(item) => Block[]` | Single-item UI blocks |
+| `systemRules` | `string[] \| Function?` | Static or dynamic domain rules (shorthand: `.rules()`) |
+| `uiBlocks` | `(item) => Block[]` | Single-item UI blocks (shorthand: `.ui()`) |
 | `collectionUi` | `(items) => Block[]` | Collection UI blocks |
-| `agentLimit` | `{ max, onTruncate }?` | Cognitive guardrail |
-| `suggestActions` | `(item) => Action[]` | HATEOAS affordances |
+| `agentLimit` | `{ max, onTruncate }?` | Cognitive guardrail (shorthand: `.limit()`) |
+| `suggestActions` | `(item) => Action[]` | HATEOAS affordances (shorthand: `.suggest()`) |
 | `embeds` | `{ key, presenter }[]?` | Child Presenter composition |
 
 ### `createGroup<TContext>(config)` 
@@ -792,7 +792,7 @@ messages: [
 
 | Order | XML Tag | MCP Role | Source |
 |---|---|---|---|
-| 1 | `<domain_rules>` | system | `Presenter.systemRules()` |
+| 1 | `<domain_rules>` | system | `Presenter.rules()` / `.systemRules()` |
 | 2 | `<dataset>` | user | Validated JSON in code fence |
 | 3 | `<visual_context>` | user | UI blocks (ECharts, Mermaid, etc.) |
 | 4 | `<system_guidance>` | system | LLM hints + HATEOAS action suggestions |

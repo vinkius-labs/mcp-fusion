@@ -21,38 +21,41 @@ The principle is identical: **the server tells the client what's possible.** But
 | **Protocol** | HTTP | MCP (Model Context Protocol) |
 | **Discovery** | Client follows links | Agent reads `[SYSTEM HINT]` block |
 
-## The API: `.suggestActions()`
+## The API: `.suggest()` / `.suggestActions()`
 
-`.suggestActions()` is a method on the Presenter that receives the current data (and optionally the request context) and returns an array of suggested actions.
+`.suggest()` is the shorthand for `.suggestActions()` — a method on the Presenter that receives the current data (and optionally the request context) and returns an array of suggested actions. Use the `suggest()` helper for maximum fluency.
 
 ### Basic Usage
 
 ```typescript
-const InvoicePresenter = definePresenter({
-    name: 'Invoice',
-    schema: invoiceSchema,
-    suggestActions: (invoice) => {
-        if (invoice.status === 'pending') {
-            return [
-                { tool: 'billing.pay', reason: 'Process immediate payment' },
-                { tool: 'billing.send_reminder', reason: 'Send payment reminder to client' },
-            ];
-        }
-        if (invoice.status === 'overdue') {
-            return [
-                { tool: 'billing.escalate', reason: 'Escalate to collections' },
-                { tool: 'billing.send_final_notice', reason: 'Send final payment notice' },
-            ];
-        }
-        if (invoice.status === 'paid') {
-            return [
-                { tool: 'billing.archive', reason: 'Archive completed invoice' },
-                { tool: 'reports.generate_receipt', reason: 'Generate payment receipt' },
-            ];
-        }
-        return [];
-    },
-});
+import { createPresenter, t, suggest } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = createPresenter('Invoice')
+    .schema({
+        id:           t.string,
+        amount_cents: t.number,
+        status:       t.enum('paid', 'pending', 'overdue'),
+    })
+    .suggest((invoice) => [
+        invoice.status === 'pending'
+            ? suggest('billing.pay', 'Process immediate payment')
+            : null,
+        invoice.status === 'pending'
+            ? suggest('billing.send_reminder', 'Send payment reminder to client')
+            : null,
+        invoice.status === 'overdue'
+            ? suggest('billing.escalate', 'Escalate to collections')
+            : null,
+        invoice.status === 'overdue'
+            ? suggest('billing.send_final_notice', 'Send final payment notice')
+            : null,
+        invoice.status === 'paid'
+            ? suggest('billing.archive', 'Archive completed invoice')
+            : null,
+        invoice.status === 'paid'
+            ? suggest('reports.generate_receipt', 'Generate payment receipt')
+            : null,
+    ].filter(Boolean));
 ```
 
 The agent receives one of these blocks depending on the invoice's state:
@@ -79,30 +82,24 @@ The agent receives one of these blocks depending on the invoice's state:
 Affordances can use the request context for RBAC-aware suggestions:
 
 ```typescript
-.suggestActions((invoice, ctx) => {
+.suggest((invoice, ctx) => {
     const actions = [];
 
     if (invoice.status === 'pending') {
-        actions.push({ tool: 'billing.pay', reason: 'Process payment' });
+        actions.push(suggest('billing.pay', 'Process payment'));
 
         // Only admins can apply discounts
         if (ctx?.user?.role === 'admin') {
-            actions.push({
-                tool: 'billing.apply_discount',
-                reason: 'Apply a discount before payment',
-            });
+            actions.push(suggest('billing.apply_discount', 'Apply a discount before payment'));
         }
     }
 
     if (invoice.status === 'overdue') {
-        actions.push({ tool: 'billing.escalate', reason: 'Escalate to collections' });
+        actions.push(suggest('billing.escalate', 'Escalate to collections'));
 
         // Only finance team can write off debt
         if (ctx?.user?.permissions?.includes('finance:write-off')) {
-            actions.push({
-                tool: 'billing.write_off',
-                reason: 'Write off as bad debt',
-            });
+            actions.push(suggest('billing.write_off', 'Write off as bad debt'));
         }
     }
 
@@ -190,12 +187,12 @@ interface ActionSuggestion {
 
 ```typescript
 // ❌ Vague reasons — the agent doesn't know which to pick
-{ tool: 'billing.pay', reason: 'Pay' }
-{ tool: 'billing.send_reminder', reason: 'Remind' }
+suggest('billing.pay', 'Pay')
+suggest('billing.send_reminder', 'Remind')
 
 // ✅ Descriptive reasons — the agent can make an informed decision
-{ tool: 'billing.pay', reason: 'Process immediate payment for this pending invoice' }
-{ tool: 'billing.send_reminder', reason: 'Send email reminder to client before escalating' }
+suggest('billing.pay', 'Process immediate payment for this pending invoice')
+suggest('billing.send_reminder', 'Send email reminder to client before escalating')
 ```
 
 ## Patterns
@@ -205,7 +202,7 @@ interface ActionSuggestion {
 When no actions are appropriate, return an empty array. This signals to the agent that the current entity is in a terminal state:
 
 ```typescript
-.suggestActions((invoice) => {
+.suggest((invoice) => {
     if (invoice.status === 'cancelled') return [];  // Terminal — nothing to do
     if (invoice.status === 'refunded') return [];   // Terminal — nothing to do
     // ...
@@ -218,16 +215,17 @@ Affordances can suggest tools from other domains. This is how cross-domain workf
 
 ```typescript
 // In TaskPresenter:
-.suggestActions((task) => {
-    if (task.status === 'completed') {
-        return [
-            { tool: 'tasks.close', reason: 'Close this task' },
-            { tool: 'sprints.refresh_velocity', reason: 'Recalculate sprint velocity after completion' },
-            { tool: 'notifications.send', reason: 'Notify the team about task completion' },
-        ];
-    }
-    return [];
-})
+.suggest((task) => [
+    task.status === 'completed'
+        ? suggest('tasks.close', 'Close this task')
+        : null,
+    task.status === 'completed'
+        ? suggest('sprints.refresh_velocity', 'Recalculate sprint velocity after completion')
+        : null,
+    task.status === 'completed'
+        ? suggest('notifications.send', 'Notify the team about task completion')
+        : null,
+].filter(Boolean))
 ```
 
 The task Presenter suggests sprint and notification tools. The agent follows these cross-domain hints, building a cohesive workflow across multiple domains.
@@ -237,21 +235,14 @@ The task Presenter suggests sprint and notification tools. The agent follows the
 Use the data to compute precise affordances:
 
 ```typescript
-.suggestActions((invoice) => {
-    const actions = [];
-
+.suggest((invoice) => {
     if (invoice.amount_cents > 100000) { // Over $1,000
-        actions.push({
-            tool: 'billing.request_approval',
-            reason: 'High-value invoice requires manager approval before payment',
-        });
-    } else {
-        actions.push({
-            tool: 'billing.pay',
-            reason: 'Process immediate payment',
-        });
+        return [
+            suggest('billing.request_approval', 'High-value invoice requires manager approval before payment'),
+        ];
     }
-
-    return actions;
+    return [
+        suggest('billing.pay', 'Process immediate payment'),
+    ];
 })
 ```

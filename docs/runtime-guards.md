@@ -52,7 +52,7 @@ When exceeded, it truncates at a safe UTF-8 character boundary and injects:
 You MUST use pagination (limit/offset) or filters to retrieve smaller result sets.]
 ```
 
-### Egress Guard vs Presenter `.agentLimit()`
+### Egress Guard vs Presenter `.limit()` / `.agentLimit()`
 
 Both truncate at different layers. Use both for defense in depth:
 
@@ -60,7 +60,7 @@ Both truncate at different layers. Use both for defense in depth:
 // Domain guard — intelligent truncation with custom message
 const UserPresenter = createPresenter('User')
   .schema(UserSchema)
-  .agentLimit(50, { warningMessage: 'Showing {shown} of {total}. Use filters.' });
+  .limit(50);
 
 // Infrastructure guard — brute-force byte limit
 const users = createTool<AppContext>('users')
@@ -72,7 +72,7 @@ const users = createTool<AppContext>('users')
   });
 ```
 
-`.agentLimit()` operates on item count at the domain layer with custom guidance. `.maxPayloadBytes()` operates on raw bytes at the infrastructure layer as a safety net.
+`.limit()` / `.agentLimit()` operates on item count at the domain layer with custom guidance. `.maxPayloadBytes()` operates on raw bytes at the infrastructure layer as a safety net.
 
 ## Intent Mutex
 

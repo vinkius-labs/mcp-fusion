@@ -20,6 +20,7 @@
 
 // ── Orchestrator (primary export) ────────────────────────
 export { StateSyncLayer } from './StateSyncLayer.js';
+export { StateSyncBuilder, PolicyBuilder } from './StateSyncBuilder.js';
 
 // ── Configuration Types ──────────────────────────────────
 export type {

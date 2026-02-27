@@ -130,17 +130,15 @@ Fusion doesn't depend on `@opentelemetry/api`, so it cannot inject span context 
 ```typescript
 import { context, trace } from '@opentelemetry/api';
 
-const tool = createTool<AppContext>('db')
-  .tracing(trace.getTracer('mcp-fusion'))
-  .action({
-    name: 'query',
-    handler: async (ctx, args) => {
-      const span = trace.getActiveSpan();
-      return context.with(
-        trace.setSpan(context.active(), span!),
-        () => ctx.db.query(args.sql).then(success),
-      );
-    },
+const dbQuery = f.query('db.query')
+  .describe('Run a database query')
+  .input({ sql: f.string() })
+  .resolve(async ({ input, ctx }) => {
+    const span = trace.getActiveSpan();
+    return context.with(
+      trace.setSpan(context.active(), span!),
+      () => ctx.db.query(input.sql),
+    );
   });
 ```
 

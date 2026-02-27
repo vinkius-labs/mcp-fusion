@@ -6,7 +6,19 @@ This is the **View** in the [MVA (Model-View-Agent)](/mva-pattern) pattern.
 
 ## Defining a Presenter {#minimal}
 
-```typescript
+::: code-group
+```typescript [Fluent (recommended)]
+import { createPresenter, t } from '@vinkius-core/mcp-fusion';
+
+export const UserPresenter = createPresenter('User')
+  .schema({
+    id:    t.string,
+    name:  t.string,
+    email: t.zod.string().email(),  // t.zod escape hatch for advanced Zod
+    role:  t.enum('admin', 'member', 'guest'),
+  });
+```
+```typescript [Declarative]
 import { definePresenter } from '@vinkius-core/mcp-fusion';
 import { z } from 'zod';
 
@@ -20,77 +32,131 @@ export const UserPresenter = definePresenter({
   }),
 });
 ```
+:::
 
-The schema is a whitelist. The handler returns the full database row — `id`, `name`, `email`, `role`, `password_hash`, `internal_flags`, `stripe_customer_id`. The Presenter strips everything not declared via `Zod.parse()`. A new column added to the database is invisible by default — the developer must explicitly add it to the schema.
+## Schema — The `t` Namespace {#schema}
+
+The `t` namespace provides Zod-backed type helpers that eliminate `import { z } from 'zod'` for 95% of use cases. Every `t.*` value IS a real ZodType — `.describe()`, `.optional()`, `.nullable()` all work.
+
+```typescript
+import { createPresenter, t } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({
+    id:           t.string,
+    amount_cents: t.number.describe('Value in CENTS. Divide by 100 for display.'),
+    status:       t.enum('paid', 'pending', 'overdue'),
+    tags:         t.array(t.string),
+    metadata:     t.optional(t.record(t.string)),
+  });
+```
+
+| Helper | Equivalent Zod | Example |
+|---|---|---|
+| `t.string` | `z.string()` | `t.string.describe('User ID')` |
+| `t.number` | `z.number()` | `t.number` |
+| `t.boolean` | `z.boolean()` | `t.boolean` |
+| `t.date` | `z.date()` | `t.date` |
+| `t.enum(...)` | `z.enum([...])` | `t.enum('active', 'archived')` |
+| `t.array(T)` | `z.array(T)` | `t.array(t.string)` |
+| `t.object({})` | `z.object({})` | `t.object({ lat: t.number })` |
+| `t.record(T)` | `z.record(T)` | `t.record(t.string)` |
+| `t.optional(T)` | `T.optional()` | `t.optional(t.string)` |
+| `t.nullable(T)` | `T.nullable()` | `t.nullable(t.string)` |
+| `t.zod` | `z` | `t.zod.string().email()` |
+
+::: tip Escape Hatch
+Need regex, transforms, or unions? Use `t.zod` for direct Zod access:
+```typescript
+.schema({
+  id:    t.string,
+  email: t.zod.string().email().min(5),  // Full Zod power
+})
+```
+:::
+
+::: info Backward compatible
+Raw Zod schemas still work — `.schema(z.object({...}))` is fully supported.
+:::
 
 ## Auto-Extracted Rules {#auto-rules}
 
 Zod `.describe()` annotations generate system rules that travel with the data:
 
 ```typescript
-const invoiceSchema = z.object({
-  id: z.string(),
-  amount_cents: z.number().describe('Value in CENTS. Divide by 100 for display.'),
-  status: z.enum(['paid', 'pending', 'overdue']).describe('Use emoji: ✅ paid, ⏳ pending, 🔴 overdue'),
-});
-
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  autoRules: true,
-});
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({
+    id: t.string,
+    amount_cents: t.number.describe('Value in CENTS. Divide by 100 for display.'),
+    status: t.enum('paid', 'pending', 'overdue').describe('Use emoji: ✅ paid, ⏳ pending, 🔴 overdue'),
+  });
 ```
 
-The agent sees these rules only when invoice data is in the response — zero wasted tokens on irrelevant instructions.
+The agent sees these rules only when invoice data is in the response — zero wasted tokens.
 
 ## System Rules {#rules}
 
-Static:
-
-```typescript
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  systemRules: [
+::: code-group
+```typescript [Shorthand — .rules()]
+// Static
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({ /* ... */ })
+  .rules([
     'Use currency format: $XX,XXX.00',
     'Always show both the cents value and the formatted amount.',
-  ],
-});
-```
+  ]);
 
-Dynamic — adapts to the current user's role or tenant:
-
-```typescript
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  systemRules: (invoice, ctx) => [
+// Dynamic — adapts to context (RBAC, tenant, locale)
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({ /* ... */ })
+  .rules((invoice, ctx) => [
     'Use currency format: $XX,XXX.00',
     ctx?.user?.role !== 'admin'
-      ? 'RESTRICTED: Do not reveal exact totals to non-admin users. Show ranges only.'
+      ? 'RESTRICTED: Do not reveal exact totals to non-admin users.'
       : null,
     `Format dates using ${ctx?.tenant?.locale ?? 'en-US'}.`,
-  ],
-});
+  ]);
 ```
+```typescript [Full control — .systemRules()]
+// Identical behavior, longer name
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .systemRules((invoice, ctx) => [
+    'CRITICAL: amount_cents is in CENTS. Divide by 100.',
+    ctx?.user?.role !== 'admin'
+      ? 'RESTRICTED: Mask exact totals for non-admin users. Show ranges only.'
+      : null,
+    `Format dates using ${ctx?.tenant?.locale ?? 'en-US'}.`,
+  ]);
+```
+:::
 
-`null` values are filtered automatically. When both `autoRules` and `systemRules` are set, they merge.
+`null` values are filtered automatically. When both `autoRules` and rules are set, they merge.
 
 ## UI Blocks {#ui-blocks}
 
-```typescript
-import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+::: code-group
+```typescript [Shorthand — .ui()]
+import { createPresenter, t, ui } from '@vinkius-core/mcp-fusion';
 
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  uiBlocks: (invoice) => [
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({ id: t.string, amount_cents: t.number })
+  .ui((invoice) => [
     ui.echarts({
       series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
     }),
-  ],
-});
+  ]);
 ```
+```typescript [Full control — .uiBlocks()]
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .uiBlocks((invoice) => [
+    ui.echarts({
+      series: [{ type: 'gauge', data: [{ value: invoice.amount_cents / 100 }] }],
+    }),
+  ]);
+```
+:::
 
 Available helpers:
 
@@ -105,52 +171,64 @@ ui.json({ key: 'value' })              // Formatted JSON
 ui.summary('3 invoices found.')         // Collection summaries
 ```
 
-For arrays, use `collectionUi` to get aggregate visualizations instead of N individual charts:
+For arrays, use `.collectionUiBlocks()` to get aggregate visualizations instead of N individual charts:
 
 ```typescript
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  collectionUi: (invoices) => [
-    ui.echarts({
-      xAxis: { data: invoices.map(i => i.id) },
-      series: [{ type: 'bar', data: invoices.map(i => i.amount_cents / 100) }],
-    }),
-    ui.summary(`${invoices.length} invoices found.`),
-  ],
-});
+.collectionUiBlocks((invoices) => [
+  ui.echarts({
+    xAxis: { data: invoices.map(i => i.id) },
+    series: [{ type: 'bar', data: invoices.map(i => i.amount_cents / 100) }],
+  }),
+  ui.summary(`${invoices.length} invoices found.`),
+])
 ```
 
 ## Agent Limit {#agent-limit}
 
-Slices arrays before validation and injects guidance about what was omitted:
+Slices arrays before validation and injects guidance about what was omitted.
 
-```typescript
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  agentLimit: {
-    max: 50,
-    onTruncate: (omitted) =>
-      ui.summary(
-        `⚠️ Showing 50 of ${50 + omitted} results. ` +
-        `Use status or date_range filters to narrow results.`
-      ),
-  },
-});
+::: code-group
+```typescript [Shorthand — .limit()]
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({ id: t.string, status: t.enum('paid', 'pending', 'overdue') })
+  .limit(50);
+// → Auto-generated: "⚠️ Dataset truncated. 50 shown, {N} hidden. Use filters."
 ```
+```typescript [Full control — .agentLimit()]
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .agentLimit(50, (omitted) =>
+    ui.summary(
+      `⚠️ Showing 50 of ${50 + omitted} results. ` +
+      `Use status or date_range filters to narrow results.`
+    )
+  );
+```
+:::
 
-The agent receives 50 items plus a UI block that tells it how to get more specific results.
+The agent receives kept items plus a UI block that tells it how to get more specific results.
 
 ## Suggested Actions {#affordances}
 
-HATEOAS-style hints based on the data's current state:
+HATEOAS-style hints based on the data's current state. Use the `suggest()` helper for maximum fluency.
 
-```typescript
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  suggestActions: (invoice) => {
+::: code-group
+```typescript [Shorthand — suggest()]
+import { createPresenter, t, suggest } from '@vinkius-core/mcp-fusion';
+
+const InvoicePresenter = createPresenter('Invoice')
+  .schema({ id: t.string, status: t.enum('pending', 'overdue', 'paid') })
+  .suggest((invoice) => [
+    suggest('billing.pay', 'Process immediate payment'),
+    invoice.status === 'overdue'
+      ? suggest('billing.escalate', 'Escalate to collections')
+      : null,
+  ].filter(Boolean));
+```
+```typescript [Full control — .suggestActions()]
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .suggestActions((invoice) => {
     if (invoice.status === 'pending') {
       return [
         { tool: 'billing.pay', reason: 'Process immediate payment' },
@@ -161,9 +239,9 @@ export const InvoicePresenter = definePresenter({
       return [{ tool: 'billing.escalate', reason: 'Escalate to collections' }];
     }
     return [];
-  },
-});
+  });
 ```
+:::
 
 The agent receives valid next actions with reasons instead of scanning the full `tools/list`.
 
@@ -172,24 +250,18 @@ The agent receives valid next actions with reasons instead of scanning the full 
 When data has nested objects, each entity gets its own Presenter. Rules, UI blocks, and affordances from children merge into the parent:
 
 ```typescript
-const ClientPresenter = definePresenter({
-  name: 'Client',
-  schema: z.object({
+const ClientPresenter = createPresenter('Client')
+  .schema(z.object({
     id: z.string(),
     company: z.string(),
     contact_email: z.string().email(),
-  }),
-  systemRules: ['Display company name prominently.'],
-});
+  }))
+  .rules(['Display company name prominently.']);
 
-export const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  embeds: [
-    { key: 'client', presenter: ClientPresenter },
-    { key: 'line_items', presenter: LineItemPresenter },
-  ],
-});
+export const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .embed('client', ClientPresenter)
+  .embed('line_items', LineItemPresenter);
 ```
 
 Embeds nest to any depth.
@@ -256,21 +328,42 @@ Every stage is optional. A Presenter with only `name` and `schema` is a pure egr
 
 ## Builder API {#builder-api}
 
-`definePresenter()` is recommended. The fluent builder `createPresenter()` is also supported:
+The fluent `createPresenter()` is the recommended API. Both shorthand aliases and full method names are supported:
+
+| Shorthand | Full control | Purpose |
+|---|---|---|
+| `.schema({ id: t.string })` | `.schema(z.object({ ... }))` | Define the validation schema |
+| `.rules([...])` | `.systemRules([...])` | JIT system rules |
+| `.ui((item) => [...])` | `.uiBlocks((item) => [...])` | Per-item UI blocks |
+| `.limit(50)` | `.agentLimit(50, onTruncate)` | Cognitive guardrail |
+| `.suggest((item) => [...])` | `.suggestActions((item) => {...})` | HATEOAS suggestions |
 
 ```typescript
-import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
+import { createPresenter, t, suggest, ui } from '@vinkius-core/mcp-fusion';
 
 export const InvoicePresenter = createPresenter('Invoice')
-  .schema(invoiceSchema)
-  .systemRules(['amount_cents is in CENTS. Divide by 100.'])
-  .uiBlocks((inv) => [ui.echarts({ /* ... */ })])
-  .suggestActions((inv) =>
-    inv.status === 'pending'
-      ? [{ tool: 'billing.pay', reason: 'Process payment' }]
-      : [],
-  );
+  .schema({
+    id:           t.string,
+    amount_cents: t.number.describe('CENTS — divide by 100'),
+    status:       t.enum('draft', 'paid', 'overdue'),
+  })
+  .rules(['CRITICAL: amount_cents is in CENTS. Divide by 100.'])
+  .ui((inv) => [
+    ui.table(['Field', 'Value'], [
+      ['Amount', `$${(inv.amount_cents / 100).toFixed(2)}`],
+      ['Status', inv.status],
+    ]),
+  ])
+  .suggest((inv) => [
+    suggest('invoices.get', 'View details'),
+    inv.status === 'overdue'
+      ? suggest('billing.remind', 'Send reminder')
+      : null,
+  ].filter(Boolean))
+  .limit(50);
 ```
+
+The declarative `definePresenter({ ... })` API is also supported for config-object style.
 
 After the first `.make()` call, the Presenter is sealed — configuration methods throw if called.
 
@@ -314,30 +407,22 @@ const baseEntity = z.object({
   updated_at: z.string(),
 });
 
-const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: baseEntity.extend({
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(baseEntity.extend({
     amount_cents: z.number().describe('Value in CENTS. Divide by 100.'),
     status: z.enum(['paid', 'pending', 'overdue']),
-  }),
-});
+  }));
 ```
 
 ### Multi-Level Embeds {#multi-embed}
 
 ```typescript
-const LineItemPresenter = definePresenter({
-  name: 'LineItem',
-  schema: lineItemSchema,
-  agentLimit: { max: 20, onTruncate: (n) => ui.summary(`${n} items omitted.`) },
-});
+const LineItemPresenter = createPresenter('LineItem')
+  .schema(lineItemSchema)
+  .limit(20);
 
-const InvoicePresenter = definePresenter({
-  name: 'Invoice',
-  schema: invoiceSchema,
-  embeds: [
-    { key: 'client', presenter: ClientPresenter },
-    { key: 'line_items', presenter: LineItemPresenter },
-  ],
-});
+const InvoicePresenter = createPresenter('Invoice')
+  .schema(invoiceSchema)
+  .embed('client', ClientPresenter)
+  .embed('line_items', LineItemPresenter);
 ```

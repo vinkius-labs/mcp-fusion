@@ -214,7 +214,78 @@ export interface FusionClient<TRouter extends RouterMap> {
         calls: { [K in keyof TActions]: { action: TActions[K]; args: TRouter[TActions[K] & keyof TRouter] } },
         options?: { sequential?: boolean | undefined } | undefined,
     ): Promise<ToolResponse[]>;
+
+    /**
+     * Fluent proxy for calling tools with dot-navigation.
+     *
+     * Builds the action path from chained property accesses,
+     * then executes when invoked as a function.
+     *
+     * @example
+     * ```typescript
+     * // Equivalent to: client.execute('projects.create', { name: 'V2' })
+     * await client.proxy.projects.create({ name: 'V2' });
+     *
+     * // Also works for deeper paths:
+     * await client.proxy.platform.users.list({ limit: 10 });
+     * ```
+     */
+    readonly proxy: FluentProxy<TRouter>;
 }
+
+// ── Fluent Proxy Type Utilities ──────────────────────────
+
+/**
+ * Splits a dotted key `'a.b.c'` into head `'a'` and tail `'b.c'`.
+ * @internal
+ */
+type SplitKey<K extends string> =
+    K extends `${infer Head}.${infer Tail}` ? [Head, Tail] : [K, never];
+
+/**
+ * Collects all first segments from the router keys.
+ * @internal
+ */
+type FirstSegments<TRouter extends RouterMap> = {
+    [K in keyof TRouter & string]: SplitKey<K>[0];
+}[keyof TRouter & string];
+
+/**
+ * Given a segment prefix, collects remaining tails and their arg types.
+ * @internal
+ */
+type SubRouter<TRouter extends RouterMap, Prefix extends string> = {
+    [K in keyof TRouter & string as K extends `${Prefix}.${infer Rest}` ? Rest : never]: TRouter[K];
+};
+
+/**
+ * Recursive proxy node type.
+ *
+ * - If the key resolves to a leaf action, it becomes callable.
+ * - If it has further segments, it exposes another level of navigation.
+ * @internal
+ */
+type ProxyNode<TRouter extends RouterMap> = {
+    [Seg in FirstSegments<TRouter>]:
+        // If `Seg` is a direct key in the router (leaf action), it's callable
+        (Seg extends keyof TRouter
+            ? ((args: TRouter[Seg]) => Promise<ToolResponse>)
+            : unknown) &
+        // If there are sub-keys, recursively expose them
+        (string extends FirstSegments<SubRouter<TRouter, Seg>>
+            ? unknown
+            : FluentProxy<SubRouter<TRouter, Seg>>);
+};
+
+/**
+ * Top-level fluent proxy type.
+ *
+ * Provides dot-navigation for calling tools:
+ * ```typescript
+ * await client.proxy.projects.create({ name: 'V2' });
+ * ```
+ */
+export type FluentProxy<TRouter extends RouterMap> = ProxyNode<TRouter>;
 
 // ============================================================================
 // XML Error Parser (Internal)
@@ -444,5 +515,41 @@ export function createFusionClient<TRouter extends RouterMap>(
                 items.map(call => executeInternal(call.action, call.args)),
             );
         },
+
+        proxy: buildFluentProxy(executeInternal) as FluentProxy<TRouter>,
     };
+}
+
+// ============================================================================
+// Fluent Proxy Builder (Internal)
+// ============================================================================
+
+/**
+ * Creates a recursive Proxy that accumulates path segments
+ * and executes when invoked as a function.
+ *
+ * ```
+ * proxy.projects.create({ name: 'V2' })
+ * //   ^^^^^^^^ ^^^^^^  ^^^^^^^^^^^^^^^^
+ * //   seg[0]   seg[1]  args → execute('projects.create', args)
+ * ```
+ *
+ * @internal
+ */
+function buildFluentProxy(
+    execute: (action: string, args: Record<string, unknown>) => Promise<ToolResponse>,
+    segments: string[] = [],
+): unknown {
+    return new Proxy(function () {} as any, {
+        get(_target: unknown, prop: string | symbol): unknown {
+            if (typeof prop !== 'string' || prop === 'then') return undefined;
+            return buildFluentProxy(execute, [...segments, prop]);
+        },
+
+        apply(_target: unknown, _thisArg: unknown, argsList: unknown[]): unknown {
+            const action = segments.join('.');
+            const args = (argsList[0] ?? {}) as Record<string, unknown>;
+            return execute(action, args);
+        },
+    });
 }

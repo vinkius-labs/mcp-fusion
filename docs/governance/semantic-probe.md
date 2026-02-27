@@ -32,7 +32,7 @@ const probe = createProbe(
     description: 'List invoices with optional filters',
     readOnly: true,
     destructive: false,
-    systemRules: ['Return only invoices matching the filter'],
+    rules: ['Return only invoices matching the filter'],
     schemaKeys: ['id', 'amount', 'status'],
   },
 );

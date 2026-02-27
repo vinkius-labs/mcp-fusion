@@ -61,7 +61,7 @@ export const UserResponseSchema = z.object({
 
 export const UserPresenter = createPresenter('User')
     .schema(UserResponseSchema)
-    .systemRules(['Data originates from the database via Prisma ORM.']);
+    .rules(['Data originates from the database via Prisma ORM.']);
 ```
 
 Prisma queries return `passwordHash` and `stripeToken` from the database. The Presenter's `.strict()` strips them in RAM before serialization.

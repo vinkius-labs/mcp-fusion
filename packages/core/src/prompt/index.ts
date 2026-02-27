@@ -23,6 +23,7 @@ export type {
 // ── Factories ────────────────────────────────────────────
 export { PromptMessage } from './PromptMessage.js';
 export { definePrompt } from './definePrompt.js';
+export { FluentPromptBuilder } from './FluentPromptBuilder.js';
 
 // ── Pipeline (advanced / testing) ────────────────────────
 export {

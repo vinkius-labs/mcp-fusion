@@ -136,32 +136,26 @@ return toolError('ProjectNotFound', {
 
 ## ⑤ Cognitive Guardrails {#guardrails}
 
-`.agentLimit()` truncates data before it reaches the LLM and injects a teaching block:
+`.limit()` / `.agentLimit()` truncates data before it reaches the LLM and injects a teaching block:
 
 ```typescript
-const TaskPresenter = definePresenter({
-    name: 'Task',
-    schema: taskSchema,
-    agentLimit: {
-        max: 50,
-        onTruncate: (omitted) =>
-            ui.summary(`Showing 50 of ${50 + omitted}. Use filters to narrow results.`),
-    },
-});
+const TaskPresenter = createPresenter('Task')
+    .schema(taskSchema)
+    .limit(50);
 ```
 
-10,000 rows without guardrail → ~5,000,000 tokens. With `.agentLimit(50)` → ~25,000 tokens.
+10,000 rows without guardrail → ~5,000,000 tokens. With `.limit(50)` → ~25,000 tokens.
 
 ## ⑥ Agentic Affordances {#affordances}
 
-`.suggestActions()` provides HATEOAS-style next-action hints based on data state:
+`.suggest()` / `.suggestActions()` provides HATEOAS-style next-action hints based on data state:
 
 ```typescript
-.suggestActions((invoice, ctx) => {
+.suggest((invoice, ctx) => {
     if (invoice.status === 'pending') {
         return [
-            { tool: 'billing.pay', reason: 'Process immediate payment' },
-            { tool: 'billing.send_reminder', reason: 'Send payment reminder' },
+            suggest('billing.pay', 'Process immediate payment'),
+            suggest('billing.send_reminder', 'Send payment reminder'),
         ];
     }
     return [];
@@ -179,7 +173,7 @@ Rules travel with the data, not in the system prompt. Context Tree-Shaking ensur
 if (typeof this._rules === 'function') {
     const resolved = this._rules(singleData, ctx)
         .filter((r): r is string => r !== null && r !== undefined);
-    if (resolved.length > 0) builder.systemRules(resolved);
+    if (resolved.length > 0) builder.rules(resolved);
 }
 ```
 
@@ -237,7 +231,7 @@ Every block deterministic — from the builder, not the LLM. Domain rules appear
 | Prompt schema tokens | ~10,000 | ~1,670 |
 | System prompt domain rules | ~2,000 tokens (global) | 0 (JIT per response) |
 | Total prompt tax per turn | ~12,000 | ~1,670 |
-| Response to `tasks.list` (10K rows) | ~5,000,000 tokens | ~25,000 (`.agentLimit()`) |
+| Response to `tasks.list` (10K rows) | ~5,000,000 tokens | ~25,000 (`.limit()`) |
 | Parameter hallucination | Leaks to handler | `.strict()` rejects with actionable error |
 | Error guidance | Generic message | Directed correction prompt |
 | Stale-data awareness | None | `[Cache-Control]` directives |

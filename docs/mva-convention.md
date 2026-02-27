@@ -62,18 +62,15 @@ Presenters pair a Zod schema with perception logic — rules, UI blocks, afforda
 
 ```typescript
 // views/pet.presenter.ts — OpenAPI generator
-import { definePresenter, ui } from '@vinkius-core/mcp-fusion';
+import { createPresenter, ui } from '@vinkius-core/mcp-fusion';
 import { PetResponseSchema } from '../models/pet.schema.js';
 
-export const PetPresenter = definePresenter({
-  name: 'Pet',
-  schema: PetResponseSchema,
-  autoRules: true,
-  systemRules: ['Only show available pets unless explicitly requested.'],
-  uiBlocks: (pet) => [
+export const PetPresenter = createPresenter('Pet')
+  .schema(PetResponseSchema)
+  .rules(['Only show available pets unless explicitly requested.'])
+  .ui((pet) => [
     ui.markdown(`**${pet.name}** — ${pet.status}`),
-  ],
-});
+  ]);
 ```
 
 The Prisma generator uses the fluent builder instead:
@@ -84,7 +81,7 @@ import { createPresenter } from '@vinkius-core/mcp-fusion';
 
 export const UserPresenter = createPresenter('User')
   .schema(UserResponseSchema)
-  .systemRules(['Data originates from the database via Prisma ORM.']);
+  .rules(['Data originates from the database via Prisma ORM.']);
 ```
 
 Presenters never query databases or call APIs. They receive already-fetched data and shape perception.

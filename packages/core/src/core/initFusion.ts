@@ -44,9 +44,21 @@ import { definePresenter, type PresenterConfig } from '../presenter/definePresen
 import { defineMiddleware, type MiddlewareDefinition } from './middleware/index.js';
 import { defineTool, type ToolConfig } from './builder/defineTool.js';
 import { definePrompt } from '../prompt/definePrompt.js';
+import { FluentPromptBuilder } from '../prompt/FluentPromptBuilder.js';
 import { type PromptBuilder, type PromptConfig } from '../prompt/types.js';
 import { isZodSchema } from './schema/SchemaUtils.js';
 import { convertParamsToZod, type ParamsMap, type InferParams } from './builder/ParamDescriptors.js';
+import {
+    FluentToolBuilder,
+    QUERY_DEFAULTS, MUTATION_DEFAULTS, ACTION_DEFAULTS,
+} from './builder/FluentToolBuilder.js';
+import { FluentRouter } from './builder/FluentRouter.js';
+import {
+    FluentString, FluentNumber, FluentBoolean, FluentEnum, FluentArray,
+} from './builder/FluentSchemaHelpers.js';
+import { ErrorBuilder } from './builder/ErrorBuilder.js';
+import { StateSyncBuilder } from '../state-sync/StateSyncBuilder.js';
+import { type ErrorCode } from './response.js';
 
 // ── Config Types ─────────────────────────────────────────
 
@@ -141,18 +153,27 @@ export interface FusionInstance<TContext> {
     ): Presenter<TSchema['_output']>;
 
     /**
-     * Define a prompt with automatic context typing.
+     * Define a prompt — fluent or config-bag.
      *
-     * @example
+     * **Fluent** (name only — returns chainable builder):
      * ```typescript
-     * const greetPrompt = f.prompt('greet', {
-     *   args: z.object({ name: z.string() }),
-     *   handler: async (ctx, args) => ({
-     *     messages: [PromptMessage.user(`Hello ${args.name}`)],
-     *   }),
+     * const greet = f.prompt('greet')
+     *     .describe('Greet a user')
+     *     .input({ name: f.string() })
+     *     .handler(async (ctx, { name }) => ({
+     *         messages: [PromptMessage.user(`Hello ${name}!`)],
+     *     }));
+     * ```
+     *
+     * **Config-bag** (backward compatible):
+     * ```typescript
+     * const greet = f.prompt('greet', {
+     *     args: z.object({ name: z.string() }),
+     *     handler: async (ctx, args) => ({ ... }),
      * });
      * ```
      */
+    prompt(name: string): FluentPromptBuilder<TContext>;
     prompt(name: string, config: Omit<PromptConfig<TContext>, 'handler'> & {
         handler: PromptConfig<TContext>['handler'];
     }): PromptBuilder<TContext>;
@@ -195,6 +216,126 @@ export interface FusionInstance<TContext> {
      * ```
      */
     registry(): ToolRegistry<TContext>;
+
+    // ── Semantic Verbs (Fluent API) ──────────────────────
+
+    /**
+     * Create a **read-only** query tool (readOnly: true by default).
+     *
+     * @param name - Tool name in `domain.action` format
+     * @returns A type-chaining {@link FluentToolBuilder}
+     *
+     * @example
+     * ```typescript
+     * const listUsers = f.query('users.list')
+     *     .describe('List users from the database')
+     *     .input({ limit: f.number().min(1).max(100) })
+     *     .resolve(async ({ input, ctx }) => {
+     *         return ctx.db.user.findMany({ take: input.limit });
+     *     });
+     * ```
+     */
+    query(name: string): FluentToolBuilder<TContext>;
+
+    /**
+     * Create a **destructive** mutation tool (destructive: true by default).
+     *
+     * @param name - Tool name in `domain.action` format
+     * @returns A type-chaining {@link FluentToolBuilder}
+     *
+     * @example
+     * ```typescript
+     * const deleteUser = f.mutation('users.delete')
+     *     .describe('Delete a user permanently')
+     *     .input({ id: f.string() })
+     *     .resolve(async ({ input, ctx }) => {
+     *         await ctx.db.user.delete({ where: { id: input.id } });
+     *     });
+     * ```
+     */
+    mutation(name: string): FluentToolBuilder<TContext>;
+
+    /**
+     * Create a **neutral** action tool (no defaults applied).
+     *
+     * @param name - Tool name in `domain.action` format
+     * @returns A type-chaining {@link FluentToolBuilder}
+     *
+     * @example
+     * ```typescript
+     * const updateUser = f.action('users.update')
+     *     .describe('Update user profile')
+     *     .idempotent()
+     *     .input({ id: f.string(), name: f.string().optional() })
+     *     .resolve(async ({ input, ctx }) => {
+     *         return ctx.db.user.update({ where: { id: input.id }, data: input });
+     *     });
+     * ```
+     */
+    action(name: string): FluentToolBuilder<TContext>;
+
+    // ── Schema Helpers ───────────────────────────────────
+
+    /** Create a fluent string parameter descriptor */
+    string(): FluentString;
+    /** Create a fluent number parameter descriptor */
+    number(): FluentNumber;
+    /** Create a fluent boolean parameter descriptor */
+    boolean(): FluentBoolean;
+    /** Create a fluent enum parameter descriptor */
+    enum<V extends string>(...values: [V, ...V[]]): FluentEnum<V>;
+    /** Create a fluent array parameter descriptor */
+    array(itemType: 'string' | 'number' | 'boolean'): FluentArray;
+
+    // ── Router (Prefix Grouping) ─────────────────────────
+
+    /**
+     * Create a router that shares prefix, middleware, and tags.
+     *
+     * @param prefix - Common prefix for all tools (e.g. `'users'`)
+     * @returns A {@link FluentRouter} for creating child tools
+     *
+     * @example
+     * ```typescript
+     * const users = f.router('users')
+     *     .describe('User management')
+     *     .use(requireAuth);
+     *
+     * const listUsers = users.query('list')
+     *     .input({ limit: f.number() })
+     *     .resolve(async ({ input }) => { ... });
+     * ```
+     */
+    router(prefix: string): FluentRouter<TContext>;
+
+    /**
+     * Create a fluent, self-healing error builder.
+     *
+     * @param code - Canonical error code (e.g. `'NOT_FOUND'`, `'VALIDATION_ERROR'`)
+     * @param message - Human-readable error message
+     * @returns A chaining {@link ErrorBuilder}
+     *
+     * @example
+     * ```typescript
+     * return f.error('NOT_FOUND', `Project "${id}" missing`)
+     *     .suggest('Check the list for valid IDs')
+     *     .actions('projects.list');
+     * ```
+     */
+    error(code: ErrorCode, message: string): ErrorBuilder;
+
+    /**
+     * Create a fluent builder for centralized State Sync policies.
+     * 
+     * @example
+     * ```typescript
+     * const layer = f.stateSync()
+     *     .defaults({ cacheControl: 'no-store' })
+     *     .policy('billing.*', { cacheControl: 'no-store' })
+     *     .build();
+     * ```
+     */
+    stateSync(): StateSyncBuilder;
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -282,9 +423,12 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
             return definePresenter(config);
         },
 
-        prompt(name: string, config: Omit<PromptConfig<TContext>, 'handler'> & {
+        prompt(name: string, config?: Omit<PromptConfig<TContext>, 'handler'> & {
             handler: PromptConfig<TContext>['handler'];
-        }): PromptBuilder<TContext> {
+        }): PromptBuilder<TContext> | FluentPromptBuilder<TContext> {
+            if (!config) {
+                return new FluentPromptBuilder<TContext>(name);
+            }
             return definePrompt<TContext>(name, config as never);
         },
 
@@ -300,6 +444,42 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
 
         registry(): ToolRegistry<TContext> {
             return new ToolRegistry<TContext>();
+        },
+
+        // ── Semantic Verbs ────────────────────────────────
+
+        query(name: string): FluentToolBuilder<TContext> {
+            return new FluentToolBuilder<TContext>(name, QUERY_DEFAULTS);
+        },
+
+        mutation(name: string): FluentToolBuilder<TContext> {
+            return new FluentToolBuilder<TContext>(name, MUTATION_DEFAULTS);
+        },
+
+        action(name: string): FluentToolBuilder<TContext> {
+            return new FluentToolBuilder<TContext>(name, ACTION_DEFAULTS);
+        },
+
+        // ── Schema Helpers ────────────────────────────────
+
+        string(): FluentString { return new FluentString(); },
+        number(): FluentNumber { return new FluentNumber(); },
+        boolean(): FluentBoolean { return new FluentBoolean(); },
+        enum<V extends string>(...values: [V, ...V[]]): FluentEnum<V> { return new FluentEnum(...values); },
+        array(itemType: 'string' | 'number' | 'boolean'): FluentArray { return new FluentArray(itemType); },
+
+        // ── Router ────────────────────────────────────────
+
+        router(prefix: string): FluentRouter<TContext> {
+            return new FluentRouter<TContext>(prefix);
+        },
+
+        error(code: ErrorCode, message: string): ErrorBuilder {
+            return new ErrorBuilder(code, message);
+        },
+
+        stateSync(): StateSyncBuilder {
+            return new StateSyncBuilder();
         },
     };
 }
