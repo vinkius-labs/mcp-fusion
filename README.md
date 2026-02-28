@@ -528,6 +528,8 @@ npx fusion create my-api --vector prisma --transport sse
 | [`@vinkius-core/mcp-fusion-n8n`](https://mcp-fusion.vinkius.com/n8n-connector) | Auto-discover n8n webhook workflows and expose them as tools |
 | [`@vinkius-core/mcp-fusion-aws`](https://mcp-fusion.vinkius.com/aws-connector) | Auto-discover tagged AWS Lambda and Step Functions as grouped tools |
 | [`@vinkius-core/mcp-fusion-oauth`](https://mcp-fusion.vinkius.com/oauth) | RFC 8628 Device Flow authentication with `createAuthTool()` |
+| [`@vinkius-core/mcp-fusion-jwt`](https://mcp-fusion.vinkius.com/jwt) | JWT verification with HS256/RS256/ES256, JWKS auto-discovery, and `requireJwt()` middleware |
+| [`@vinkius-core/mcp-fusion-api-key`](https://mcp-fusion.vinkius.com/api-key) | API key validation with timing-safe comparison, hashed keys, and `requireApiKey()` middleware |
 
 ---
 

@@ -75,6 +75,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
+      - name: Publish jwt package
+        run: npm publish -w packages/jwt --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish api-key package
+        run: npm publish -w packages/api-key --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
       - name: Publish cloudflare adapter package
         run: npm publish -w packages/cloudflare --provenance --access public
         env:

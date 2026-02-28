@@ -1648,6 +1648,36 @@ const pages: Record<string, PageSEO> = {
       { q: 'Is XState required to use the FSM State Gate?', a: 'No. XState (v5+) is an optional peer dependency. Without it, the FSM uses a built-in manual fallback engine that supports the same FsmConfig format. The manual engine is sufficient for simple linear workflows. Install XState when you need parallel states, guards, or advanced statechart features.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // JWT VERIFICATION
+  // ═══════════════════════════════════════════════════════
+  'jwt.md': {
+    title: 'JWT Verification — Standards-Compliant Token Validation for MCP Servers',
+    description: 'Drop-in JWT verification middleware for MCP servers built with mcp-fusion. HS256 native fallback, jose integration for RS256/ES256/JWKS, claims validation, and self-healing errors.',
+    faqs: [
+      { q: 'What is the JWT package in MCP Fusion?', a: 'The @vinkius-core/mcp-fusion-jwt package provides standards-compliant JWT verification for MCP servers. It verifies tokens using jose when installed (supporting RS256, ES256, JWKS auto-discovery) or falls back to native Node.js crypto for HS256 verification. It includes middleware (requireJwt), a tool factory (createJwtAuthTool), and full claims validation (exp, nbf, iss, aud, requiredClaims).' },
+      { q: 'Does the JWT package require jose?', a: 'No. jose is an optional peer dependency. Without it, the package uses native Node.js crypto.createHmac + crypto.timingSafeEqual for HS256 verification — zero external dependencies. Install jose only when you need RS256, ES256, or JWKS auto-discovery.' },
+      { q: 'How does requireJwt middleware work?', a: 'requireJwt() is a middleware factory that extracts the JWT from the context (ctx.token, ctx.jwt, or Authorization header), verifies it using JwtVerifier, and returns toolError(\"JWT_INVALID\") with self-healing recovery hints if verification fails. On success, it calls next() and optionally invokes onVerified to inject the decoded payload into the context.' },
+      { q: 'What claims does the JWT verifier validate?', a: 'The verifier validates: exp (expiration with configurable clock tolerance), nbf (not-before), iss (issuer — string or array), aud (audience — string or array), and custom requiredClaims (any claim names that must be present in the payload). When jose is used, it handles exp/nbf/iss/aud natively; requiredClaims are always validated by the package.' },
+      { q: 'How does the JWT package handle self-healing errors?', a: 'When using requireJwt middleware, invalid or missing tokens trigger toolError(\"JWT_INVALID\") with structured recovery hints: a message explaining the failure, a suggestion for the LLM (e.g., \"Provide a valid JWT\"), and available actions. This enables the LLM to self-correct by requesting authentication.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // API KEY VALIDATION
+  // ═══════════════════════════════════════════════════════
+  'api-key.md': {
+    title: 'API Key Validation — Timing-Safe Key Management for MCP Servers',
+    description: 'Drop-in API key validation middleware for MCP servers built with mcp-fusion. SHA-256 hashing, timing-safe comparison, async validators, and self-healing errors. Zero external dependencies.',
+    faqs: [
+      { q: 'What is the API Key package in MCP Fusion?', a: 'The @vinkius-core/mcp-fusion-api-key package provides timing-safe API key validation for MCP servers. It supports three validation strategies: static key sets (pre-hashed at construction), SHA-256 hash comparison (for database storage), and async validators (for dynamic lookups). It uses native Node.js crypto with zero external dependencies.' },
+      { q: 'How does the API Key package prevent timing attacks?', a: 'All key comparisons use crypto.timingSafeEqual. Static keys are pre-hashed to SHA-256 at construction time, and comparison is done on the hashes using constant-time operations. This prevents attackers from inferring valid keys by measuring response times.' },
+      { q: 'How does requireApiKey middleware work?', a: 'requireApiKey() is a middleware factory that extracts the API key from the context (ctx.apiKey, x-api-key header, or Authorization header with ApiKey/Bearer prefix), validates it using ApiKeyManager, and returns toolError(\"APIKEY_INVALID\") with self-healing hints if validation fails. On success, it calls next() and optionally invokes onValidated with key metadata.' },
+      { q: 'Can the API Key package validate keys from a database?', a: 'Yes. Use the async validator strategy: provide a validator function that receives the raw key and returns { valid: boolean, metadata?: object, reason?: string }. The validator takes priority over static keys, enabling database lookups, rate limiting, scope checking, and key revocation.' },
+      { q: 'How do I safely store API keys?', a: 'Use ApiKeyManager.hashKey(rawKey) to generate a SHA-256 hex hash, store the hash in your database, and configure the manager with hashedKeys. The original plaintext key is never stored. Use ApiKeyManager.generateKey() to create cryptographically random keys with custom prefixes.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

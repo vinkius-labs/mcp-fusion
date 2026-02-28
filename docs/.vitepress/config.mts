@@ -89,7 +89,7 @@ export default defineConfig({
         'OpenAPI to MCP', 'Prisma to MCP', 'n8n MCP',
         'mcp-fusion-vercel', 'mcp-fusion-cloudflare', 'mcp-fusion-aws',
         'mcp-fusion-openapi-gen', 'mcp-fusion-prisma-gen', 'mcp-fusion-n8n',
-        'mcp-fusion-oauth', 'mcp-fusion-testing',
+        'mcp-fusion-oauth', 'mcp-fusion-jwt', 'mcp-fusion-api-key', 'mcp-fusion-testing',
         'MCP server framework', 'build MCP server', 'MCP tool builder'
       ],
       'author': {
@@ -387,6 +387,8 @@ export default defineConfig({
           { text: 'n8n Connector', link: '/n8n-connector' },
           { text: 'AWS Connector', link: '/aws-connector' },
           { text: 'OAuth', link: '/oauth' },
+          { text: 'JWT Verification', link: '/jwt' },
+          { text: 'API Key Validation', link: '/api-key' },
         ]
       },
 

@@ -1,0 +1,52 @@
+{
+    "name": "@vinkius-core/mcp-fusion-api-key",
+    "version": "1.0.0",
+    "description": "API key validation middleware for MCP servers built with mcp-fusion. Timing-safe comparison, SHA-256 hashing, async validators, and self-healing error responses.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "mcp-fusion",
+        "api-key",
+        "authentication",
+        "middleware",
+        "ai",
+        "llm"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/api-key"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://mcp-fusion.vinkius.com/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "peerDependencies": {
+        "@vinkius-core/mcp-fusion": "^2.0.0"
+    },
+    "license": "Apache-2.0"
+}

@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [@vinkius-core/mcp-fusion-jwt v1.0.0] - 2026-02-28
+
+### 🔐 JWT Verification — Standards-Compliant Token Validation
+
+Drop-in JWT verification middleware for MCP servers. Verifies tokens using `jose` when installed (RS256, ES256, JWKS auto-discovery) or falls back to native Node.js `crypto` for HS256 — zero external dependencies required.
+
+### Added
+
+- **`JwtVerifier` class** — core verification engine:
+  - HS256 native fallback using `crypto.createHmac` + `crypto.timingSafeEqual`
+  - jose lazy-loading for RS256, ES256, JWKS endpoint support
+  - Claims validation: `exp`, `nbf`, `iss` (string/array), `aud` (string/array), `requiredClaims`
+  - Configurable `clockTolerance` (default: 60s)
+  - `verify(token)` → payload or null
+  - `verifyDetailed(token)` → `{ valid, payload?, reason? }`
+  - Static utilities: `decode()` (no verification), `isExpired()`
+- **`requireJwt()` middleware factory** — blocks unauthenticated requests with `toolError('JWT_INVALID')` and self-healing recovery hints
+  - Extracts from `ctx.token`, `ctx.jwt`, `Authorization` header (Bearer prefix auto-strip)
+  - `onVerified` callback for context injection
+  - Custom `extractToken`, `errorCode`, `recoveryHint`, `recoveryAction`
+- **`createJwtAuthTool()` factory** — pre-built MCP tool with `verify` and `status` actions
+- **36 tests** across JwtVerifier and middleware
+
+### Documentation
+
+- `docs/jwt.md` — architecture diagram, verification strategies, claims validation, middleware usage, standalone usage, API reference, types
+- SEO entry with title, description, and 5 FAQs
+- VitePress sidebar entry under Data Connectors
+
+---
+
+## [@vinkius-core/mcp-fusion-api-key v1.0.0] - 2026-02-28
+
+### 🔑 API Key Validation — Timing-Safe Key Management
+
+Timing-safe API key validation for MCP servers. Supports static key sets, SHA-256 hash comparison, and async validators (database lookup). **Zero external dependencies** — uses native Node.js `crypto`.
+
+### Added
+
+- **`ApiKeyManager` class** — core validation engine:
+  - Static key set: pre-hashed at construction, timing-safe SHA-256 comparison
+  - Hash-based storage: `hashKey()` for safe DB storage, `matchKey()` for comparison
+  - Async validator: `(key) => Promise<{ valid, metadata?, reason? }>` for DB/API lookups
+  - Prefix validation and minimum length enforcement
+  - Key generation: `generateKey({ prefix, length })` with `crypto.randomBytes`
+- **`requireApiKey()` middleware factory** — blocks unauthenticated requests with `toolError('APIKEY_INVALID')` and self-healing recovery hints
+  - Extracts from `ctx.apiKey`, `x-api-key` header, `Authorization` header (`ApiKey`/`Bearer` prefix)
+  - `onValidated` callback with key metadata
+  - Custom `extractKey`, `errorCode`, `recoveryHint`, `recoveryAction`
+- **`createApiKeyTool()` factory** — pre-built MCP tool with `validate` and `status` actions
+- **41 tests** across ApiKeyManager and middleware
+
+### Documentation
+
+- `docs/api-key.md` — architecture diagram, validation strategies, key management utilities, middleware usage, API reference, types
+- SEO entry with title, description, and 5 FAQs
+- VitePress sidebar entry under Data Connectors
+
+---
+
 ## [2.15.0] - 2026-02-28
 
 ### 🧠 FSM State Gate — Temporal Anti-Hallucination Engine

@@ -1744,6 +1744,53 @@ Fluent API: `.bindState(states, transitionEvent?)` on any FluentToolBuilder.
 Factory: `f.fsm(config)` — creates a StateMachineGate from the fusion instance.
 Boot: `initFsmEngine()` — pre-load xstate at startup (optional optimization).
 
+### JWT Verification (`@vinkius-core/mcp-fusion-jwt`)
+
+Standards-compliant JWT verification for MCP servers. Verifies tokens using `jose` when installed (RS256, ES256, JWKS auto-discovery) or falls back to native Node.js `crypto` for HS256. Zero external dependencies required for HS256.
+
+- `JwtVerifier(config)` — core verification engine
+  - `config.secret` — symmetric secret for HS256 (native crypto fallback)
+  - `config.jwksUri` — JWKS endpoint URL for RS256/ES256 (requires jose)
+  - `config.publicKey` — PEM-encoded public key for RS256/ES256 (requires jose)
+  - `config.issuer` — expected `iss` claim (string or string[])
+  - `config.audience` — expected `aud` claim (string or string[])
+  - `config.clockTolerance` — seconds tolerance for exp/nbf (default: 60)
+  - `config.requiredClaims` — custom claims that must be present
+  - `.verify(token)` → `JwtPayload | null` — verify and return payload
+  - `.verifyDetailed(token)` → `{ valid, payload?, reason? }` — verify with error reason
+  - `JwtVerifier.decode(token)` → `JwtPayload | null` — decode without verification (⚠️ not for auth)
+  - `JwtVerifier.isExpired(token, tolerance?)` → `boolean` — quick expiration check
+- `requireJwt(options)` — middleware factory, blocks with `toolError('JWT_INVALID')` + self-healing hints
+  - Extracts from `ctx.token`, `ctx.jwt`, `Authorization` header (Bearer prefix auto-strip)
+  - `onVerified(ctx, payload)` — callback after successful verification
+  - Custom `extractToken`, `errorCode`, `recoveryHint`, `recoveryAction`
+- `createJwtAuthTool(config)` — pre-built MCP tool with `verify` and `status` actions
+
+`jose` is an **optional** peer dependency — lazy-loaded. Without it, only HS256 is supported via native `crypto.createHmac` + `crypto.timingSafeEqual`.
+
+### API Key Validation (`@vinkius-core/mcp-fusion-api-key`)
+
+Timing-safe API key validation for MCP servers. Zero external dependencies — uses native Node.js `crypto`.
+
+- `ApiKeyManager(config)` — core validation engine, three strategies:
+  - `config.keys` — static plaintext keys (pre-hashed to SHA-256 at construction)
+  - `config.hashedKeys` — pre-computed SHA-256 hashes (for DB storage)
+  - `config.validator` — `(key) => Promise<{ valid, metadata?, reason? }>` for DB lookups
+  - `config.prefix` — required key prefix (e.g., `'sk_live_'`)
+  - `config.minLength` — minimum key length (default: 16)
+  - `.validate(key)` → `{ valid, metadata?, reason? }` — validate with detailed result
+  - `.isValid(key)` → `boolean` — quick boolean check
+  - `ApiKeyManager.hashKey(key)` → SHA-256 hex hash (64 chars)
+  - `ApiKeyManager.matchKey(key, hash)` → timing-safe comparison
+  - `ApiKeyManager.generateKey({ prefix?, length? })` → random key with `crypto.randomBytes`
+- `requireApiKey(options)` — middleware factory, blocks with `toolError('APIKEY_INVALID')` + self-healing hints
+  - Extracts from `ctx.apiKey`, `x-api-key` header, `Authorization` header (ApiKey/Bearer prefix)
+  - `onValidated(ctx, metadata?)` — callback after successful validation
+  - Custom `extractKey`, `errorCode`, `recoveryHint`, `recoveryAction`
+- `createApiKeyTool(config)` — pre-built MCP tool with `validate` and `status` actions
+
+All comparisons use `crypto.timingSafeEqual` to prevent timing attacks.
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups

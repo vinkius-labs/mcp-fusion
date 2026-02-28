@@ -1,0 +1,59 @@
+{
+    "name": "@vinkius-core/mcp-fusion-jwt",
+    "version": "1.0.0",
+    "description": "JWT verification middleware for MCP servers built with mcp-fusion. Standards-compliant token validation with jose, JWKS support, and self-healing error responses.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "mcp-fusion",
+        "jwt",
+        "json-web-token",
+        "authentication",
+        "middleware",
+        "ai",
+        "llm"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/jwt"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://mcp-fusion.vinkius.com/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "peerDependencies": {
+        "@vinkius-core/mcp-fusion": "^2.0.0",
+        "jose": "^5.0.0"
+    },
+    "peerDependenciesMeta": {
+        "jose": {
+            "optional": true
+        }
+    },
+    "license": "Apache-2.0"
+}
