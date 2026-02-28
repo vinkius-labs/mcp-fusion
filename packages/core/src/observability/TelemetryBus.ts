@@ -32,6 +32,7 @@ import { createServer, connect, type Server, type Socket } from 'node:net';
 import { existsSync, unlinkSync, chmodSync, statSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import type { TelemetryEvent, TelemetrySink } from './TelemetryEvent.js';
 
 // ============================================================================
@@ -48,20 +49,39 @@ const HEARTBEAT_INTERVAL_MS = 5_000;
 const REGISTRY_DIR = join(tmpdir(), 'mcp-fusion-registry');
 
 // ============================================================================
-// Path Convention
+// Path Convention — Deterministic Socket Paths
 // ============================================================================
 
 /**
- * Compute the IPC path for a given process ID.
+ * Compute a deterministic fingerprint from `process.cwd()`.
  *
- * - Windows: `\\.\pipe\mcp-fusion-{pid}` (Named Pipe, auto-cleaned by OS)
- * - POSIX:   `/tmp/mcp-fusion-{pid}.sock` (Unix Domain Socket)
+ * The fingerprint is a 12-char hex string (SHA-256 truncated),
+ * stable across server restarts for the same project directory.
+ * This enables the Inspector TUI to automatically reconnect
+ * when the server process restarts with a new PID.
  *
- * @param pid - Process ID (defaults to `process.pid`)
+ * @returns 12-character hex fingerprint
+ * @internal
+ */
+function cwdFingerprint(): string {
+    return createHash('sha256').update(process.cwd()).digest('hex').slice(0, 12);
+}
+
+/**
+ * Compute the IPC path for the telemetry socket.
+ *
+ * Uses a deterministic fingerprint based on `process.cwd()` so the
+ * socket path remains stable across server restarts. This enables
+ * the Inspector TUI to reconnect automatically without PID tracking.
+ *
+ * - Windows: `\\.\pipe\mcp-fusion-{fingerprint}` (Named Pipe, auto-cleaned by OS)
+ * - POSIX:   `/tmp/mcp-fusion-{fingerprint}.sock` (Unix Domain Socket)
+ *
+ * @param fingerprint - Custom fingerprint (defaults to SHA-256 of cwd)
  * @returns The IPC path string
  */
-export function getTelemetryPath(pid?: number): string {
-    const id = pid ?? process.pid;
+export function getTelemetryPath(fingerprint?: string): string {
+    const id = fingerprint ?? cwdFingerprint();
     if (platform() === 'win32') {
         return `\\\\.\\pipe\\mcp-fusion-${id}`;
     }
@@ -85,8 +105,9 @@ function writeRegistryFile(pid: number, serverName?: string): void {
         mkdirSync(REGISTRY_DIR, { recursive: true });
         const data = JSON.stringify({
             pid,
-            path: getTelemetryPath(pid),
+            path: getTelemetryPath(),
             name: serverName,
+            cwd: process.cwd(),
             startedAt: Date.now(),
         });
         writeFileSync(join(REGISTRY_DIR, `${pid}.json`), data, 'utf8');
@@ -135,8 +156,8 @@ function isProcessAlive(pid: number): boolean {
  *
  * @returns Array of discovered sockets with their PIDs
  */
-export function discoverSockets(): Array<{ pid: number; path: string }> {
-    const results: Array<{ pid: number; path: string }> = [];
+export function discoverSockets(): Array<{ pid: number; path: string; cwd?: string }> {
+    const results: Array<{ pid: number; path: string; cwd?: string }> = [];
 
     // ── Primary: scan registry directory (all platforms) ────
     try {
@@ -147,7 +168,7 @@ export function discoverSockets(): Array<{ pid: number; path: string }> {
 
             try {
                 const raw = readFileSync(join(REGISTRY_DIR, file), 'utf8');
-                const entry = JSON.parse(raw) as { pid: number; path: string };
+                const entry = JSON.parse(raw) as { pid: number; path: string; cwd?: string };
 
                 // ── Stale PID check ──────────────────────────
                 // If the process is dead (e.g. SIGKILL'd), the registry
@@ -157,7 +178,7 @@ export function discoverSockets(): Array<{ pid: number; path: string }> {
                     continue;
                 }
 
-                results.push({ pid: entry.pid, path: entry.path });
+                results.push({ pid: entry.pid, path: entry.path, ...(entry.cwd ? { cwd: entry.cwd } : {}) });
             } catch {
                 // Corrupted file — clean up
                 try { unlinkSync(join(REGISTRY_DIR, file)); } catch { /* ignore */ }
@@ -168,15 +189,17 @@ export function discoverSockets(): Array<{ pid: number; path: string }> {
     }
 
     // ── Fallback: POSIX socket scan (backward compat) ──────
+    // Matches both legacy PID-based and new fingerprint-based sockets
     if (platform() !== 'win32' && results.length === 0) {
         try {
             const files = readdirSync('/tmp');
             for (const file of files) {
-                const match = file.match(/^mcp-fusion-(\d+)\.sock$/);
+                const match = file.match(/^mcp-fusion-([a-f0-9]+)\.sock$/);
                 if (match) {
-                    const pid = parseInt(match[1]!, 10);
-                    // Skip stale sockets from dead processes
-                    if (!isProcessAlive(pid)) continue;
+                    const idStr = match[1]!;
+                    const pid = /^\d+$/.test(idStr) ? parseInt(idStr, 10) : 0;
+                    // For PID-based sockets, check if alive; for hash-based, always include
+                    if (pid > 0 && !isProcessAlive(pid)) continue;
                     results.push({ pid, path: `/tmp/${file}` });
                 }
             }

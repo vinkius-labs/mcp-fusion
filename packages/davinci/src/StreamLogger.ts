@@ -181,7 +181,7 @@ export async function streamToStderr(options: StreamLoggerOptions = {}): Promise
     if (options.path) {
         ipcPath = options.path;
     } else if (options.pid) {
-        ipcPath = getTelemetryPath(options.pid);
+        ipcPath = getTelemetryPath(String(options.pid));
     } else {
         const sockets = discoverSockets();
         if (sockets.length === 0) {

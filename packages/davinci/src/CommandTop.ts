@@ -442,23 +442,21 @@ function renderTopology(
 ): string {
     let output = '';
 
-    // Tab header
-    // TODO: Enable [2] Prompts and [3] Resources tabs in a future release
-    const tab1 = ansi.bold(ansi.cyan('[1] Tools'));
-    output += ansi.moveTo(startRow, startCol);
-    output += pad(` ${tab1}`, width);
+    // Tab header — commented out until [2] Prompts and [3] Resources tabs are implemented
+    // const tab1 = ansi.bold(ansi.cyan('[1] Tools'));
+    // output += ansi.moveTo(startRow, startCol);
+    // output += pad(` ${tab1}`, width);
 
-    // Tab 1: Tool Topology (default)
-    // Column headers
-    output += ansi.moveTo(startRow + 1, startCol);
+    // Tool Topology — Column headers
+    output += ansi.moveTo(startRow, startCol);
     output += ansi.dim(pad(' STATUS  TOOL / ACTION           TYPE    LATENCY', width));
 
     // Separator
-    output += ansi.moveTo(startRow + 2, startCol);
+    output += ansi.moveTo(startRow + 1, startCol);
     output += ansi.dim('─'.repeat(width));
 
     // Tool list
-    const listHeight = height - 3; // header + columns + separator
+    const listHeight = height - 2; // columns + separator
     const tools = state.tools;
     const scrollOffset = Math.max(0, state.selectedIndex - listHeight + 2);
 
@@ -900,9 +898,9 @@ function handleKey(key: string, state: TuiState): 'quit' | 'redraw' | 'none' {
 // ============================================================================
 
 export interface TopOptions {
-    /** Target server PID. If omitted, auto-discover. */
+    /** Target server PID (legacy). Converted to fingerprint string. */
     pid?: number;
-    /** Custom IPC path (overrides PID-based path). */
+    /** Custom IPC path (overrides auto-discovery). */
     path?: string;
 }
 
@@ -911,6 +909,9 @@ export interface TopOptions {
  *
  * Connects to a running MCP Fusion server via Shadow Socket
  * and renders the interactive dashboard.
+ *
+ * Uses deterministic socket paths based on project fingerprint (cwd hash),
+ * enabling automatic reconnection when a server restarts.
  *
  * If no server is found at startup, polls every 2s until one appears.
  * If the connection drops mid-session, polls for reconnection.
@@ -931,7 +932,7 @@ export async function commandTop(options: TopOptions = {}): Promise<void> {
     if (options.path) {
         ipcPath = options.path;
     } else if (options.pid) {
-        ipcPath = getTelemetryPath(options.pid);
+        ipcPath = getTelemetryPath(String(options.pid));
     }
     // For auto-discover, ipcPath starts undefined — resolved in connect loop
 
