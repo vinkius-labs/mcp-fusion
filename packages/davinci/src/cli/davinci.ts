@@ -100,7 +100,6 @@ export const DAVINCI_HELP = `
 
 \x1b[1mKEYBOARD (TUI mode)\x1b[0m
   ↑↓ / j/k             Navigate tool list
-  Enter                 Inspect selected tool
   q / Ctrl+C            Exit
 
 \x1b[1mEXAMPLES\x1b[0m

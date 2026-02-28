@@ -372,10 +372,13 @@ export async function createTelemetryBus(config?: TelemetryBusConfig): Promise<T
 
     // ── Start Listening ───────────────────────────────────
     await new Promise<void>((resolve, reject) => {
-        server.on('error', (err: NodeJS.ErrnoException) => {
+        server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
-                // Final fallback: force unlink and retry
-                try { unlinkSync(socketPath); } catch { /* ignore */ }
+                // On POSIX: unlink stale socket file and retry.
+                // On Windows: Named Pipes can't be unlinked — just retry
+                // (the OS will reclaim the pipe name if the owner is dead).
+                try { unlinkSync(socketPath); } catch { /* ignore on Windows */ }
+                server.once('error', (retryErr) => reject(retryErr));
                 server.listen(socketPath, () => resolve());
             } else {
                 reject(err);

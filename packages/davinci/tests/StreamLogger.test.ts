@@ -373,36 +373,36 @@ describe('StreamLogger — Cross-Platform IPC Paths', () => {
     const isWindows = platform() === 'win32';
 
     it('should generate Windows Named Pipe path on win32', () => {
-        const path = getTelemetryPath(54321);
+        const path = getTelemetryPath('testfingerprint');
         if (isWindows) {
-            expect(path).toMatch(/^\\\\.\\pipe\\mcp-fusion-54321$/);
+            expect(path).toMatch(/^\\\\.\\pipe\\mcp-fusion-testfingerprint$/);
             expect(path).not.toContain('/tmp');
         }
     });
 
     it('should generate POSIX Unix Socket path on Linux/macOS', () => {
-        const path = getTelemetryPath(54321);
+        const path = getTelemetryPath('testfingerprint');
         if (!isWindows) {
-            expect(path).toBe('/tmp/mcp-fusion-54321.sock');
+            expect(path).toBe('/tmp/mcp-fusion-testfingerprint.sock');
             expect(path).not.toContain('\\');
         }
     });
 
-    it('should generate unique paths for different PIDs', () => {
-        const path1 = getTelemetryPath(111);
-        const path2 = getTelemetryPath(222);
+    it('should generate unique paths for different fingerprints', () => {
+        const path1 = getTelemetryPath('fp_alpha');
+        const path2 = getTelemetryPath('fp_bravo');
         expect(path1).not.toBe(path2);
     });
 
-    it('should use process.pid when no PID specified', () => {
+    it('should use cwd-based fingerprint when no argument specified', () => {
         const defaultPath = getTelemetryPath();
-        const explicitPath = getTelemetryPath(process.pid);
-        expect(defaultPath).toBe(explicitPath);
+        // Deterministic: same cwd = same path
+        expect(defaultPath).toBe(getTelemetryPath());
     });
 
-    it('should handle very large PIDs without corruption', () => {
-        const path = getTelemetryPath(2_147_483_647);
-        expect(path).toContain('2147483647');
+    it('should include fingerprint in path string', () => {
+        const path = getTelemetryPath('abcdef123456');
+        expect(path).toContain('abcdef123456');
     });
 
     it('should produce path compatible with net.createConnection', async () => {

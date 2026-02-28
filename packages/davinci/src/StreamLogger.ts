@@ -183,15 +183,21 @@ export async function streamToStderr(options: StreamLoggerOptions = {}): Promise
     } else if (options.pid) {
         ipcPath = getTelemetryPath(String(options.pid));
     } else {
+        const localPath = getTelemetryPath();
         const sockets = discoverSockets();
-        if (sockets.length === 0) {
+        const localMatch = sockets.find((s) => s.path === localPath);
+
+        if (localMatch) {
+            ipcPath = localMatch.path;
+        } else if (sockets.length > 0) {
+            ipcPath = sockets[0]!.path;
+        } else {
             process.stderr.write(
                 `${c.red}✗${c.reset} No MCP Fusion servers found.\n` +
                 `  Start a server with telemetry or use ${c.bold}--demo${c.reset}\n`,
             );
             process.exit(1);
         }
-        ipcPath = sockets[0]!.path;
     }
 
     process.stderr.write(`${c.dim}Connecting to ${ipcPath}…${c.reset}\n`);

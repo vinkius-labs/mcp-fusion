@@ -594,7 +594,7 @@ function renderInspector(
 
     if (!tool) {
         output += ansi.moveTo(startRow + 2, startCol);
-        output += ansi.dim(pad('  Navigate with j/k and press Enter', width));
+        output += ansi.dim(pad('  Navigate with j/k', width));
         return output;
     }
 
@@ -756,7 +756,7 @@ function renderInspector(
 }
 
 function renderStatusBar(screen: ScreenManager, row: number, cols: number): string {
-    const legend = ' [ ↑↓/jk ] Navigate │ [ Enter ] Inspect │ [ Tab ] Focus │ [ q ] Quit';
+    const legend = ' [ ↑↓/jk ] Navigate │ [ q ] Quit';
     return ansi.moveTo(row, 1) + ansi.inverse(pad(legend, cols));
 }
 
@@ -967,16 +967,21 @@ export async function commandTop(options: TopOptions = {}): Promise<void> {
      * Returns true if connected, false if no server found.
      */
     function tryConnect(): boolean {
-        // Discover available servers
+        // In auto-discover mode, try the deterministic path for THIS cwd first.
+        // If no server is listening there (e.g., IDE started server from a different
+        // cwd than the terminal), fall back to registry-based discovery.
         if (isAutoDiscover) {
+            const localPath = getTelemetryPath();
             const sockets = discoverSockets();
-            if (sockets.length === 0) return false;
-            ipcPath = sockets[0]!.path;
-            if (sockets.length > 1) {
-                process.stderr.write(
-                    `\x1b[33m⚠\x1b[0m Multiple servers found. Connecting to PID ${sockets[0]!.pid}.\n` +
-                    `  Use \x1b[1m--pid\x1b[0m to target a specific server.\n\n`,
-                );
+
+            // Prioritize: local cwd match → first alive registry entry
+            const localMatch = sockets.find((s) => s.path === localPath);
+            if (localMatch) {
+                ipcPath = localMatch.path;
+            } else if (sockets.length > 0) {
+                ipcPath = sockets[0]!.path;
+            } else {
+                return false;
             }
         }
 

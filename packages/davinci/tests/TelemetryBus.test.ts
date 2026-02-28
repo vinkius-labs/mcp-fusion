@@ -80,34 +80,35 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ============================================================================
 
 describe('getTelemetryPath', () => {
-    it('should return a path containing the PID', () => {
-        const path = getTelemetryPath(12345);
-        expect(path).toContain('12345');
+    it('should return a path containing the fingerprint', () => {
+        const path = getTelemetryPath('abc123def456');
+        expect(path).toContain('abc123def456');
     });
 
-    it('should use process.pid when no PID specified', () => {
+    it('should use cwd-based fingerprint when no argument specified', () => {
         const path = getTelemetryPath();
-        expect(path).toContain(String(process.pid));
+        // Path should be deterministic — same cwd = same path
+        expect(path).toBe(getTelemetryPath());
     });
 
     it('should return Named Pipe format on Windows', () => {
         if (platform() === 'win32') {
-            const path = getTelemetryPath(999);
+            const path = getTelemetryPath('testfp');
             expect(path).toContain('\\\\.\\pipe\\');
         }
     });
 
     it('should return .sock path on POSIX', () => {
         if (platform() !== 'win32') {
-            const path = getTelemetryPath(999);
+            const path = getTelemetryPath('testfp');
             expect(path).toContain('/tmp/');
             expect(path).toContain('.sock');
         }
     });
 
-    it('should generate unique paths for different PIDs', () => {
-        const path1 = getTelemetryPath(111);
-        const path2 = getTelemetryPath(222);
+    it('should generate unique paths for different fingerprints', () => {
+        const path1 = getTelemetryPath('fingerprint_aaa');
+        const path2 = getTelemetryPath('fingerprint_bbb');
         expect(path1).not.toBe(path2);
     });
 });
