@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.13.1] - 2026-02-28
+
+### 🛡️ Connection Watchdog — AbortSignal Kill-Switch for V8 Isolates
+
+When a user closes their MCP client mid-request, the TCP connection dies but Node.js doesn't know. The sandbox keeps running an expensive computation that nobody will ever read, leaking CPU and native memory. The Connection Watchdog solves this with an instant kill-switch.
+
+### Added
+
+- **`AbortSignal` support in `SandboxEngine.execute()`** — new optional `{ signal: AbortSignal }` parameter
+  - **Pre-flight check** — already-aborted signals skip all V8 allocation and return `ABORTED` immediately (zero overhead)
+  - **Mid-execution kill** — abort listener calls `isolate.dispose()` during V8 execution, killing C++ threads instantly
+  - **Error classification** — aborts are correctly classified as `ABORTED` (not `MEMORY`), distinguishing intentional kills from OOM
+  - **Listener cleanup** — abort listener removed in `finally` block to prevent memory leaks
+  - **Auto-recovery** — `_ensureIsolate()` detects disposed isolates and creates a fresh one on the next `execute()` call
+- **`ABORTED` error code** — new `SandboxErrorCode` value for client disconnection scenarios
+- **Backward compatibility** — `execute()` without signal works exactly as before
+
+### Fixed
+
+- **Dead parameter removed** — `_classifyError` received `executionMs` but never used it (code smell)
+- **ASCII diagram updated** — module JSDoc now reflects the abort step, new `execute()` signature, and `signal.removeEventListener()` in finally block
+- **`console.log` test fix** — V8 >= 12.x defines `console` as a built-in; test updated to assert `undefined` return instead of `ReferenceError`
+
+### Documentation
+
+- **`docs/sandbox.md`** — full Connection Watchdog section with diagrams, usage, error classification, and guarantees table. Architecture diagram updated with abort step. API reference updated with new `execute()` signature. `ABORTED` error code added to error table.
+- **`seo.ts`** — 2 new FAQs: "What is the Connection Watchdog?" and "How does AbortSignal integration work?"
+- **`llms.txt`** — new Zero-Trust Sandbox Engine section with full API, error codes, and Connection Watchdog description
+
+### Test Suite
+
+- **`SandboxAbortSignal.test.ts`** — 24 new tests covering:
+  - Pre-flight abort (4 tests): immediate return, no V8 allocation, recovery after abort, abort wins over guard
+  - Mid-execution kill-switch (3 tests): infinite loop kill, abort beats timeout, event loop not blocked
+  - Auto-recovery (3 tests): single recovery, signal on recovered engine, multiple abort-recovery cycles
+  - Listener cleanup (3 tests): cleanup after success, cleanup after error, no leaks across 50 calls
+  - Backward compatibility (4 tests): no signal, undefined options, empty options, undefined signal
+  - Edge cases (5 tests): late abort no-op, disposed engine + signal, invalid code + abort, null data, double abort
+  - Pointer lifecycle (2 tests): native memory after abort, memory across multiple abort cycles
+- **138 tests** passing (1 skipped), 6 test files — zero regressions
+
+## [2.13.0] - 2026-02-28
+
+### 🔒 Zero-Trust Sandbox Engine — V8 Isolate for Computation Delegation
+
+LLMs can now send JavaScript functions to be executed in a sealed V8 isolate on the server. The data stays on the client's machine — only the computed result crosses the boundary. Powered by `isolated-vm`.
+
+### Added
+
+- **`SandboxEngine`** — V8 isolate engine with configurable timeout, memory limit, and output size cap
+  - `execute<T>(code, data)` — runs LLM-generated JavaScript in a pristine, empty V8 Context
+  - `dispose()` — releases native C++ memory (mandatory)
+  - Automatic isolate recovery after OOM kills
+  - One Isolate per engine (reused), new Context per call (pristine)
+- **`SandboxConfig`** — `{ timeout: 5000, memoryLimit: 128, maxOutputBytes: 1_048_576 }`
+- **`SandboxResult<T>`** — discriminated union: `{ ok: true, value, executionMs }` | `{ ok: false, error, code }`
+- **`SandboxErrorCode`** — `TIMEOUT | MEMORY | SYNTAX | RUNTIME | OUTPUT_TOO_LARGE | INVALID_CODE | UNAVAILABLE`
+- **`validateSandboxCode()`** — fail-fast syntax checker (not a security boundary)
+- **`FluentToolBuilder.sandboxed(config?)`** — enables sandbox + HATEOAS auto-prompting on any tool
+- **`f.sandbox(config?)`** — factory method on `initFusion()` instance
+- **`SANDBOX_SYSTEM_INSTRUCTION`** — auto-injected tool description for LLM guidance
+- **V8 Security Model** — empty Context: no process, require, fs, net, setTimeout, Buffer, fetch, eval
+
+### Documentation
+
+- **`docs/sandbox.md`** — full documentation: architecture, installation, quick start (Fluent API + Standalone + Factory), configuration, result type, error codes, V8 engineering rules, security model, attack vector table, SandboxGuard, HATEOAS auto-prompting, best practices, API reference
+- **`seo.ts`** — 7 FAQs for sandbox page
+- **`llms.txt`** — Sandbox Engine API reference
+
+### Test Suite
+
+- **114 sandbox tests** across 5 test files:
+  - `SandboxEngine.test.ts` — execution, security, timeout, output size, error classification, lifecycle
+  - `SandboxEdgeCases.test.ts` — 53 adversarial tests
+  - `SandboxPointers.test.ts` — native C++ memory lifecycle
+  - `FluentSandbox.test.ts` — Fluent API integration
+  - `SandboxGuard.test.ts` — fail-fast syntax validation
+
 ## [@vinkius-core/mcp-fusion-vercel@1.0.0] - 2026-02-27
 
 ### 🚀 Vercel Adapter — Serverless & Edge Deployment in One Line

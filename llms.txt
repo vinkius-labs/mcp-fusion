@@ -1638,6 +1638,35 @@ export const POST = vercelAdapter<AppContext>({
 export const runtime = 'edge';
 ```
 
+### Zero-Trust Sandbox Engine
+
+Execute LLM-generated JavaScript in a sealed V8 isolate (via `isolated-vm`). The data stays on the server — only the result crosses the boundary.
+
+- `SandboxEngine(config?)` — creates a V8 isolate engine
+  - `config.timeout` — max execution time in ms (default: 5000)
+  - `config.memoryLimit` — V8 heap cap in MB (default: 128)
+  - `config.maxOutputBytes` — max serialized result size (default: 1MB)
+- `engine.execute<T>(code, data, options?)` → `Promise<SandboxResult<T>>`
+  - `code` — JavaScript function as string: `'(data) => data.filter(d => d.risk > 90)'`
+  - `data` — deep-copied into isolate via `ExternalCopy` (no references shared)
+  - `options.signal` — `AbortSignal` for Connection Watchdog kill-switch
+- `engine.dispose()` — releases native C++ memory (mandatory)
+- `engine.isDisposed` — check engine state
+- `validateSandboxCode(code)` → `GuardResult` — fail-fast syntax check before V8
+
+SandboxResult discriminated union:
+- `{ ok: true, value: T, executionMs: number }` — success
+- `{ ok: false, error: string, code: SandboxErrorCode }` — failure
+
+SandboxErrorCode: `'TIMEOUT'` | `'MEMORY'` | `'SYNTAX'` | `'RUNTIME'` | `'OUTPUT_TOO_LARGE'` | `'INVALID_CODE'` | `'UNAVAILABLE'` | `'ABORTED'`
+
+V8 Isolation: Context is empty — no process, require, fs, net, setTimeout, Buffer, fetch, eval. Only `__input__` (deep-copied data) is available. Each execute() call creates a new pristine Context.
+
+Connection Watchdog: When a client disconnects mid-request, the AbortSignal fires and calls `isolate.dispose()`, killing V8 C++ threads instantly. The engine auto-recovers on the next `execute()` call. Pre-aborted signals skip all V8 allocation (zero overhead). Error code: `ABORTED`.
+
+Fluent API: `f.query('name').sandboxed(config?)` — enables sandbox + HATEOAS auto-prompting on any tool.
+Factory: `f.sandbox(config?)` — creates a SandboxEngine from the fusion instance.
+
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
 - `GroupItem` — leaf with multi-parent groups

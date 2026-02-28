@@ -11,32 +11,36 @@
  *   3. ExternalCopy + Script + Context are ALWAYS released in `finally`
  *   4. Execution is ALWAYS async (script.run, never runSync)
  *   5. Context is empty — no process, require, fs, globalThis injected
+ *   6. AbortSignal kills isolate.dispose() instantly (Connection Watchdog)
  *
  * The `isolated-vm` package is a peerDependency (optional).
  * If not installed, the engine throws a clear error at construction time.
  *
- *   ┌─────────────────────────────────────────────────┐
- *   │  SandboxEngine (owns 1 Isolate)                 │
- *   │                                                 │
- *   │  execute(code, data)                            │
- *   │    ┌──────────┐                                 │
- *   │    │ Guard    │ fail-fast syntax check           │
- *   │    ├──────────┤                                 │
- *   │    │ Context  │ new per request (empty!)         │
- *   │    ├──────────┤                                 │
- *   │    │ Copy In  │ ExternalCopy (deep, no refs)     │
- *   │    ├──────────┤                                 │
- *   │    │ Compile  │ isolate.compileScript            │
- *   │    ├──────────┤                                 │
- *   │    │ Run      │ script.run (ASYNC, with timeout) │
- *   │    ├──────────┤                                 │
- *   │    │ Copy Out │ JSON.parse result                │
- *   │    └──────────┘                                 │
- *   │                                                 │
- *   │  finally: inputCopy.release()                   │
- *   │           script.release()                      │
- *   │           context.release()                     │
- *   └─────────────────────────────────────────────────┘
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │  SandboxEngine (owns 1 Isolate)                         │
+ *   │                                                         │
+ *   │  execute(code, data, { signal? })                       │
+ *   │    ┌──────────┐                                         │
+ *   │    │ Abort?   │ pre-flight signal check                  │
+ *   │    ├──────────┤                                         │
+ *   │    │ Guard    │ fail-fast syntax check                   │
+ *   │    ├──────────┤                                         │
+ *   │    │ Context  │ new per request (empty!)                 │
+ *   │    ├──────────┤                                         │
+ *   │    │ Copy In  │ ExternalCopy (deep, no refs)             │
+ *   │    ├──────────┤                                         │
+ *   │    │ Compile  │ isolate.compileScript                    │
+ *   │    ├──────────┤                                         │
+ *   │    │ Run      │ script.run (ASYNC, with timeout + abort) │
+ *   │    ├──────────┤                                         │
+ *   │    │ Copy Out │ JSON.parse result                        │
+ *   │    └──────────┘                                         │
+ *   │                                                         │
+ *   │  finally: signal.removeEventListener()                  │
+ *   │           inputCopy.release()                           │
+ *   │           script.release()                              │
+ *   │           context.release()                             │
+ *   └─────────────────────────────────────────────────────────┘
  *
  * @module
  */
@@ -92,6 +96,7 @@ export interface SandboxConfig {
  * - `OUTPUT_TOO_LARGE`: Result exceeds `maxOutputBytes`
  * - `INVALID_CODE`: Failed the SandboxGuard fail-fast check
  * - `UNAVAILABLE`: `isolated-vm` is not installed
+ * - `ABORTED`: Execution was cancelled via AbortSignal (client disconnect)
  */
 export type SandboxErrorCode =
     | 'TIMEOUT'
@@ -100,7 +105,8 @@ export type SandboxErrorCode =
     | 'RUNTIME'
     | 'OUTPUT_TOO_LARGE'
     | 'INVALID_CODE'
-    | 'UNAVAILABLE';
+    | 'UNAVAILABLE'
+    | 'ABORTED';
 
 /**
  * Result of a sandbox execution.
@@ -212,6 +218,7 @@ export class SandboxEngine {
      * - Strict timeout enforcement (async, non-blocking)
      * - Memory limit enforcement
      * - Automatic C++ pointer cleanup (ExternalCopy, Script, Context)
+     * - Cooperative cancellation via AbortSignal (Connection Watchdog)
      *
      * @param code - A JavaScript function expression as a string.
      *   Must be an arrow function or function expression.
@@ -220,11 +227,34 @@ export class SandboxEngine {
      * @param data - The data to pass into the function.
      *   Deeply copied into the isolate (no references leak).
      *
+     * @param options - Optional execution options.
+     * @param options.signal - AbortSignal for cooperative cancellation.
+     *   When the signal fires (e.g., MCP client disconnects), the engine
+     *   calls `isolate.dispose()` to kill the V8 C++ threads instantly.
+     *   The isolate is auto-recovered on the next `.execute()` call.
+     *
      * @returns A `SandboxResult` with the computed value or an error.
      */
-    async execute<T = unknown>(code: string, data: unknown): Promise<SandboxResult<T>> {
+    async execute<T = unknown>(
+        code: string,
+        data: unknown,
+        options?: { signal?: AbortSignal },
+    ): Promise<SandboxResult<T>> {
         if (this._disposed) {
             return { ok: false, error: 'SandboxEngine has been disposed.', code: 'UNAVAILABLE' };
+        }
+
+        const signal = options?.signal;
+
+        // ── Step 0: Pre-flight abort check ───────────────
+        // If the signal is already aborted (client disconnected before
+        // we even started), skip all V8 allocation entirely.
+        if (signal?.aborted) {
+            return {
+                ok: false,
+                error: 'Execution aborted: client disconnected before sandbox started.',
+                code: 'ABORTED',
+            };
         }
 
         // ── Step 1: Fail-fast guard ─────────────────────
@@ -239,7 +269,21 @@ export class SandboxEngine {
         const ivm = getIvm();
         const isolate = this._isolate;
 
-        // ── Step 3: Execute in sealed context ───────────
+        // ── Step 3: Wire abort kill-switch ──────────────
+        // When the signal fires, we call isolate.dispose() which
+        // immediately kills the V8 C++ threads. The _ensureIsolate()
+        // method will recreate a fresh isolate on the next call.
+        let aborted = false;
+        const onAbort = signal ? () => {
+            aborted = true;
+            try { isolate.dispose(); } catch { /* may already be dead */ }
+        } : undefined;
+
+        if (signal && onAbort) {
+            signal.addEventListener('abort', onAbort, { once: true });
+        }
+
+        // ── Step 4: Execute in sealed context ───────────
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let inputCopy: any | undefined;   // ivm.ExternalCopy
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -266,7 +310,7 @@ export class SandboxEngine {
 
             const executionMs = performance.now() - startMs;
 
-            // ── Step 4: Output size guard ───────────────
+            // ── Step 5: Output size guard ───────────────
             if (typeof rawResult === 'string' && rawResult.length > this._maxOutputBytes) {
                 return {
                     ok: false,
@@ -276,16 +320,33 @@ export class SandboxEngine {
                 };
             }
 
-            // ── Step 5: Parse result ────────────────────
+            // ── Step 6: Parse result ────────────────────
             const parsed = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
             return { ok: true, value: parsed as T, executionMs };
 
         } catch (err: unknown) {
-            const executionMs = performance.now() - startMs;
-            return this._classifyError(err, executionMs);
+            // If the abort listener disposed the isolate, classify as ABORTED
+            // (not MEMORY — the user disconnected, not an OOM condition)
+            if (aborted) {
+                return {
+                    ok: false,
+                    error: 'Execution aborted: client disconnected during sandbox execution.',
+                    code: 'ABORTED',
+                };
+            }
+            return this._classifyError(err);
         } finally {
+            // ── MANDATORY ABORT LISTENER CLEANUP ─────────
+            // Remove the listener to prevent memory leaks when
+            // execution completes before the signal fires.
+            if (signal && onAbort) {
+                signal.removeEventListener('abort', onAbort);
+            }
+
             // ── MANDATORY C++ POINTER RELEASE ────────────
-            // Order matters: release inner resources first
+            // Order matters: release inner resources first.
+            // After abort-triggered dispose, these will throw
+            // but the catch blocks handle dead-isolate gracefully.
             try { inputCopy?.release(); } catch { /* already released or isolate dead */ }
             try { script?.release(); } catch { /* already released or isolate dead */ }
             try { context?.release(); } catch { /* already released or isolate dead */ }
@@ -338,7 +399,7 @@ export class SandboxEngine {
      * Classify an error from V8 execution into a typed SandboxResult.
      * @internal
      */
-    private _classifyError(err: unknown, executionMs: number): SandboxResult<never> {
+    private _classifyError(err: unknown): SandboxResult<never> {
         const message = err instanceof Error ? err.message : String(err);
 
         // Timeout: isolated-vm throws a specific error

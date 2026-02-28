@@ -4,7 +4,7 @@ outline: deep
 
 # Zero-Trust Sandbox Engine
 
-The Sandbox Engine lets an LLM send JavaScript logic to your MCP server instead of forcing you to send data to the model. The provided code runs inside a sealed V8 isolate — the same isolation primitive used by Cloudflare Workers and Temporal — with **zero access** to Node.js APIs.
+The Sandbox Engine lets an LLM send JavaScript logic to your MCP server instead of forcing you to send data to the model. The provided code runs inside a sealed V8 isolate — powered by [`isolated-vm`](https://github.com/laverdet/isolated-vm) — with **zero access** to Node.js APIs.
 
 The data stays on your machine. Only the computed result crosses the boundary.
 
@@ -27,21 +27,23 @@ MCP Fusion eliminates all three with **Computation Delegation**: the LLM sends a
 │  LLM sends:  (data) => data.filter(d => d.risk > 90)              │
 │                                                                     │
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐    │
-│  │ Guard    │──▸│ Compile  │──▸│ Execute  │──▸│ Result Only  │    │
-│  │ (syntax) │   │ (V8)     │   │ (sealed) │   │ (JSON out)   │    │
+│  │ Abort?   │──▸│ Guard    │──▸│ Compile  │──▸│ Execute      │    │
+│  │ (signal) │   │ (syntax) │   │ (V8)     │   │ (sealed+kill)│    │
 │  └──────────┘   └──────────┘   └──────────┘   └──────────────┘    │
 │                                                                     │
 │  ✘ No process  ✘ No require  ✘ No fs  ✘ No net  ✘ No eval escape  │
 │  ✔ Timeout kill  ✔ Memory cap  ✔ Output limit  ✔ Isolate recovery  │
+│  ✔ AbortSignal kill-switch (Connection Watchdog)                    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Execution Flow
 
-1. **SandboxGuard** — fail-fast syntax check. Rejects non-function code and flags suspicious patterns (`require`, `import`, `process`). This is a speed optimization, not a security boundary.
-2. **Compile** — `isolate.compileScript()` parses the code into V8 bytecode.
-3. **Execute** — `script.run(context, { timeout })` runs the function asynchronously in a **pristine, empty Context** with no dangerous globals. This _is_ the security boundary.
-4. **Result** — the raw return value is serialized to JSON and size-checked before leaving the isolate.
+1. **Pre-flight Abort Check** — if an `AbortSignal` is already aborted (client disconnected), the engine skips all V8 allocation and returns `ABORTED` immediately.
+2. **SandboxGuard** — fail-fast syntax check. Rejects non-function code and flags suspicious patterns (`require`, `import`, `process`). This is a speed optimization, not a security boundary.
+3. **Compile** — `isolate.compileScript()` parses the code into V8 bytecode.
+4. **Execute** — `script.run(context, { timeout })` runs the function asynchronously in a **pristine, empty Context** with no dangerous globals. An abort listener is wired to `isolate.dispose()` — if the signal fires mid-execution, the V8 C++ threads are killed instantly.
+5. **Result** — the raw return value is serialized to JSON and size-checked before leaving the isolate.
 
 ## Installation
 
@@ -158,6 +160,7 @@ type SandboxResult<T = unknown> =
 | `OUTPUT_TOO_LARGE` | Serialized result exceeds `maxOutputBytes` | Use more selective filters |
 | `INVALID_CODE` | Failed the SandboxGuard check | Must be a function expression |
 | `UNAVAILABLE` | `isolated-vm` not installed or engine disposed | Install the package or create a new engine |
+| `ABORTED` | Execution cancelled via `AbortSignal` (client disconnect) | Automatic — no action needed |
 
 ## V8 Engineering Rules
 
@@ -331,7 +334,7 @@ return result.value;
 ```typescript
 class SandboxEngine {
     constructor(config?: SandboxConfig);
-    execute<T>(code: string, data: unknown): Promise<SandboxResult<T>>;
+    execute<T>(code: string, data: unknown, options?: { signal?: AbortSignal }): Promise<SandboxResult<T>>;
     dispose(): void;
     get isDisposed(): boolean;
 }
@@ -369,3 +372,71 @@ f.query('name')
 const engine = f.sandbox({ timeout: 3000 });
 // Returns a SandboxEngine instance
 ```
+
+## Connection Watchdog
+
+When a user closes their MCP client (e.g., Claude Desktop) mid-request, the TCP connection dies — but Node.js doesn't know. The sandbox keeps running an expensive computation that nobody will ever read, leaking CPU cycles and native memory until the timeout fires.
+
+The Connection Watchdog solves this with a **kill-switch**: the MCP SDK propagates an `AbortSignal` through the entire execution pipeline. When the framework detects disconnection, the signal fires and the sandbox calls `isolate.dispose()` — killing the V8 C++ threads **instantly**.
+
+### How It Works
+
+```
+┌──────────────┐     AbortSignal      ┌─────────────────┐
+│  MCP Client  │────── fires ────────▸│  SandboxEngine   │
+│  disconnects │                       │                  │
+└──────────────┘                       │  isolate.dispose()│
+                                       │  ↓ kills C++ V8  │
+                                       │  ↓ returns ABORTED│
+                                       │  ↓ auto-recovers │
+                                       └─────────────────┘
+```
+
+1. **Pre-flight check** — if the signal is already aborted before `execute()` starts, all V8 allocation is skipped entirely. Zero overhead.
+2. **Mid-execution kill** — an abort listener calls `isolate.dispose()` during V8 execution. The C++ threads die immediately, the `script.run()` promise rejects, and the engine classifies it as `ABORTED` (not `MEMORY`).
+3. **Auto-recovery** — `_ensureIsolate()` detects the dead isolate on the next `execute()` call and creates a fresh one. No manual intervention.
+4. **Listener cleanup** — the abort listener is removed in a `finally` block to prevent memory leaks when execution completes normally.
+
+### Usage
+
+```typescript
+// The AbortSignal comes from the MCP SDK via the execution context.
+// In a handler, it's available on the meta.signal property.
+const result = await engine.execute(
+    input.expression,
+    records,
+    { signal: meta.signal }, // Pass the AbortSignal
+);
+```
+
+Without a signal, `execute()` behaves exactly as before — full backward compatibility.
+
+### Error Classification
+
+The engine distinguishes abort from other failures:
+
+```typescript
+const result = await engine.execute(code, data, { signal });
+
+if (!result.ok) {
+    switch (result.code) {
+        case 'ABORTED':   // Client disconnected — no action needed
+            break;
+        case 'TIMEOUT':   // Script was too slow
+        case 'MEMORY':    // Isolate OOM
+            // Genuine resource exhaustion — log for monitoring
+            break;
+    }
+}
+```
+
+### Guarantees
+
+| Scenario | Behavior |
+|---|---|
+| Signal already aborted before `execute()` | Returns `ABORTED` immediately, zero V8 allocation |
+| Signal fires during V8 execution | Calls `isolate.dispose()`, returns `ABORTED` |
+| Signal fires after execution completes | No-op — listener already removed |
+| Multiple aborts on same controller | Idempotent — `dispose()` tolerates double calls |
+| Engine auto-recovery after abort | Next `execute()` creates a fresh isolate |
+| C++ pointer cleanup after abort | `ExternalCopy`, `Script`, `Context` released in `finally` |
