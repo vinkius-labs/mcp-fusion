@@ -262,8 +262,6 @@ export function parseArgs(argv: string[]): CliArgs {
             case 'insp':
             case 'debug':
             case 'dbg':
-            case 'davinci':
-            case 'dv':
                 result.command = arg;
                 seenCommand = true;
                 break;
@@ -815,14 +813,12 @@ async function main(): Promise<void> {
         case 'inspect':
         case 'insp':
         case 'debug':
-        case 'dbg':
-        case 'davinci':
-        case 'dv': {
+        case 'dbg': {
             // Inspector subcommand: forward remaining args to inspector package
             const inspectArgv = process.argv.slice(3); // strip 'node fusion inspect'
             try {
-                const { runDavinci } = await import('@vinkius-core/mcp-fusion-inspector');
-                await runDavinci(inspectArgv);
+                const { runInspector } = await import('@vinkius-core/mcp-fusion-inspector');
+                await runInspector(inspectArgv);
             } catch (importErr) {
                 console.error(
                     `\x1b[31m\u2717\x1b[0m The inspector TUI requires the optional package:\n\n` +

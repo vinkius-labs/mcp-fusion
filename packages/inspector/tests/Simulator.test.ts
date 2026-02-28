@@ -18,7 +18,7 @@ import { connect } from 'node:net';
 import type { TelemetryEvent } from '@vinkius-core/mcp-fusion';
 import { startSimulator } from '../src/Simulator.js';
 import type { TelemetryBusInstance } from '@vinkius-core/mcp-fusion';
-import { parseDavinciArgs } from '../src/cli/davinci.js';
+import { parseInspectorArgs } from '../src/cli/inspector.js';
 
 // Helper: collect events via IPC
 function collectEvents(
@@ -360,9 +360,9 @@ describe('Simulator — Event Structure', () => {
 // 4. CLI — Argument Parsing
 // ============================================================================
 
-describe('CLI — parseDavinciArgs', () => {
-    it('should parse empty args', () => {
-        const args = parseDavinciArgs([]);
+describe('CLI — parseInspectorArgs', () => {
+    it('should return defaults for empty argv', () => {
+        const args = parseInspectorArgs([]);
         expect(args.demo).toBe(false);
         expect(args.out).toBe('tui');
         expect(args.pid).toBeUndefined();
@@ -370,27 +370,27 @@ describe('CLI — parseDavinciArgs', () => {
     });
 
     it('should parse --demo flag', () => {
-        const args = parseDavinciArgs(['--demo']);
+        const args = parseInspectorArgs(['--demo']);
         expect(args.demo).toBe(true);
     });
 
     it('should parse --out stderr', () => {
-        const args = parseDavinciArgs(['--out', 'stderr']);
+        const args = parseInspectorArgs(['--out', 'stderr']);
         expect(args.out).toBe('stderr');
     });
 
     it('should parse --pid', () => {
-        const args = parseDavinciArgs(['--pid', '12345']);
+        const args = parseInspectorArgs(['--pid', '12345']);
         expect(args.pid).toBe(12345);
     });
 
     it('should parse --path', () => {
-        const args = parseDavinciArgs(['--path', '/tmp/test.sock']);
+        const args = parseInspectorArgs(['--path', '/tmp/test.sock']);
         expect(args.path).toBe('/tmp/test.sock');
     });
 
     it('should parse all flags combined', () => {
-        const args = parseDavinciArgs([
+        const args = parseInspectorArgs([
             '--demo',
             '--out', 'stderr',
             '--pid', '999',
@@ -403,12 +403,12 @@ describe('CLI — parseDavinciArgs', () => {
     });
 
     it('should handle unknown flags gracefully', () => {
-        const args = parseDavinciArgs(['--unknown', '--foo', 'bar']);
+        const args = parseInspectorArgs(['--unknown', '--foo', 'bar']);
         expect(args.demo).toBe(false);
     });
 
     it('should handle --demo anywhere in args', () => {
-        const args = parseDavinciArgs(['--out', 'stderr', '--demo']);
+        const args = parseInspectorArgs(['--out', 'stderr', '--demo']);
         expect(args.demo).toBe(true);
         expect(args.out).toBe('stderr');
     });
@@ -453,29 +453,29 @@ describe('Adversarial — Simulator', () => {
 
 describe('Adversarial — CLI Args', () => {
     it('should handle --pid with non-numeric value', () => {
-        const args = parseDavinciArgs(['--pid', 'abc']);
+        const args = parseInspectorArgs(['--pid', 'abc']);
         expect(Number.isNaN(args.pid)).toBe(true);
     });
 
     it('should handle --pid without value (no trailing arg)', () => {
-        const args = parseDavinciArgs(['--pid']);
+        const args = parseInspectorArgs(['--pid']);
         // argv[++i] is undefined → parseInt(undefined) → NaN, but guarded by if(val)
         expect(args.pid).toBeUndefined();
     });
 
     it('should handle --out without value (stays default)', () => {
-        const args = parseDavinciArgs(['--out']);
+        const args = parseInspectorArgs(['--out']);
         expect(args.out).toBe('tui'); // stays default when no value follows
     });
 
     it('should handle --path without value', () => {
-        const args = parseDavinciArgs(['--path']);
+        const args = parseInspectorArgs(['--path']);
         // argv[++i] is undefined when no value follows
         expect(args.path).toBeUndefined();
     });
 
     it('should handle empty string args', () => {
-        const args = parseDavinciArgs(['', '', '']);
+        const args = parseInspectorArgs(['', '', '']);
         expect(args.demo).toBe(false);
     });
 });

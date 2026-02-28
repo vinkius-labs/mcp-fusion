@@ -6,7 +6,7 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "bin": {
-        "fusion-inspect": "./dist/cli/davinci.js"
+        "fusion-inspect": "./dist/cli/inspector.js"
     },
     "exports": {
         ".": {
@@ -21,6 +21,8 @@
     },
     "keywords": [
         "mcp",
+        "inspector",
+        "mcp-inspector",
         "mcp-fusion",
         "tui",
         "terminal",
@@ -36,7 +38,7 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
-        "directory": "packages/davinci"
+        "directory": "packages/inspector"
     },
     "bugs": {
         "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
@@ -53,7 +55,7 @@
         "access": "public"
     },
     "peerDependencies": {
-        "@vinkius-core/mcp-fusion": "^2.15.0"
+        "@vinkius-core/mcp-fusion": "^3.0.0"
     },
     "license": "Apache-2.0"
 }

@@ -335,6 +335,7 @@ export default defineConfig({
         text: 'Production Ops',
         collapsed: true,
         items: [
+          { text: 'Inspector', link: '/inspector' },
           { text: 'Observability', link: '/observability' },
           { text: 'Tracing', link: '/tracing' },
           { text: 'Introspection', link: '/introspection' },

@@ -10,14 +10,14 @@
  * ```bash
  * # Interactive TUI (auto-discover server)
  * fusion inspect
- * fusion dv
+ * fusion insp
  *
  * # Built-in simulator for demo/testing
- * fusion dv --demo
+ * fusion inspect --demo
  *
  * # Headless stderr output (ECS/K8s/CI)
- * fusion dv --out stderr
- * fusion dv --out stderr --demo
+ * fusion inspect --out stderr
+ * fusion inspect --out stderr --demo
  * ```
  *
  * ## Programmatic API
@@ -48,7 +48,10 @@ export { streamToStderr, formatEvent, formatEventJson, type StreamLoggerOptions 
 export { startSimulator, type SimulatorOptions } from './Simulator.js';
 
 // ── CLI ─────────────────────────────────────────────────────
-export { runDavinci, parseDavinciArgs, DAVINCI_HELP, type DavinciArgs, type OutputMode } from './cli/davinci.js';
+export {
+    runInspector, parseInspectorArgs, INSPECTOR_HELP,
+    type InspectorArgs, type OutputMode,
+} from './cli/inspector.js';
 
 // ── Rendering Utilities ─────────────────────────────────────
 export {

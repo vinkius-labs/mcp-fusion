@@ -15,7 +15,7 @@
  *  4. Multi-Client E2E — two clients receive identical broadcast
  *  5. Graceful Shutdown — close mid-stream, verify no leaks
  *  6. StreamLogger Integration — Simulator → IPC → formatEvent → stderr
- *  7. CLI Dispatch — parseDavinciArgs → runDavinci routing
+ *  7. CLI Dispatch — parseInspectorArgs → runInspector routing
  *  8. Stress Pipeline — high RPS, data integrity under load
  *  9. Reconnection — client disconnect + reconnect to same bus
  * 10. Event Ordering — timestamps are monotonically non-decreasing
@@ -26,7 +26,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { connect, type Socket } from 'node:net';
 import { Writable } from 'node:stream';
 import { startSimulator } from '../src/Simulator.js';
-import { parseDavinciArgs } from '../src/cli/davinci.js';
+import { parseInspectorArgs } from '../src/cli/inspector.js';
 import type { TelemetryEvent, TelemetryBusInstance } from '@vinkius-core/mcp-fusion';
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -387,7 +387,7 @@ describe('E2E — StreamLogger Format Verification', () => {
 
 describe('E2E — CLI Dispatch', () => {
     it('should correctly dispatch --demo --out stderr flags', () => {
-        const args = parseDavinciArgs(['--demo', '--out', 'stderr']);
+        const args = parseInspectorArgs(['--demo', '--out', 'stderr']);
         expect(args.demo).toBe(true);
         expect(args.out).toBe('stderr');
 
@@ -396,7 +396,7 @@ describe('E2E — CLI Dispatch', () => {
     });
 
     it('should correctly dispatch --pid for direct connection', () => {
-        const args = parseDavinciArgs(['--pid', '12345']);
+        const args = parseInspectorArgs(['--pid', '12345']);
         expect(args.pid).toBe(12345);
         expect(args.demo).toBe(false);
         expect(args.out).toBe('tui');
@@ -405,24 +405,24 @@ describe('E2E — CLI Dispatch', () => {
     });
 
     it('should correctly dispatch --path for custom socket', () => {
-        const args = parseDavinciArgs(['--path', '/tmp/custom.sock']);
+        const args = parseInspectorArgs(['--path', '/tmp/custom.sock']);
         expect(args.path).toBe('/tmp/custom.sock');
         expect(args.demo).toBe(false);
     });
 
     it('should correctly dispatch --help', () => {
-        const args = parseDavinciArgs(['--help']);
+        const args = parseInspectorArgs(['--help']);
         expect(args.help).toBe(true);
     });
 
     it('should correctly dispatch short flags -p and -o', () => {
-        const args = parseDavinciArgs(['-p', '999', '-o', 'stderr']);
+        const args = parseInspectorArgs(['-p', '999', '-o', 'stderr']);
         expect(args.pid).toBe(999);
         expect(args.out).toBe('stderr');
     });
 
     it('should detect headless stderr dispatch path', () => {
-        const args = parseDavinciArgs(['--out', 'stderr', '--pid', '1234']);
+        const args = parseInspectorArgs(['--out', 'stderr', '--pid', '1234']);
 
         // The dispatch logic: args.out === 'stderr' && !args.demo
         // → streamToStderr({ pid: args.pid })
@@ -432,7 +432,7 @@ describe('E2E — CLI Dispatch', () => {
     });
 
     it('should detect demo + TUI dispatch path', () => {
-        const args = parseDavinciArgs(['--demo']);
+        const args = parseInspectorArgs(['--demo']);
 
         // The dispatch logic: args.demo && args.out !== 'stderr'
         // → startSimulator() → commandTop({ path: bus.path })
@@ -441,7 +441,7 @@ describe('E2E — CLI Dispatch', () => {
     });
 
     it('should fallback to TUI when no special flags', () => {
-        const args = parseDavinciArgs([]);
+        const args = parseInspectorArgs([]);
 
         // The dispatch logic: no demo, no stderr
         // → commandTop() (auto-discover)

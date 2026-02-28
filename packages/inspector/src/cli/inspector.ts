@@ -8,11 +8,11 @@
  * USAGE
  *   fusion inspect             Auto-discover and connect (TUI)
  *   fusion insp                Alias for inspect
- *   fusion dv --demo           Launch with built-in simulator
- *   fusion dv --out stderr     Headless log stream (ECS/K8s/CI)
- *   fusion dv --pid <pid>      Connect to a specific server process
- *   fusion dv --path <path>    Connect via custom IPC path
- *   fusion dv --help           Show help
+ *   fusion inspect --demo      Launch with built-in simulator
+ *   fusion inspect --out stderr Headless log stream (ECS/K8s/CI)
+ *   fusion inspect --pid <pid> Connect to a specific server process
+ *   fusion inspect --path <path> Connect via custom IPC path
+ *   fusion inspect --help      Show help
  *
  * @module
  */
@@ -24,7 +24,7 @@ import { commandTop } from '../CommandTop.js';
 
 export type OutputMode = 'tui' | 'stderr';
 
-export interface DavinciArgs {
+export interface InspectorArgs {
     pid: number | undefined;
     path: string | undefined;
     out: OutputMode;
@@ -32,8 +32,8 @@ export interface DavinciArgs {
     help: boolean;
 }
 
-export function parseDavinciArgs(argv: string[]): DavinciArgs {
-    const result: DavinciArgs = {
+export function parseInspectorArgs(argv: string[]): InspectorArgs {
+    const result: InspectorArgs = {
         pid: undefined,
         path: undefined,
         out: 'tui',
@@ -76,7 +76,7 @@ export function parseDavinciArgs(argv: string[]): DavinciArgs {
 // Help
 // ============================================================================
 
-export const DAVINCI_HELP = `
+export const INSPECTOR_HELP = `
 \x1b[1m\x1b[36mfusion inspect\x1b[0m — MCP Fusion Inspector
 
   Real-time interactive terminal dashboard for MCP Fusion servers.
@@ -85,11 +85,11 @@ export const DAVINCI_HELP = `
 \x1b[1mUSAGE\x1b[0m
   fusion inspect               Auto-discover and connect (TUI)
   fusion insp                  Alias for inspect
-  fusion dv --demo             Launch with built-in simulator
-  fusion dv --out stderr       Headless log stream (ECS/K8s/CI)
-  fusion dv --out stderr --demo  Simulator + stderr output
-  fusion dv --pid <pid>        Connect to a specific server PID
-  fusion dv --path <path>      Connect via custom IPC path
+  fusion inspect --demo        Launch with built-in simulator
+  fusion inspect --out stderr  Headless log stream (ECS/K8s/CI)
+  fusion inspect --out stderr --demo  Simulator + stderr output
+  fusion inspect --pid <pid>   Connect to a specific server PID
+  fusion inspect --path <path> Connect via custom IPC path
 
 \x1b[1mOPTIONS\x1b[0m
   --demo               Launch built-in simulator (no server needed)
@@ -103,13 +103,15 @@ export const DAVINCI_HELP = `
   q / Ctrl+C            Exit
 
 \x1b[1mEXAMPLES\x1b[0m
-  fusion dv --demo                      \x1b[2m# Interactive demo\x1b[0m
-  fusion dv --out stderr --demo         \x1b[2m# Headless demo (ECS/K8s)\x1b[0m
-  fusion dv --pid 12345                 \x1b[2m# Connect to running server\x1b[0m
-  fusion dv --out stderr | tee log.txt  \x1b[2m# Stream + save\x1b[0m
+  fusion inspect --demo                      \x1b[2m# Interactive demo\x1b[0m
+  fusion inspect --out stderr --demo         \x1b[2m# Headless demo (ECS/K8s)\x1b[0m
+  fusion inspect --pid 12345                 \x1b[2m# Connect to running server\x1b[0m
+  fusion inspect --out stderr | tee log.txt  \x1b[2m# Stream + save\x1b[0m
 
 \x1b[2mhttps://mcp-fusion.vinkius.com/\x1b[0m
 `.trim();
+
+
 
 // ============================================================================
 // Entry Point
@@ -121,11 +123,11 @@ export const DAVINCI_HELP = `
  *
  * @param argv - Command arguments (without the `fusion inspect` prefix)
  */
-export async function runDavinci(argv: string[]): Promise<void> {
-    const args = parseDavinciArgs(argv);
+export async function runInspector(argv: string[]): Promise<void> {
+    const args = parseInspectorArgs(argv);
 
     if (args.help) {
-        console.log(DAVINCI_HELP);
+        console.log(INSPECTOR_HELP);
         return;
     }
 
@@ -185,10 +187,11 @@ export async function runDavinci(argv: string[]): Promise<void> {
     });
 }
 
+
 // ── Standalone execution ──────────────────────────────────
-const isMainModule = process.argv[1]?.includes('davinci') || process.argv[1]?.includes('fusion-inspect');
+const isMainModule = process.argv[1]?.includes('inspector') || process.argv[1]?.includes('fusion-inspect');
 if (isMainModule) {
-    runDavinci(process.argv.slice(2)).catch((err: Error) => {
+    runInspector(process.argv.slice(2)).catch((err: Error) => {
         console.error(`\x1b[31m✗\x1b[0m ${err.message}`);
         process.exit(1);
     });

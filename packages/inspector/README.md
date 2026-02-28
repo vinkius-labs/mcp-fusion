@@ -80,7 +80,7 @@ Real-time color-coded event stream — every pipeline stage appears as it happen
 
 ### X-Ray Inspector
 
-Press `Enter` on any tool to open deep inspection:
+Select any tool in the list to see deep inspection in the right panel:
 
 - **Error Autopsy** — Full exception with pipeline stage (`VALIDATE`, `MIDDLEWARE`, `EXECUTE`), self-healing recovery hints
 - **Last Input** — Zod-validated arguments (pretty-printed JSON)
@@ -131,8 +131,6 @@ fusion insp --demo
 | Key | Action |
 |-----|--------|
 | `↑` `↓` / `j` `k` | Navigate tool list |
-| `Enter` | Open X-Ray Inspector |
-| `Tab` | Switch panel tab |
 | `q` / `Ctrl+C` | Exit |
 
 ### Headless (stderr)
