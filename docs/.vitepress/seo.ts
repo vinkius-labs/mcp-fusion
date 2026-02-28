@@ -1631,6 +1631,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'Is isolated-vm required to use MCP Fusion?', a: 'No. isolated-vm is an optional peer dependency. The SandboxEngine uses lazy loading — it only attempts to import isolated-vm when you actually create an engine instance. If isolated-vm is not installed, the import fails gracefully with a clear error message. All other MCP Fusion features work without it.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // FSM STATE GATE
+  // ═══════════════════════════════════════════════════════
+  'fsm-state-gate.md': {
+    title: 'FSM State Gate — Temporal Anti-Hallucination for AI Tool Ordering',
+    description: 'Prevent LLM temporal hallucination by physically removing tools from MCP tools/list based on finite state machine state. Three-layer anti-hallucination: Zod (format), suggestActions (guidance), FSM State Gate (hard constraint). Powered by XState v5.',
+    faqs: [
+      { q: 'What is the FSM State Gate in MCP Fusion?', a: 'The FSM State Gate is a temporal anti-hallucination engine that physically removes tools from the MCP tools/list response based on the current state of a finite state machine. If the workflow state is "empty", a tool like "cart.pay" literally does not exist in the response — the LLM cannot call it. When the state advances (e.g., item added), the framework emits notifications/tools/list_changed and the tool appears.' },
+      { q: 'How does the FSM State Gate prevent LLM hallucination?', a: 'LLMs are chaotic — even with HATEOAS suggestActions hints, a model can ignore suggestions and call tools out of order. Zod validates format, suggestActions suggests order, but the FSM State Gate enforces order by physically removing unavailable tools from the protocol response. The LLM cannot hallucinate calling a tool that does not exist in its tool list.' },
+      { q: 'How does .bindState() work in MCP Fusion?', a: 'The .bindState() method on FluentToolBuilder associates a tool with specific FSM states and an optional transition event. For example, .bindState("has_items", "CHECKOUT") means the tool is only visible when the FSM is in the "has_items" state, and upon successful execution, the FSM receives the "CHECKOUT" event to advance.' },
+      { q: 'Does the FSM State Gate work in serverless environments?', a: 'Yes. The FSM supports external state persistence via fsmStore — an interface with load(sessionId) and save(sessionId, snapshot) methods. On platforms like Vercel or Cloudflare Workers, you provide a Redis, KV, or Durable Objects-backed store. The framework automatically restores state before processing and persists it after transitions.' },
+      { q: 'What happens if a tool execution fails with the FSM State Gate?', a: 'FSM transitions only fire on successful execution (!result.isError). If the tool handler returns an error, the state remains unchanged — the LLM can retry the same tool or choose a different strategy within the same state. This prevents invalid state advancement on failures.' },
+      { q: 'Does the FSM State Gate conflict with suggestActions (HATEOAS)?', a: 'No. They are complementary. suggestActions is a soft guidance layer — hints that the LLM can ignore. The FSM State Gate is a hard constraint — tools physically disappear. Use both together for maximum reliability: the gate controls visibility, suggestActions recommends the best next tool within the visible set.' },
+      { q: 'Is XState required to use the FSM State Gate?', a: 'No. XState (v5+) is an optional peer dependency. Without it, the FSM uses a built-in manual fallback engine that supports the same FsmConfig format. The manual engine is sufficient for simple linear workflows. Install XState when you need parallel states, guards, or advanced statechart features.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════

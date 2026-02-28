@@ -99,6 +99,8 @@ export class FluentToolBuilder<
     /** @internal */ _concurrency?: ConcurrencyConfig;
     /** @internal */ _egressMaxBytes?: number;
     /** @internal */ _sandboxConfig?: SandboxConfig;
+    /** @internal */ _fsmStates?: string[];
+    /** @internal */ _fsmTransition?: string;
 
     /**
      * @param name - Tool name in `domain.action` format (e.g. `'users.list'`)
@@ -540,6 +542,42 @@ export class FluentToolBuilder<
         return this;
     }
 
+    // ── FSM State Gate (Temporal Anti-Hallucination) ─────
+
+    /**
+     * Bind this tool to specific FSM states.
+     *
+     * When a `StateMachineGate` is configured on the server, this tool
+     * will only appear in `tools/list` when the FSM is in one of the
+     * specified states. The LLM physically cannot call tools that
+     * don't exist in its reality.
+     *
+     * @param states - FSM state(s) where this tool is visible
+     * @param transition - Event to send to the FSM on successful execution
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * // Visible only in 'has_items' state, sends CHECKOUT on success
+     * const checkout = f.mutation('cart.checkout')
+     *     .bindState('has_items', 'CHECKOUT')
+     *     .handle(async (input, ctx) => { ... });
+     *
+     * // Visible in multiple states
+     * const addItem = f.mutation('cart.add_item')
+     *     .bindState(['empty', 'has_items'], 'ADD_ITEM')
+     *     .handle(async (input, ctx) => { ... });
+     * ```
+     */
+    bindState(
+        states: string | string[],
+        transition?: string,
+    ): FluentToolBuilder<TContext, TInput, TCtx> {
+        this._fsmStates = Array.isArray(states) ? states : [states];
+        if (transition !== undefined) this._fsmTransition = transition;
+        return this;
+    }
+
     // ── Terminal: handle() ───────────────────────────────
 
     /**
@@ -668,6 +706,11 @@ export class FluentToolBuilder<
         // Propagate sandbox config
         if (this._sandboxConfig) {
             builder.sandbox(this._sandboxConfig);
+        }
+
+        // Propagate FSM state gate
+        if (this._fsmStates) {
+            builder.bindState(this._fsmStates, this._fsmTransition);
         }
 
         // Apply middleware

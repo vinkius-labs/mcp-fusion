@@ -52,6 +52,7 @@ import { StateSyncBuilder } from '../state-sync/StateSyncBuilder.js';
 import { type ErrorCode } from './response.js';
 import { SandboxEngine, type SandboxConfig } from '../sandbox/SandboxEngine.js';
 import { defaultSerializer, type JsonSerializer } from './serialization/JsonSerializer.js';
+import { StateMachineGate, type FsmConfig } from '../fsm/StateMachineGate.js';
 
 // ── Config Types ─────────────────────────────────────────
 
@@ -288,6 +289,33 @@ export interface FusionInstance<TContext> {
      * ```
      */
     readonly serializer: JsonSerializer;
+
+    // ── FSM State Gate (Temporal Anti-Hallucination) ───
+
+    /**
+     * Create a Finite State Machine gate for temporal anti-hallucination.
+     *
+     * Tools bound to FSM states (via `.bindState()`) are dynamically
+     * filtered from `tools/list` based on the current workflow state.
+     *
+     * @param config - FSM definition (states, transitions, initial state)
+     * @returns A new StateMachineGate instance
+     *
+     * @example
+     * ```typescript
+     * const gate = f.fsm({
+     *     id: 'checkout',
+     *     initial: 'empty',
+     *     states: {
+     *         empty:     { on: { ADD_ITEM: 'has_items' } },
+     *         has_items: { on: { CHECKOUT: 'payment' } },
+     *         payment:   { on: { PAY: 'confirmed' } },
+     *         confirmed: { type: 'final' },
+     *     },
+     * });
+     * ```
+     */
+    fsm(config: FsmConfig): StateMachineGate;
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -396,5 +424,11 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
         // ── Serialization ────────────────────────────────
 
         serializer: defaultSerializer,
+
+        // ── FSM State Gate ─────────────────────────────
+
+        fsm(config: FsmConfig): StateMachineGate {
+            return new StateMachineGate(config);
+        },
     };
 }

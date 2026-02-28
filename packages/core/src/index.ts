@@ -337,3 +337,11 @@ export type { GuardResult } from './sandbox/index.js';
 export { createSerializer, defaultSerializer } from './core/serialization/index.js';
 /** @category Serialization */
 export type { StringifyFn, JsonSerializer } from './core/serialization/index.js';
+
+// ── FSM State Gate (Temporal Anti-Hallucination) ─────────
+/** @category FSM */
+export { StateMachineGate, initFsmEngine } from './fsm/StateMachineGate.js';
+/** @category FSM */
+export type {
+    FsmConfig, FsmStateStore, FsmSnapshot, TransitionResult,
+} from './fsm/StateMachineGate.js';

@@ -32,6 +32,7 @@ import { computeServerDigest } from '../introspection/BehaviorDigest.js';
 import { type ToolExposition } from '../exposition/types.js';
 import { compileExposition, type FlatRoute, type ExpositionResult } from '../exposition/ExpositionCompiler.js';
 import { type PromptRegistry, type PromptFilter } from '../prompt/PromptRegistry.js';
+import { StateMachineGate, type FsmStateStore } from '../fsm/StateMachineGate.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -300,6 +301,72 @@ export interface AttachOptions<TContext> {
      * @see {@link SelfHealingConfig} for configuration options
      */
     selfHealing?: SelfHealingConfig;
+
+    // ── FSM State Gate (Temporal Anti-Hallucination) ───
+
+    /**
+     * FSM gate for temporal anti-hallucination.
+     *
+     * When configured, tools bound to FSM states (via `.bindState()`)
+     * are dynamically filtered from `tools/list` based on the current
+     * workflow state. The LLM physically cannot call tools that don't
+     * exist in its reality.
+     *
+     * On successful tool execution, the FSM transitions automatically
+     * (if a transition event is bound), and `notifications/tools/list_changed`
+     * is emitted so the client re-fetches the tool list.
+     *
+     * Zero overhead when omitted — no FSM code runs.
+     *
+     * @example
+     * ```typescript
+     * const gate = new StateMachineGate({
+     *     id: 'checkout',
+     *     initial: 'empty',
+     *     states: {
+     *         empty:     { on: { ADD_ITEM: 'has_items' } },
+     *         has_items: { on: { CHECKOUT: 'payment' } },
+     *         payment:   { on: { PAY: 'confirmed' } },
+     *         confirmed: { type: 'final' },
+     *     },
+     * });
+     *
+     * registry.attachToServer(server, {
+     *     contextFactory: createContext,
+     *     fsm: gate,
+     * });
+     * ```
+     *
+     * @see {@link StateMachineGate} for the FSM engine
+     */
+    fsm?: StateMachineGate;
+
+    /**
+     * External state store for FSM persistence in serverless/edge deployments.
+     *
+     * When MCP runs over Streamable HTTP (Vercel, Cloudflare Workers),
+     * there is no persistent process — FSM state must be externalized.
+     * The `sessionId` comes from the `Mcp-Session-Id` request header.
+     *
+     * Zero overhead when omitted — FSM state lives in-memory.
+     *
+     * @example
+     * ```typescript
+     * registry.attachToServer(server, {
+     *     fsm: gate,
+     *     fsmStore: {
+     *         load: async (sessionId) => {
+     *             const data = await redis.get(`fsm:${sessionId}`);
+     *             return data ? JSON.parse(data) : undefined;
+     *         },
+     *         save: async (sessionId, snapshot) => {
+     *             await redis.set(`fsm:${sessionId}`, JSON.stringify(snapshot), { EX: 3600 });
+     *         },
+     *     },
+     * });
+     * ```
+     */
+    fsmStore?: FsmStateStore;
 }
 
 /** Function to detach the registry from the server */
@@ -333,6 +400,9 @@ interface HandlerContext<TContext> {
     readonly actionSeparator: string;
     readonly recompile: () => ExpositionResult<TContext>;
     readonly isFlat: boolean;
+    readonly fsm?: StateMachineGate;
+    readonly fsmStore?: FsmStateStore;
+    readonly notifyToolListChanged?: () => void;
 }
 
 // ── Observability Propagation ────────────────────────────
@@ -363,7 +433,16 @@ function propagateObservability<TContext>(
  * In grouped mode, delegates to the registry's tag-filtered listing.
  */
 function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
-    return () => {
+    return async (_request: unknown, extra: unknown) => {
+        // Restore FSM state from external store (serverless/edge)
+        if (hCtx.fsm && hCtx.fsmStore) {
+            const sessionId = extractSessionId(extra);
+            if (sessionId) {
+                const snap = await hCtx.fsmStore.load(sessionId);
+                if (snap) hCtx.fsm.restore(snap);
+            }
+        }
+
         let tools: McpTool[];
 
         if (hCtx.isFlat) {
@@ -375,6 +454,11 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
             tools = hCtx.filter
                 ? hCtx.registry.getTools(hCtx.filter)
                 : hCtx.registry.getAllTools();
+        }
+
+        // FSM State Gate: remove tools not allowed in the current state
+        if (hCtx.fsm && hCtx.fsm.hasBindings) {
+            tools = tools.filter(tool => hCtx.fsm!.isToolAllowed(tool.name));
         }
 
         return { tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(tools) : tools };
@@ -400,19 +484,53 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         const progressSink = createProgressSink(extra);
         const signal = extractSignal(extra);
 
+        // Restore FSM state from external store (serverless/edge)
+        if (hCtx.fsm && hCtx.fsmStore) {
+            const sessionId = extractSessionId(extra);
+            if (sessionId) {
+                const snap = await hCtx.fsmStore.load(sessionId);
+                if (snap) hCtx.fsm.restore(snap);
+            }
+        }
+
+        let result: ToolResponse;
+
         if (hCtx.isFlat) {
             const exposition = hCtx.recompile();
             const flatRoute = exposition.routingMap.get(name);
             if (flatRoute) {
                 const enrichedArgs = { ...args, [flatRoute.discriminator]: flatRoute.actionKey };
-                const result = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink, signal);
-                return decorateIfSync(hCtx.syncLayer, flatRoute, result);
+                result = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink, signal);
+                result = decorateIfSync(hCtx.syncLayer, flatRoute, result);
+            } else {
+                result = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
+                result = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
+            }
+        } else {
+            result = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
+            result = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
+        }
+
+        // FSM State Gate: auto-transition on successful execution
+        if (hCtx.fsm && !result.isError) {
+            const transitionEvent = hCtx.fsm.getTransitionEvent(name);
+            if (transitionEvent) {
+                const transition = await hCtx.fsm.transition(transitionEvent);
+                if (transition.changed) {
+                    // Persist new state to external store (serverless/edge)
+                    if (hCtx.fsmStore) {
+                        const sessionId = extractSessionId(extra);
+                        if (sessionId) {
+                            await hCtx.fsmStore.save(sessionId, hCtx.fsm.snapshot());
+                        }
+                    }
+                    // Notify client to re-fetch tools/list
+                    hCtx.notifyToolListChanged?.();
+                }
             }
         }
 
-        // Standard dispatch (grouped mode or unrecognized flat tool)
-        const result = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
-        return hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
+        return result;
     };
 }
 
@@ -597,6 +715,29 @@ export async function attachToServer<TContext>(
     }
 
     // 4. Build handler context (shared state for all handler factories)
+
+    // FSM State Gate: auto-bind tool bindings from builders
+    const { fsm, fsmStore } = options;
+    if (fsm) {
+        autoBindFsmFromBuilders(fsm, registry.getBuilders(), toolExposition, actionSeparator);
+    }
+
+    // Wire the notification sink for list_changed (FSM transitions)
+    let notifyToolListChanged: (() => void) | undefined;
+    if (fsm) {
+        const serverAny = server as Record<string, unknown>;
+        const sendFn = serverAny['sendToolListChanged'] ?? serverAny['notification'];
+        if (typeof sendFn === 'function') {
+            notifyToolListChanged = () => {
+                try {
+                    void (sendFn as Function).call(server, { method: 'notifications/tools/list_changed' });
+                } catch {
+                    // Connection might not be established — ignore
+                }
+            };
+        }
+    }
+
     const hCtx: HandlerContext<TContext> = {
         registry,
         ...(filter ? { filter } : {}),
@@ -607,6 +748,9 @@ export async function attachToServer<TContext>(
         recompile: () => compileExposition(
             registry.getBuilders(), toolExposition, actionSeparator,
         ),
+        ...(fsm ? { fsm } : {}),
+        ...(fsmStore ? { fsmStore } : {}),
+        ...(notifyToolListChanged ? { notifyToolListChanged } : {}),
     };
 
     // 5. Register tool handlers
@@ -794,4 +938,80 @@ function collectHintPolicies<TContext>(
     }
 
     return policies;
+}
+
+// ── Session ID Extraction ──────────────────────────────
+
+/**
+ * Extract the MCP session identifier from the request `extra` object.
+ *
+ * For Streamable HTTP transport, the session ID comes from the
+ * `Mcp-Session-Id` header. For stdio/SSE transports with persistent
+ * connections, a stable session ID may be available from the SDK.
+ *
+ * Returns `undefined` when not available (stdio transport without session tracking).
+ *
+ * @param extra - The MCP request handler's extra argument (duck-typed)
+ * @returns Session ID string or undefined
+ */
+function extractSessionId(extra: unknown): string | undefined {
+    if (typeof extra !== 'object' || extra === null) return undefined;
+    const ex = extra as Record<string, unknown>;
+    // Standard MCP SDK session ID
+    if (typeof ex['sessionId'] === 'string') return ex['sessionId'];
+    // Streamable HTTP: from request headers  
+    const headers = ex['headers'] as Record<string, unknown> | undefined;
+    if (headers && typeof headers['mcp-session-id'] === 'string') {
+        return headers['mcp-session-id'];
+    }
+    return undefined;
+}
+
+// ── FSM Auto-Binding ─────────────────────────────────
+
+/**
+ * Auto-bind FSM tool bindings from all registered builders.
+ *
+ * Walks all builders, checks for `.bindState()` metadata, and registers
+ * the bindings on the `StateMachineGate`. This allows the dev to use
+ * `.bindState()` on FluentToolBuilder without manually calling
+ * `gate.bindTool()` for each tool.
+ *
+ * In flat exposition mode, tool names are `{toolName}{separator}{actionKey}`.
+ * In grouped mode, tool names are just the builder's name.
+ */
+function autoBindFsmFromBuilders<TContext>(
+    gate: StateMachineGate,
+    builders: Iterable<ToolBuilder<TContext>>,
+    exposition: ToolExposition,
+    separator: string,
+): void {
+    for (const builder of builders) {
+        // Duck-type: check if builder has getFsmBinding
+        const getFsm = (builder as unknown as Record<string, unknown>)['getFsmBinding'];
+        if (typeof getFsm !== 'function') continue;
+        const binding = getFsm.call(builder) as { states: string[]; transition?: string } | undefined;
+        if (!binding) continue;
+
+        const toolName = builder.getName();
+
+        if (exposition === 'flat') {
+            // In flat mode, each action becomes a separate tool: toolName_actionKey
+            // We need to bind each flat tool name to the FSM
+            const actions = (builder as unknown as Record<string, unknown>)['getActions'];
+            if (typeof actions === 'function') {
+                const actionList = actions.call(builder) as Array<{ key: string }>;
+                for (const action of actionList) {
+                    const flatName = `${toolName}${separator}${action.key}`;
+                    gate.bindTool(flatName, binding.states, binding.transition);
+                }
+            } else {
+                // Fallback: bind the base tool name
+                gate.bindTool(toolName, binding.states, binding.transition);
+            }
+        } else {
+            // Grouped mode: tool name is just the builder name
+            gate.bindTool(toolName, binding.states, binding.transition);
+        }
+    }
 }

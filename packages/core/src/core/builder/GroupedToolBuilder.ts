@@ -175,6 +175,8 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _sandboxConfig?: SandboxConfig;
     private _mutationSerializer?: MutationSerializer;
     private readonly _stateSyncHints = new Map<string, StateSyncHint>();
+    private _fsmStates?: string[];
+    private _fsmTransition?: string;
 
     // Cached build result
     private _cachedTool?: McpTool;
@@ -555,6 +557,46 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      */
     getSandboxConfig(): SandboxConfig | undefined {
         return this._sandboxConfig;
+    }
+
+    // ── FSM State Gate (Temporal Anti-Hallucination) ─────
+
+    /**
+     * Bind this tool to specific FSM states.
+     *
+     * When a `StateMachineGate` is configured, this tool is only
+     * visible in `tools/list` when the FSM is in one of the specified states.
+     *
+     * @param states - FSM state(s) where this tool is visible
+     * @param transition - Event to send on successful execution
+     * @returns `this` for chaining
+     */
+    bindState(states: string[], transition?: string): this {
+        this._assertNotFrozen();
+        this._fsmStates = states;
+        if (transition !== undefined) this._fsmTransition = transition;
+        return this;
+    }
+
+    /**
+     * Get the FSM binding metadata (if any).
+     * Used by `ToolRegistry` and `ServerAttachment` for FSM gating.
+     */
+    getFsmBinding(): { states: string[]; transition?: string } | undefined {
+        if (!this._fsmStates) return undefined;
+        const binding: { states: string[]; transition?: string } = {
+            states: this._fsmStates,
+        };
+        if (this._fsmTransition) binding.transition = this._fsmTransition;
+        return binding;
+    }
+
+    /**
+     * Get the tool name.
+     * Used by framework internals for tool routing and FSM binding.
+     */
+    getToolName(): string {
+        return this._name;
     }
 
     /**

@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion",
-    "version": "2.14.0",
+    "version": "2.15.0",
     "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety — so AI agents perceive and act on your data deterministically.",
     "type": "module",
     "main": "dist/index.js",
@@ -85,7 +85,10 @@
         "action-consolidation",
         "dlp",
         "compliance",
-        "pii-redaction"
+        "pii-redaction",
+        "fsm",
+        "state-machine",
+        "anti-hallucination"
     ],
     "author": "Vinkius Labs",
     "repository": {
@@ -118,6 +121,7 @@
         "fast-json-stringify": "^6.0.0",
         "fast-redact": "^3.0.0",
         "isolated-vm": "^5.0.4",
+        "xstate": "^5.0.0",
         "zod": "^3.25.1 || ^4.0.0"
     },
     "peerDependenciesMeta": {
@@ -131,6 +135,9 @@
             "optional": true
         },
         "fast-redact": {
+            "optional": true
+        },
+        "xstate": {
             "optional": true
         }
     },

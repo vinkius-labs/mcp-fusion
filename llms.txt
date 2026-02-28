@@ -44,6 +44,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Tags**: Capability labels for selective tool exposure per session
 - **TOON**: Token-Oriented Object Notation for compact descriptions/responses
 - **State Sync**: RFC 7234-inspired cache-control signals to prevent temporal blindness
+- **FSM State Gate**: Temporal anti-hallucination engine — physically removes tools from `tools/list` based on XState finite state machine state. `.bindState(states, event)` on FluentToolBuilder. Transitions only on success. Ungated tools always visible. Serverless via `fsmStore`.
 - **Tool Exposition**: Compile-time topology compiler — choose flat (one tool per action) or grouped (one tool per builder with discriminator enum) at attach time. Same handlers, different wire format.
 - **Select Reflection**: Opt-in `_select` parameter for context window optimization — AI agents request only the response fields they need. Uses Late Guillotine pattern (filter wire data AFTER UI/rules generation) to preserve UI integrity. Shallow top-level filtering only.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
@@ -199,6 +200,7 @@ Each `with*()` call narrows the TypeScript generic `TInput` — the IDE provides
 | `.stale()` | State Sync: volatile (never cache) |
 | `.concurrency(config)` | Runtime guard: semaphore + queue |
 | `.egress(bytes)` | Runtime guard: max payload size |
+| `.bindState(states, event?)` | FSM State Gate: tool visibility by FSM state + auto-transition |
 | `.handle(handler)` | **Terminal** — sets handler, builds GroupedToolBuilder |
 
 ### Implicit success() Wrapping
@@ -1702,6 +1704,45 @@ Connection Watchdog: When a client disconnects mid-request, the AbortSignal fire
 
 Fluent API: `f.query('name').sandboxed(config?)` — enables sandbox + HATEOAS auto-prompting on any tool.
 Factory: `f.sandbox(config?)` — creates a SandboxEngine from the fusion instance.
+
+### FSM State Gate — Temporal Anti-Hallucination
+
+Prevents LLMs from calling tools out of order by physically removing them from `tools/list` based on finite state machine state. Three complementary anti-hallucination layers:
+
+1. **Layer 1 — Format**: Zod validates input shape
+2. **Layer 2 — Guidance**: `suggestActions` (HATEOAS) recommends next tool — LLM can ignore
+3. **Layer 3 — Gate**: FSM State Gate physically removes tools — LLM cannot call them
+
+- `StateMachineGate(config)` — creates an FSM engine from `FsmConfig` (XState v5 shape)
+  - `.bindTool(name, allowedStates, transitionEvent?)` — bind tool to FSM states (chainable)
+  - `.isToolAllowed(name)` → `boolean` — check if tool is visible in current state
+  - `.getVisibleToolNames(allTools)` → `string[]` — filter tool list by current state
+  - `.getTransitionEvent(name)` → `string | undefined` — get event for a tool
+  - `.transition(event)` → `Promise<TransitionResult>` — advance FSM state
+  - `.onTransition(callback)` → unsubscribe function — register state change listener
+  - `.snapshot()` → `FsmSnapshot` — serialize state for persistence
+  - `.restore(snapshot)` — restore state from persistence
+  - `.currentState` → `string` — current FSM state (getter)
+  - `.hasBindings` → `boolean` — whether any tools are bound (getter)
+  - `.dispose()` — clean up callbacks and resources
+- `FsmConfig` — `{ id?, initial: string, states: Record<string, { on?: Record<string, string>, type?: 'final' }> }`
+- `FsmSnapshot` — `{ state: string, updatedAt: number }`
+- `TransitionResult` — `{ changed: boolean, previousState: string, currentState: string }`
+- `FsmStateStore` — `{ load(sessionId): Promise<FsmSnapshot | undefined>, save(sessionId, snapshot): Promise<void> }` — external persistence for serverless/edge
+
+Ungated tools (no `.bindState()`) are always visible — zero breaking change.
+
+Transitions only fire on successful execution (`!result.isError`). Failed tool calls keep the FSM in the same state.
+
+After a state change, the framework emits `notifications/tools/list_changed` so the LLM client re-fetches tools.
+
+Serverless: provide `fsmStore` in `attachToServer()` options. The framework loads state from the store before processing and persists after transitions, using `Mcp-Session-Id` for session identification.
+
+`xstate` is an **optional** peer dependency — lazy-loaded. Without it, a built-in manual fallback handles simple linear workflows.
+
+Fluent API: `.bindState(states, transitionEvent?)` on any FluentToolBuilder.
+Factory: `f.fsm(config)` — creates a StateMachineGate from the fusion instance.
+Boot: `initFsmEngine()` — pre-load xstate at startup (optional optimization).
 
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)

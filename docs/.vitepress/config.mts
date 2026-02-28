@@ -241,6 +241,7 @@ export default defineConfig({
           { text: 'Runtime Guards', link: '/runtime-guards' },
           { text: 'Sandbox Engine', link: '/sandbox' },
           { text: 'DLP Redaction — GDPR', link: '/dlp-redaction' },
+          { text: 'FSM State Gate', link: '/fsm-state-gate' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
         ]
       },

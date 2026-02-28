@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0] - 2026-02-28
+
+### 🧠 FSM State Gate — Temporal Anti-Hallucination Engine
+
+The first framework where it is **physically impossible** for an AI to execute tools out of order. Powered by XState v5, the FSM State Gate dynamically controls tool visibility at the `tools/list` protocol level based on finite state machine state — the LLM literally cannot call a tool that doesn't exist in its tool list.
+
+Three complementary anti-hallucination layers:
+- **Layer 1 — Format**: Zod validates input shape
+- **Layer 2 — Guidance**: `suggestActions` (HATEOAS) recommends next tool — LLM can ignore
+- **Layer 3 — Gate**: FSM State Gate physically removes tools — LLM **cannot** call them
+
+### Added
+
+- **`StateMachineGate` module** (`src/fsm/StateMachineGate.ts`) — core FSM engine:
+  - `StateMachineGate(config)` — creates FSM from XState v5-compatible config
+  - `bindTool(name, states, event?)` — bind tool to FSM states with optional auto-transition
+  - `isToolAllowed(name)` — check tool visibility in current state
+  - `getVisibleToolNames(allTools)` — filter tool list by current FSM state
+  - `transition(event)` — advance FSM state, returns `TransitionResult`
+  - `onTransition(callback)` — register callback for `notifications/tools/list_changed`
+  - `snapshot()` / `restore()` — persist/restore state for serverless deployments
+  - `dispose()` — cleanup resources
+  - `initFsmEngine()` — optional boot-time XState pre-loading
+  - Lazy `import('xstate')` with manual fallback when XState is not installed
+- **`.bindState(states, transition?)` on FluentToolBuilder** — declarative tool-to-state binding
+- **`.bindState(states, transition?)` on GroupedToolBuilder** — with `getFsmBinding()` / `getToolName()` metadata accessors
+- **`f.fsm(config)` factory** on `initFusion()` — creates `StateMachineGate` instances
+- **ServerAttachment integration**:
+  - `tools/list` filtered by `gate.isToolAllowed()` — tools physically removed from response
+  - `tools/call` auto-transition on successful execution only (`!result.isError` guard)
+  - `fsmStore` for serverless/edge persistence (load/save with `Mcp-Session-Id`)
+  - `notifications/tools/list_changed` emitted on state change
+  - `autoBindFsmFromBuilders()` — auto-register `.bindState()` metadata from builders
+- **`FsmStateStore` interface** — `load(sessionId)` / `save(sessionId, snapshot)` for Redis, KV, Durable Objects
+- **`xstate` as optional peer dep** — `^5.0.0` in `peerDependencies` + `peerDependenciesMeta`
+- **`xstate.d.ts`** — ambient type declaration for dynamic import
+- **Barrel exports** — `StateMachineGate`, `initFsmEngine`, `FsmConfig`, `FsmSnapshot`, `FsmStateStore`, `TransitionResult`
+
+### Documentation
+
+- **`docs/fsm-state-gate.md`** — comprehensive documentation (~300 lines): three-layer thesis, architecture diagram, execution flow, installation, 3-step Quick Start, `.bindState()` API, serverless/edge deployment with `fsmStore`, `suggestActions` complementarity, boot-time initialization, standalone usage, best practices, full API reference
+- **VitePress sidebar** — "FSM State Gate" under Core Framework section
+- **SEO** — title, meta description, and 7 FAQ entries for Google rich snippets
+- **`llms.txt`** — FSM State Gate in Core Concepts, FluentToolBuilder table, and dedicated 39-line section
+- **Keywords** — `fsm`, `state-machine`, `anti-hallucination` added to `package.json`
+
+### Test Suite
+
+- **54 unit tests** in `StateMachineGate.test.ts` — constructor, bindTool, isToolAllowed, transitions, callbacks, snapshot/restore, dispose, FluentToolBuilder propagation, GroupedToolBuilder, integration workflow, edge cases
+- **68 advanced edge-case tests** in `StateMachineGate.edge.test.ts` — Anthropic-QA-level coverage:
+  - Concurrency (parallel `Promise.all` transitions, 300 rapid cycles)
+  - Callback exception safety (throwing callbacks don't corrupt state)
+  - Dispose lifecycle (idempotent dispose, use-after-dispose)
+  - Snapshot integrity (corruption resistance, immutability, JSON round-trip)
+  - Self-loop transitions, unsubscribe idempotency
+  - Large FSM stress (50 states, 100 tools, 1000 snapshot cycles)
+  - Diamond/cyclic FSMs, init idempotency
+  - Exhaustive state matrix (visibility per state)
+  - Serverless multi-session isolation
+  - Error/success path simulation
+  - Property-based invariants
+- **Full regression suite**: 3,797 tests passed across 138 files — zero regressions
+
 ## [2.14.0] - 2026-02-28
 
 ### 🛡️ DLP Compliance Engine — Zero-Leak PII Redaction (GDPR / LGPD / HIPAA)
