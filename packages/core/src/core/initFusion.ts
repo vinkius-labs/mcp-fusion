@@ -141,7 +141,7 @@ export interface FusionInstance<TContext> {
      * });
      * ```
      */
-    presenter<TSchema extends ZodType>(
+    presenter<TSchema extends ZodType<any, any, any>>(
         config: PresenterConfig<TSchema['_output']> & { schema: TSchema },
     ): Presenter<TSchema['_output']>;
 
@@ -361,7 +361,7 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
 
         // ── MVA Presenter ────────────────────────────────
 
-        presenter<TSchema extends ZodType>(
+        presenter<TSchema extends ZodType<any, any, any>>(
             config: PresenterConfig<TSchema['_output']> & { schema: TSchema },
         ): Presenter<TSchema['_output']> {
             return definePresenter(config);

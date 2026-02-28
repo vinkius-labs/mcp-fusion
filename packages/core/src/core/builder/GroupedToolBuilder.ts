@@ -56,6 +56,7 @@ import {
     type StateSyncHint,
 } from '../types.js';
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';
+import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
 import { type FusionTracer, SpanStatusCode } from '../../observability/Tracing.js';
 import { getActionRequiredFields } from '../schema/SchemaUtils.js';
 import {
@@ -605,7 +606,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * Middleware runs in **registration order** (first registered = outermost).
      * Chains are pre-compiled at build time — zero runtime assembly cost.
      *
-     * @param mw - Middleware function following the `next()` pattern
+     * Accepts both `MiddlewareDefinition` from `f.middleware()` and
+     * raw `MiddlewareFn` functions.
+     *
+     * @param mw - Middleware function or MiddlewareDefinition
      * @returns `this` for chaining
      *
      * @example
@@ -623,9 +627,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * @see {@link MiddlewareFn} for the middleware signature
      * @see {@link ActionGroupBuilder.use} for group-scoped middleware
      */
-    use(mw: MiddlewareFn<TContext>): this {
+    use(mw: MiddlewareFn<TContext> | MiddlewareDefinition<TContext, Record<string, unknown>>): this {
         this._assertNotFrozen();
-        this._middlewares.push(mw);
+        this._middlewares.push(resolveMiddleware(mw));
         return this;
     }
 

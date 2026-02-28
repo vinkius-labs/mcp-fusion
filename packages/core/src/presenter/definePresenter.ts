@@ -69,7 +69,7 @@ export interface PresenterConfig<T> {
     readonly name: string;
 
     /** Zod schema for data validation and field filtering */
-    readonly schema?: ZodType<T>;
+    readonly schema?: ZodType<T, any, any>;
 
     /**
      * System rules that travel with the data.
