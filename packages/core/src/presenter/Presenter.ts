@@ -140,7 +140,7 @@ export class Presenter<T> {
     /** @internal Human-readable domain name (for debugging) */
     readonly name: string;
 
-    private _schema?: ZodType<T>;
+    private _schema?: ZodType<any, any, any>;
     private _rules: RulesConfig<T> = [];
     private _itemUiBlocks?: ItemUiBlocksFn<T>;
     private _collectionUiBlocks?: CollectionUiBlocksFn<T>;
@@ -195,7 +195,7 @@ export class Presenter<T> {
      * // Presenter<{ id: string; amount_cents: number }>
      * ```
      */
-    schema<TSchema extends ZodType>(
+    schema<TSchema extends ZodType<any, any, any>>(
         zodSchema: TSchema,
     ): Presenter<TSchema['_output']>;
 
