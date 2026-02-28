@@ -1,0 +1,59 @@
+{
+    "name": "@vinkius-core/mcp-fusion-davinci",
+    "version": "1.0.0",
+    "description": "Command Nexus TUI — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "davinci": "./dist/cli/davinci.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "mcp-fusion",
+        "tui",
+        "terminal",
+        "dashboard",
+        "observability",
+        "telemetry",
+        "devtools",
+        "cli",
+        "ai",
+        "llm"
+    ],
+    "author": "Vinkius Labs",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+        "directory": "packages/davinci"
+    },
+    "bugs": {
+        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    },
+    "homepage": "https://mcp-fusion.vinkius.com/",
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "peerDependencies": {
+        "@vinkius-core/mcp-fusion": "^2.15.0"
+    },
+    "license": "Apache-2.0"
+}

@@ -170,6 +170,8 @@ USAGE
   fusion dev --server <entry>         Start HMR dev server with auto-reload
   fusion lock                         Generate or update ${LOCKFILE_NAME}
   fusion lock --check                 Verify lockfile is up to date (CI gate)
+  fusion davinci                      Launch the real-time TUI dashboard
+  fusion dv --demo                    Launch TUI with built-in simulator
 
 CREATE OPTIONS
   --transport <stdio|sse>  Transport layer (default: stdio)
@@ -181,6 +183,12 @@ CREATE OPTIONS
 DEV OPTIONS
   --server, -s <path>      Path to server entrypoint (default: auto-detect)
   --dir, -d <path>         Directory to watch for changes (default: auto-detect from server)
+
+DAVINCI OPTIONS
+  --demo, -d               Launch with built-in simulator (no server needed)
+  --out, -o <mode>         Output: tui (default), stderr (headless ECS/K8s)
+  --pid, -p <pid>          Connect to a specific server PID
+  --path <path>            Custom IPC socket/pipe path
 
 LOCK OPTIONS
   --server, -s <path>      Path to server entrypoint
@@ -197,6 +205,8 @@ EXAMPLES
   fusion dev --server ./src/server.ts
   fusion dev --server ./src/server.ts --dir ./src/tools
   fusion lock --server ./src/server.ts
+  fusion davinci --demo
+  fusion dv --pid 12345
 `.trim();
 
 // ============================================================================
@@ -248,6 +258,8 @@ export function parseArgs(argv: string[]): CliArgs {
             case 'lock':
             case 'create':
             case 'dev':
+            case 'davinci':
+            case 'dv':
                 result.command = arg;
                 seenCommand = true;
                 break;
@@ -771,6 +783,23 @@ async function main(): Promise<void> {
         case 'lock':
             await commandLock(args);
             break;
+        case 'davinci':
+        case 'dv': {
+            // Davinci subcommand: forward remaining args to davinci package
+            const davinciArgv = process.argv.slice(3); // strip 'node fusion davinci'
+            try {
+                // @ts-expect-error — Optional peer: @vinkius-core/mcp-fusion-davinci
+                const { runDavinci } = await import('@vinkius-core/mcp-fusion-davinci');
+                await runDavinci(davinciArgv);
+            } catch (importErr) {
+                console.error(
+                    `\x1b[31m✗\x1b[0m The davinci TUI requires the optional package:\n\n` +
+                    `  npm install @vinkius-core/mcp-fusion-davinci\n`,
+                );
+                process.exit(1);
+            }
+            break;
+        }
         default:
             console.error(`Unknown command: "${args.command}"\n`);
             console.log(HELP);

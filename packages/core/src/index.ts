@@ -101,11 +101,18 @@ export type { FusionClient, FusionTransport, RouterMap, InferRouter, TypedToolRe
 /** @category Observability */
 export { createDebugObserver, SpanStatusCode } from './observability/index.js';
 /** @category Observability */
+export { createTelemetryBus, getTelemetryPath, discoverSockets } from './observability/index.js';
+/** @category Observability */
 export type {
     DebugEvent, DebugObserverFn,
     RouteEvent, ValidateEvent, MiddlewareEvent, ExecuteEvent, ErrorEvent,
     GovernanceEvent, GovernanceOperation,
     FusionSpan, FusionTracer, FusionAttributeValue,
+    TelemetryEvent, TelemetrySink,
+    TelemetryBusConfig, TelemetryBusInstance,
+    DlpRedactEvent, PresenterSliceEvent, PresenterRulesEvent,
+    SandboxExecEvent, FsmTransitionEvent,
+    TopologyEvent, TopologyTool, HeartbeatEvent,
 } from './observability/index.js';
 
 // ── Presenter (MVA View Layer) ───────────────────────────

@@ -45,6 +45,8 @@ export interface RouteEvent {
     readonly type: 'route';
     readonly tool: string;
     readonly action: string;
+    /** Short hex trace ID for correlating events in the same request lifecycle */
+    readonly traceId?: string;
     readonly timestamp: number;
 }
 
@@ -61,6 +63,8 @@ export interface ValidateEvent {
     readonly error?: string;
     /** Milliseconds spent in Zod validation */
     readonly durationMs: number;
+    /** Short hex trace ID for correlating events in the same request lifecycle */
+    readonly traceId?: string;
     readonly timestamp: number;
 }
 
@@ -74,6 +78,8 @@ export interface MiddlewareEvent {
     readonly action: string;
     /** Number of middleware functions in the compiled chain */
     readonly chainLength: number;
+    /** Short hex trace ID for correlating events in the same request lifecycle */
+    readonly traceId?: string;
     readonly timestamp: number;
 }
 
@@ -89,6 +95,8 @@ export interface ExecuteEvent {
     readonly durationMs: number;
     /** Whether the response was an error response */
     readonly isError: boolean;
+    /** Short hex trace ID for correlating events in the same request lifecycle */
+    readonly traceId?: string;
     readonly timestamp: number;
 }
 
@@ -103,6 +111,8 @@ export interface ErrorEvent {
     readonly error: string;
     /** The pipeline step where the error occurred */
     readonly step: 'route' | 'validate' | 'middleware' | 'execute';
+    /** Short hex trace ID for correlating events in the same request lifecycle */
+    readonly traceId?: string;
     readonly timestamp: number;
 }
 
