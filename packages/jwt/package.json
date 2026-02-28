@@ -55,5 +55,8 @@
             "optional": true
         }
     },
+    "devDependencies": {
+        "@vinkius-core/mcp-fusion": "workspace:*"
+    },
     "license": "Apache-2.0"
 }

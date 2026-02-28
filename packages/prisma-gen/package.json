@@ -60,7 +60,8 @@
         "zod": "^3.25.1 || ^4.0.0"
     },
     "devDependencies": {
-        "@types/node": "^25.3.0"
+        "@types/node": "^25.3.0",
+        "@vinkius-core/mcp-fusion": "workspace:*"
     },
     "license": "Apache-2.0"
 }
