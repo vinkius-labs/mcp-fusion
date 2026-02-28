@@ -154,6 +154,10 @@ export type { AutoDiscoverOptions } from './server/index.js';
 export { createDevServer } from './server/index.js';
 /** @category Server */
 export type { DevServerConfig, DevServer } from './server/index.js';
+/** @category Server */
+export { startServer } from './server/index.js';
+/** @category Server */
+export type { StartServerOptions, StartServerResult } from './server/index.js';
 
 // ── Exposition (Topology Compiler) ───────────────────────
 /** @category Exposition */

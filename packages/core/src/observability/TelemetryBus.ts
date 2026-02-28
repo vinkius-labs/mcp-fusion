@@ -108,12 +108,30 @@ function removeRegistryFile(pid: number): void {
 }
 
 /**
+ * Check if a process is still alive using signal 0 (probes without killing).
+ * Works cross-platform (Windows, Mac, Linux).
+ *
+ * @param pid - Process ID to check
+ * @returns `true` if the process exists, `false` if it's dead
+ * @internal
+ */
+function isProcessAlive(pid: number): boolean {
+    try {
+        process.kill(pid, 0); // Signal 0 = existence check, doesn't kill
+        return true;
+    } catch {
+        return false; // ESRCH — process does not exist
+    }
+}
+
+/**
  * Discover active telemetry sockets by scanning the registry directory.
  * Works on Windows, Mac, and Linux.
  *
  * Reads `{REGISTRY_DIR}/*.json` marker files written by running servers.
  * Each file contains `{ pid, path }`. Stale files from crashed processes
- * are probed asynchronously and cleaned up.
+ * (e.g. SIGKILL where cleanup handlers never run) are detected via PID
+ * probing and automatically cleaned up.
  *
  * @returns Array of discovered sockets with their PIDs
  */
@@ -130,6 +148,15 @@ export function discoverSockets(): Array<{ pid: number; path: string }> {
             try {
                 const raw = readFileSync(join(REGISTRY_DIR, file), 'utf8');
                 const entry = JSON.parse(raw) as { pid: number; path: string };
+
+                // ── Stale PID check ──────────────────────────
+                // If the process is dead (e.g. SIGKILL'd), the registry
+                // file is orphaned — remove it and skip.
+                if (!isProcessAlive(entry.pid)) {
+                    try { unlinkSync(join(REGISTRY_DIR, file)); } catch { /* ignore */ }
+                    continue;
+                }
+
                 results.push({ pid: entry.pid, path: entry.path });
             } catch {
                 // Corrupted file — clean up
@@ -148,6 +175,8 @@ export function discoverSockets(): Array<{ pid: number; path: string }> {
                 const match = file.match(/^mcp-fusion-(\d+)\.sock$/);
                 if (match) {
                     const pid = parseInt(match[1]!, 10);
+                    // Skip stale sockets from dead processes
+                    if (!isProcessAlive(pid)) continue;
                     results.push({ pid, path: `/tmp/${file}` });
                 }
             }

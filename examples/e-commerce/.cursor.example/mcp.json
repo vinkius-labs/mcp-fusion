@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "teste": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "src/server.ts"
+      ]
+    }
+  }
+}

@@ -57,18 +57,73 @@ export function createContext(): AppContext {
 
 /** Generate `src/server.ts` — Bootstrap with autoDiscover + transport */
 export function serverTs(config: ProjectConfig): string {
-    const transportImport = config.transport === 'stdio'
-        ? `import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';`
-        : `import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { createServer } from 'node:http';`;
+    if (config.transport === 'stdio') {
+        // Simplified: one-liner bootstrap via startServer()
+        return `/**
+ * Server Bootstrap — MCP Fusion
+ *
+ * Tools are auto-discovered from src/tools/.
+ * Drop a file, it becomes a tool.
+ */
+import { fileURLToPath } from 'node:url';
+import { autoDiscover, PromptRegistry, startServer } from '@vinkius-core/mcp-fusion';
+import { createContext } from './context.js';
+import { f } from './fusion.js';
+import { GreetPrompt } from './prompts/greet.js';
 
-    const transportSetup = config.transport === 'stdio'
-        ? `
-// ── Transport ────────────────────────────────────────────
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error('⚡ MCP Fusion server running on stdio');`
-        : `
+// ── Registry ─────────────────────────────────────────────
+const registry = f.registry();
+const prompts = new PromptRegistry();
+
+// ── Auto-Discover & Register ─────────────────────────────
+await autoDiscover(registry, fileURLToPath(new URL('./tools', import.meta.url)));
+prompts.register(GreetPrompt);
+
+// ── Start ────────────────────────────────────────────────
+await startServer({
+    name: '${config.name}',
+    registry,
+    prompts,
+    contextFactory: () => createContext(),
+});
+`;
+    }
+
+    // SSE transport — manual setup required (startServer is stdio-only)
+    return `/**
+ * Server Bootstrap — MCP Fusion with SSE Transport
+ *
+ * Tools are auto-discovered from src/tools/.
+ * Drop a file, it becomes a tool.
+ */
+import { fileURLToPath } from 'node:url';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { createServer } from 'node:http';
+import { autoDiscover, PromptRegistry } from '@vinkius-core/mcp-fusion';
+import { createContext } from './context.js';
+import { f } from './fusion.js';
+import { GreetPrompt } from './prompts/greet.js';
+
+// ── Registry ─────────────────────────────────────────────
+const registry = f.registry();
+const prompts = new PromptRegistry();
+
+// ── Auto-Discover & Register ─────────────────────────────
+await autoDiscover(registry, fileURLToPath(new URL('./tools', import.meta.url)));
+prompts.register(GreetPrompt);
+
+// ── Server ───────────────────────────────────────────────
+const server = new Server(
+    { name: '${config.name}', version: '0.1.0' },
+    { capabilities: { tools: {}, prompts: {} } },
+);
+
+registry.attachToServer(server, {
+    contextFactory: () => createContext(),
+    prompts,
+});
+
 // ── Transport ────────────────────────────────────────────
 const PORT = Number(process.env['PORT'] ?? 3001);
 const transports = new Map<string, SSEServerTransport>();
@@ -95,44 +150,6 @@ const httpServer = createServer(async (req, res) => {
 
 httpServer.listen(PORT, () => {
     console.error(\`⚡ MCP Fusion SSE server on http://localhost:\${PORT}/sse\`);
-});`;
-
-    return `/**
- * Server Bootstrap — MCP Fusion with autoDiscover
- *
- * Tools are auto-discovered from src/tools/ — drop a file,
- * it becomes a tool. No manual imports or registration needed.
- */
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-${transportImport}
-import { ToolRegistry, autoDiscover, PromptRegistry } from '@vinkius-core/mcp-fusion';
-import type { AppContext } from './context.js';
-import { createContext } from './context.js';
-import { f } from './fusion.js';
-import { GreetPrompt } from './prompts/greet.js';
-
-// ── Registries ───────────────────────────────────────────
-const registry = f.registry();
-const prompts = new PromptRegistry<AppContext>();
-
-// ── Auto-Discover Tools ──────────────────────────────────
-const discovered = await autoDiscover(registry, new URL('./tools', import.meta.url).pathname);
-console.error(\`📦 Discovered \${discovered.length} tool file(s)\`);
-
-// ── Register Prompts ─────────────────────────────────────
-prompts.register(GreetPrompt);
-console.error(\`💬 Registered \${prompts.size} prompt(s)\`);
-
-// ── Server ───────────────────────────────────────────────
-const server = new Server(
-    { name: '${config.name}', version: '0.1.0' },
-    { capabilities: { tools: {}, prompts: {} } },
-);
-
-registry.attachToServer(server, {
-    contextFactory: () => createContext(),
-    prompts,
 });
-${transportSetup}
 `;
 }

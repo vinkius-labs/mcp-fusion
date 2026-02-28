@@ -56,6 +56,7 @@ import {
     type StateSyncHint,
 } from '../types.js';
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';
+import { type TelemetrySink } from '../../observability/TelemetryEvent.js';
 import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
 import { type FusionTracer, SpanStatusCode } from '../../observability/Tracing.js';
 import { getActionRequiredFields } from '../schema/SchemaUtils.js';
@@ -68,7 +69,7 @@ import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/Concurren
 import { applyEgressGuard } from '../execution/EgressGuard.js';
 import { type SandboxConfig } from '../../sandbox/SandboxEngine.js';
 import { MutationSerializer } from '../execution/MutationSerializer.js';
-import { computeResponseSize, type PipelineHooks } from '../execution/PipelineHooks.js';
+import { computeResponseSize, mergeHooks, type PipelineHooks } from '../execution/PipelineHooks.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
     ActionGroupBuilder,
@@ -171,6 +172,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _frozen = false;
     private _debug?: DebugObserverFn;
     private _tracer?: FusionTracer;
+    private _telemetry?: TelemetrySink;
     private _concurrencyGuard?: ConcurrencyGuard;
     private _egressMaxBytes?: number;
     private _sandboxConfig?: SandboxConfig;
@@ -864,6 +866,25 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     }
 
     /**
+     * Enable out-of-band telemetry emission for Davinci TUI.
+     *
+     * When set, `validate`, `middleware`, `presenter.slice`, and
+     * `presenter.rules` events are emitted to the TelemetrySink
+     * (Shadow Socket IPC), enabling real-time monitoring in the
+     * Davinci dashboard.
+     *
+     * **Zero overhead** when not configured — no conditionals in
+     * the hot path.
+     *
+     * @param sink - A {@link TelemetrySink} from `startServer()` or `TelemetryBus`
+     * @returns `this` for chaining
+     */
+    telemetry(sink: TelemetrySink): this {
+        this._telemetry = sink;
+        return this;
+    }
+
+    /**
      * Enable OpenTelemetry-compatible tracing for this tool.
      *
      * When enabled, each `execute()` call creates a single span with
@@ -990,9 +1011,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         progressSink?: ProgressSink,
         signal?: AbortSignal,
     ): Promise<ToolResponse> {
+        // Build telemetry hooks if sink is configured
+        const telemetryHooks = this._telemetry ? this._buildTelemetryHooks() : undefined;
+
         // Traced path: wrap in try/catch for system error → graceful response
         if (this._tracer) {
-            const hooks = this._buildTracedHooks();
+            const hooks = mergeHooks(this._buildTracedHooks(), telemetryHooks);
             try {
                 return await this._executePipeline(execCtx, ctx, args, progressSink, hooks, signal);
             } catch (err) {
@@ -1006,7 +1030,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
 
         // Debug path: hooks with event emission
         if (this._debug) {
-            return this._executePipeline(execCtx, ctx, args, progressSink, this._buildDebugHooks(), signal);
+            return this._executePipeline(execCtx, ctx, args, progressSink, mergeHooks(this._buildDebugHooks(), telemetryHooks), signal);
+        }
+
+        // Telemetry-only path: emit events without debug logs
+        if (telemetryHooks) {
+            return this._executePipeline(execCtx, ctx, args, progressSink, telemetryHooks, signal);
         }
 
         // Fast path: zero overhead (no hooks)
@@ -1211,6 +1240,43 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             wrapResponse: (response) => {
                 finalizeSpan(response);
                 return response;
+            },
+        };
+    }
+
+    /**
+     * Build telemetry hooks: Shadow Socket event emission for Davinci TUI.
+     *
+     * Emits `validate`, `middleware`, and `execute` TelemetryEvents
+     * to the IPC sink so that `fusion davinci` shows real pipeline data.
+     */
+    private _buildTelemetryHooks(): PipelineHooks {
+        const emit = this._telemetry!;
+        const toolName = this._name;
+        const startTime = performance.now();
+
+        return {
+            onValidateError: (action, durationMs) => {
+                emit({ type: 'validate', tool: toolName, action, valid: false, error: 'Validation failed', durationMs, timestamp: Date.now() } as any);
+            },
+            onValidateOk: (action, durationMs) => {
+                emit({ type: 'validate', tool: toolName, action, valid: true, durationMs, timestamp: Date.now() } as any);
+            },
+            onMiddleware: (action, chainLength) => {
+                emit({ type: 'middleware', tool: toolName, action, chainLength, timestamp: Date.now() } as any);
+            },
+            onExecuteOk: (action, response) => {
+                const isErr = response.isError === true;
+                emit({
+                    type: 'execute', tool: toolName, action,
+                    durationMs: performance.now() - startTime,
+                    isError: isErr,
+                    timestamp: Date.now(),
+                } as any);
+            },
+            onExecuteError: (action, err) => {
+                const message = err instanceof Error ? err.message : String(err);
+                emit({ type: 'error', tool: toolName, action, error: message, step: 'execute', timestamp: Date.now() } as any);
             },
         };
     }

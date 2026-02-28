@@ -804,7 +804,10 @@ async function main(): Promise<void> {
             break;
         case 'lock':
             await commandLock(args);
-            break;
+            // Force exit: imported server modules may keep the event loop
+            // alive (e.g. transport listeners, telemetry bus, IPC sockets).
+            process.exit(0);
+            break; // unreachable, but keeps lint happy
         case 'davinci':
         case 'dv': {
             // Davinci subcommand: forward remaining args to davinci package

@@ -1,0 +1,11 @@
+{
+    "mcp": {
+        "servers": {
+            "ecommerce": {
+                "type": "stdio",
+                "command": "npx.cmd",
+                "args": ["tsx", "src/server.ts"]
+            }
+        }
+    }
+}

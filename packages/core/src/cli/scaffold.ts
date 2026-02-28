@@ -53,8 +53,9 @@ function buildFileList(config: ProjectConfig): ScaffoldFile[] {
     files.push({ path: '.env.example', content: tpl.envExample(config) });
     files.push({ path: 'README.md', content: tpl.readme(config) });
 
-    // ── Zero-click Cursor integration ────────────────────
+    // ── Zero-click editor integration ─────────────────────
     files.push({ path: '.cursor/mcp.json', content: tpl.cursorMcpJson(config) });
+    files.push({ path: '.vscode/mcp.json', content: tpl.cursorMcpJson(config) });
 
     // ── Testing config ───────────────────────────────────
     if (config.testing) {

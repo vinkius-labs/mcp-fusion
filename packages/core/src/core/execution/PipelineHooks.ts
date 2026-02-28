@@ -53,3 +53,43 @@ export function computeResponseSize(response: ToolResponse): number {
     }
     return size;
 }
+
+// ── Hook Merging ─────────────────────────────────────────
+
+/**
+ * Merge two PipelineHooks into one that calls both in sequence.
+ *
+ * When both `primary` and `secondary` define the same hook,
+ * the merged hook calls `primary` first, then `secondary`.
+ *
+ * Returns `primary` if `secondary` is undefined (zero allocation).
+ *
+ * Used to layer telemetry emission on top of debug or traced hooks.
+ *
+ * @internal
+ */
+export function mergeHooks(
+    primary: PipelineHooks,
+    secondary: PipelineHooks | undefined,
+): PipelineHooks {
+    if (!secondary) return primary;
+
+    const merged: PipelineHooks = {
+        rethrow: !!(primary.rethrow || secondary.rethrow),
+        onRouteError: () => { primary.onRouteError?.(); secondary.onRouteError?.(); },
+        onRouteOk: (a) => { primary.onRouteOk?.(a); secondary.onRouteOk?.(a); },
+        onResolveError: (a) => { primary.onResolveError?.(a); secondary.onResolveError?.(a); },
+        onValidateError: (a, d) => { primary.onValidateError?.(a, d); secondary.onValidateError?.(a, d); },
+        onValidateOk: (a, d) => { primary.onValidateOk?.(a, d); secondary.onValidateOk?.(a, d); },
+        onMiddleware: (a, c) => { primary.onMiddleware?.(a, c); secondary.onMiddleware?.(a, c); },
+        onExecuteOk: (a, r) => { primary.onExecuteOk?.(a, r); secondary.onExecuteOk?.(a, r); },
+        onExecuteError: (a, e) => { primary.onExecuteError?.(a, e); secondary.onExecuteError?.(a, e); },
+    };
+    if (primary.wrapResponse) {
+        merged.wrapResponse = (r) => { const wrapped = primary.wrapResponse!(r); secondary.wrapResponse?.(wrapped); return wrapped; };
+    } else if (secondary.wrapResponse) {
+        merged.wrapResponse = secondary.wrapResponse;
+    }
+    return merged;
+}
+

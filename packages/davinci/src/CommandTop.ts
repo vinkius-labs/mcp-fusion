@@ -442,15 +442,11 @@ function renderTopology(
 ): string {
     let output = '';
 
-    // Tab header (Feature #5)
-    const tab1 = state.activeTab === 1 ? ansi.bold(ansi.cyan('[1] Tools')) : ansi.dim('[1] Tools');
-    const tab2 = state.activeTab === 2 ? ansi.bold(ansi.cyan('[2] Prompts')) : ansi.dim('[2] Prompts');
-    const tab3 = state.activeTab === 3 ? ansi.bold(ansi.cyan('[3] Resources')) : ansi.dim('[3] Resources');
+    // Tab header
+    // TODO: Enable [2] Prompts and [3] Resources tabs in a future release
+    const tab1 = ansi.bold(ansi.cyan('[1] Tools'));
     output += ansi.moveTo(startRow, startCol);
-    output += pad(` ${tab1}  ${tab2}  ${tab3}`, width);
-
-    if (state.activeTab === 2) return output + renderPromptTab(screen, startRow, startCol, width, height, state);
-    if (state.activeTab === 3) return output + renderResourceTab(screen, startRow, startCol, width, height);
+    output += pad(` ${tab1}`, width);
 
     // Tab 1: Tool Topology (default)
     // Column headers
@@ -903,8 +899,9 @@ function handleKey(key: string, state: TuiState): 'quit' | 'redraw' | 'none' {
 
     // Tab switching (Feature #5)
     if (key === '1') { state.activeTab = 1; return 'redraw'; }
-    if (key === '2') { state.activeTab = 2; return 'redraw'; }
-    if (key === '3') { state.activeTab = 3; return 'redraw'; }
+    // TODO: Enable Prompts/Resources tabs in a future release
+    // if (key === '2') { state.activeTab = 2; return 'redraw'; }
+    // if (key === '3') { state.activeTab = 3; return 'redraw'; }
 
     // Navigation
     if (key === 'k' || key === '\x1b[A') { // up
@@ -942,46 +939,35 @@ export interface TopOptions {
  * Connects to a running MCP Fusion server via Shadow Socket
  * and renders the interactive dashboard.
  *
+ * If no server is found at startup, polls every 2s until one appears.
+ * If the connection drops mid-session, polls for reconnection.
+ *
  * @param options - Connection options
  */
 export async function commandTop(options: TopOptions = {}): Promise<void> {
     const screen = new ScreenManager();
     const state = new TuiState();
 
-    // Resolve IPC path
-    let ipcPath: string;
+    /** How often (ms) to poll for servers when disconnected */
+    const DISCOVERY_POLL_MS = 2_000;
+
+    // Resolve IPC path (static when --pid or --path is given)
+    let ipcPath: string | undefined;
+    const isAutoDiscover = !options.path && !options.pid;
+
     if (options.path) {
         ipcPath = options.path;
     } else if (options.pid) {
         ipcPath = getTelemetryPath(options.pid);
-    } else {
-        // Auto-discover
-        const sockets = discoverSockets();
-        if (sockets.length === 0) {
-            console.error(
-                '\x1b[31m✗\x1b[0m No MCP Fusion servers found.\n\n' +
-                '  Start a server with telemetry enabled:\n' +
-                '    import { createTelemetryBus } from \'@vinkius-core/mcp-fusion\';\n' +
-                '    const bus = await createTelemetryBus();\n\n' +
-                '  Or specify a PID:\n' +
-                '    davinci --pid 12345\n',
-            );
-            process.exit(1);
-        }
-        ipcPath = sockets[0]!.path;
-        if (sockets.length > 1) {
-            process.stderr.write(
-                `\x1b[33m⚠\x1b[0m Multiple servers found. Connecting to PID ${sockets[0]!.pid}.\n` +
-                `  Use \x1b[1m--pid\x1b[0m to target a specific server.\n\n`,
-            );
-        }
     }
+    // For auto-discover, ipcPath starts undefined — resolved in connect loop
 
     // ── Promise that keeps the TUI alive until user quits ──
-    // Without this, callers (e.g. runDavinci --demo) would
-    // continue past `await commandTop()` and shut down the
-    // simulator before the TUI can receive any events.
     return new Promise<void>((resolve) => {
+
+    let client: Socket | undefined;
+    let discoveryTimer: ReturnType<typeof setInterval> | undefined;
+    let isShuttingDown = false;
 
     // ── Render debounce (60fps cap = 16ms) ────────────────
     let renderScheduled = false;
@@ -995,9 +981,86 @@ export async function commandTop(options: TopOptions = {}): Promise<void> {
     }
 
     function shutdown(): void {
+        isShuttingDown = true;
+        if (discoveryTimer) clearInterval(discoveryTimer);
         screen.exit();
-        client.destroy();
+        if (client) client.destroy();
         resolve();
+    }
+
+    /**
+     * Attempt to discover and connect to a server.
+     * Returns true if connected, false if no server found.
+     */
+    function tryConnect(): boolean {
+        // Discover available servers
+        if (isAutoDiscover) {
+            const sockets = discoverSockets();
+            if (sockets.length === 0) return false;
+            ipcPath = sockets[0]!.path;
+            if (sockets.length > 1) {
+                process.stderr.write(
+                    `\x1b[33m⚠\x1b[0m Multiple servers found. Connecting to PID ${sockets[0]!.pid}.\n` +
+                    `  Use \x1b[1m--pid\x1b[0m to target a specific server.\n\n`,
+                );
+            }
+        }
+
+        if (!ipcPath) return false;
+
+        // Stop polling
+        if (discoveryTimer) {
+            clearInterval(discoveryTimer);
+            discoveryTimer = undefined;
+        }
+
+        // Reset state for fresh connection
+        state.serverName = 'Connecting…';
+        state.pid = 0;
+        scheduleRender();
+
+        const currentPath = ipcPath;
+        client = connectToServer(
+            currentPath,
+            // onEvent
+            (event) => {
+                processEvent(state, event);
+                scheduleRender();
+            },
+            // onClose
+            () => {
+                if (isShuttingDown) return;
+                state.serverName = 'DISCONNECTED — waiting for server…';
+                state.pid = 0;
+                scheduleRender();
+                // Start polling for reconnection
+                startDiscoveryPolling();
+            },
+            // onError
+            (err) => {
+                if (isShuttingDown) return;
+                // Connection failed — don't crash, start polling
+                state.serverName = 'DISCONNECTED — waiting for server…';
+                state.pid = 0;
+                scheduleRender();
+                startDiscoveryPolling();
+            },
+        );
+
+        return true;
+    }
+
+    /**
+     * Start polling for servers every DISCOVERY_POLL_MS.
+     */
+    function startDiscoveryPolling(): void {
+        if (discoveryTimer || isShuttingDown) return;
+        discoveryTimer = setInterval(() => {
+            if (isShuttingDown) return;
+            tryConnect();
+        }, DISCOVERY_POLL_MS);
+        // Don't let the timer keep the process alive if user quits
+        discoveryTimer.unref();
     }
 
     // ── Enter TUI ─────────────────────────────────────────
@@ -1014,32 +1077,14 @@ export async function commandTop(options: TopOptions = {}): Promise<void> {
         },
     );
 
-    // ── Connect to server ─────────────────────────────────
-    state.serverName = 'Connecting…';
+    // ── Initial connection attempt ────────────────────────
+    state.serverName = 'Waiting for server…';
     renderAll(screen, state);
 
-    const client = connectToServer(
-        ipcPath,
-        // onEvent
-        (event) => {
-            processEvent(state, event);
-            scheduleRender();
-        },
-        // onClose
-        () => {
-            state.serverName = 'DISCONNECTED';
-            state.pid = 0;
-            scheduleRender();
-        },
-        // onError
-        (err) => {
-            screen.exit();
-            console.error(`\x1b[31m✗\x1b[0m Connection failed: ${err.message}`);
-            console.error(`  Path: ${ipcPath}`);
-            resolve();
-            process.exit(1);
-        },
-    );
+    if (!tryConnect()) {
+        // No server found — start polling
+        startDiscoveryPolling();
+    }
 
     // ── Graceful shutdown ─────────────────────────────────
     process.on('SIGINT', () => {

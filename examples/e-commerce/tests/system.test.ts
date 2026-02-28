@@ -1,51 +1,4 @@
 /**
- * Testing Templates — Test setup and example tests
- * @module
- */
-
-/** Generate `vitest.config.ts` */
-export function vitestConfig(): string {
-    return `import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-    test: {
-        include: ['tests/**/*.test.ts'],
-    },
-});
-`;
-}
-
-/** Generate `tests/setup.ts` — Test infrastructure */
-export function testSetupTs(): string {
-    return `/**
- * Test Setup — In-Memory MVA Emulator
- *
- * Creates a FusionTester that runs the full pipeline
- * (Zod → Middleware → Handler → Egress Firewall)
- * without any network transport.
- *
- * 2ms per test. $0.00 in tokens. Zero servers.
- */
-import { fileURLToPath } from 'node:url';
-import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
-import { autoDiscover } from '@vinkius-core/mcp-fusion';
-import { f } from '../src/fusion.js';
-
-const registry = f.registry();
-await autoDiscover(registry, fileURLToPath(new URL('../src/tools', import.meta.url)));
-
-export const tester = createFusionTester(registry, {
-    contextFactory: () => ({
-        role: 'ADMIN' as const,
-        tenantId: 'test-tenant',
-    }),
-});
-`;
-}
-
-/** Generate `tests/system.test.ts` — Egress Firewall + RBAC tests */
-export function systemTestTs(): string {
-    return `/**
  * System Tools — Egress Firewall & RBAC Tests
  *
  * Proves that:
@@ -99,5 +52,3 @@ describe('System Tools', () => {
         });
     });
 });
-`;
-}
