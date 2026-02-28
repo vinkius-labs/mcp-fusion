@@ -44,16 +44,16 @@ The **handler** returns raw data. The **Presenter** shapes what the agent sees. 
 
 ## Why MCP Fusion
 
-- **🔧 Fluent API** — Semantic verbs (`f.query`, `f.mutation`, `f.action`) with type-chaining. Full IDE autocomplete in `.handle()` — zero manual interfaces.
-- **🎯 Presenters** — Egress firewall for LLMs. Zod-validated schemas strip undeclared fields in RAM. JIT system rules, server-rendered UI, cognitive guardrails, and HATEOAS-style next actions.
-- **🔐 Zero-Trust Sandbox** — V8 Isolate engine (`isolated-vm`). The LLM sends logic to your data instead of data to the LLM. Sealed execution — no `process`, `require`, `fs`, `net`.
-- **📁 File-Based Routing** — Drop a file in `src/tools/`, it becomes a tool. No central import file, no merge conflicts.
-- **🧪 Testing** — In-memory pipeline testing without MCP transport. Schema validation, middleware, handler, presenter — all tested directly.
-- **🔒 Governance** — Capability lockfile (`mcp-fusion.lock`), contract diffing, HMAC attestation, semantic probing, entitlement scanning, blast radius analysis.
-- **⚡ State Sync** — RFC 7234-inspired cache-control for LLM agents. `invalidates()`, `cached()`, `stale()` — the agent knows whether its data is still valid.
-- **🖥️ Inspector** — Real-time terminal dashboard via Shadow Socket (IPC). Zero stdio interference. Live tool registry, traffic log, X-RAY deep inspection, Late Guillotine token metrics.
-- **🧩 tRPC-Style Client** — Compile-time route validation with `InferRouter<typeof registry>`. Autocomplete for tool names, inputs, and responses.
-- **📦 Adapters** — Deploy to Vercel, Cloudflare Workers, or plain Node.js.
+- **Fluent API** — Semantic verbs (`f.query`, `f.mutation`, `f.action`) with type-chaining. Full IDE autocomplete in `.handle()` — zero manual interfaces.
+- **Presenters** — Egress firewall for LLMs. Zod-validated schemas strip undeclared fields in RAM. JIT system rules, server-rendered UI, cognitive guardrails, and HATEOAS-style next actions.
+- **Zero-Trust Sandbox** — V8 Isolate engine (`isolated-vm`). The LLM sends logic to your data instead of data to the LLM. Sealed execution — no `process`, `require`, `fs`, `net`.
+- **File-Based Routing** — Drop a file in `src/tools/`, it becomes a tool. No central import file, no merge conflicts.
+- **Testing** — In-memory pipeline testing without MCP transport. Schema validation, middleware, handler, presenter — all tested directly.
+- **Governance** — Capability lockfile (`mcp-fusion.lock`), contract diffing, HMAC attestation, semantic probing, entitlement scanning, blast radius analysis.
+- **State Sync** — RFC 7234-inspired cache-control for LLM agents. `invalidates()`, `cached()`, `stale()` — the agent knows whether its data is still valid.
+- **Inspector** — Real-time terminal dashboard via Shadow Socket (IPC). Zero stdio interference. Live tool registry, traffic log, X-RAY deep inspection, Late Guillotine token metrics.
+- **tRPC-Style Client** — Compile-time route validation with `InferRouter<typeof registry>`. Autocomplete for tool names, inputs, and responses.
+- **Adapters** — Deploy to Vercel, Cloudflare Workers, or plain Node.js.
 
 ## Code Example
 
