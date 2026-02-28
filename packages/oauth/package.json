@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-oauth",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers built with mcp-fusion. Provides secure token storage, device flow authentication, and middleware integration.",
     "type": "module",
     "main": "dist/index.js",

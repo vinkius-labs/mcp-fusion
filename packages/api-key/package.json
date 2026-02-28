@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-api-key",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "API key validation middleware for MCP servers built with mcp-fusion. Timing-safe comparison, SHA-256 hashing, async validators, and self-healing error responses.",
     "type": "module",
     "main": "dist/index.js",

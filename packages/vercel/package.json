@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-vercel",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Vercel adapter for MCP Fusion. Deploy your MCP server as a Next.js App Router route handler or standalone Vercel Function — Edge Runtime or Node.js, stateless JSON-RPC, zero config.",
     "type": "module",
     "main": "dist/index.js",

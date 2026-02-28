@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-02-28
+
+### 📦 Ecosystem — README Standardization & Inspector Publication
+
+### Added
+
+- **`@vinkius-core/mcp-fusion-inspector` v1.0.0 → v1.0.1** — Published to npm. Real-time terminal dashboard for MCP Fusion servers via Shadow Socket (IPC).
+
+### Fixed
+
+- **Scaffold test assertions** — Updated `create.e2e.test.ts` and `create.test.ts` to match current `startServer()` template (was `new Server()` / `StdioServerTransport`). File count 17 → 18. Removed outdated `prompts.size` check.
+- **Inspector docs badge layout** — Badges now render inline instead of stacking vertically over the title.
+
+### Changed
+
+- **README standardization** — All 12 package READMEs follow the same layout: centered header (`<p align="center">`), HTML badges (npm, license, node), blockquote tagline, features table, code examples, peer dependencies, requirements.
+- **Core README** — `packages/core/README.md` mirrors the root monorepo README for npmjs.com display.
+
+### Ecosystem v1.0.1
+
+All sub-packages bumped to 1.0.1 for README updates:
+`mcp-fusion-api-key`, `mcp-fusion-aws`, `mcp-fusion-cloudflare`, `mcp-fusion-inspector`, `mcp-fusion-jwt`, `mcp-fusion-n8n`, `mcp-fusion-oauth`, `mcp-fusion-openapi-gen`, `mcp-fusion-prisma-gen`, `mcp-fusion-testing`, `mcp-fusion-vercel`.
+
+---
+
 ## [@vinkius-core/mcp-fusion-jwt v1.0.0] - 2026-02-28
 
 ### 🔐 JWT Verification — Standards-Compliant Token Validation

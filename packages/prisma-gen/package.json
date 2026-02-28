@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-prisma-gen",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Prisma Generator for MCP Fusion. Reads schema annotations (@fusion.hide, @fusion.describe, @fusion.tenantKey) and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection.",
     "type": "module",
     "main": "dist/index.js",

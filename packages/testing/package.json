@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-testing",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "In-memory MVA lifecycle emulator for MCP Fusion. Runs the full pipeline (Zod Input → Middlewares → Handler → Egress Firewall) without network transport. Returns structured MvaTestResult objects — zero coupling to Jest/Vitest.",
     "type": "module",
     "main": "dist/index.js",

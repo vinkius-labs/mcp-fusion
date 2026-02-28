@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-jwt",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "JWT verification middleware for MCP servers built with mcp-fusion. Standards-compliant token validation with jose, JWKS support, and self-healing error responses.",
     "type": "module",
     "main": "dist/index.js",

@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-inspector",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "MCP Fusion Inspector — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
     "type": "module",
     "main": "dist/index.js",
