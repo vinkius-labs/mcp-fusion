@@ -33,6 +33,7 @@ import {
     type MiddlewareFn,
     type ActionConfig,
 } from '../types.js';
+import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
 
 /**
  * Callback for configuring actions within a group.
@@ -118,7 +119,10 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      * Unlike {@link GroupedToolBuilder.use}, this middleware runs
      * only for actions within this group — not globally.
      *
-     * @param mw - Middleware function
+     * Accepts both `MiddlewareDefinition` from `f.middleware()` and
+     * raw `MiddlewareFn` functions.
+     *
+     * @param mw - Middleware function or MiddlewareDefinition
      * @returns `this` for chaining
      *
      * @example
@@ -132,8 +136,8 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
      *
      * @see {@link MiddlewareFn} for the middleware signature
      */
-    use(mw: MiddlewareFn<TContext>): this {
-        this._groupMiddlewares.push(mw);
+    use(mw: MiddlewareFn<TContext> | MiddlewareDefinition<TContext, Record<string, unknown>>): this {
+        this._groupMiddlewares.push(resolveMiddleware(mw));
         return this;
     }
 

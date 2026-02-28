@@ -27,6 +27,7 @@
  * @module
  */
 import { type MiddlewareFn } from '../types.js';
+import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
 import {
     FluentToolBuilder,
     QUERY_DEFAULTS,
@@ -64,11 +65,14 @@ export class FluentRouter<TContext> {
     /**
      * Add middleware shared by all tools in this router.
      *
-     * @param mw - Middleware function
+     * Accepts both `MiddlewareDefinition` from `f.middleware()` and
+     * raw `MiddlewareFn` functions.
+     *
+     * @param mw - Middleware function or MiddlewareDefinition
      * @returns `this` for chaining
      */
-    use(mw: MiddlewareFn<TContext>): this {
-        this._middlewares.push(mw);
+    use(mw: MiddlewareFn<TContext> | MiddlewareDefinition<TContext, Record<string, unknown>>): this {
+        this._middlewares.push(resolveMiddleware(mw));
         return this;
     }
 

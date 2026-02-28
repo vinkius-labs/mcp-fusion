@@ -353,6 +353,24 @@ export async function resolveRegistry(serverPath: string): Promise<{ registry: R
     const absolutePath = resolve(serverPath);
     const fileUrl = pathToFileURL(absolutePath).href;
 
+    // Register tsx loader so dynamic import() can handle .ts files
+    // and resolve .js extension imports to .ts (ESM convention).
+    // Uses tsx/esm/api which is compatible with Node 22+ (--import style).
+    // Resolve tsx from the USER's project (not from the CLI's dist location)
+    // via createRequire anchored to the server file's directory.
+    if (absolutePath.endsWith('.ts')) {
+        try {
+            const { createRequire } = await import('node:module');
+            const userRequire = createRequire(absolutePath);
+            const tsxApiPath = userRequire.resolve('tsx/esm/api');
+            const { register } = await import(pathToFileURL(tsxApiPath).href) as { register: () => void };
+            register();
+        } catch {
+            // tsx not available — fall through, import() will fail with
+            // a clear "Cannot find module" error if .ts resolution is needed
+        }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const mod = await import(fileUrl);
 
@@ -423,9 +441,13 @@ export async function commandLock(args: CliArgs, reporter?: ProgressReporter): P
     const progress = new ProgressTracker(reporter);
 
     if (!args.server) {
-        console.error('Error: --server <path> is required.\n');
-        console.error('Usage: fusion lock --server ./src/server.ts');
-        process.exit(1);
+        const detected = inferServerEntry(args.cwd);
+        if (!detected) {
+            console.error('Error: Could not auto-detect server entrypoint.\n');
+            console.error('Usage: fusion lock --server ./src/server.ts');
+            process.exit(1);
+        }
+        args.server = detected;
     }
 
     const mode = args.check ? 'Verifying' : 'Generating';
@@ -788,7 +810,6 @@ async function main(): Promise<void> {
             // Davinci subcommand: forward remaining args to davinci package
             const davinciArgv = process.argv.slice(3); // strip 'node fusion davinci'
             try {
-                // @ts-expect-error — Optional peer: @vinkius-core/mcp-fusion-davinci
                 const { runDavinci } = await import('@vinkius-core/mcp-fusion-davinci');
                 await runDavinci(davinciArgv);
             } catch (importErr) {

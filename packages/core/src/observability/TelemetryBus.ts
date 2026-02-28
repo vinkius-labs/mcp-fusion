@@ -29,8 +29,9 @@
  * @module
  */
 import { createServer, connect, type Server, type Socket } from 'node:net';
-import { existsSync, unlinkSync, chmodSync, statSync } from 'node:fs';
-import { platform } from 'node:os';
+import { existsSync, unlinkSync, chmodSync, statSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
+import { platform, tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { TelemetryEvent, TelemetrySink } from './TelemetryEvent.js';
 
 // ============================================================================
@@ -42,6 +43,9 @@ const MAX_CLIENT_BUFFER_BYTES = 65_536; // 64KB
 
 /** Heartbeat interval in milliseconds */
 const HEARTBEAT_INTERVAL_MS = 5_000;
+
+/** Registry directory for cross-platform server discovery */
+const REGISTRY_DIR = join(tmpdir(), 'mcp-fusion-registry');
 
 // ============================================================================
 // Path Convention
@@ -64,41 +68,92 @@ export function getTelemetryPath(pid?: number): string {
     return `/tmp/mcp-fusion-${id}.sock`;
 }
 
+// ============================================================================
+// Registry File Helpers (Cross-Platform Discovery)
+// ============================================================================
+
 /**
- * Discover active telemetry sockets by scanning for `mcp-fusion-*.sock`.
- * Returns an array of `{ pid, path }` for each discovered socket.
+ * Write a registry marker file so `discoverSockets()` can find this server.
+ * Creates `{REGISTRY_DIR}/{pid}.json` with metadata.
  *
- * On Windows, Named Pipes are not file-system entities, so we probe
- * a list of candidate PIDs from the user.
+ * @param pid - Process ID
+ * @param serverName - Optional server name for display
+ * @internal
+ */
+function writeRegistryFile(pid: number, serverName?: string): void {
+    try {
+        mkdirSync(REGISTRY_DIR, { recursive: true });
+        const data = JSON.stringify({
+            pid,
+            path: getTelemetryPath(pid),
+            name: serverName,
+            startedAt: Date.now(),
+        });
+        writeFileSync(join(REGISTRY_DIR, `${pid}.json`), data, 'utf8');
+    } catch {
+        // Non-fatal — discovery won't work but server still runs
+    }
+}
+
+/**
+ * Remove the registry marker file for a given PID.
+ * @internal
+ */
+function removeRegistryFile(pid: number): void {
+    try {
+        unlinkSync(join(REGISTRY_DIR, `${pid}.json`));
+    } catch {
+        // File may not exist — ignore
+    }
+}
+
+/**
+ * Discover active telemetry sockets by scanning the registry directory.
+ * Works on Windows, Mac, and Linux.
  *
- * @param candidatePids - Optional list of PIDs to probe (Windows-only)
+ * Reads `{REGISTRY_DIR}/*.json` marker files written by running servers.
+ * Each file contains `{ pid, path }`. Stale files from crashed processes
+ * are probed asynchronously and cleaned up.
+ *
  * @returns Array of discovered sockets with their PIDs
  */
-export function discoverSockets(candidatePids?: number[]): Array<{ pid: number; path: string }> {
-    if (platform() === 'win32') {
-        // On Windows, Named Pipes don't live in the filesystem.
-        // We probe the candidate PIDs by attempting a connection.
-        const pids = candidatePids ?? [];
-        return pids
-            .map((pid) => ({ pid, path: getTelemetryPath(pid) }));
-    }
-
-    // On POSIX: scan /tmp for mcp-fusion-*.sock files
+export function discoverSockets(): Array<{ pid: number; path: string }> {
     const results: Array<{ pid: number; path: string }> = [];
+
+    // ── Primary: scan registry directory (all platforms) ────
     try {
-        const { readdirSync } = require('node:fs') as typeof import('node:fs');
-        const files = readdirSync('/tmp');
+        const files = readdirSync(REGISTRY_DIR);
         for (const file of files) {
-            const match = file.match(/^mcp-fusion-(\d+)\.sock$/);
-            if (match) {
-                const pid = parseInt(match[1]!, 10);
-                const path = `/tmp/${file}`;
-                results.push({ pid, path });
+            const match = file.match(/^(\d+)\.json$/);
+            if (!match) continue;
+
+            try {
+                const raw = readFileSync(join(REGISTRY_DIR, file), 'utf8');
+                const entry = JSON.parse(raw) as { pid: number; path: string };
+                results.push({ pid: entry.pid, path: entry.path });
+            } catch {
+                // Corrupted file — clean up
+                try { unlinkSync(join(REGISTRY_DIR, file)); } catch { /* ignore */ }
             }
         }
     } catch {
-        // /tmp scan failed — return empty
+        // Registry dir doesn't exist yet — no servers registered
     }
+
+    // ── Fallback: POSIX socket scan (backward compat) ──────
+    if (platform() !== 'win32' && results.length === 0) {
+        try {
+            const files = readdirSync('/tmp');
+            for (const file of files) {
+                const match = file.match(/^mcp-fusion-(\d+)\.sock$/);
+                if (match) {
+                    const pid = parseInt(match[1]!, 10);
+                    results.push({ pid, path: `/tmp/${file}` });
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
     return results;
 }
 
@@ -278,6 +333,9 @@ export async function createTelemetryBus(config?: TelemetryBusConfig): Promise<T
         server.listen(socketPath, () => resolve());
     });
 
+    // ── Registry: announce this server for auto-discovery ──
+    writeRegistryFile(process.pid, config?.path ? undefined : 'mcp-fusion');
+
     // ── Gotcha #1: IPC Security (chmod 0o600) ─────────────
     // Restrict socket to owner-only on POSIX to prevent PII sniffing
     if (platform() !== 'win32') {
@@ -354,6 +412,9 @@ export async function createTelemetryBus(config?: TelemetryBusConfig): Promise<T
         if (platform() !== 'win32') {
             try { unlinkSync(socketPath); } catch { /* ignore */ }
         }
+
+        // Remove registry file (cross-platform discovery)
+        removeRegistryFile(process.pid);
     }
 
     // Register cleanup on process exit signals

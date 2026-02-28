@@ -119,7 +119,7 @@ describe('discoverSockets', () => {
     });
 
     it('should return objects with pid and path properties', () => {
-        const sockets = discoverSockets([12345]);
+        const sockets = discoverSockets();
         for (const s of sockets) {
             expect(s).toHaveProperty('pid');
             expect(s).toHaveProperty('path');

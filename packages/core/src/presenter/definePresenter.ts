@@ -69,7 +69,7 @@ export interface PresenterConfig<T> {
     readonly name: string;
 
     /** Zod schema for data validation and field filtering */
-    readonly schema?: ZodType<T>;
+    readonly schema?: ZodType<any, any, any>;
 
     /**
      * System rules that travel with the data.
@@ -196,8 +196,8 @@ export interface PresenterConfig<T> {
  * @see {@link createPresenter} for the legacy fluent builder API
  * @see {@link Presenter} for the full Presenter class documentation
  */
-export function definePresenter<TSchema extends ZodType>(
-    config: PresenterConfig<TSchema['_output']> & { schema: TSchema },
+export function definePresenter<TSchema extends ZodType<any, any, any>>(
+    config: Omit<PresenterConfig<TSchema['_output']>, 'schema'> & { schema: TSchema },
 ): Presenter<TSchema['_output']>;
 
 /**

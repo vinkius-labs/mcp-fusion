@@ -131,10 +131,7 @@ const server = new Server(
 
 registry.attachToServer(server, {
     contextFactory: () => createContext(),
-});
-
-prompts.attachToServer(server, {
-    contextFactory: () => createContext(),
+    prompts,
 });
 ${transportSetup}
 `;

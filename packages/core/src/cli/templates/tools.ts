@@ -56,7 +56,7 @@ export default f.query('system.echo')
     .withString('message', 'Message to echo back')
     .handle(async (input) => {
         return {
-            echo: input.message,
+            echo: input['message'],
             receivedAt: new Date().toISOString(),
         };
     });

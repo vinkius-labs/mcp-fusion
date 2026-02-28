@@ -33,6 +33,7 @@ import { type ToolExposition } from '../exposition/types.js';
 import { compileExposition, type FlatRoute, type ExpositionResult } from '../exposition/ExpositionCompiler.js';
 import { type PromptRegistry, type PromptFilter } from '../prompt/PromptRegistry.js';
 import { StateMachineGate, type FsmStateStore } from '../fsm/StateMachineGate.js';
+import type { TelemetrySink } from '../observability/TelemetryEvent.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -181,6 +182,16 @@ export interface AttachOptions<TContext> {
      * @see {@link FusionTracer} for the tracer interface contract
      */
     tracing?: FusionTracer;
+
+    /**
+     * Telemetry sink for the Davinci TUI.
+     *
+     * When set, emits `route`, `execute`, and `error` events for each
+     * tool call, enabling the real-time TUI dashboard.
+     *
+     * Zero overhead when omitted.
+     */
+    telemetry?: TelemetrySink;
 
     /**
      * Server name used in the introspection manifest.
@@ -403,6 +414,7 @@ interface HandlerContext<TContext> {
     readonly fsm?: StateMachineGate;
     readonly fsmStore?: FsmStateStore;
     readonly notifyToolListChanged?: () => void;
+    readonly telemetry?: TelemetrySink;
 }
 
 // ── Observability Propagation ────────────────────────────
@@ -483,6 +495,13 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
 
         const progressSink = createProgressSink(extra);
         const signal = extractSignal(extra);
+        const emit = hCtx.telemetry;
+
+        // ── Telemetry: route event ──────────────────────────
+        const parts = name.split('_');
+        const toolGroup = parts.length > 1 ? parts[0]! : name;
+        const action = parts.length > 1 ? parts.slice(1).join('_') : name;
+        emit?.({ type: 'route', tool: toolGroup, action, args, timestamp: Date.now() } as any);
 
         // Restore FSM state from external store (serverless/edge)
         if (hCtx.fsm && hCtx.fsmStore) {
@@ -494,7 +513,9 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         }
 
         let result: ToolResponse;
+        const t0 = Date.now();
 
+        try {
         if (hCtx.isFlat) {
             const exposition = hCtx.recompile();
             const flatRoute = exposition.routingMap.get(name);
@@ -510,6 +531,18 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             result = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
             result = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
         }
+        } catch (err) {
+            emit?.({ type: 'error', tool: toolGroup, action, error: String(err), timestamp: Date.now() } as any);
+            throw err;
+        }
+
+        // ── Telemetry: execute event ─────────────────────────
+        emit?.({
+            type: 'execute', tool: toolGroup, action,
+            durationMs: Date.now() - t0,
+            isError: !!result.isError,
+            timestamp: Date.now(),
+        } as any);
 
         // FSM State Gate: auto-transition on successful execution
         if (hCtx.fsm && !result.isError) {
@@ -751,6 +784,7 @@ export async function attachToServer<TContext>(
         ...(fsm ? { fsm } : {}),
         ...(fsmStore ? { fsmStore } : {}),
         ...(notifyToolListChanged ? { notifyToolListChanged } : {}),
+        ...(options.telemetry ? { telemetry: options.telemetry } : {}),
     };
 
     // 5. Register tool handlers

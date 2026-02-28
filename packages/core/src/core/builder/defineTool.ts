@@ -27,6 +27,7 @@
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { GroupedToolBuilder } from './GroupedToolBuilder.js';
 import { type ToolResponse, type MiddlewareFn, type ActionConfig } from '../types.js';
+import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
 import { type Presenter } from '../../presenter/Presenter.js';
 import {
     convertParamsToZod,
@@ -85,8 +86,8 @@ export interface GroupDef<TContext, TSharedArgs = Record<string, never>> {
     description?: string;
     /** Common schema fields to omit for all actions in this group */
     omitCommon?: string[];
-    /** Group-scoped middleware */
-    middleware?: MiddlewareFn<TContext>[];
+    /** Group-scoped middleware (accepts both MiddlewareFn and MiddlewareDefinition) */
+    middleware?: (MiddlewareFn<TContext> | MiddlewareDefinition<TContext, Record<string, unknown>>)[];
     /** Actions within this group — each action's params are inferred independently */
     actions: { [K in string]: ActionDef<TContext, TSharedArgs> };
 }
@@ -108,8 +109,8 @@ export interface ToolConfig<TContext, TShared extends ParamsMap = ParamsMap> {
     toonDescription?: boolean;
     /** Parameters shared across all actions */
     shared?: TShared | ZodObject<ZodRawShape>;
-    /** Global middleware applied to all actions */
-    middleware?: MiddlewareFn<TContext>[];
+    /** Global middleware applied to all actions (accepts both MiddlewareFn and MiddlewareDefinition) */
+    middleware?: (MiddlewareFn<TContext> | MiddlewareDefinition<TContext, Record<string, unknown>>)[];
     /** MCP tool annotations (e.g. `{ readOnlyHint: true, openWorldHint: true }`) */
     annotations?: Record<string, unknown>;
     /** Flat actions — each action's params are inferred independently */
@@ -243,7 +244,7 @@ export function defineTool<TContext = void>(
     const sharedSchema = resolveSchema(shared);
     if (sharedSchema) builder.commonSchema(sharedSchema);
 
-    middleware?.forEach(mw => builder.use(mw));
+    middleware?.forEach(mw => builder.use(resolveMiddleware(mw)));
 
     // ── Register actions/groups ──
     if (actions) {
@@ -303,7 +304,7 @@ function registerGroup<TContext>(
             g.omitCommon(...def.omitCommon);
         }
 
-        def.middleware?.forEach(mw => g.use(mw));
+        def.middleware?.forEach(mw => g.use(resolveMiddleware(mw)));
 
         for (const [actionName, actionDef] of Object.entries(def.actions)) {
             g.action(buildActionConfig(actionName, actionDef));

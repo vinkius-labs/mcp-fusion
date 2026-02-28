@@ -153,8 +153,8 @@ export function formatEventJson(event: TelemetryEvent): string {
     };
 
     // Add traceId if present
-    if ('traceId' in event && event.traceId) {
-        base.traceId = event.traceId;
+    if ('traceId' in event && event['traceId']) {
+        base['traceId'] = event['traceId'];
     }
 
     // Add all event-specific fields (except type and timestamp, already mapped)

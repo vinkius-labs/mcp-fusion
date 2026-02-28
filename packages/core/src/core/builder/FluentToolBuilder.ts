@@ -33,6 +33,7 @@ import { type Presenter } from '../../presenter/Presenter.js';
 import { type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
 import { type SandboxConfig } from '../../sandbox/SandboxEngine.js';
 import { SANDBOX_SYSTEM_INSTRUCTION } from '../../sandbox/index.js';
+import { type MiddlewareDefinition } from '../middleware/ContextDerivation.js';
 
 // ── Semantic Verb Defaults ───────────────────────────────
 
@@ -344,30 +345,53 @@ export class FluentToolBuilder<
     /**
      * Add context-derivation middleware (tRPC-style).
      *
-     * The middleware receives `{ ctx, next }` and can enrich the context
-     * for downstream steps. The TypeScript type of `ctx` in `.handle()`
-     * is automatically extended with the derived properties.
+     * Accepts either:
+     * - A `MiddlewareDefinition` from `f.middleware()` (recommended)
+     * - An inline function `({ ctx, next }) => Promise<ToolResponse>`
      *
-     * @param mw - Middleware that returns enriched context
+     * @param mw - Middleware definition or inline function
      * @returns A **new type** of `FluentToolBuilder` with `TCtx` enriched
      *
      * @example
      * ```typescript
+     * // Option 1: f.middleware() (recommended)
+     * const withAuth = f.middleware(async (ctx) => {
+     *     if (ctx.role === 'GUEST') throw error('Unauthorized');
+     *     return { verified: true };
+     * });
+     * f.mutation('users.delete')
+     *     .use(withAuth)
+     *     .handle(async (input, ctx) => { ... });
+     *
+     * // Option 2: inline
      * f.mutation('users.delete')
      *     .use(async ({ ctx, next }) => {
      *         const admin = await requireAdmin(ctx.headers);
      *         return next({ ...ctx, adminUser: admin });
      *     })
-     *     .withString('id', 'User ID to delete')
-     *     .handle(async (input, ctx) => {
-     *         // ctx.adminUser is typed! Zero casting.
-     *         ctx.logger.info(`${ctx.adminUser.name} deleting ${input.id}`);
-     *     });
+     *     .handle(async (input, ctx) => { ... });
      * ```
      */
     use<TDerived extends Record<string, unknown>>(
+        mw: MiddlewareDefinition<TCtx, TDerived>,
+    ): FluentToolBuilder<TContext, TInput, TCtx & TDerived>;
+    use<TDerived extends Record<string, unknown>>(
         mw: (args: { ctx: TCtx; next: (enrichedCtx: TCtx & TDerived) => Promise<ToolResponse> }) => Promise<ToolResponse>,
+    ): FluentToolBuilder<TContext, TInput, TCtx & TDerived>;
+    use<TDerived extends Record<string, unknown>>(
+        mw:
+            | MiddlewareDefinition<TCtx, TDerived>
+            | ((args: { ctx: TCtx; next: (enrichedCtx: TCtx & TDerived) => Promise<ToolResponse> }) => Promise<ToolResponse>),
     ): FluentToolBuilder<TContext, TInput, TCtx & TDerived> {
+        // Handle MiddlewareDefinition from f.middleware()
+        if (typeof mw === 'object' && mw !== null && '__brand' in mw && (mw as { __brand: unknown }).__brand === 'MiddlewareDefinition') {
+            const def = mw as MiddlewareDefinition<TCtx, TDerived>;
+            this._middlewares.push(def.toMiddlewareFn() as unknown as MiddlewareFn<TContext>);
+            return this as unknown as FluentToolBuilder<TContext, TInput, TCtx & TDerived>;
+        }
+
+        // Handle inline function
+        const inlineMw = mw as (args: { ctx: TCtx; next: (enrichedCtx: TCtx & TDerived) => Promise<ToolResponse> }) => Promise<ToolResponse>;
         // Convert the fluent middleware signature to the standard MiddlewareFn
         const standardMw: MiddlewareFn<TContext> = async (ctx, args, next) => {
             const wrappedNext = async (enrichedCtx: unknown): Promise<ToolResponse> => {
@@ -375,7 +399,7 @@ export class FluentToolBuilder<
                 Object.assign(ctx as Record<string, unknown>, enrichedCtx as Record<string, unknown>);
                 return next() as Promise<ToolResponse>;
             };
-            return mw({ ctx: ctx as unknown as TCtx, next: wrappedNext as never }) as Promise<ToolResponse>;
+            return inlineMw({ ctx: ctx as unknown as TCtx, next: wrappedNext as never }) as Promise<ToolResponse>;
         };
         this._middlewares.push(standardMw);
         return this as unknown as FluentToolBuilder<TContext, TInput, TCtx & TDerived>;
@@ -666,11 +690,16 @@ export class FluentToolBuilder<
             const result = await resolvedHandler(args as never, ctx as never);
 
             // Auto-wrap non-ToolResponse results (implicit success)
+            // Check for MCP ToolResponse shape: { content: [{ type: 'text', text: string }] }
+            // We verify content[0].type === 'text' to avoid false positives
+            // when handler returns data that happens to have a `content` array field.
             if (
                 typeof result === 'object' &&
                 result !== null &&
                 'content' in result &&
-                Array.isArray((result as { content: unknown }).content)
+                Array.isArray((result as { content: unknown }).content) &&
+                (result as { content: Array<{ type?: unknown }> }).content.length > 0 &&
+                (result as { content: Array<{ type?: unknown }> }).content[0]?.type === 'text'
             ) {
                 return result as ToolResponse;
             }
