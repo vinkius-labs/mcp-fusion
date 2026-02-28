@@ -197,7 +197,7 @@ npm install @vinkius-core/mcp-fusion-inspector
 
 ### Peer Dependency
 
-Requires `@vinkius-core/mcp-fusion` ≥ 2.15.0 (provides `TelemetryEvent` types and `TelemetryBus`).
+Requires `@vinkius-core/mcp-fusion` ≥ 3.0.0 (provides `TelemetryEvent` types and `TelemetryBus`).
 
 ## How It Works
 
@@ -211,7 +211,7 @@ Requires `@vinkius-core/mcp-fusion` ≥ 2.15.0 (provides `TelemetryEvent` types 
 
 - **Node.js** ≥ 18.0.0
 - **Interactive terminal** (for TUI mode) — `--out stderr` for non-TTY environments
-- **MCP Fusion** ≥ 2.15.0 (peer dependency)
+- **MCP Fusion** ≥ 3.0.0 (peer dependency)
 
 ## License
 
