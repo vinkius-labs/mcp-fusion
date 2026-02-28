@@ -1,8 +1,21 @@
-# @vinkius-core/mcp-fusion-n8n
+<p align="center">
+  <h1 align="center">@vinkius-core/mcp-fusion-n8n</h1>
+  <p align="center">
+    <strong>n8n Workflow Connector</strong> — Auto-discover n8n workflows as native MCP tools
+  </p>
+</p>
 
-A bidirectional translation driver: **n8n REST API ↔ MCP In-Memory Objects**.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion-n8n"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-n8n?color=blue" alt="npm" /></a>
+  <a href="https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+</p>
 
-Install this package and you gain **5 engineering primitives** that turn your entire n8n automation infrastructure into AI-native tools.
+---
+
+> A bidirectional translation driver: **n8n REST API ↔ MCP In-Memory Objects**. Drop this package in and your entire n8n automation infrastructure becomes AI-native tools.
+
+## Quick Start
 
 ```typescript
 const n8n = await createN8nConnector({
@@ -18,45 +31,41 @@ for (const tool of n8n.tools()) {
 }
 ```
 
-## The 5 Primitives
+## Features
 
-### 1. Dynamic Ingestion & Zero-Trust Topology
-Connects to n8n at boot (`GET /api/v1/workflows`), scans the visual infrastructure, fetches only active webhook-triggered flows with release tags, and compiles them into `ToolBuilder` instances.
+| Feature | Description |
+|---------|-------------|
+| **Dynamic Ingestion** | Connects at boot, scans n8n, fetches active webhook flows with release tags, compiles to `ToolBuilder` instances |
+| **Semantic Inference** | Extracts the Notes field from the workflow canvas and injects it as the tool description — zero-shot precision |
+| **MVA Interception** | Produces `ToolBuilder` instances (not a server). Attach Presenters and auth Middleware in RAM |
+| **Surgical Construction** | `defineN8nTool()` points to an exact workflow ID with hand-written Zod schemas and auth middleware |
+| **Live State Sync** | Background polling recompiles tools on change and fires `notifications/tools/list_changed` — zero-downtime hot-reload |
 
-**The impact:** The developer writes zero `fetch()` calls. In 3 lines, 400 legacy automations (Jira, Slack, SAP) become native tools for Claude. Tag filtering guarantees the AI never accesses unauthorized internal flows.
+## How It Works
 
-### 2. Semantic Inference — The Hallucination Cure
-n8n webhooks accept any loose JSON. The package extracts the **Notes** field from the workflow canvas and injects it as the tool `description`.
+The package resolves HTTP I/O, route discovery, state synchronization, and LLM semantics. But it returns **100% of the control** over Routing, Protocol, and Security (MVA) to the developer in `server.ts`.
 
-**The impact:** The ops team writes *"Send 'customer_email' and 'urgency' in the body"* in n8n. The AI reads it, understands the semantics, and builds correct JSON with **deterministic precision in zero-shot** — bypassing n8n's complete lack of strict typing.
+The perfect balance between the agility of low-code integrations and hardcore software engineering.
 
-### 3. Real-Time MVA Interception — The SOC2 Shield
-The package produces `ToolBuilder` instances, not a server. You attach Presenters (Zod Egress Firewall) and auth Middleware to sensitive routes — **in RAM, before the port opens**.
-
-**The impact:** n8n returns 2MB of raw Salesforce JSON packed with internal IPs and passwords. Your Zod Presenter strips every sensitive key. The LLM receives 5KB of clean data. **Absolute data governance.**
-
-### 4. Surgical Construction — `defineN8nTool()`
-For critical routes (Stripe refunds, production deploys), `defineN8nTool()` points to the exact workflow ID, enforces hand-written input schemas, and attaches authorization middleware.
-
-**The impact:** n8n is "dumb muscle". The business rules, strict typing, and security stay **hardcoded in your TypeScript backend**.
-
-### 5. Live State Sync — Infrastructure Hot-Reload
-Background polling motor monitors n8n every N seconds. On change, recompiles `ToolBuilder` in RAM and fires `notifications/tools/list_changed`.
-
-**The impact:** Ops activates a new workflow on Friday at 3 PM. Within 60 seconds, Claude has it — without restarting the Node.js server. **Zero-downtime.**
-
-## What You Deliver
-
-A **fiber-optic cable** between the low-code world (n8n) and the pro-code world (**MCP Fusion**). The package resolves HTTP I/O, route discovery, state synchronization, and LLM semantics. But it returns **100% of the control** over Routing, Protocol, and Security (MVA) to the developer in `server.ts`.
-
-The perfect balance between the insane agility of low-code integrations and hardcore software engineering.
-
-## Install
+## Installation
 
 ```bash
 npm install @vinkius-core/mcp-fusion-n8n @vinkius-core/mcp-fusion zod
 ```
 
-## Documentation
+### Peer Dependencies
 
-Full docs with configuration reference and production examples: [mcp-fusion.vinkius.com/n8n-connector](https://mcp-fusion.vinkius.com/n8n-connector).
+| Package | Version |
+|---------|---------|
+| `@vinkius-core/mcp-fusion` | `^2.0.0` |
+| `zod` | `^3.25.1 \|\| ^4.0.0` |
+
+## Requirements
+
+- **Node.js** ≥ 18.0.0
+- **MCP Fusion** ≥ 2.0.0 (peer dependency)
+- n8n instance with API access enabled
+
+## License
+
+[Apache-2.0](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)

@@ -1,17 +1,20 @@
-# @vinkius-core/mcp-fusion-testing
+<p align="center">
+  <h1 align="center">@vinkius-core/mcp-fusion-testing</h1>
+  <p align="center">
+    <strong>In-Memory MVA Pipeline Tester</strong> — Run the full execution pipeline without MCP transport
+  </p>
+</p>
 
-<div align="center">
-  <strong>The official test runner for MCP Fusion applications.</strong>
-  <br />
-  In-memory MVA lifecycle emulator — runs the full execution pipeline without network transport.
-  <br /><br />
-
-  [![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-testing.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion-testing)
-  [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg?style=flat-square)](package.json)
-  [![Runner Agnostic](https://img.shields.io/badge/runner-agnostic-purple.svg?style=flat-square)](package.json)
-</div>
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion-testing"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-testing?color=blue" alt="npm" /></a>
+  <a href="https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero Dependencies" />
+</p>
 
 ---
+
+> The official test runner for MCP Fusion applications. In-memory MVA lifecycle emulator — runs the full execution pipeline without network transport. Zero runtime dependencies. Runner agnostic (Vitest, Jest, Mocha, `node:test`).
 
 ## Why
 
@@ -43,7 +46,7 @@ Every MCP server today is tested with HTTP mocks, raw `JSON.stringify` assertion
 └─────────────────────────────────────────────────────────┘
 ```
 
-### What you can audit
+## What You Can Audit
 
 | MVA Layer | What FusionTester asserts | SOC2 Relevance |
 |---|---|---|
@@ -54,25 +57,6 @@ Every MCP server today is tested with HTTP mocks, raw `JSON.stringify` assertion
 | **Middleware** | Auth guards block unauthorized calls, isError is true | Access control verification |
 | **Agent Limit** | Collections are truncated at cognitive guardrail bounds | Context window protection |
 | **HATEOAS** | `suggestActions` produces correct next-step affordances | Agent navigation safety |
-
----
-
-## Install
-
-```bash
-npm install @vinkius-core/mcp-fusion-testing
-```
-
-### Peer Dependencies
-
-| Package | Version |
-|---|---|
-| `@vinkius-core/mcp-fusion` | `^2.0.0` |
-| `zod` | `^3.25.1 \|\| ^4.0.0` |
-
-> **Zero runtime dependencies.** The package ships only TypeScript types and one class. Your test runner (Vitest, Jest, Mocha, `node:test`) is your choice.
-
----
 
 ## Quick Start
 
@@ -113,8 +97,6 @@ describe('User MVA Audit', () => {
 });
 ```
 
----
-
 ## API Reference
 
 ### `createFusionTester(registry, options)`
@@ -141,10 +123,6 @@ interface TesterOptions<TContext> {
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `contextFactory` | `() => TContext \| Promise<TContext>` | Factory that produces the mock context for each call. Inject fake Prisma, auth tokens, tenant IDs here. Supports async (e.g., DB lookup). |
-
 ### `tester.callAction(toolName, actionName, args?, overrideContext?)`
 
 Executes a single tool action through the **full MVA pipeline** and returns a decomposed result.
@@ -162,38 +140,24 @@ async callAction<TArgs>(
 |---|---|---|---|
 | `toolName` | `string` | ✅ | The registered tool name (e.g. `'db_user'`, `'analytics'`) |
 | `actionName` | `string` | ✅ | The action discriminator (e.g. `'find_many'`, `'create'`) |
-| `args` | `object` | ❌ | Arguments for the action — omit the `action` discriminator, FusionTester injects it |
+| `args` | `object` | ❌ | Arguments for the action — omit the `action` discriminator |
 | `overrideContext` | `Partial<TContext>` | ❌ | Per-test context overrides. Shallow-merged with `contextFactory()` output |
 
 ### `MvaTestResult<TData>`
 
 Decomposed MVA response — each field maps to a specific pipeline layer.
 
-```typescript
-interface MvaTestResult<TData = unknown> {
-    data: TData;
-    systemRules: readonly string[];
-    uiBlocks: readonly unknown[];
-    isError: boolean;
-    rawResponse: unknown;
-}
-```
-
 | Field | Type | Source | Description |
 |---|---|---|---|
 | `data` | `TData` | Presenter Zod schema | Validated data **after** the Egress Firewall. Hidden fields are physically absent. |
 | `systemRules` | `string[]` | Presenter `.systemRules()` | JIT domain rules injected by the Presenter. Empty array if no Presenter. |
-| `uiBlocks` | `unknown[]` | Presenter `.uiBlocks()` / `.collectionUiBlocks()` | SSR UI blocks (charts, summaries, markdown). Empty array if no Presenter. |
-| `isError` | `boolean` | Pipeline | `true` if Zod rejected the input, middleware blocked, or handler returned `error()`. |
+| `uiBlocks` | `unknown[]` | Presenter `.uiBlocks()` | SSR UI blocks (charts, summaries, markdown). Empty array if no Presenter. |
+| `isError` | `boolean` | Pipeline | `true` if Zod rejected, middleware blocked, or handler returned `error()`. |
 | `rawResponse` | `unknown` | Pipeline | The raw MCP `ToolResponse` for protocol-level inspection. |
-
----
 
 ## Cookbook
 
 ### Egress Firewall Audit
-
-Verify that the Presenter's Zod schema physically strips sensitive fields:
 
 ```typescript
 it('strips PII from response', async () => {
@@ -203,55 +167,11 @@ it('strips PII from response', async () => {
     for (const user of users) {
         expect(user).not.toHaveProperty('passwordHash');
         expect(user).not.toHaveProperty('tenantId');
-        expect(user).not.toHaveProperty('internalFlags');
     }
 });
 ```
 
-### OOM Guard (Input Validation)
-
-Verify that Zod boundaries reject out-of-range values:
-
-```typescript
-it('rejects take > 50 (OOM Guard)', async () => {
-    const result = await tester.callAction('db_user', 'find_many', { take: 10000 });
-    expect(result.isError).toBe(true);
-});
-
-it('rejects non-integer take', async () => {
-    const result = await tester.callAction('db_user', 'find_many', { take: 3.14 });
-    expect(result.isError).toBe(true);
-});
-
-it('rejects invalid email format', async () => {
-    const result = await tester.callAction('db_user', 'create', {
-        email: 'not-an-email', name: 'Test',
-    });
-    expect(result.isError).toBe(true);
-});
-```
-
-### Agent Limit (Cognitive Guardrail)
-
-Verify that collections are truncated to prevent context window exhaustion:
-
-```typescript
-it('truncates at agentLimit', async () => {
-    // Handler returns 100 items, Presenter has agentLimit(20)
-    const result = await tester.callAction('analytics', 'list', { limit: 100 });
-    expect((result.data as any[]).length).toBe(20);
-});
-
-it('shows truncation warning in UI blocks', async () => {
-    const result = await tester.callAction('analytics', 'list', { limit: 100 });
-    const warning = result.uiBlocks.find((b: any) => b.content?.includes('Truncated'));
-    expect(warning).toBeDefined();
-});
-```
-
 ### Middleware Guards (RBAC)
-
-Test authentication and authorization middleware using `overrideContext`:
 
 ```typescript
 it('blocks GUEST role', async () => {
@@ -260,7 +180,6 @@ it('blocks GUEST role', async () => {
         { role: 'GUEST' },
     );
     expect(result.isError).toBe(true);
-    expect(result.data).toContain('Unauthorized');
 });
 
 it('allows ADMIN role', async () => {
@@ -270,105 +189,18 @@ it('allows ADMIN role', async () => {
     );
     expect(result.isError).toBe(false);
 });
-
-it('blocks across all actions (not just find_many)', async () => {
-    const result = await tester.callAction(
-        'db_user', 'create', { email: 'test@co.com', name: 'Test' },
-        { role: 'VIEWER' },
-    );
-    expect(result.isError).toBe(true);
-});
 ```
 
-### System Rules Verification
-
-Assert that the LLM receives correct domain directives:
+### Agent Limit (Cognitive Guardrail)
 
 ```typescript
-it('injects domain rules from Presenter', async () => {
-    const result = await tester.callAction('db_user', 'find_many', { take: 1 });
-
-    expect(result.systemRules).toContain(
-        'Data originates from the database via Prisma ORM.'
-    );
-    expect(result.systemRules).toContain(
-        'Email addresses are PII. Mask when possible.'
-    );
-});
-
-it('injects contextual rules based on role', async () => {
-    const result = await tester.callAction(
-        'analytics', 'list', { limit: 1 },
-        { role: 'ADMIN' },
-    );
-    expect(result.systemRules).toContain('User is ADMIN. Show full details.');
-});
-```
-
-### UI Block Inspection
-
-Verify SSR blocks are generated for client rendering:
-
-```typescript
-it('generates collection summary', async () => {
-    const result = await tester.callAction('analytics', 'list', { limit: 5 });
-
-    const summary = result.uiBlocks.find((b: any) => b.type === 'summary') as any;
-    expect(summary).toBeDefined();
-    expect(summary.content).toContain('Total:');
-});
-```
-
-### Manual `response()` Builder
-
-Test actions that use the `response()` builder directly (without a Presenter):
-
-```typescript
-it('extracts rules from manual builder', async () => {
-    const result = await tester.callAction('system', 'health');
-
-    expect(result.systemRules).toContain('System is operational.');
-    expect(result.data).toEqual({ status: 'healthy', uptime: 42 });
-});
-```
-
-### Context Override Isolation
-
-Verify that overrides don't leak between test calls:
-
-```typescript
-it('isolates context between sequential calls', async () => {
-    // Call 1 — GUEST (blocked)
-    const r1 = await tester.callAction('db_user', 'find_many', { take: 1 }, { role: 'GUEST' });
-
-    // Call 2 — default ADMIN (succeeds)
-    const r2 = await tester.callAction('db_user', 'find_many', { take: 1 });
-
-    expect(r1.isError).toBe(true);
-    expect(r2.isError).toBe(false);
-});
-```
-
-### Async Context Factory
-
-Simulate async DI resolution (e.g., reading JWT from a database):
-
-```typescript
-const tester = createFusionTester(registry, {
-    contextFactory: async () => {
-        const token = await fetchTestToken();
-        return {
-            prisma: mockPrisma,
-            tenantId: token.tenantId,
-            role: token.role,
-        };
-    },
+it('truncates at agentLimit', async () => {
+    const result = await tester.callAction('analytics', 'list', { limit: 100 });
+    expect((result.data as any[]).length).toBe(20);
 });
 ```
 
 ### Protocol-Level Inspection
-
-Inspect the raw MCP `ToolResponse` for transport-level assertions:
 
 ```typescript
 it('raw response follows MCP shape', async () => {
@@ -378,22 +210,9 @@ it('raw response follows MCP shape', async () => {
     expect(raw.content).toBeInstanceOf(Array);
     expect(raw.content[0].type).toBe('text');
 });
-
-it('Symbol metadata is invisible to JSON.stringify', async () => {
-    const result = await tester.callAction('db_user', 'find_many', { take: 1 });
-    const json = JSON.stringify(result.rawResponse);
-
-    // Transport layer never sees MVA metadata
-    expect(json).not.toContain('systemRules');
-    expect(json).not.toContain('mva-meta');
-});
 ```
 
----
-
-## Architecture
-
-### The Symbol Backdoor
+## How It Works
 
 The `FusionTester` runs the **real** execution pipeline — the exact same code path as your production MCP server:
 
@@ -410,85 +229,27 @@ ToolRegistry.routeCall()
 
 The key insight: `ResponseBuilder.build()` attaches structured MVA metadata via a **global Symbol** (`MVA_META_SYMBOL`). Symbols are ignored by `JSON.stringify`, so the MCP transport never sees them — but the `FusionTester` reads them in RAM.
 
-```typescript
-// What the MCP transport sees (JSON.stringify):
-{ "content": [{ "type": "text", "text": "{...}" }] }
-
-// What FusionTester reads (Symbol key):
-response[Symbol.for('mcp-fusion.mva-meta')] = {
-    data: { id: '1', name: 'Alice', email: 'alice@acme.com' },
-    systemRules: ['Data from Prisma ORM...'],
-    uiBlocks: [{ type: 'summary', content: 'User: Alice' }],
-};
-```
-
 **No XML regex. No string parsing. Zero coupling to response formatting.**
 
-### Why not reimplement the pipeline?
+## Installation
 
-The tester calls `ToolRegistry.routeCall()` — the same function your production server uses. A reimplemented pipeline would allow tests to pass in the tester but fail in production. Full fidelity means:
-
-- ✅ Concurrency semaphore limits
-- ✅ Mutation serialization
-- ✅ Abort signal propagation
-- ✅ Egress payload guards
-- ✅ Zod error formatting
-- ✅ Generator result draining
-
----
-
-## MVA Convention: `tests/` Layer
-
-The testing package introduces a fourth layer to the MVA convention:
-
-```text
-src/
-├── models/         ← M — Zod schemas
-├── views/          ← V — Presenters
-├── agents/         ← A — MCP tool definitions
-├── index.ts        ← Registry barrel
-└── server.ts       ← Server bootstrap
-tests/
-├── firewall/       ← Egress Firewall assertions
-├── guards/         ← Middleware & OOM Guard tests
-├── rules/          ← System Rules verification
-└── setup.ts        ← Shared tester instance
+```bash
+npm install @vinkius-core/mcp-fusion-testing
 ```
 
-### Recommended `setup.ts`
+### Peer Dependencies
 
-```typescript
-// tests/setup.ts
-import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
-import { registry } from '../src/index.js';
-
-export const tester = createFusionTester(registry, {
-    contextFactory: () => ({
-        prisma: mockPrisma,
-        tenantId: 't_test',
-        role: 'ADMIN',
-    }),
-});
-```
-
-### File Naming
-
-| Directory | Suffix | What it tests |
-|---|---|---|
-| `tests/firewall/` | `.firewall.test.ts` | Presenter Zod filtering (PII, hidden fields) |
-| `tests/guards/` | `.guard.test.ts` | Middleware RBAC, OOM limits, input validation |
-| `tests/rules/` | `.rules.test.ts` | System rules injection, contextual rules |
-| `tests/blocks/` | `.blocks.test.ts` | UI blocks, collection summaries, truncation warnings |
-
----
+| Package | Version |
+|---------|---------|
+| `@vinkius-core/mcp-fusion` | `^2.0.0` |
+| `zod` | `^3.25.1 \|\| ^4.0.0` |
 
 ## Requirements
 
-- Node.js 18+
-- TypeScript 5.7+
-- `@vinkius-core/mcp-fusion ^2.0.0`
-- `zod ^3.25.1 || ^4.0.0`
+- **Node.js** ≥ 18.0.0
+- **TypeScript** 5.7+
+- **MCP Fusion** ≥ 2.0.0 (peer dependency)
 
-## Documentation
+## License
 
-Full docs: **[mcp-fusion.vinkius.com](https://mcp-fusion.vinkius.com/)**.
+[Apache-2.0](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)

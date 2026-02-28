@@ -1,6 +1,21 @@
-# @vinkius-core/mcp-fusion-prisma-gen
+<p align="center">
+  <h1 align="center">@vinkius-core/mcp-fusion-prisma-gen</h1>
+  <p align="center">
+    <strong>Prisma Schema → MCP Tools Generator</strong> — Compile-time CRUD generation with field-level security
+  </p>
+</p>
 
-A compile-time Prisma Generator that reads `schema.prisma` annotations and emits hardened **MCP Fusion** Presenters and ToolBuilders — with field-level security, tenant isolation, and OOM protection baked into the generated code.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion-prisma-gen"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-prisma-gen?color=blue" alt="npm" /></a>
+  <a href="https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+</p>
+
+---
+
+> A compile-time Prisma Generator that reads `schema.prisma` annotations and emits hardened MCP Fusion Presenters and ToolBuilders — with field-level security, tenant isolation, and OOM protection baked into the generated code.
+
+## Quick Start
 
 ```prisma
 generator mcp {
@@ -25,22 +40,15 @@ npx prisma generate
 # → src/tools/database/index.ts
 ```
 
-## The 3 Engineering Primitives
+## Features
 
-### 1. Egress Firewall — Field-Level Security at Compile Time
-`/// @fusion.hide` physically excludes columns from the generated Zod response schema. `/// @fusion.describe("...")` injects domain semantics. The LLM never sees `passwordHash` or `stripeToken` — they are structurally absent from the Presenter.
-
-**The impact:** SOC2 compliance enforced at the generator level. The 2MB Prisma result becomes 5KB of clean, shaped data. PII is stripped in RAM before it crosses the transport boundary.
-
-### 2. OOM Guard & Tenant Isolation — Generated Query Safety
-`/// @fusion.tenantKey` injects tenant filters into every generated query's `WHERE` clause. Pagination is enforced with `take` (capped at 50) and `skip` — the LLM is physically unable to request unbounded result sets.
-
-**The impact:** Cross-tenant data leakage is a structural impossibility. OOM protection is built into the Zod schema — not in a post-hoc middleware.
-
-### 3. Inversion of Control — The Developer Owns the Server
-The generator produces `ToolBuilder` instances and `Presenter` files. It does **not** start a server. The developer wires the generated code into their server, attaches middleware, and controls the transport.
-
-**The impact:** The generator handles tedious plumbing — Zod schemas, CRUD handlers, tenant filters. But business rules, authentication, and middleware remain **hardcoded in your TypeScript backend**.
+| Feature | Description |
+|---------|-------------|
+| **Egress Firewall** | `@fusion.hide` physically excludes columns from the generated Zod response schema — SOC2 at compile time |
+| **Semantic Descriptions** | `@fusion.describe("...")` injects domain semantics into generated Zod fields |
+| **Tenant Isolation** | `@fusion.tenantKey` injects tenant filters into every query's WHERE clause |
+| **OOM Guard** | Pagination enforced with `take` (capped at 50) and `skip` — unbounded queries are structurally impossible |
+| **Inversion of Control** | Generates `ToolBuilder` + `Presenter` files, not a server. You wire them in |
 
 ## Schema Annotations
 
@@ -50,12 +58,26 @@ The generator produces `ToolBuilder` instances and `Presenter` files. It does **
 | `/// @fusion.describe("...")` | Adds `.describe()` to the Zod field — LLM reads this as a business rule |
 | `/// @fusion.tenantKey` | Injects the field into every query's `WHERE` clause from `ctx` |
 
-## Install
+## Installation
 
 ```bash
 npm install @vinkius-core/mcp-fusion-prisma-gen @vinkius-core/mcp-fusion zod
 ```
 
-## Documentation
+### Peer Dependencies
 
-Full docs with configuration reference and production examples: [mcp-fusion.vinkius.com/prisma-gen](https://mcp-fusion.vinkius.com/prisma-gen).
+| Package | Version |
+|---------|---------|
+| `@vinkius-core/mcp-fusion` | `^2.0.0` |
+| `zod` | `^3.25.1 \|\| ^4.0.0` |
+| `prisma` | `^6.0.0` |
+
+## Requirements
+
+- **Node.js** ≥ 18.0.0
+- **MCP Fusion** ≥ 2.0.0 (peer dependency)
+- **Prisma** ≥ 6.0.0
+
+## License
+
+[Apache-2.0](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)

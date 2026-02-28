@@ -1,18 +1,21 @@
-# @vinkius-core/mcp-fusion-openapi-gen
+<p align="center">
+  <h1 align="center">@vinkius-core/mcp-fusion-openapi-gen</h1>
+  <p align="center">
+    <strong>OpenAPI 3.x → MCP Fusion Server Generator</strong> — Parse any spec, generate a complete MCP server
+  </p>
+</p>
 
-> OpenAPI 3.x → **MCP Fusion** Server Generator
-
-[![npm version](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-openapi-gen.svg?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion-openapi-gen)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=flat-square)](../../LICENSE)
-
-Parse any OpenAPI 3.x spec and generate a **complete, ready-to-run MCP Server** powered by **MCP Fusion** — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion-openapi-gen"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-openapi-gen?color=blue" alt="npm" /></a>
+  <a href="https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+</p>
 
 ---
 
-## What It Generates
+> Parse any OpenAPI 3.x spec and generate a **complete, ready-to-run MCP Server** powered by MCP Fusion — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
 
-Given an OpenAPI spec (YAML/JSON), the generator produces:
+## What It Generates
 
 ```
 output/
@@ -29,36 +32,23 @@ output/
 └── index.ts               # ToolRegistry + registerAll barrel
 ```
 
-Every file follows the **[MVA Convention](/mva-convention)** — the standard directory structure for **MCP Fusion** projects.
-
-## Installation
-
-```bash
-npm install @vinkius-core/mcp-fusion-openapi-gen
-```
+Every file follows the **MVA Convention** — the standard directory structure for MCP Fusion projects.
 
 ## Quick Start
 
-### 1. Generate from OpenAPI spec
-
 ```bash
+# 1. Generate from OpenAPI spec
 npx openapi-gen --input ./petstore.yaml --output ./generated
-```
 
-### 2. Run the generated server
-
-```bash
+# 2. Run the generated server
 API_BASE_URL=https://api.example.com npx tsx ./generated/server.ts
 ```
 
-That's it — you have a fully functional MCP Server.
-
 ## Configuration
 
-Create an `openapi-gen.yaml` file in your project root for full control:
+Create an `openapi-gen.yaml` file in your project root:
 
 ```yaml
-# openapi-gen.yaml
 input: ./specs/petstore.yaml
 output: ./generated
 
@@ -67,36 +57,18 @@ features:
   annotations: true       # Infer readOnly, destructive, idempotent from HTTP method
   presenters: true        # Generate Presenter files with response schemas
   descriptions: true      # Include summaries/descriptions on actions
-  toonDescription: false  # Enable TOON-optimized descriptions
   serverFile: true        # Generate server.ts bootstrap
   deprecated: comment     # 'include' | 'skip' | 'comment'
 
 naming:
   style: snake_case       # 'snake_case' | 'camelCase'
-  deduplication: true     # Auto-suffix duplicates (_2, _3, ...)
+  deduplication: true     # Auto-suffix duplicates
 
 server:
   name: petstore-mcp
   version: 1.0.0
-  transport: stdio          # 'stdio' | 'sse'
-  toolExposition: flat      # 'flat' | 'grouped' — how the LLM sees your tools
-  actionSeparator: '_'      # Flat mode delimiter: pet_get_by_id
-
-context:
-  import: '../types.js#AppCtx'  # Custom context type
-
-# Tag filtering
-includeTags:
-  - pet
-  - store
-excludeTags:
-  - internal
-```
-
-Auto-detected when present, or pass explicitly:
-
-```bash
-npx openapi-gen --config ./openapi-gen.yaml
+  transport: stdio        # 'stdio' | 'sse'
+  toolExposition: flat    # 'flat' | 'grouped'
 ```
 
 ## CLI Options
@@ -105,64 +77,10 @@ npx openapi-gen --config ./openapi-gen.yaml
 |------|-------------|---------|
 | `--input <path>` | Path to OpenAPI YAML/JSON spec | From config |
 | `--output <dir>` | Output directory | `./generated` |
-| `--config <path>` | Path to config file | Auto-detect `openapi-gen.yaml` |
+| `--config <path>` | Path to config file | Auto-detect |
 | `--base-url <expr>` | Base URL expression for fetch calls | `ctx.baseUrl` |
 | `--server-name <name>` | MCP Server name | `openapi-mcp-server` |
 | `--context <import>` | Custom context type import | Default `ApiContext` |
-
-CLI flags override config file values.
-
-## Generated Code Features
-
-### Annotations (from HTTP Method)
-
-```typescript
-// GET → readOnly: true
-// DELETE → destructive: true
-// PUT → idempotent: true
-```
-
-### Coerced Path/Query Parameters
-
-```typescript
-// Path and query params use z.coerce for safe string-to-type conversion
-petId: z.coerce.number().int().describe('ID of pet to return')
-```
-
-### Presenter Binding
-
-```typescript
-// Each action with a response schema binds to a Presenter
-get_pet_by_id: {
-    returns: PetPresenter,
-    // ...
-}
-```
-
-### Tag Filtering
-
-Only generate tools for the tags you need:
-
-```yaml
-includeTags: [pet]         # Only pet tools
-excludeTags: [internal]    # Everything except internal
-```
-
-### Custom Context
-
-Inject your own typed context into all tools:
-
-```yaml
-context:
-  import: '../types.js#AppCtx'
-```
-
-Generates:
-
-```typescript
-import type { AppCtx } from '../types.js';
-const petTools = defineTool<AppCtx>('pet', { ... });
-```
 
 ## Programmatic API
 
@@ -200,12 +118,24 @@ OpenAPI 3.x Spec (YAML/JSON)
   └────────────┘
 ```
 
+## Installation
+
+```bash
+npm install @vinkius-core/mcp-fusion-openapi-gen
+```
+
+### Peer Dependencies
+
+| Package | Version |
+|---------|---------|
+| `@vinkius-core/mcp-fusion` | `^2.0.0` |
+| `zod` | `^3.25.1 \|\| ^4.0.0` |
+
 ## Requirements
 
-- Node.js ≥ 18
-- `@vinkius-core/mcp-fusion` ^2.0.0 (peer dependency)
-- `zod` ^3.25.1 || ^4.0.0 (peer dependency)
+- **Node.js** ≥ 18.0.0
+- **MCP Fusion** ≥ 2.0.0 (peer dependency)
 
 ## License
 
-Apache-2.0
+[Apache-2.0](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)
