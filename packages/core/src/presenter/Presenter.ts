@@ -150,6 +150,7 @@ export class Presenter<T> {
     private _sealed = false;
     private _compiledStringify: StringifyFn | undefined;
     private _compiledRedactor: RedactFn | undefined;
+    private _redactPaths: readonly string[] = [];
 
     /** @internal Use {@link createPresenter} factory instead */
     constructor(name: string) {
@@ -548,6 +549,7 @@ export class Presenter<T> {
             ...(censor !== undefined ? { censor } : {}),
         };
         this._compiledRedactor = compileRedactor(config);
+        this._redactPaths = paths;
 
         return this;
     }
@@ -586,6 +588,28 @@ export class Presenter<T> {
     getSchemaKeys(): string[] {
         if (!this._schema) return [];
         return extractZodKeys(this._schema);
+    }
+
+    /**
+     * Get the DLP redaction paths configured on this Presenter.
+     *
+     * Returns the paths passed to `.redactPII()` / `.redact()`.
+     * Empty array if no redaction is configured.
+     *
+     * @internal Used by PostProcessor for `dlp.redact` telemetry
+     */
+    getRedactPaths(): readonly string[] {
+        return this._redactPaths;
+    }
+
+    /**
+     * Get the agent limit config (if set via `.agentLimit()` or `.limit()`).
+     *
+     * @internal Used by PostProcessor for guardrail telemetry
+     * @returns The max limit, or `undefined` if no limit is configured
+     */
+    getAgentLimitMax(): number | undefined {
+        return this._agentLimit?.max;
     }
 
     /**

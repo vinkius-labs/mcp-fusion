@@ -170,8 +170,8 @@ USAGE
   fusion dev --server <entry>         Start HMR dev server with auto-reload
   fusion lock                         Generate or update ${LOCKFILE_NAME}
   fusion lock --check                 Verify lockfile is up to date (CI gate)
-  fusion davinci                      Launch the real-time TUI dashboard
-  fusion dv --demo                    Launch TUI with built-in simulator
+  fusion inspect                     Launch the real-time TUI dashboard
+  fusion insp --demo                  Launch TUI with built-in simulator
 
 CREATE OPTIONS
   --transport <stdio|sse>  Transport layer (default: stdio)
@@ -184,7 +184,7 @@ DEV OPTIONS
   --server, -s <path>      Path to server entrypoint (default: auto-detect)
   --dir, -d <path>         Directory to watch for changes (default: auto-detect from server)
 
-DAVINCI OPTIONS
+INSPECTOR OPTIONS
   --demo, -d               Launch with built-in simulator (no server needed)
   --out, -o <mode>         Output: tui (default), stderr (headless ECS/K8s)
   --pid, -p <pid>          Connect to a specific server PID
@@ -205,8 +205,8 @@ EXAMPLES
   fusion dev --server ./src/server.ts
   fusion dev --server ./src/server.ts --dir ./src/tools
   fusion lock --server ./src/server.ts
-  fusion davinci --demo
-  fusion dv --pid 12345
+  fusion inspect --demo
+  fusion insp --pid 12345
 `.trim();
 
 // ============================================================================
@@ -258,6 +258,10 @@ export function parseArgs(argv: string[]): CliArgs {
             case 'lock':
             case 'create':
             case 'dev':
+            case 'inspect':
+            case 'insp':
+            case 'debug':
+            case 'dbg':
             case 'davinci':
             case 'dv':
                 result.command = arg;
@@ -808,17 +812,21 @@ async function main(): Promise<void> {
             // alive (e.g. transport listeners, telemetry bus, IPC sockets).
             process.exit(0);
             break; // unreachable, but keeps lint happy
+        case 'inspect':
+        case 'insp':
+        case 'debug':
+        case 'dbg':
         case 'davinci':
         case 'dv': {
-            // Davinci subcommand: forward remaining args to davinci package
-            const davinciArgv = process.argv.slice(3); // strip 'node fusion davinci'
+            // Inspector subcommand: forward remaining args to inspector package
+            const inspectArgv = process.argv.slice(3); // strip 'node fusion inspect'
             try {
-                const { runDavinci } = await import('@vinkius-core/mcp-fusion-davinci');
-                await runDavinci(davinciArgv);
+                const { runDavinci } = await import('@vinkius-core/mcp-fusion-inspector');
+                await runDavinci(inspectArgv);
             } catch (importErr) {
                 console.error(
-                    `\x1b[31m✗\x1b[0m The davinci TUI requires the optional package:\n\n` +
-                    `  npm install @vinkius-core/mcp-fusion-davinci\n`,
+                    `\x1b[31m\u2717\x1b[0m The inspector TUI requires the optional package:\n\n` +
+                    `  npm install @vinkius-core/mcp-fusion-inspector\n`,
                 );
                 process.exit(1);
             }

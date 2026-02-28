@@ -81,8 +81,12 @@ export function postProcessResult(
                     wireBytes += _encoder.encode(c.text).byteLength;
                 }
             }
-            // Count wire rows from the response data (estimate from wire data)
-            const wireRows = rawRows; // Same as raw when no agentLimit truncation
+
+            // Compute wire rows — agentLimit may have truncated
+            const agentLimitMax = presenter.getAgentLimitMax();
+            const wireRows = (agentLimitMax !== undefined && rawRows > agentLimitMax)
+                ? agentLimitMax
+                : rawRows;
 
             telemetry.sink({
                 type: 'presenter.slice',
@@ -92,17 +96,49 @@ export function postProcessResult(
                 wireBytes,
                 rowsRaw: rawRows,
                 rowsWire: wireRows,
+                // Enriched fields for Inspector X-Ray
+                ...(selectFields && selectFields.length > 0 ? {
+                    selectFields,
+                    totalFields: presenter.getSchemaKeys().length || undefined,
+                } : {}),
+                ...(agentLimitMax !== undefined && rawRows > agentLimitMax ? {
+                    guardrailFrom: rawRows,
+                    guardrailTo: agentLimitMax,
+                    guardrailHint: 'Results truncated by agentLimit. Use pagination or filters.',
+                } : {}),
                 timestamp: Date.now(),
             } as any);
 
-            // Extract rules from the response (system rules are in text content blocks)
-            const rules = presenter.getCompiledRules?.(result, ctx);
-            if (rules && rules.length > 0) {
+            // Extract rules from the built response text content
+            // Rules are embedded as [SYSTEM_RULES] blocks by the Presenter
+            const rulesFromResponse: string[] = [];
+            for (const c of response.content) {
+                if ('text' in c && typeof c.text === 'string') {
+                    const match = c.text.match(/\[SYSTEM_RULES\]\n([\s\S]*?)(?:\n\n|$)/);
+                    if (match) {
+                        rulesFromResponse.push(...match[1]!.split('\n').filter(Boolean).map(r => r.replace(/^- /, '')));
+                    }
+                }
+            }
+            if (rulesFromResponse.length > 0) {
                 telemetry.sink({
                     type: 'presenter.rules',
                     tool: telemetry.tool,
                     action: telemetry.action,
-                    rules,
+                    rules: rulesFromResponse,
+                    timestamp: Date.now(),
+                } as any);
+            }
+
+            // Emit DLP redaction event if the Presenter has redact paths
+            const redactPaths = presenter.getRedactPaths();
+            if (redactPaths.length > 0) {
+                telemetry.sink({
+                    type: 'dlp.redact',
+                    tool: telemetry.tool,
+                    action: telemetry.action,
+                    fieldsRedacted: redactPaths.length,
+                    paths: [...redactPaths],
                     timestamp: Date.now(),
                 } as any);
             }

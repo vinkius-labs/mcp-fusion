@@ -1,7 +1,7 @@
 /**
  * AnsiRenderer — Low-Level Terminal Rendering Engine
  *
- * Pure ANSI escape sequence renderer for the Command Nexus TUI.
+ * Pure ANSI escape sequence renderer for the Inspector TUI.
  * Zero dependencies — uses only built-in Node.js `process.stdout`.
  *
  * Features:

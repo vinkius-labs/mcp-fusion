@@ -1,12 +1,12 @@
 {
-    "name": "@vinkius-core/mcp-fusion-davinci",
+    "name": "@vinkius-core/mcp-fusion-inspector",
     "version": "1.0.0",
-    "description": "Command Nexus TUI — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
+    "description": "MCP Fusion Inspector — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "bin": {
-        "davinci": "./dist/cli/davinci.js"
+        "fusion-inspect": "./dist/cli/davinci.js"
     },
     "exports": {
         ".": {

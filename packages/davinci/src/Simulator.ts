@@ -3,7 +3,7 @@
  *
  * Spins up a TelemetryBus and emits a continuous stream of realistic
  * telemetry events that mimic a live MCP Fusion server. Use with
- * `davinci` to test/demo the TUI without a real server.
+ * `fusion inspect --demo` to test/demo the TUI without a real server.
  *
  * Usage:
  *   fusion dv --demo                # Built-in simulator + TUI

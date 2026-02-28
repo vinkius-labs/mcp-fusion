@@ -32,6 +32,7 @@ import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ToolResponse, toolError } from '../response.js';
 import { type ToolBuilder } from '../types.js';
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';
+import { type TelemetrySink } from '../../observability/TelemetryEvent.js';
 import { type FusionTracer, SpanStatusCode } from '../../observability/Tracing.js';
 import { filterTools, type ToolFilter } from './ToolFilterEngine.js';
 import {
@@ -333,6 +334,23 @@ export class ToolRegistry<TContext = void> {
             // Duck-type: call .tracing() if it exists on the builder
             if ('tracing' in builder && typeof (builder as { tracing: unknown }).tracing === 'function') {
                 (builder as { tracing: (t: FusionTracer) => void }).tracing(tracer);
+            }
+        }
+    }
+
+    /**
+     * Enable telemetry emission for ALL registered tools.
+     *
+     * Propagates the TelemetrySink to every registered builder that supports
+     * it (duck-typed via `.telemetry()` method). This enables real-time
+     * event emission to the Inspector TUI via Shadow Socket IPC.
+     *
+     * @param sink - A {@link TelemetrySink} from `startServer()` or `TelemetryBus`
+     */
+    enableTelemetry(sink: TelemetrySink): void {
+        for (const builder of this._builders.values()) {
+            if ('telemetry' in builder && typeof (builder as { telemetry: unknown }).telemetry === 'function') {
+                (builder as { telemetry: (s: TelemetrySink) => void }).telemetry(sink);
             }
         }
     }

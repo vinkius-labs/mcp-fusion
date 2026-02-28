@@ -64,6 +64,7 @@ import {
     parseDiscriminator, resolveAction, validateArgs, runChain,
     type ExecutionContext,
 } from '../execution/ExecutionPipeline.js';
+import { type PostProcessTelemetry } from '../../presenter/PostProcessor.js';
 import { type ProgressSink } from '../execution/ProgressHelper.js';
 import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
 import { applyEgressGuard } from '../execution/EgressGuard.js';
@@ -866,12 +867,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     }
 
     /**
-     * Enable out-of-band telemetry emission for Davinci TUI.
+     * Enable out-of-band telemetry emission for Inspector TUI.
      *
      * When set, `validate`, `middleware`, `presenter.slice`, and
      * `presenter.rules` events are emitted to the TelemetrySink
      * (Shadow Socket IPC), enabling real-time monitoring in the
-     * Davinci dashboard.
+     * Inspector dashboard.
      *
      * **Zero overhead** when not configured — no conditionals in
      * the hot path.
@@ -1103,9 +1104,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         //
         // _select is forwarded only when enableSelect() was called.
         const effectiveSelect = this._selectEnabled ? selectFields : undefined;
+        const ppTelemetry: PostProcessTelemetry | undefined = this._telemetry
+            ? { sink: this._telemetry, tool: execCtx.toolName, action: actionName }
+            : undefined;
         const executeChain = () => runChain(
             execCtx, resolved.value, ctx, validated,
-            progressSink, hooks?.rethrow, signal, effectiveSelect,
+            progressSink, hooks?.rethrow, signal, effectiveSelect, ppTelemetry,
         );
 
         try {
@@ -1245,10 +1249,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     }
 
     /**
-     * Build telemetry hooks: Shadow Socket event emission for Davinci TUI.
+     * Build telemetry hooks: Shadow Socket event emission for Inspector TUI.
      *
      * Emits `validate`, `middleware`, and `execute` TelemetryEvents
-     * to the IPC sink so that `fusion davinci` shows real pipeline data.
+     * to the IPC sink so that `fusion inspect` shows real pipeline data.
      */
     private _buildTelemetryHooks(): PipelineHooks {
         const emit = this._telemetry!;
@@ -1267,10 +1271,22 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             },
             onExecuteOk: (action, response) => {
                 const isErr = response.isError === true;
+
+                // Extract recovery data from error responses
+                let recovery: string | undefined;
+                let recoveryActions: string[] | undefined;
+                if (isErr && response.content.length > 0) {
+                    const text = response.content[0]!.text;
+                    recovery = extractXmlTag(text, 'recovery');
+                    recoveryActions = extractXmlActions(text);
+                }
+
                 emit({
                     type: 'execute', tool: toolName, action,
                     durationMs: performance.now() - startTime,
                     isError: isErr,
+                    ...(recovery ? { recovery } : {}),
+                    ...(recoveryActions && recoveryActions.length > 0 ? { recoveryActions } : {}),
                     timestamp: Date.now(),
                 } as any);
             },
@@ -1470,4 +1486,38 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             );
         }
     }
+}
+
+// ── XML Extraction Helpers (Telemetry) ───────────────────
+
+/**
+ * Extract content from a simple XML tag.
+ * @example extractXmlTag('<recovery>Fix X</recovery>', 'recovery') → 'Fix X'
+ * @internal
+ */
+function extractXmlTag(text: string, tag: string): string | undefined {
+    const re = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+    const m = re.exec(text);
+    return m?.[1]?.trim() || undefined;
+}
+
+/**
+ * Extract `<action>` elements from `<available_actions>` block.
+ * @internal
+ */
+function extractXmlActions(text: string): string[] | undefined {
+    const block = extractXmlTag(text, 'available_actions');
+    if (!block) return undefined;
+    const actions: string[] = [];
+    const re = /<action>(.*?)<\/action>/gs;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(block)) !== null) {
+        const v = m[1]?.trim();
+        if (v) actions.push(v);
+    }
+    // If no individual <action> tags, the content might be a comma/space list
+    if (actions.length === 0 && block.trim().length > 0) {
+        actions.push(...block.split(/[,\s]+/).filter(Boolean));
+    }
+    return actions.length > 0 ? actions : undefined;
 }

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Davinci CLI — MCP Fusion Command Nexus
+ * Inspector CLI — MCP Fusion Inspector
  *
  * Launch the interactive TUI or headless stderr logger that connects
  * to a running MCP Fusion server via Shadow Socket IPC.
  *
  * USAGE
- *   fusion davinci             Auto-discover and connect (TUI)
- *   fusion dv                  Alias for davinci
+ *   fusion inspect             Auto-discover and connect (TUI)
+ *   fusion insp                Alias for inspect
  *   fusion dv --demo           Launch with built-in simulator
  *   fusion dv --out stderr     Headless log stream (ECS/K8s/CI)
  *   fusion dv --pid <pid>      Connect to a specific server process
@@ -77,14 +77,14 @@ export function parseDavinciArgs(argv: string[]): DavinciArgs {
 // ============================================================================
 
 export const DAVINCI_HELP = `
-\x1b[1m\x1b[36mfusion davinci\x1b[0m — Command Nexus TUI
+\x1b[1m\x1b[36mfusion inspect\x1b[0m — MCP Fusion Inspector
 
   Real-time interactive terminal dashboard for MCP Fusion servers.
   Connects via Shadow Socket (IPC) for zero stdio interference.
 
 \x1b[1mUSAGE\x1b[0m
-  fusion davinci               Auto-discover and connect (TUI)
-  fusion dv                    Alias for davinci
+  fusion inspect               Auto-discover and connect (TUI)
+  fusion insp                  Alias for inspect
   fusion dv --demo             Launch with built-in simulator
   fusion dv --out stderr       Headless log stream (ECS/K8s/CI)
   fusion dv --out stderr --demo  Simulator + stderr output
@@ -117,10 +117,10 @@ export const DAVINCI_HELP = `
 // ============================================================================
 
 /**
- * Execute the davinci command.
+ * Execute the inspect command.
  * Called from the core `fusion` CLI or directly.
  *
- * @param argv - Command arguments (without the `fusion davinci` prefix)
+ * @param argv - Command arguments (without the `fusion inspect` prefix)
  */
 export async function runDavinci(argv: string[]): Promise<void> {
     const args = parseDavinciArgs(argv);
@@ -187,7 +187,7 @@ export async function runDavinci(argv: string[]): Promise<void> {
 }
 
 // ── Standalone execution ──────────────────────────────────
-const isMainModule = process.argv[1]?.includes('davinci');
+const isMainModule = process.argv[1]?.includes('davinci') || process.argv[1]?.includes('fusion-inspect');
 if (isMainModule) {
     runDavinci(process.argv.slice(2)).catch((err: Error) => {
         console.error(`\x1b[31m✗\x1b[0m ${err.message}`);

@@ -1,0 +1,640 @@
+{
+  "capabilities": {
+    "tools": {
+      "orders_cancel": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:ce28825d211a4200a69a0fd409102923d80809479feba71577cb570b6ca29e97",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Cancel a pending/confirmed order (restores stock). Actions: default\n\nWorkflow:\n- 'default': Requires: id [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:5ed6d94e5ce24fc9bca58ca9dd6b5daf83127914401373a3060c497f23f096c1",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "orders_confirm": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:d613916226e0f97ba47630423c8b47ac35ea51defefd1f2e4bffc9ae7a2997ea",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Confirm a pending order. Actions: default\n\nWorkflow:\n- 'default': Requires: id [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:5ed6d94e5ce24fc9bca58ca9dd6b5daf83127914401373a3060c497f23f096c1",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "orders_create": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:015b282f3c58672c92cebe93079a8306ced6f1c5053b6796c6e9b208e478c654",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Create a new order (validates user and product stock). Actions: default\n\nWorkflow:\n- 'default': Requires: userId, productIds, quantities [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:bf3beed0b1b6bc419adc7819ac674b68eeba64cb9095517f7acbced93909eb83",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "orders_getById": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:21e26b9fce98f9e21f8c9e5b058f7315a2288284f0bc4985c7e11984afed48f6",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Get order details by ID. Actions: default\n\nWorkflow:\n- 'default': Requires: id",
+          "inputSchemaDigest": "sha256:5ed6d94e5ce24fc9bca58ca9dd6b5daf83127914401373a3060c497f23f096c1",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "orders_list": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:b65886d35138e8328553b9b29eb14d0086a02946e81c4ea18b8f04f34b914e52",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "List all orders. Actions: default",
+          "inputSchemaDigest": "sha256:ff7f9701c139118f18ec0bf38f0804c0db15365bb597f49b14ccb922f6c86adc",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "orders_ship": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:aa855824c78ed02a1678e34316b134b024765221404309d4165e34595a3ea6de",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Ship a confirmed order. Actions: default\n\nWorkflow:\n- 'default': Requires: id [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:5ed6d94e5ce24fc9bca58ca9dd6b5daf83127914401373a3060c497f23f096c1",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "products_create": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:7cec2750f9da37d9b16a549be51c01d865b3d735577cc30891e7c3311cee996e",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Add a new product to the catalog. Actions: default\n\nWorkflow:\n- 'default': Requires: name, description, price, stock, category [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:3dcc3a92d76c87c0ef660c3cfa6f6406e4f1cf5f071c084a8f51fb979e7e8aed",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "products_getById": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:9aa98593b2527af854b50851b9c583d1b5d1e16192ea272d24b01f16b159cdde",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Get a product by its ID. Actions: default\n\nWorkflow:\n- 'default': Requires: id",
+          "inputSchemaDigest": "sha256:1b96d1cb1d7fbac8bd866d02f84265936ec4be4924d3580a37246b666860347d",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "products_list": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:ff8218d41459a427e741935ec039cca47f52a6b3fa4fe3e4d553041464137a5c",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "List all products in the catalog. Actions: default",
+          "inputSchemaDigest": "sha256:ff7f9701c139118f18ec0bf38f0804c0db15365bb597f49b14ccb922f6c86adc",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "products_search": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:ec1c906239fa95a0dff2a7d225333cb576741c461ab161ac5e47d4b8542fda51",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Search products by name or category. Actions: default\n\nWorkflow:\n- 'default': Requires: query",
+          "inputSchemaDigest": "sha256:61fb53883f80588865bbfd25d6245f177bc4e8362964c306d59febdf4d455f09",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "products_updateStock": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:e86864a8208ef221487906bdb2cb06cb0ed3518477896560ff0f4ca6ea4b6930",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Update product stock (positive to add, negative to remove). Actions: default\n\nWorkflow:\n- 'default': Requires: id, delta [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:2fb070ddad1733ad90f26bcdcfd50ff4ce183b046d93a8902b4c37e8e89180a6",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "system": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": null,
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "echo"
+          ],
+          "systemRulesFingerprint": "none"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:443c1751dd0ba0fe67a6e7d70beb0a26ccd3bafbb46a208af15b768a3c8ea349",
+        "surface": {
+          "actions": [
+            "echo"
+          ],
+          "description": "Echo a message back (connectivity test). Actions: echo\n\nWorkflow:\n- 'echo': Requires: message",
+          "inputSchemaDigest": "sha256:0e18e0ca33e2dd37f38a60c5c0abec5f0b497fe23448e2149d0d79848c054d84",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "low",
+          "schemaFieldCount": 0,
+          "unboundedCollection": false
+        }
+      },
+      "users_create": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:1d0374b6bcdd92128e8ad79f70aefb3b3c0ac5e528dc474930cc4e1500c9c66c",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Create a new user. Actions: default\n\nWorkflow:\n- 'default': Requires: name, email, role [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:e67e5d65d1388156cb361fa94e57afc20d70b7a1eccd80cf051c41a6892a046d",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "users_delete": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": null,
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "none"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:bde1c571d0925e90e5c0c48b3693c479b64073d0c253289378039a3398ebd4cb",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Delete a user. Actions: default\n\nWorkflow:\n- 'default': Requires: id [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:cfbf574087230a2ecd163b5dc6bc9a964f2cf8e77e0ad38ec28551d8728c6543",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "low",
+          "schemaFieldCount": 0,
+          "unboundedCollection": false
+        }
+      },
+      "users_getProfile": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:0396bb8354e6da0db16589fc87989db03a997dd4689217908e32339e080d3893",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Get user profile by ID. Actions: default\n\nWorkflow:\n- 'default': Requires: id",
+          "inputSchemaDigest": "sha256:cfbf574087230a2ecd163b5dc6bc9a964f2cf8e77e0ad38ec28551d8728c6543",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "users_list": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [
+            "default"
+          ],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:a1de80129c0c3320e1cb0fe6dc994ae8548701eb12771e009d5c4eb5d4c81eba",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "List all users. Actions: default",
+          "inputSchemaDigest": "sha256:ff7f9701c139118f18ec0bf38f0804c0db15365bb597f49b14ccb922f6c86adc",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      },
+      "users_update": {
+        "behavior": {
+          "affordanceTopology": [],
+          "cognitiveGuardrails": {
+            "agentLimitMax": null,
+            "egressMaxBytes": null
+          },
+          "destructiveActions": [
+            "default"
+          ],
+          "egressSchemaDigest": "sha256:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da",
+          "middlewareChain": [],
+          "readOnlyActions": [],
+          "systemRulesFingerprint": "static:54658dfb64c45c33d7d153dcaace0ed56f7317641369aafeb8cff82b65dca9da"
+        },
+        "entitlements": {
+          "codeEvaluation": false,
+          "crypto": false,
+          "filesystem": false,
+          "network": false,
+          "subprocess": false
+        },
+        "integrityDigest": "sha256:184f082a76927a222a86d36041eabf5839156efc32d64099e3fc1d79edea7da5",
+        "surface": {
+          "actions": [
+            "default"
+          ],
+          "description": "Update user details. Actions: default\n\nWorkflow:\n- 'default': Requires: id [DESTRUCTIVE]",
+          "inputSchemaDigest": "sha256:4c08fdbba41761f45f6b1bc8f10ec7de81211dbeeae4d581bc35e686bfc3c1da",
+          "tags": []
+        },
+        "tokenEconomics": {
+          "inflationRisk": "critical",
+          "schemaFieldCount": 29,
+          "unboundedCollection": true
+        }
+      }
+    }
+  },
+  "fusionVersion": "1.1.0",
+  "generatedAt": "2026-02-28T20:01:09.894Z",
+  "integrityDigest": "sha256:f3296ad26c530772be939581a5e855632807da57d8ee0e97a176cfcee322e73e",
+  "lockfileVersion": 1,
+  "serverName": "mcp-fusion-server"
+}

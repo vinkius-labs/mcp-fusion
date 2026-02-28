@@ -4,7 +4,7 @@
  * Abstracts the entire server startup boilerplate into a single call:
  *   1. Creates the MCP Server instance
  *   2. Attaches the tool registry with telemetry
- *   3. Builds the topology for Davinci TUI auto-discovery
+ *   3. Builds the topology for Inspector TUI auto-discovery
  *   4. Starts the Telemetry Bus (IPC)
  *   5. Connects the stdio transport
  *
@@ -22,7 +22,7 @@ import type { PromptRegistry } from '../prompt/PromptRegistry.js';
 
 /** Options for `startServer`. */
 export interface StartServerOptions<TContext> {
-    /** Server display name (shown in MCP clients and Davinci). */
+    /** Server display name (shown in MCP clients and Inspector). */
     readonly name: string;
 
     /** Server version string (e.g. '1.0.0'). */
@@ -37,7 +37,7 @@ export interface StartServerOptions<TContext> {
     /** Factory to create per-request context. */
     readonly contextFactory?: (extra: unknown) => TContext | Promise<TContext>;
 
-    /** Enable Davinci TUI telemetry (default: true). */
+    /** Enable Inspector TUI telemetry (default: true). */
     readonly telemetry?: boolean;
 
     /** Extra attach options (debug, tracing, zeroTrust, etc.). */

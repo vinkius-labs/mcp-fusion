@@ -46,6 +46,7 @@
  */
 
 import { validateSandboxCode } from './SandboxGuard.js';
+import { type TelemetrySink } from '../observability/TelemetryEvent.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -193,6 +194,7 @@ export class SandboxEngine {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _isolate: any; // ivm.Isolate
     private _disposed = false;
+    private _telemetry?: TelemetrySink;
 
     constructor(config?: SandboxConfig) {
         this._timeout = config?.timeout ?? DEFAULT_TIMEOUT_MS;
@@ -208,6 +210,16 @@ export class SandboxEngine {
         }
 
         this._isolate = new ivm.Isolate({ memoryLimit: this._memoryLimit });
+    }
+
+    /**
+     * Set the telemetry sink for `sandbox.exec` event emission.
+     * When set, every `execute()` call emits a telemetry event
+     * visible in the Inspector TUI.
+     */
+    telemetry(sink: TelemetrySink): this {
+        this._telemetry = sink;
+        return this;
     }
 
     /**
@@ -322,19 +334,25 @@ export class SandboxEngine {
 
             // ── Step 6: Parse result ────────────────────
             const parsed = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
-            return { ok: true, value: parsed as T, executionMs };
+            const result: SandboxResult<T> = { ok: true, value: parsed as T, executionMs };
+            this._emitTelemetry(result);
+            return result;
 
         } catch (err: unknown) {
             // If the abort listener disposed the isolate, classify as ABORTED
             // (not MEMORY — the user disconnected, not an OOM condition)
             if (aborted) {
-                return {
+                const result: SandboxResult<T> = {
                     ok: false,
                     error: 'Execution aborted: client disconnected during sandbox execution.',
                     code: 'ABORTED',
                 };
+                this._emitTelemetry(result);
+                return result;
             }
-            return this._classifyError(err);
+            const result = this._classifyError(err) as SandboxResult<T>;
+            this._emitTelemetry(result);
+            return result;
         } finally {
             // ── MANDATORY ABORT LISTENER CLEANUP ─────────
             // Remove the listener to prevent memory leaks when
@@ -374,6 +392,21 @@ export class SandboxEngine {
      */
     get isDisposed(): boolean {
         return this._disposed;
+    }
+
+    /**
+     * Emit a `sandbox.exec` telemetry event if a sink is configured.
+     * @internal
+     */
+    private _emitTelemetry(result: SandboxResult<unknown>): void {
+        if (!this._telemetry) return;
+        this._telemetry({
+            type: 'sandbox.exec',
+            ok: result.ok,
+            executionMs: result.ok ? result.executionMs : 0,
+            errorCode: result.ok ? undefined : result.code,
+            timestamp: Date.now(),
+        } as any);
     }
 
     // ── Private ──────────────────────────────────────────

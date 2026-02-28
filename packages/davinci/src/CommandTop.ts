@@ -1,5 +1,5 @@
 /**
- * CommandTop — MCP Fusion Command Nexus TUI
+ * CommandTop — MCP Fusion Inspector TUI
  *
  * Full-screen interactive terminal dashboard that connects to a running
  * MCP Fusion server via Shadow Socket (Named Pipe / Unix Domain Socket).
@@ -407,7 +407,7 @@ function renderHeader(cols: number, state: TuiState): string {
     let output = '';
 
     // Row 1: Title bar
-    const title = ' FUSION DAVINCI ';
+    const title = ' FUSION INSPECTOR ';
     const liveIndicator = state.pid > 0
         ? ansi.green(`● LIVE: PID ${state.pid}`)
         : ansi.red('○ CONNECTING…');
@@ -425,7 +425,7 @@ function renderHeader(cols: number, state: TuiState): string {
     const dlp = `DLP: ${state.dlpTotal.toLocaleString()}`;
     const uptime = `UP: ${formatUptime(state.uptimeSeconds)}`;
 
-    const metricsLine = ` ${ansi.cyan(reqS)}  ${ansi.dim('│')}  ${ram}  ${ansi.dim('│')}  ${ansi.magenta(dlp)}  ${ansi.dim('│')}  🚦 ${state.queueBusy ? ansi.yellow('QUEUE') : ansi.dim('QUEUE')}: ${state.queuePending}/${state.queueCapacity} ${ansi.dim('│')} ACTIVE: ${state.queueActive}/${state.queueMax}  ${ansi.dim('│')}  ${ansi.dim(uptime)} `;
+    const metricsLine = ` ${ansi.cyan(reqS)}  ${ansi.dim('│')}  ${ram}  ${ansi.dim('│')}  ${ansi.magenta(dlp)}  ${ansi.dim('│')}  ${state.queueBusy ? ansi.yellow('QUEUE') : ansi.dim('QUEUE')}: ${state.queuePending}/${state.queueCapacity} ${ansi.dim('│')} ACTIVE: ${state.queueActive}/${state.queueMax}  ${ansi.dim('│')}  ${ansi.dim(uptime)} `;
     output += ansi.moveTo(2, 1) + pad(metricsLine, cols);
 
     // Row 3: Separator
@@ -541,34 +541,7 @@ function renderPromptTab(
     return output;
 }
 
-/** Resources tab placeholder (Feature #5) */
-function renderResourceTab(
-    _screen: ScreenManager,
-    startRow: number, startCol: number,
-    width: number, height: number,
-): string {
-    let output = '';
 
-    output += ansi.moveTo(startRow + 1, startCol);
-    output += ansi.bold(ansi.cyan(pad(' RESOURCE TOPOLOGY', width)));
-    output += ansi.moveTo(startRow + 2, startCol);
-    output += ansi.dim('─'.repeat(width));
-    output += ansi.moveTo(startRow + 4, startCol);
-    output += pad(ansi.dim('  🚧 Coming Soon'), width);
-    output += ansi.moveTo(startRow + 6, startCol);
-    output += pad(ansi.dim('  Resource monitoring will show:'), width);
-    output += ansi.moveTo(startRow + 7, startCol);
-    output += pad(ansi.dim('  • URI patterns and MIME types'), width);
-    output += ansi.moveTo(startRow + 8, startCol);
-    output += pad(ansi.dim('  • Subscription status and latency'), width);
-    output += ansi.moveTo(startRow + 9, startCol);
-    output += pad(ansi.dim('  • Template variable hydration'), width);
-
-    for (let i = 10; i < height; i++) {
-        output += ansi.moveTo(startRow + i, startCol) + ' '.repeat(width);
-    }
-    return output;
-}
 
 function renderTraffic(
     screen: ScreenManager,
@@ -637,7 +610,7 @@ function renderInspector(
     // ── Section 1A: ERROR AUTOPSY (Feature #1) ──
     if (tool.lastStatus === 'error' && tool.lastError && line < maxLines) {
         output += writeInspectorLine(startRow + 2 + line,
-            ansi.red(ansi.bold(` 🚨 FATAL EXCEPTION (${tool.lastErrorStep?.toUpperCase() ?? 'UNKNOWN'}):`)));
+            ansi.red(ansi.bold(` [ERR] FATAL EXCEPTION (${tool.lastErrorStep?.toUpperCase() ?? 'UNKNOWN'}):`)));
         line++;
         output += writeInspectorLine(startRow + 2 + line,
             ansi.red(`  "${truncate(tool.lastError, width - 6)}"`));
@@ -646,7 +619,7 @@ function renderInspector(
 
         if (tool.lastRecovery && line < maxLines) {
             output += writeInspectorLine(startRow + 2 + line,
-                ansi.green(ansi.bold(' 🚑 SELF-HEALING RECOVERY (Injected):')));
+                ansi.green(ansi.bold(' [REC] SELF-HEALING RECOVERY (Injected):')));
             line++;
             output += writeInspectorLine(startRow + 2 + line,
                 ansi.green(`  <recovery>${truncate(tool.lastRecovery, width - 16)}</recovery>`));
@@ -680,7 +653,7 @@ function renderInspector(
         // ── Select Reflection (Feature #2) ──
         if (tool.lastSelectFields && tool.lastSelectFields.length > 0 && tool.lastTotalFields && line < maxLines) {
             output += writeInspectorLine(startRow + 2 + line,
-                ansi.cyan(`  ✨ SELECT REFLECTION: AI chose ${tool.lastSelectFields.length} of ${tool.lastTotalFields} fields (${tool.lastSelectFields.join(', ')})`));
+                ansi.cyan(`  [SEL] SELECT REFLECTION: AI chose ${tool.lastSelectFields.length} of ${tool.lastTotalFields} fields (${tool.lastSelectFields.join(', ')})`));
             line++;
         }
 
@@ -716,10 +689,10 @@ function renderInspector(
     // ── Section 2B: AGENT LIMIT GUARDRAIL (Feature #4) ──
     if (tool.lastGuardrailFrom !== undefined && tool.lastGuardrailTo !== undefined && line < maxLines) {
         output += writeInspectorLine(startRow + 2 + line,
-            ansi.yellow(ansi.bold(' ⚠️  COGNITIVE GUARDRAIL (Agent Limit):')));
+            ansi.yellow(ansi.bold(' [LIM] COGNITIVE GUARDRAIL (Agent Limit):')));
         line++;
         output += writeInspectorLine(startRow + 2 + line,
-            ansi.yellow(`  ✂️  Array truncated: ${tool.lastGuardrailFrom.toLocaleString()} ➔ ${tool.lastGuardrailTo} items`));
+            ansi.yellow(`  Array truncated: ${tool.lastGuardrailFrom.toLocaleString()} -> ${tool.lastGuardrailTo} items`));
         line++;
         if (tool.lastGuardrailHint) {
             output += writeInspectorLine(startRow + 2 + line,
@@ -737,7 +710,7 @@ function renderInspector(
         const maxDlpLines = Math.min(tool.lastDlpPaths.length, Math.min(5, maxLines - line - 4));
         for (let i = 0; i < maxDlpLines && line < maxLines; i++) {
             output += writeInspectorLine(startRow + 2 + line,
-                ansi.magenta(`  ✖ ${tool.lastDlpPaths[i]} → [REDACTED]`));
+                ansi.magenta(`  x ${tool.lastDlpPaths[i]} -> [REDACTED]`));
             line++;
         }
         line++; // blank
@@ -836,7 +809,7 @@ function formatUptime(seconds: number): string {
 
 function formatTime(epochMs: number): string {
     const d = new Date(epochMs);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}.${String(d.getMilliseconds()).padStart(3, '0')}`;
 }
 
 /**
@@ -934,7 +907,7 @@ export interface TopOptions {
 }
 
 /**
- * Launch the Command Nexus TUI.
+ * Launch the Inspector TUI.
  *
  * Connects to a running MCP Fusion server via Shadow Socket
  * and renders the interactive dashboard.

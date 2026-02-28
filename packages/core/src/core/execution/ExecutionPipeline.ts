@@ -16,7 +16,7 @@ import { type Result, succeed, fail } from '../result.js';
 import { type InternalAction } from '../types.js';
 import { type CompiledChain } from './MiddlewareCompiler.js';
 import { type ProgressSink, isProgressEvent } from './ProgressHelper.js';
-import { postProcessResult } from '../../presenter/PostProcessor.js';
+import { postProcessResult, type PostProcessTelemetry } from '../../presenter/PostProcessor.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -140,6 +140,7 @@ export async function runChain<TContext>(
     rethrow = false,
     signal?: AbortSignal,
     selectFields?: string[],
+    telemetry?: PostProcessTelemetry,
 ): Promise<ToolResponse> {
     const chain = execCtx.compiledChain.get(resolved.action.key);
     if (!chain) {
@@ -157,10 +158,10 @@ export async function runChain<TContext>(
         // If the middleware chain returned a generator result envelope, drain it
         if (isGeneratorResultEnvelope(result)) {
             const drained = await drainGenerator(result.generator, progressSink, signal);
-            return postProcessResult(drained, resolved.action.returns, ctx, selectFields);
+            return postProcessResult(drained, resolved.action.returns, ctx, selectFields, telemetry);
         }
 
-        return postProcessResult(result, resolved.action.returns, ctx, selectFields);
+        return postProcessResult(result, resolved.action.returns, ctx, selectFields, telemetry);
     } catch (err) {
         if (rethrow) throw err;
         const message = err instanceof Error ? err.message : String(err);

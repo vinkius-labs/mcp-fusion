@@ -1,5 +1,5 @@
 /**
- * @vinkius-core/mcp-fusion-davinci
+ * @vinkius-core/mcp-fusion-inspector
  *
  * Optional TUI (Terminal User Interface) for real-time MCP Fusion
  * server observability. Connects via Shadow Socket IPC for zero
@@ -9,7 +9,7 @@
  *
  * ```bash
  * # Interactive TUI (auto-discover server)
- * fusion davinci
+ * fusion inspect
  * fusion dv
  *
  * # Built-in simulator for demo/testing
@@ -23,7 +23,7 @@
  * ## Programmatic API
  *
  * ```typescript
- * import { commandTop, startSimulator, streamToStderr } from '@vinkius-core/mcp-fusion-davinci';
+ * import { commandTop, startSimulator, streamToStderr } from '@vinkius-core/mcp-fusion-inspector';
  *
  * // Launch TUI
  * await commandTop({ pid: 12345 });

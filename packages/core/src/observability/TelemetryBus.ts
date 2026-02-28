@@ -3,7 +3,7 @@
  *
  * Fire-and-forget out-of-band telemetry transport. Creates a Named Pipe
  * (Windows) or Unix Domain Socket (POSIX) that streams NDJSON events
- * to connected `fusion top` / `davinci` TUI clients.
+ * to connected `fusion top` / `inspector` TUI clients.
  *
  * Architecture:
  *   ┌─────────────────────────────────────────────────────┐

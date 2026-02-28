@@ -184,7 +184,7 @@ export interface AttachOptions<TContext> {
     tracing?: FusionTracer;
 
     /**
-     * Telemetry sink for the Davinci TUI.
+     * Telemetry sink for the Inspector TUI.
      *
      * When set, emits `route`, `execute`, and `error` events for each
      * tool call, enabling the real-time TUI dashboard.
@@ -392,6 +392,8 @@ export interface RegistryDelegate<TContext> {
     enableDebug?(observer: DebugObserverFn): void;
     /** Propagate a tracer to all registered builders (duck-typed) */
     enableTracing?(tracer: FusionTracer): void;
+    /** Propagate a telemetry sink to all registered builders (duck-typed) */
+    enableTelemetry?(sink: TelemetrySink): void;
     /** Get an iterable of all registered builders (for introspection and exposition) */
     getBuilders(): Iterable<ToolBuilder<TContext>>;
 }
@@ -427,12 +429,16 @@ function propagateObservability<TContext>(
     registry: RegistryDelegate<TContext>,
     debug?: DebugObserverFn,
     tracing?: FusionTracer,
+    telemetry?: TelemetrySink,
 ): void {
     if (debug && registry.enableDebug) {
         registry.enableDebug(debug);
     }
     if (tracing && registry.enableTracing) {
         registry.enableTracing(tracing);
+    }
+    if (telemetry && registry.enableTelemetry) {
+        registry.enableTelemetry(telemetry);
     }
 }
 
@@ -548,8 +554,20 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         if (hCtx.fsm && !result.isError) {
             const transitionEvent = hCtx.fsm.getTransitionEvent(name);
             if (transitionEvent) {
+                const fromState = hCtx.fsm.currentState;
                 const transition = await hCtx.fsm.transition(transitionEvent);
                 if (transition.changed) {
+                    // Emit fsm.transition telemetry event
+                    if (hCtx.telemetry) {
+                        hCtx.telemetry({
+                            type: 'fsm.transition',
+                            tool: name,
+                            action: transitionEvent,
+                            from: fromState,
+                            to: hCtx.fsm.currentState,
+                            timestamp: Date.now(),
+                        } as any);
+                    }
                     // Persist new state to external store (serverless/edge)
                     if (hCtx.fsmStore) {
                         const sessionId = extractSessionId(extra);
@@ -704,7 +722,7 @@ export async function attachToServer<TContext>(
     } = options;
 
     // 1. Propagate observability to all registered builders
-    propagateObservability(registry, debug, tracing);
+    propagateObservability(registry, debug, tracing, options.telemetry);
 
     // 2. Create State Sync layer (zero overhead when not configured)
     //    Merge manual policies with fluent hints from builders (.invalidates(), .cached())
