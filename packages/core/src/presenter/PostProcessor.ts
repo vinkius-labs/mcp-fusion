@@ -11,6 +11,22 @@
 import { type ToolResponse, success as successResponse } from '../core/response.js';
 import { isResponseBuilder, type ResponseBuilder } from './ResponseBuilder.js';
 import { type Presenter } from './Presenter.js';
+import { type TelemetrySink } from '../observability/TelemetryEvent.js';
+
+// ── Telemetry Context ────────────────────────────────────
+
+/**
+ * Optional telemetry context for Presenter event emission.
+ * Keeps the fast path (no telemetry) at zero overhead.
+ * @internal
+ */
+export interface PostProcessTelemetry {
+    readonly sink: TelemetrySink;
+    readonly tool: string;
+    readonly action: string;
+}
+
+const _encoder = new TextEncoder();
 
 /**
  * Post-process a handler's return value through the MVA priority hierarchy.
@@ -25,6 +41,7 @@ import { type Presenter } from './Presenter.js';
  * @param presenter - The action's Presenter (from `returns` field), if any
  * @param ctx - Optional request context
  * @param selectFields - Optional `_select` field names for context window optimization
+ * @param telemetry - Optional telemetry context for Presenter events
  * @returns A valid MCP ToolResponse
  *
  * @internal
@@ -34,6 +51,7 @@ export function postProcessResult(
     presenter: Presenter<unknown> | undefined,
     ctx?: unknown,
     selectFields?: string[],
+    telemetry?: PostProcessTelemetry,
 ): ToolResponse {
     // Priority 1: Already a ToolResponse (has content array)
     if (isToolResponse(result)) {
@@ -47,7 +65,50 @@ export function postProcessResult(
 
     // Priority 3: Raw data + Presenter → pipe through MVA
     if (presenter) {
-        return presenter.make(result, ctx, selectFields).build();
+        // Measure raw data size for telemetry
+        const rawJson = telemetry ? JSON.stringify(result) : undefined;
+        const rawBytes = rawJson ? _encoder.encode(rawJson).byteLength : 0;
+        const rawRows = Array.isArray(result) ? result.length : 1;
+
+        const response = presenter.make(result, ctx, selectFields).build();
+
+        // Emit presenter.slice and presenter.rules events
+        if (telemetry) {
+            // Measure wire bytes from the built response
+            let wireBytes = 0;
+            for (const c of response.content) {
+                if ('text' in c && typeof c.text === 'string') {
+                    wireBytes += _encoder.encode(c.text).byteLength;
+                }
+            }
+            // Count wire rows from the response data (estimate from wire data)
+            const wireRows = rawRows; // Same as raw when no agentLimit truncation
+
+            telemetry.sink({
+                type: 'presenter.slice',
+                tool: telemetry.tool,
+                action: telemetry.action,
+                rawBytes,
+                wireBytes,
+                rowsRaw: rawRows,
+                rowsWire: wireRows,
+                timestamp: Date.now(),
+            } as any);
+
+            // Extract rules from the response (system rules are in text content blocks)
+            const rules = presenter.getCompiledRules?.(result, ctx);
+            if (rules && rules.length > 0) {
+                telemetry.sink({
+                    type: 'presenter.rules',
+                    tool: telemetry.tool,
+                    action: telemetry.action,
+                    rules,
+                    timestamp: Date.now(),
+                } as any);
+            }
+        }
+
+        return response;
     }
 
     // Priority 4: Raw data without Presenter → canonical success() helper
