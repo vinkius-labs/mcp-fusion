@@ -5,11 +5,9 @@ description: Zero-overhead real-time terminal dashboard for MCP Fusion servers. 
 
 # Inspector — Real-Time Dashboard
 
-<p style="display:flex;gap:8px;margin-top:-0.5rem">
-  <a href="https://www.npmjs.com/package/@vinkius-core/mcp-fusion-inspector"><img src="https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-inspector?color=blue" alt="npm" /></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Cross-platform" />
-</p>
+[![npm](https://img.shields.io/npm/v/@vinkius-core/mcp-fusion-inspector?color=blue)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion-inspector)
+![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 
 > Zero-overhead observability for MCP Fusion servers. Connects via **Shadow Socket** (IPC) — no stdio interference, no port conflicts, no agent disruption.
 
