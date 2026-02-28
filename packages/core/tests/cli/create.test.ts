@@ -512,16 +512,16 @@ describe('Template output — source files', () => {
         const stdioConfig: ProjectConfig = { name: 'srv', transport: 'stdio', vector: 'vanilla', testing: false };
         const sseConfig: ProjectConfig = { name: 'srv', transport: 'sse', vector: 'vanilla', testing: false };
 
-        it('uses StdioServerTransport for stdio', () => {
+        it('uses startServer for stdio', () => {
             const content = tpl.serverTs(stdioConfig);
-            expect(content).toContain('StdioServerTransport');
+            expect(content).toContain('startServer');
             expect(content).not.toContain('SSEServerTransport');
         });
 
         it('uses SSEServerTransport for sse', () => {
             const content = tpl.serverTs(sseConfig);
             expect(content).toContain('SSEServerTransport');
-            expect(content).not.toContain('StdioServerTransport');
+            expect(content).not.toContain('startServer');
         });
 
         it('uses autoDiscover', () => {
@@ -973,11 +973,11 @@ describe('scaffold — file tree generation', () => {
 
     // ── Transport toggle ─────────────────────────────────────
 
-    it('server.ts uses StdioServerTransport for stdio', () => {
+    it('server.ts uses startServer for stdio', () => {
         const projectDir = join(tmpDir, 'stdio-srv');
         scaffold(projectDir, { name: 'stdio-srv', transport: 'stdio', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
-        expect(server).toContain('StdioServerTransport');
+        expect(server).toContain('startServer');
         expect(server).not.toContain('SSEServerTransport');
     });
 
@@ -986,7 +986,7 @@ describe('scaffold — file tree generation', () => {
         scaffold(projectDir, { name: 'sse-srv', transport: 'sse', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
         expect(server).toContain('SSEServerTransport');
-        expect(server).not.toContain('StdioServerTransport');
+        expect(server).not.toContain('startServer');
     });
 
     // ── package.json on disk ─────────────────────────────────
@@ -1978,11 +1978,11 @@ describe('server.ts — prompt registration', () => {
         expect(server).toContain('prompts.register(GreetPrompt)');
     });
 
-    it('server.ts logs prompt count', () => {
+    it('server.ts uses startServer for stdio bootstrap', () => {
         const config: ProjectConfig = { name: 'prompt-log', transport: 'stdio', vector: 'vanilla', testing: false };
         const server = tpl.serverTs(config);
 
-        expect(server).toContain('prompts.size');
+        expect(server).toContain('startServer');
     });
 });
 

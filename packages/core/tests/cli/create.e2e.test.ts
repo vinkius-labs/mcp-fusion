@@ -141,7 +141,7 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
         expect(existsSync(join(projectDir, 'tests', 'setup.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'tests', 'system.test.ts'))).toBe(true);
 
-        expect(files.length).toBe(17); // 14 base + 3 testing
+        expect(files.length).toBe(18); // 15 base + 3 testing
     });
 
     it('E2E: parseArgs feeds collectConfig correctly', async () => {
@@ -500,10 +500,8 @@ describe('E2E: Generated TypeScript files — syntactic markers', () => {
         expect(content).toContain('f.registry()');
         // Must use autoDiscover
         expect(content).toContain('autoDiscover');
-        // Must create Server
-        expect(content).toContain('new Server(');
-        // Must connect transport
-        expect(content).toContain('.connect(');
+        // Must bootstrap server
+        expect(content).toContain('startServer');
     });
 });
 
@@ -765,11 +763,11 @@ describe('E2E: Config matrix — all 16 combinations', () => {
                     // 4. Transport is correct in server.ts
                     const server = readProjectFile(projectDir, 'src/server.ts');
                     if (transport === 'stdio') {
-                        expect(server).toContain('StdioServerTransport');
+                        expect(server).toContain('startServer');
                         expect(server).not.toContain('SSEServerTransport');
                     } else {
                         expect(server).toContain('SSEServerTransport');
-                        expect(server).not.toContain('StdioServerTransport');
+                        expect(server).not.toContain('startServer');
                     }
 
                     // 5. Testing files
