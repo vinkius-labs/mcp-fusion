@@ -1638,6 +1638,42 @@ export const POST = vercelAdapter<AppContext>({
 export const runtime = 'edge';
 ```
 
+### DLP Compliance Engine — PII Redaction (GDPR / LGPD / HIPAA)
+
+Zero-leak PII masking for MCP servers. Powered by `fast-redact` (V8-compiled, same engine as Pino). Redaction runs AFTER UI blocks and system rules see full data (Late Guillotine pattern) — only the wire payload is sanitized.
+
+- `createPresenter('Name').redactPII(paths, censor?)` — fluent API
+  - `paths` — array of `fast-redact` path strings: `['*.ssn', 'patients[*].diagnosis', 'email']`
+  - `censor` — string (`'[REDACTED]'`, default) or function (`(v) => '****-' + String(v).slice(-4)`)
+  - `.redact()` — alias for `.redactPII()`
+- `definePresenter({ redactPII: { paths, censor } })` — declarative API
+- `compileRedactor(config)` → `RedactFn | undefined` — standalone compiler
+  - `config.paths` — array of dot/bracket/wildcard paths
+  - `config.censor` — string or `(value: unknown) => unknown`
+- `initRedactEngine()` → `Promise<boolean>` — optional boot-time pre-loading
+- `fast-redact` is an optional peer dependency — install only on servers that handle PII
+
+Path syntax: dot notation (`user.ssn`), bracket notation (`user["ssn"]`), wildcards (`*.ssn`), array items (`patients[*].diagnosis`), specific indices (`items[0].secret`), deeply nested (`records[*].contact.email`).
+
+Late Guillotine: `structuredClone(wireData)` → redact clone → ResponseBuilder. UI blocks and system rules always see full, unmasked data. Only the final JSON-RPC payload is sanitized.
+
+```typescript
+// Fluent API
+const PatientPresenter = createPresenter('Patient')
+    .schema(z.object({ name: z.string(), ssn: z.string(), diagnosis: z.string() }))
+    .redactPII(['ssn', 'diagnosis'])
+    .uiBlocks((p) => [ui.markdown(`Patient: **${p.name}**`)]);
+// Wire: { name: "John", ssn: "[REDACTED]", diagnosis: "[REDACTED]" }
+// UI blocks see: { name: "John", ssn: "123-45-6789", diagnosis: "Hypertension" }
+
+// Declarative API
+const EmployeePresenter = definePresenter({
+    name: 'Employee',
+    schema: z.object({ name: z.string(), ssn: z.string() }),
+    redactPII: { paths: ['ssn'], censor: '***-**-****' },
+});
+```
+
 ### Zero-Trust Sandbox Engine
 
 Execute LLM-generated JavaScript in a sealed V8 isolate (via `isolated-vm`). The data stays on the server — only the result crosses the boundary.
