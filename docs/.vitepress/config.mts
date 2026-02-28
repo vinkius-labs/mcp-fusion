@@ -240,6 +240,7 @@ export default defineConfig({
           { text: 'Cancellation', link: '/cancellation' },
           { text: 'Runtime Guards', link: '/runtime-guards' },
           { text: 'Sandbox Engine', link: '/sandbox' },
+          { text: 'DLP Redaction — GDPR', link: '/dlp-redaction' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
         ]
       },

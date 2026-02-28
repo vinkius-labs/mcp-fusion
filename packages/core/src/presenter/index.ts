@@ -36,3 +36,7 @@ export { postProcessResult, isToolResponse } from './PostProcessor.js';
 
 // ── Select Reflection (Context Window Optimization) ──────
 export { extractZodKeys, pickFields, applySelectFilter } from './SelectUtils.js';
+
+// ── DLP Compliance (PII Redaction) ───────────────────────
+export { compileRedactor, initRedactEngine } from './RedactEngine.js';
+export type { RedactConfig, RedactFn } from './RedactEngine.js';

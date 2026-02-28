@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-02-28
+
+### 🛡️ DLP Compliance Engine — Zero-Leak PII Redaction (GDPR / LGPD / HIPAA)
+
+MCP Fusion now structurally masks Personally Identifiable Information before it reaches the LLM. Powered by `fast-redact` — the same V8-compiled engine behind Pino — the framework guarantees zero-leak at the wire level. Once `.redactPII()` is configured, it is **physically impossible** for a developer to accidentally expose sensitive data through the MCP JSON-RPC payload.
+
+### Added
+
+- **`RedactEngine` module** (`src/presenter/RedactEngine.ts`) — core DLP engine:
+  - `compileRedactor(config)` — compiles `fast-redact` paths into a V8-optimized function at configuration time
+  - `initRedactEngine()` — optional boot-time pre-loading for first-call latency elimination
+  - Lazy dynamic `import('fast-redact')` with graceful fallback when not installed
+  - Follows the existing `JsonSerializer` pattern for optional peer dependencies
+- **`Presenter.redactPII(paths, censor?)`** — fluent method to configure PII redaction paths
+  - `.redact()` alias for ergonomic use
+  - Supports string censors (`'[REDACTED]'`, `'***'`) and function censors (`(v) => '****-' + String(v).slice(-4)`)
+  - Default censor: `'[REDACTED]'`
+- **Late Guillotine Pattern** — redaction applied via `structuredClone()` **after** UI blocks and system rules see full data
+  - UI formatting logic can reference sensitive fields without exposing them
+  - Only the final wire payload is sanitized
+- **`definePresenter()` integration** — `redactPII: { paths, censor }` config field for declarative API
+- **`fast-redact` as optional peer dependency** — install only on servers that handle PII
+- **`fast-redact.d.ts`** — ambient type declaration for dynamic import
+- **Path syntax** — dot notation, bracket notation, wildcards (`*.ssn`), array items (`patients[*].diagnosis`)
+
+### Documentation
+
+- **`docs/dlp-redaction.md`** — full documentation page (~350 lines): architecture diagrams, Late Guillotine pattern, installation, Quick Start (fluent + declarative), custom censors, path syntax reference, boot-time initialization, standalone usage, GDPR/LGPD/HIPAA compliance matrices, integration with Sandbox Engine and AOT Serialization, best practices, API reference
+- **VitePress sidebar** — "DLP Redaction — GDPR" under Core Framework section
+- **SEO** — title, meta description, and 7 FAQ entries for Google rich snippets
+- **Keywords** — `dlp`, `compliance`, `pii-redaction` added to `package.json`
+
+### Test Suite
+
+- **26 new tests** in `RedactEngine.test.ts`:
+  - RedactEngine unit (10 tests): flat field, custom string/function censor, wildcards, array wildcards, empty paths, missing target, primitives, immutability, initRedactEngine
+  - Presenter integration (11 tests): flat/nested redaction, custom censors, array items, Late Guillotine (UI blocks + system rules), .redact() alias, chaining, untyped schema, sealed check, missing field
+  - Declarative API (2 tests): definePresenter with redactPII config, custom censor
+  - E2E (1 test): full pipeline with schema + rules + ui + redact + agentLimit
+
 ## [2.13.1] - 2026-02-28
 
 ### 🛡️ Connection Watchdog — AbortSignal Kill-Switch for V8 Isolates

@@ -684,6 +684,23 @@ const pages: Record<string, PageSEO> = {
   },
 
   // ═══════════════════════════════════════════════════════
+  // DLP REDACTION — GDPR COMPLIANCE
+  // ═══════════════════════════════════════════════════════
+  'dlp-redaction.md': {
+    title: 'DLP Compliance Engine — GDPR / LGPD / HIPAA PII Redaction',
+    description: 'Zero-leak PII redaction for MCP servers using fast-redact. Structurally mask sensitive fields (SSN, email, diagnosis) before they reach the LLM. GDPR Article 25 compliant by design.',
+    faqs: [
+      { q: 'How does MCP Fusion prevent PII leaks to the LLM?', a: 'MCP Fusion\'s DLP engine uses fast-redact — the same V8-compiled redaction engine that powers the Pino logger — to structurally mask sensitive fields before the JSON response leaves the server. Configure paths like [\"*.ssn\", \"patients[*].diagnosis\"] and the Presenter applies redaction automatically on every .make() call. The LLM receives { ssn: \"[REDACTED]\" } instead of the real value.' },
+      { q: 'What is the Late Guillotine pattern in MCP Fusion?', a: 'The Late Guillotine pattern means redaction is applied AFTER UI blocks and system rules have been computed from the full, unmasked data. Only the final wire payload — what the LLM actually sees — is sanitized via structuredClone + fast-redact. This ensures UI formatting logic and business rules can still reference sensitive fields without exposing them.' },
+      { q: 'Is MCP Fusion GDPR compliant for PII in MCP payloads?', a: 'Yes. MCP Fusion\'s .redactPII() method enforces GDPR Article 25 (Data Protection by Design), Article 5.1c (Data Minimization), and Article 32 (Security of Processing). Once configured, it is physically impossible for a developer to accidentally expose PII through the MCP wire format — the framework guarantees zero-leak at the structural level.' },
+      { q: 'Does MCP Fusion support LGPD and HIPAA compliance?', a: 'Yes. The DLP engine addresses LGPD requirements (Adequação, Necessidade, Segurança, Prevenção) and HIPAA requirements (Minimum Necessary, Access Controls, Transmission Security). Sensitive fields are structurally masked before crossing any network boundary.' },
+      { q: 'How do I configure PII redaction in MCP Fusion?', a: 'Use the fluent API: createPresenter(\"Patient\").schema({...}).redactPII([\"ssn\", \"diagnosis\", \"email\"]). Or the declarative API: definePresenter({ redactPII: { paths: [\"ssn\"], censor: \"***\" } }). Both compile the redaction function at configuration time for near-zero runtime overhead.' },
+      { q: 'What path syntax does the DLP engine support?', a: 'The DLP engine supports fast-redact path syntax: dot notation (\"user.ssn\"), bracket notation (\"user[\\\"ssn\\\"]\"), wildcards (\"*.ssn\"), array items (\"patients[*].diagnosis\"), specific indices (\"items[0].secret\"), and deeply nested wildcards (\"records[*].contact.email\").' },
+      { q: 'Is fast-redact required to use MCP Fusion?', a: 'No. fast-redact is an optional peer dependency. If not installed, the framework logs a warning and passes data through unmodified — no crashes. Install it only on servers that handle PII: npm install fast-redact.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
   // INTROSPECTION
   // ═══════════════════════════════════════════════════════
   'introspection.md': {

@@ -130,6 +130,28 @@ export interface PresenterConfig<T> {
      * @default true
      */
     readonly autoRules?: boolean;
+
+    /**
+     * PII redaction paths for DLP compliance.
+     *
+     * Compiles object paths into V8-optimized masking functions
+     * using `fast-redact`. Masked data reaches the LLM, while
+     * UI blocks and system rules see the full unmasked data.
+     *
+     * Requires `fast-redact` as an optional peer dependency.
+     *
+     * @example
+     * ```typescript
+     * redactPII: {
+     *     paths: ['*.ssn', 'credit_card.number', 'patients[*].diagnosis'],
+     *     censor: '[REDACTED]',
+     * }
+     * ```
+     */
+    readonly redactPII?: {
+        readonly paths: string[];
+        readonly censor?: string | ((value: unknown) => string);
+    };
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -247,6 +269,10 @@ export function definePresenter(config: PresenterConfig<unknown>): Presenter<unk
         for (const embed of config.embeds) {
             presenter.embed(embed.key, embed.presenter);
         }
+    }
+
+    if (config.redactPII) {
+        presenter.redactPII(config.redactPII.paths, config.redactPII.censor);
     }
 
     return presenter;

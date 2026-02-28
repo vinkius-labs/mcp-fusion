@@ -58,6 +58,7 @@ import { type UiBlock } from './ui.js';
 import { PresenterValidationError } from './PresenterValidationError.js';
 import { applySelectFilter, extractZodKeys } from './SelectUtils.js';
 import { defaultSerializer, type StringifyFn } from '../core/serialization/JsonSerializer.js';
+import { compileRedactor, type RedactConfig, type RedactFn } from './RedactEngine.js';
 
 // ── Brand ────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ export class Presenter<T> {
     private _embeds: EmbedEntry[] = [];
     private _sealed = false;
     private _compiledStringify: StringifyFn | undefined;
+    private _compiledRedactor: RedactFn | undefined;
 
     /** @internal Use {@link createPresenter} factory instead */
     constructor(name: string) {
@@ -490,6 +492,87 @@ export class Presenter<T> {
         return this;
     }
 
+    // ── DLP Compliance (PII Redaction) ────────────────────
+
+    /**
+     * Declare PII fields to redact before data leaves the framework.
+     *
+     * Uses `fast-redact` (Pino's V8-optimized serialization engine) to
+     * compile object paths into hyper-fast masking functions at config
+     * time — zero overhead on the hot path.
+     *
+     * The redaction is applied **structurally** on the wire-facing data
+     * (after `_select` filter, before `ResponseBuilder`). UI blocks and
+     * system rules still see the **full unmasked data** (Late Guillotine
+     * pattern preserved).
+     *
+     * Requires `fast-redact` as an optional peer dependency.
+     * If not installed, passes data through unmodified (defensive fallback).
+     *
+     * @param paths - Object paths to redact. Supports dot notation,
+     *   bracket notation, wildcards (`'*'`), and array indices.
+     * @param censor - Replacement value. Default: `'[REDACTED]'`.
+     *   Can be a function `(originalValue) => maskedValue`.
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * // Basic PII masking
+     * createPresenter('Patient')
+     *     .schema({ name: t.string, ssn: t.string, diagnosis: t.string })
+     *     .redactPII(['ssn', 'diagnosis'])
+     *
+     * // Wildcard — redact all nested SSN fields
+     * createPresenter('Users')
+     *     .redactPII(['*.ssn', '*.password', 'credit_card.number'])
+     *
+     * // Array wildcard — redact diagnosis in all patients
+     * createPresenter('Hospital')
+     *     .redactPII(['patients[*].diagnosis', 'patients[*].ssn'])
+     *
+     * // Custom censor — last 4 digits visible
+     * createPresenter('Payment')
+     *     .redactPII(['credit_card.number'], (v) => '****-****-****-' + String(v).slice(-4))
+     * ```
+     *
+     * @see {@link https://github.com/davidmarkclements/fast-redact | fast-redact}
+     */
+    redactPII(
+        paths: string[],
+        censor?: string | ((value: unknown) => string),
+    ): this {
+        this._assertNotSealed();
+
+        const config: RedactConfig = {
+            paths,
+            ...(censor !== undefined ? { censor } : {}),
+        };
+        this._compiledRedactor = compileRedactor(config);
+
+        return this;
+    }
+
+    /**
+     * Alias for `.redactPII()` — fluent shorthand.
+     *
+     * @param paths - Object paths to redact
+     * @param censor - Replacement value or function
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createPresenter('User')
+     *     .schema({ name: t.string, ssn: t.string })
+     *     .redact(['ssn'])
+     * ```
+     */
+    redact(
+        paths: string[],
+        censor?: string | ((value: unknown) => string),
+    ): this {
+        return this.redactPII(paths, censor);
+    }
+
     // ── Introspection (read-only metadata accessors) ─────
 
     /**
@@ -609,7 +692,11 @@ export class Presenter<T> {
             ? applySelectFilter(validated, selectFields, isArray)
             : validated;
 
-        const builder = new ResponseBuilder(wireData as string | object, this._compiledStringify);
+        // Step 3.1: DLP Redaction — mask PII on the wire-facing data
+        // Uses structuredClone so UI blocks/rules still see full data.
+        const safeWireData = this._applyRedaction(wireData, isArray);
+
+        const builder = new ResponseBuilder(safeWireData as string | object, this._compiledStringify);
 
         // Step 3.5: Truncation warning (first UI block, before all others)
         if (truncationBlock) {
@@ -632,6 +719,23 @@ export class Presenter<T> {
     }
 
     // ── Private Decomposed Steps ─────────────────────────
+
+    /**
+     * Apply PII redaction to wire-facing data.
+     * Creates a deep clone to preserve original data for UI/rules.
+     * @internal
+     */
+    private _applyRedaction(data: T | T[], isArray: boolean): T | T[] {
+        if (!this._compiledRedactor) return data;
+
+        if (isArray) {
+            return (data as T[]).map(item =>
+                this._compiledRedactor!(item) as T,
+            );
+        }
+
+        return this._compiledRedactor(data) as T;
+    }
 
     /**
      * Validate data through the Zod schema (if configured).
