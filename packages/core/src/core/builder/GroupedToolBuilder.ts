@@ -65,6 +65,7 @@ import {
 import { type ProgressSink } from '../execution/ProgressHelper.js';
 import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
 import { applyEgressGuard } from '../execution/EgressGuard.js';
+import { type SandboxConfig } from '../../sandbox/SandboxEngine.js';
 import { MutationSerializer } from '../execution/MutationSerializer.js';
 import { computeResponseSize, type PipelineHooks } from '../execution/PipelineHooks.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
@@ -171,6 +172,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _tracer?: FusionTracer;
     private _concurrencyGuard?: ConcurrencyGuard;
     private _egressMaxBytes?: number;
+    private _sandboxConfig?: SandboxConfig;
     private _mutationSerializer?: MutationSerializer;
     private readonly _stateSyncHints = new Map<string, StateSyncHint>();
 
@@ -520,6 +522,39 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         this._assertNotFrozen();
         this._egressMaxBytes = Math.max(1024, Math.floor(bytes));
         return this;
+    }
+
+    /**
+     * Enable zero-trust sandboxed execution for this tool.
+     *
+     * Stores the sandbox configuration so that tools built with
+     * `.sandboxed()` on the FluentToolBuilder can propagate it.
+     *
+     * @param config - Sandbox configuration (timeout, memory, output size)
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createTool<AppContext>('analytics')
+     *     .sandbox({ timeout: 5000, memoryLimit: 128 })
+     *     .action({ name: 'compute', handler: computeHandler });
+     * ```
+     *
+     * @see {@link SandboxConfig} for configuration options
+     * @see {@link SandboxEngine} for the execution engine
+     */
+    sandbox(config: SandboxConfig): this {
+        this._assertNotFrozen();
+        this._sandboxConfig = config;
+        return this;
+    }
+
+    /**
+     * Get the sandbox configuration (if any).
+     * Used by framework internals and tests.
+     */
+    getSandboxConfig(): SandboxConfig | undefined {
+        return this._sandboxConfig;
     }
 
     /**

@@ -1387,6 +1387,59 @@ expect(oom.isError).toBe(true);
 expect(JSON.stringify(result.rawResponse)).not.toContain('passwordHash');
 ```
 
+### Zero-Trust Sandbox Engine
+
+Execute LLM-generated JavaScript in a sealed V8 isolate (via `isolated-vm`). The LLM sends a function as a string, the framework runs it in an empty V8 Context with zero access to Node.js APIs (no `process`, `require`, `fs`, `net`, `eval`). Data stays on the server — only the computed result crosses the boundary.
+
+- `SandboxEngine(config?)` — manages V8 Isolate lifecycle, per-request Context creation, and mandatory C++ pointer cleanup
+  - `.execute(code, data?)` → Promise<SandboxResult> — compile, run, return result with timing
+  - `.dispose()` → void — destroy the Isolate and release all native resources
+  - Config: `{ timeout?: number (default 5000), memoryLimit?: number (default 128), maxOutputBytes?: number (default 1_048_576) }`
+- `SandboxResult<T>` — `{ ok: true, value: T, executionMs: number }` | `{ ok: false, error: string, code: SandboxErrorCode }`
+- `SandboxErrorCode` — `'TIMEOUT' | 'MEMORY' | 'SYNTAX' | 'RUNTIME' | 'GUARD' | 'OUTPUT_TOO_LARGE' | 'ISOLATE_DEAD'`
+- `validateSandboxCode(code)` → `{ valid: boolean, error?: string }` — fail-fast syntax check (SandboxGuard). Rejects non-function expressions and flags suspicious patterns. Speed optimization, not security boundary.
+- `SANDBOX_SYSTEM_INSTRUCTION` — constant injected via HATEOAS auto-prompting when `.sandboxed()` is used
+
+**Fluent API Integration:**
+- `.sandboxed(config?)` on FluentToolBuilder — enables sandbox + injects SANDBOX_SYSTEM_INSTRUCTION into description
+- `f.sandbox(config?)` → SandboxEngine — standalone factory via initFusion
+
+**V8 Engineering Rules:**
+1. One Isolate, new Context per request — Isolate reuse for performance, Context isolation for security
+2. Mandatory `try/finally` with `.release()` on every ExternalCopy, Script, Context — prevents C++ memory leaks outside Node GC
+3. Async-only execution — `script.run()` (not `runSync()`) to avoid blocking the event loop
+4. Automatic Isolate recreation if OOM kills the Isolate — next `.execute()` transparently creates a fresh one
+
+**Security Model:**
+- Empty V8 Context — no globalThis properties, no setTimeout, no console, no Proxy, no Function constructor
+- Prototype pollution blocked — Object.prototype is frozen inside the isolate
+- constructor.constructor escape blocked — Function constructor does not exist
+- arguments.callee blocked — strict mode enforced
+- import() blocked — dynamic import not available in the isolate
+
+`isolated-vm` is an **optional** peer dependency — lazy-loaded only when SandboxEngine is instantiated.
+
+```typescript
+// Fluent API — one-liner
+const compute = f.query('analytics.compute')
+    .sandboxed({ timeout: 3000, memoryLimit: 64 })
+    .withString('code', 'JavaScript function as string')
+    .handle(async (input, ctx) => {
+        const engine = f.sandbox({ timeout: 3000 });
+        const result = await engine.execute(input.code, ctx.data);
+        if (!result.ok) return f.error(result.code, result.error);
+        return result.value;
+    });
+
+// Standalone
+import { SandboxEngine } from '@vinkius-core/mcp-fusion';
+const engine = new SandboxEngine({ timeout: 5000, memoryLimit: 128 });
+const result = await engine.execute('(data) => data.filter(d => d.risk > 90)', records);
+engine.dispose();
+```
+
+Subpath export: `@vinkius-core/mcp-fusion/sandbox`
+
 ### AWS Connector (from 'mcp-fusion-aws')
 
 Auto-discover AWS Lambda functions and Step Functions via resource tags and expose them as grouped MCP tools. Tag filtering controls what the AI can see.

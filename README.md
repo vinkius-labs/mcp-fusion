@@ -31,6 +31,44 @@ Model (Zod Schema) → View (Presenter) → Agent (LLM)
    validates            perceives          acts
 ```
 
+### 🔒 Zero-Trust Sandbox Engine — Computation Delegation via `isolated-vm`
+
+Every MCP server has the same unspoken liability: **the LLM wants to run logic on your data.** Without a sandbox, you have two options — both unacceptable. You either ship raw data to the model (egressing GBs over the wire, violating data residency, and paying per-token for noise), or you `eval()` LLM-generated strings on your production process and pray.
+
+MCP Fusion eliminates both. The framework ships a **V8 Isolate sandbox** powered by [`isolated-vm`](https://github.com/laverdet/isolated-vm) — the same library used by Temporal for deterministic workflow replay. The LLM sends a JavaScript function as a string. The engine executes it in a **sealed V8 instance with zero access** to `process`, `require`, `fs`, `net`, `child_process`, `globalThis`, or any Node.js API. The data stays on the server. Only the computed result crosses the boundary.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  LLM sends:  (data) => data.filter(d => d.risk > 90)              │
+│                                                                     │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐    │
+│  │ Guard    │──▸│ Compile  │──▸│ Execute  │──▸│ Result Only  │    │
+│  │ (syntax) │   │ (V8)     │   │ (sealed) │   │ (JSON out)   │    │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────────┘    │
+│                                                                     │
+│  ✘ No process  ✘ No require  ✘ No fs  ✘ No net  ✘ No eval escape  │
+│  ✔ Timeout kill  ✔ Memory cap  ✔ Output limit  ✔ Isolate recovery  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**V8 Engineering guarantees enforced at the framework level:**
+
+- **One Isolate per engine, new Context per call** — no state leaks between executions. Each call gets a pristine, empty global scope.
+- **Mandatory C++ pointer release** — `ExternalCopy`, `Script`, and `Context` are deallocated in `try/finally` blocks on every code path: success, runtime error, timeout, and OOM. No dangling native memory.
+- **Async-only execution** — `script.run()`, never `runSync()`. The Node.js event loop is never blocked, even if the sandboxed code runs for the full timeout window.
+- **Automatic Isolate recovery** — if a script triggers an Out-Of-Memory kill, the engine detects `isDisposed`, discards the dead Isolate, and creates a fresh one on the next call. Zero manual intervention.
+
+```typescript
+// One line turns any tool into a sandboxed computation endpoint
+f.query('data.compute')
+    .sandboxed({ timeout: 3000, memoryLimit: 64 })
+    .handle(async (input, ctx) => { /* ... */ });
+```
+
+> **The inversion:** instead of sending your data to the model, the model sends its logic to your data. Your MCP server becomes a **serverless compute boundary** — air-gapped, resource-limited, and self-healing.
+
+> **Docs**: [mcp-fusion.vinkius.com/sandbox](https://mcp-fusion.vinkius.com/sandbox)
+
 ---
 
 ## Quick Start

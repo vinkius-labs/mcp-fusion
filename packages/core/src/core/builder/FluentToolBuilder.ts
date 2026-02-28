@@ -31,6 +31,8 @@ import { type ToolResponse, type MiddlewareFn } from '../types.js';
 import { success } from '../response.js';
 import { type Presenter } from '../../presenter/Presenter.js';
 import { type ConcurrencyConfig } from '../execution/ConcurrencyGuard.js';
+import { type SandboxConfig } from '../../sandbox/SandboxEngine.js';
+import { SANDBOX_SYSTEM_INSTRUCTION } from '../../sandbox/index.js';
 
 // ── Semantic Verb Defaults ───────────────────────────────
 
@@ -96,6 +98,7 @@ export class FluentToolBuilder<
     /** @internal */ _cacheControl?: 'no-store' | 'immutable';
     /** @internal */ _concurrency?: ConcurrencyConfig;
     /** @internal */ _egressMaxBytes?: number;
+    /** @internal */ _sandboxConfig?: SandboxConfig;
 
     /**
      * @param name - Tool name in `domain.action` format (e.g. `'users.list'`)
@@ -503,6 +506,40 @@ export class FluentToolBuilder<
         return this;
     }
 
+    // ── Sandbox (Zero-Trust Compute) ─────────────────
+
+    /**
+     * Enable zero-trust sandboxed execution for this tool.
+     *
+     * When enabled:
+     * 1. A `SandboxEngine` is lazily created on the `GroupedToolBuilder`
+     * 2. A system instruction is auto-injected into the tool description
+     *    (HATEOAS auto-prompting) so the LLM knows to send JS functions
+     * 3. The handler can use `SandboxEngine.execute()` to run LLM code
+     *    in a sealed V8 isolate (no process, require, fs, network)
+     *
+     * @param config - Optional sandbox configuration (timeout, memory, output size)
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * f.query('data.compute')
+     *     .describe('Run safe computation on server data')
+     *     .sandboxed({ timeout: 3000, memoryLimit: 64 })
+     *     .withString('expression', 'JS arrow function: (data) => result')
+     *     .handle(async (input, ctx) => {
+     *         const data = await ctx.db.records.findMany();
+     *         const engine = new SandboxEngine({ timeout: 3000 });
+     *         const result = await engine.execute(input.expression, data);
+     *         return result.ok ? result.value : { error: result.error };
+     *     });
+     * ```
+     */
+    sandboxed(config?: SandboxConfig): FluentToolBuilder<TContext, TInput, TCtx> {
+        this._sandboxConfig = config ?? {};
+        return this;
+    }
+
     // ── Terminal: handle() ───────────────────────────────
 
     /**
@@ -574,6 +611,10 @@ export class FluentToolBuilder<
         if (this._description) {
             descParts.push(this._description);
         }
+        // HATEOAS Auto-Prompting: teach the LLM about sandbox capability
+        if (this._sandboxConfig) {
+            descParts.push(SANDBOX_SYSTEM_INSTRUCTION.trim());
+        }
         const compiledDescription = descParts.length > 0 ? descParts.join('\n\n') : undefined;
 
         // Resolve semantic defaults + overrides
@@ -622,6 +663,11 @@ export class FluentToolBuilder<
         }
         if (this._egressMaxBytes !== undefined) {
             builder.maxPayloadBytes(this._egressMaxBytes);
+        }
+
+        // Propagate sandbox config
+        if (this._sandboxConfig) {
+            builder.sandbox(this._sandboxConfig);
         }
 
         // Apply middleware

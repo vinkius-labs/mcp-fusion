@@ -39,6 +39,9 @@ export type { ProgressEvent, ProgressSink } from './execution/index.js';
 export type { ConcurrencyConfig } from './execution/index.js';
 export type { EgressConfig } from './execution/index.js';
 
+// ── Sandbox (Zero-Trust Compute Delegation) ──────────────
+export type { SandboxConfig, SandboxResult, SandboxErrorCode } from '../sandbox/index.js';
+
 // ── Middleware (context derivation) ──────────────────────
 export { defineMiddleware, resolveMiddleware } from './middleware/index.js';
 export type { MiddlewareDefinition, MergeContext, InferContextOut } from './middleware/index.js';

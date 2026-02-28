@@ -50,6 +50,7 @@ import { FluentRouter } from './builder/FluentRouter.js';
 import { ErrorBuilder } from './builder/ErrorBuilder.js';
 import { StateSyncBuilder } from '../state-sync/StateSyncBuilder.js';
 import { type ErrorCode } from './response.js';
+import { SandboxEngine, type SandboxConfig } from '../sandbox/SandboxEngine.js';
 
 // ── Config Types ─────────────────────────────────────────
 
@@ -245,6 +246,29 @@ export interface FusionInstance<TContext> {
      * @internal
      */
     defineTool(name: string, config: ToolConfig<TContext>): GroupedToolBuilder<TContext>;
+
+    // ── Sandbox (Zero-Trust V8 Compute) ─────────────
+
+    /**
+     * Create a standalone SandboxEngine for advanced use cases.
+     *
+     * Use when you need direct control over the sandbox lifecycle,
+     * or when calling it from custom middleware/handlers.
+     *
+     * @param config - Optional sandbox configuration
+     * @returns A new SandboxEngine instance
+     *
+     * @example
+     * ```typescript
+     * const sandbox = f.sandbox({ timeout: 3000, memoryLimit: 64 });
+     * const result = await sandbox.execute(
+     *     '(data) => data.filter(d => d.risk > 90)',
+     *     records,
+     * );
+     * sandbox.dispose();
+     * ```
+     */
+    sandbox(config?: SandboxConfig): SandboxEngine;
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -342,6 +366,12 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
 
         defineTool(name: string, config: ToolConfig<TContext>): GroupedToolBuilder<TContext> {
             return defineTool<TContext>(name, config);
+        },
+
+        // ── Sandbox ──────────────────────────────────────
+
+        sandbox(config?: SandboxConfig): SandboxEngine {
+            return new SandboxEngine(config);
         },
     };
 }

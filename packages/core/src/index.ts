@@ -11,6 +11,7 @@
  *   ├── observability/ ← Debug Observer, Tracing
  *   ├── presenter/     ← MVA View Layer
  *   ├── prompt/        ← Prompt Engine
+ *   ├── sandbox/       ← Zero-Trust V8 Computation Delegation
  *   ├── server/        ← Server Attachment
  *   ├── exposition/    ← Flat/Grouped Topology Compiler
  *   ├── state-sync/    ← Epistemic Cache-Control
@@ -81,6 +82,7 @@ export type {
     ProgressEvent, ProgressSink,
     MiddlewareDefinition, MergeContext, InferContextOut,
     ConcurrencyConfig, EgressConfig,
+    SandboxConfig, SandboxResult, SandboxErrorCode,
     FusionInstance,
     GroupConfig, GroupAction, CompiledGroup,
     StandardSchemaV1, StandardSchemaIssue, InferStandardOutput,
@@ -322,3 +324,9 @@ export type {
     GovernanceObserverConfig,
     GovernanceObserver,
 } from './introspection/GovernanceObserver.js';
+
+// ── Sandbox (Zero-Trust V8 Compute Delegation) ──────────
+/** @category Sandbox */
+export { SandboxEngine, validateSandboxCode, SANDBOX_SYSTEM_INSTRUCTION } from './sandbox/index.js';
+/** @category Sandbox */
+export type { GuardResult } from './sandbox/index.js';

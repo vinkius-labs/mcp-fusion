@@ -239,6 +239,7 @@ export default defineConfig({
           { text: 'FusionClient', link: '/fusion-client' },
           { text: 'Cancellation', link: '/cancellation' },
           { text: 'Runtime Guards', link: '/runtime-guards' },
+          { text: 'Sandbox Engine', link: '/sandbox' },
           { text: 'Advanced Configuration', link: '/advanced-configuration' },
         ]
       },

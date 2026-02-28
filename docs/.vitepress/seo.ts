@@ -1595,6 +1595,23 @@ const pages: Record<string, PageSEO> = {
       { q: 'How should I handle compensation logic when a workflow step fails?', a: 'Compensate in reverse order — undo the most recent step first, working backwards to the first step. Each catch block should: (1) call the compensation action for each successfully completed step (e.g., refund the charge, delete the user), (2) return f.error() with a specific error code for the failure point, (3) include .suggest() with actionable recovery instructions, and (4) optionally add .retryAfter(seconds) to tell the agent when to retry.' },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // SANDBOX ENGINE
+  // ═══════════════════════════════════════════════════════
+  'sandbox.md': {
+    title: 'Zero-Trust Sandbox Engine — Secure V8 Isolate for LLM Code Execution',
+    description: 'Execute LLM-generated JavaScript in a sealed V8 isolate with zero access to Node.js APIs. Memory limits, timeouts, output caps, and automatic C++ pointer cleanup via isolated-vm.',
+    faqs: [
+      { q: 'What is the Sandbox Engine in MCP Fusion?', a: 'The Sandbox Engine lets an LLM send JavaScript logic as a string to your MCP server. The framework executes that code inside a sealed V8 isolate (via isolated-vm) with zero access to process, require, fs, net, or eval. Data stays on the server — only the computed result crosses the boundary. This is Computation Delegation: serverless ultra-secure execution inside the client\'s own server.' },
+      { q: 'How does the Sandbox Engine prevent security attacks?', a: 'The V8 Context is created completely empty — no globalThis properties, no setTimeout, no console, no Proxy, no Function constructor. Even if the LLM sends malicious code attempting prototype pollution, constructor escapes, or import() calls, the V8 engine itself blocks execution because those APIs physically do not exist inside the isolate.' },
+      { q: 'What resource limits does the Sandbox Engine enforce?', a: 'Three configurable limits: timeout (default 5000ms) kills scripts that run too long, memoryLimit (default 128MB) caps V8 heap allocation, and maxOutputBytes (default 1MB) prevents oversized results from flooding the response. All limits are enforced at the V8 engine level — not in JavaScript — making them impossible to bypass.' },
+      { q: 'How does the Sandbox Engine prevent memory leaks?', a: 'Every ExternalCopy, Script, and Context created during execution is released in a mandatory try/finally block. The copyInto({ release: true }) pattern auto-releases the C++ pointer when data enters the isolate. If the isolate dies (OOM), the engine automatically recreates it on the next call. This prevents the most dangerous class of Node.js memory leak: C++ pointers outside the GC.' },
+      { q: 'What is SandboxGuard in MCP Fusion?', a: 'SandboxGuard is a fail-fast syntax checker that runs BEFORE the V8 isolate. It rejects non-function expressions, flags suspicious patterns (require, import, process), and validates basic structure. This is a speed optimization — catching obvious errors before allocating V8 resources — not a security boundary. The empty V8 Context is the real security boundary.' },
+      { q: 'How do I enable sandboxing in the Fluent API?', a: 'Call .sandboxed() on any FluentToolBuilder: f.query("analytics.compute").sandboxed({ timeout: 3000 }).handle(...). This stores the sandbox configuration and injects a SANDBOX_SYSTEM_INSTRUCTION into the tool description via HATEOAS auto-prompting, teaching the LLM how to format JavaScript code for the sandbox.' },
+      { q: 'Is isolated-vm required to use MCP Fusion?', a: 'No. isolated-vm is an optional peer dependency. The SandboxEngine uses lazy loading — it only attempts to import isolated-vm when you actually create an engine instance. If isolated-vm is not installed, the import fails gracefully with a clear error message. All other MCP Fusion features work without it.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════
