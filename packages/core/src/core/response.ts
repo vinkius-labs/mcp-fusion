@@ -27,6 +27,7 @@
  * @module
  */
 import { encode, type EncodeOptions } from '@toon-format/toon';
+import { type StringifyFn } from './serialization/JsonSerializer.js';
 
 // ============================================================================
 // XML Safety
@@ -122,10 +123,10 @@ export interface ToolResponse {
  * @see {@link error} for error responses
  * @see {@link toonSuccess} for token-optimized array responses
  */
-export function success(data: string | object): ToolResponse {
+export function success(data: string | object, compiledStringify?: StringifyFn): ToolResponse {
     const text = typeof data === 'string'
         ? (data || 'OK')
-        : JSON.stringify(data, null, 2);
+        : (compiledStringify ? compiledStringify(data) : JSON.stringify(data, null, 2));
     return { content: [{ type: "text", text }] };
 }
 

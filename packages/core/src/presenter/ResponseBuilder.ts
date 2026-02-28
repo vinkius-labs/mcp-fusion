@@ -32,6 +32,7 @@
 import { type ToolResponse } from '../core/response.js';
 import { type UiBlock } from './ui.js';
 import { MVA_META_SYMBOL } from '../testing/MvaMetaSymbol.js';
+import { type StringifyFn } from '../core/serialization/JsonSerializer.js';
 
 /** A suggested next action for HATEOAS-style agent guidance */
 export interface ActionSuggestion {
@@ -92,10 +93,10 @@ export class ResponseBuilder {
     private readonly _rawBlocks: string[] = [];
 
     /** @internal Use {@link response} factory instead */
-    constructor(data: string | object) {
+    constructor(data: string | object, compiledStringify?: StringifyFn) {
         this._data = typeof data === 'string'
             ? (data || 'OK')
-            : JSON.stringify(data, null, 2);
+            : (compiledStringify ? compiledStringify(data) : JSON.stringify(data, null, 2));
     }
 
     /**

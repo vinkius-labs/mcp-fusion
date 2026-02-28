@@ -57,6 +57,7 @@ import { ResponseBuilder } from './ResponseBuilder.js';
 import { type UiBlock } from './ui.js';
 import { PresenterValidationError } from './PresenterValidationError.js';
 import { applySelectFilter, extractZodKeys } from './SelectUtils.js';
+import { defaultSerializer, type StringifyFn } from '../core/serialization/JsonSerializer.js';
 
 // ── Brand ────────────────────────────────────────────────
 
@@ -146,6 +147,7 @@ export class Presenter<T> {
     private _agentLimit?: AgentLimitConfig;
     private _embeds: EmbedEntry[] = [];
     private _sealed = false;
+    private _compiledStringify: StringifyFn | undefined;
 
     /** @internal Use {@link createPresenter} factory instead */
     constructor(name: string) {
@@ -233,6 +235,11 @@ export class Presenter<T> {
             // Plain object shape → wrap in z.object()
             narrowed._schema = z.object(schemaOrShape as ZodRawShape);
         }
+
+        // AOT: Lazy-compile a fast stringify function for this schema.
+        // Falls back to JSON.stringify if fast-json-stringify is unavailable.
+        narrowed._compiledStringify = defaultSerializer.compile(narrowed._schema);
+
         return narrowed;
     }
 
@@ -602,7 +609,7 @@ export class Presenter<T> {
             ? applySelectFilter(validated, selectFields, isArray)
             : validated;
 
-        const builder = new ResponseBuilder(wireData as string | object);
+        const builder = new ResponseBuilder(wireData as string | object, this._compiledStringify);
 
         // Step 3.5: Truncation warning (first UI block, before all others)
         if (truncationBlock) {

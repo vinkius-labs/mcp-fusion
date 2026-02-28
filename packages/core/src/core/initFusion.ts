@@ -51,6 +51,7 @@ import { ErrorBuilder } from './builder/ErrorBuilder.js';
 import { StateSyncBuilder } from '../state-sync/StateSyncBuilder.js';
 import { type ErrorCode } from './response.js';
 import { SandboxEngine, type SandboxConfig } from '../sandbox/SandboxEngine.js';
+import { defaultSerializer, type JsonSerializer } from './serialization/JsonSerializer.js';
 
 // ── Config Types ─────────────────────────────────────────
 
@@ -269,6 +270,24 @@ export interface FusionInstance<TContext> {
      * ```
      */
     sandbox(config?: SandboxConfig): SandboxEngine;
+
+    // ── Serialization ─────────────────────────────────
+
+    /**
+     * AOT JSON serializer.
+     *
+     * Compile Zod schemas into hyper-fast stringify functions at boot time.
+     * Used internally by Presenters; exposed here for advanced use cases.
+     *
+     * @example
+     * ```typescript
+     * const stringify = f.serializer.compile(myZodSchema);
+     * if (stringify) {
+     *     return success(data, stringify); // 2-5x faster
+     * }
+     * ```
+     */
+    readonly serializer: JsonSerializer;
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -373,5 +392,9 @@ export function initFusion<TContext = void>(): FusionInstance<TContext> {
         sandbox(config?: SandboxConfig): SandboxEngine {
             return new SandboxEngine(config);
         },
+
+        // ── Serialization ────────────────────────────────
+
+        serializer: defaultSerializer,
     };
 }

@@ -330,3 +330,9 @@ export type {
 export { SandboxEngine, validateSandboxCode, SANDBOX_SYSTEM_INSTRUCTION } from './sandbox/index.js';
 /** @category Sandbox */
 export type { GuardResult } from './sandbox/index.js';
+
+// ── Serialization (AOT JSON Engine) ─────────────────────
+/** @category Serialization */
+export { createSerializer, defaultSerializer } from './core/serialization/index.js';
+/** @category Serialization */
+export type { StringifyFn, JsonSerializer } from './core/serialization/index.js';
