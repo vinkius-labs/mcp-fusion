@@ -52,7 +52,7 @@
     },
     "devDependencies": {
         "@types/node": "^25.3.0",
-        "@vinkius-core/mcp-fusion": "workspace:*"
+        "@vinkius-core/mcp-fusion": ">=2.14.0"
     },
     "license": "Apache-2.0"
 }
