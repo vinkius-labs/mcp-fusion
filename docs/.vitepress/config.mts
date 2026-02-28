@@ -288,6 +288,7 @@ export default defineConfig({
               { text: 'Prompts', link: '/cookbook/prompts' },
               { text: 'Runtime Guards', link: '/cookbook/runtime-guards' },
               { text: 'Self-Healing Context', link: '/cookbook/self-healing-context' },
+              { text: 'Transactional Workflows', link: '/cookbook/transactional-workflows' },
               { text: 'TOON Encoding', link: '/cookbook/toon' },
             ]
           },
@@ -314,6 +315,15 @@ export default defineConfig({
               { text: 'Testing', link: '/cookbook/testing' },
             ]
           },
+        ]
+      },
+
+      // ── Common Issues ───────────────────────────────────
+      {
+        text: 'Common Issues',
+        collapsed: true,
+        items: [
+          { text: 'Overview', link: '/common-issues/' },
         ]
       },
 

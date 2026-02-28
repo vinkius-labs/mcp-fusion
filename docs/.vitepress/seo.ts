@@ -1563,6 +1563,38 @@ const pages: Record<string, PageSEO> = {
       { q: "How do I mock external APIs during a tool test?", a: "Because MCP Fusion is standard Node.js/TypeScript, you can use standard mocking libraries like `msw` (Mock Service Worker), `nock`, or `jest.spyOn()` to mock external fetch calls independently from the MCP routing logic." },
     ],
   },
+
+  // ═══════════════════════════════════════════════════════
+  // COMMON ISSUES
+  // ═══════════════════════════════════════════════════════
+  'common-issues/index.md': {
+    title: 'Common Issues in Agentic Systems — Failure Modes & Solutions',
+    description: 'Catalog of the most common failure modes in AI agent systems: partial failures, parameter hallucination, thundering herd, context overflow, stale data, blind retries, data leaks, and race conditions. How MCP Fusion solves each one at the framework level.',
+    faqs: [
+      { q: 'What are the most common failure modes in AI agent systems?', a: 'The eight most common failure modes are: (1) Partial failure in multi-step operations — agent completes some steps but not all, leaving corrupted state. (2) Parameter hallucination — agent invents fields that don\'t exist. (3) Thundering herd — agent fires identical destructive calls simultaneously. (4) Context window overflow — unbounded response sizes crash the agent. (5) Stale data after mutations — agent acts on outdated cached data. (6) Blind retry loops — agent retries with the same bad parameters. (7) Data leaking to the LLM — sensitive fields like password hashes reach the context. (8) Race conditions on destructive operations — concurrent delete and update on the same record.' },
+      { q: 'How does MCP Fusion prevent partial failures in multi-step workflows?', a: 'Instead of exposing each step as a separate tool (where the agent controls ordering and has no transaction boundary), MCP Fusion composes the entire workflow into a single f.mutation() tool. The handler orchestrates all steps internally with try/catch compensation logic. If step 3 fails, it rolls back steps 2 and 1 before returning a self-healing error. The agent sees one tool, one call, one result — atomicity is a property of the server, not the client.' },
+      { q: 'How does MCP Fusion handle parameter hallucination by AI agents?', a: 'Every tool schema in MCP Fusion is compiled with Zod .strict() at build time. When an agent invents parameters that don\'t exist in the schema (like "isAdmin" or "priority"), the framework rejects them before they reach the handler with an actionable correction prompt listing valid fields. The agent self-corrects on the next attempt.' },
+      { q: 'What is the thundering herd problem in AI agents?', a: 'When an LLM fires multiple identical destructive requests in the same millisecond — for example, 5 identical billing.charge calls — all 5 execute concurrently, potentially charging the customer 5 times. MCP Fusion solves this with two guards: the Concurrency Guard (per-tool semaphore with backpressure queue) and the MutationSerializer (automatic FIFO serialization for all destructive operations).' },
+      { q: 'How does MCP Fusion prevent data leaks to AI agents?', a: 'The Presenter Egress Firewall uses Zod .strip() validation to remove undeclared fields in RAM before the response is serialized. The handler can return the full database object including password_hash, tenant_id, and internal_flags — the Presenter strips everything not declared in its schema. The LLM never sees sensitive data because it physically doesn\'t exist in the response.' },
+      { q: 'What are self-healing errors in MCP Fusion?', a: 'Instead of returning plain "Error: not found" strings that cause blind retry loops, MCP Fusion returns structured errors via f.error() with recovery instructions. The error includes an error code, a human-readable message, a recovery suggestion telling the agent exactly what to do next (e.g., "Use billing.list_invoices to find valid IDs"), and available actions. The agent self-corrects on the first retry instead of guessing.' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // COOKBOOK — TRANSACTIONAL WORKFLOWS
+  // ═══════════════════════════════════════════════════════
+  'cookbook/transactional-workflows.md': {
+    title: 'Transactional Workflows Recipe — Saga Pattern for MCP Tools',
+    description: 'Implement transactional multi-step workflows in MCP Fusion using the Saga Pattern. Compose create-charge-email workflows into a single tool with manual compensation, check-then-act validation, and idempotent retry-safe operations.',
+    faqs: [
+      { q: 'How do I implement the Saga Pattern in MCP Fusion?', a: 'MCP Fusion implements the Saga Pattern without any new abstraction. Compose multi-step operations into a single f.mutation() tool. Each step executes sequentially inside the handler. If a step fails, the catch block compensates all previous steps in reverse order and returns a self-healing f.error() with recovery instructions. The agent sees one atomic tool — not the individual steps.' },
+      { q: 'Why should I compose multi-step workflows into a single MCP tool?', a: 'Because the MCP protocol has no concept of a transaction spanning multiple tool calls. If you expose 3 separate tools (users.create, billing.charge, email.send), the agent calls them independently. If step 3 fails, steps 1 and 2 have already executed — leaving corrupted state. A single tool with internal compensation ensures atomicity at the server level, where the developer controls ordering and rollback.' },
+      { q: 'What is the check-then-act pattern for transactional MCP tools?', a: 'Check-then-act validates all preconditions before making any changes. Place all business rule checks (does the record exist? is the status correct? is it already processed?) before the first mutation. If every validation happens before the first database write, you never need compensation for validation errors — which are the most common failure mode with AI agents.' },
+      { q: 'How do I make MCP tool operations idempotent?', a: 'Design the handler to detect previous execution and return success without re-executing. Before performing the operation, check the current status: if (order.status === "fulfilled") return { status: "fulfilled", note: "Already fulfilled" }. Mark the tool with .idempotent() to signal to the LLM that retries are safe. The handler enforces idempotency; the annotation informs the client.' },
+      { q: 'How does MCP Fusion prevent concurrent execution of transactional workflows?', a: 'Three complementary mechanisms: (1) .destructive() activates the MutationSerializer, which serializes concurrent calls to the same tool in FIFO order. (2) .concurrency({ maxActive: 3, maxQueue: 10 }) limits simultaneous executions with a semaphore and backpressure queue. (3) .invalidates("users.*", "billing.*") signals stale data after success, preventing the agent from acting on outdated information.' },
+      { q: 'How should I handle compensation logic when a workflow step fails?', a: 'Compensate in reverse order — undo the most recent step first, working backwards to the first step. Each catch block should: (1) call the compensation action for each successfully completed step (e.g., refund the charge, delete the user), (2) return f.error() with a specific error code for the failure point, (3) include .suggest() with actionable recovery instructions, and (4) optionally add .retryAfter(seconds) to tell the agent when to retry.' },
+    ],
+  },
 };
 
 // ═══════════════════════════════════════════════════════
