@@ -196,7 +196,7 @@ export interface PresenterConfig<T> {
  * @see {@link createPresenter} for the legacy fluent builder API
  * @see {@link Presenter} for the full Presenter class documentation
  */
-export function definePresenter<TSchema extends ZodType>(
+export function definePresenter<TSchema extends ZodType<any, any, any>>(
     config: PresenterConfig<TSchema['_output']> & { schema: TSchema },
 ): Presenter<TSchema['_output']>;
 

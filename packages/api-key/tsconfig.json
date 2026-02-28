@@ -2,7 +2,11 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "rootDir": "./src",
-        "outDir": "./dist"
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "paths": {
+            "@vinkius-core/mcp-fusion": ["../../node_modules/@vinkius-core/mcp-fusion/dist/index.d.ts"]
+        }
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist", "tests"]
