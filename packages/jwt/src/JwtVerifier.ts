@@ -218,11 +218,13 @@ export class JwtVerifier {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
 
-        const [headerB64, payloadB64, signatureB64] = parts;
+        const headerB64 = parts[0]!;
+        const payloadB64 = parts[1]!;
+        const signatureB64 = parts[2]!;
 
         // Verify header
         try {
-            const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+            const header = JSON.parse(Buffer.from(headerB64, 'base64url' as BufferEncoding).toString());
             if (header.alg !== 'HS256') return null; // Only HS256 in native mode
         } catch {
             return null;
@@ -232,18 +234,18 @@ export class JwtVerifier {
         const expectedSignature = crypto
             .createHmac('sha256', this._config.secret!)
             .update(`${headerB64}.${payloadB64}`)
-            .digest('base64url');
+            .digest('base64url' as crypto.BinaryToTextEncoding);
 
         if (!crypto.timingSafeEqual(
-            Buffer.from(signatureB64, 'base64url'),
-            Buffer.from(expectedSignature, 'base64url'),
+            Buffer.from(signatureB64, 'base64url' as BufferEncoding),
+            Buffer.from(expectedSignature, 'base64url' as BufferEncoding),
         )) {
             return null;
         }
 
         // Decode payload
         try {
-            return JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as JwtPayload;
+            return JSON.parse(Buffer.from(payloadB64, 'base64url' as BufferEncoding).toString()) as JwtPayload;
         } catch {
             return null;
         }
@@ -313,7 +315,7 @@ export class JwtVerifier {
         try {
             const parts = token.split('.');
             if (parts.length !== 3) return null;
-            return JSON.parse(Buffer.from(parts[1], 'base64url').toString()) as JwtPayload;
+            return JSON.parse(Buffer.from(parts[1]!, 'base64url' as BufferEncoding).toString()) as JwtPayload;
         } catch {
             return null;
         }

@@ -13,7 +13,7 @@
  * ```
  */
 
-import { createTool, success, toolError } from '@vinkius-core/mcp-fusion';
+import { createTool } from '@vinkius-core/mcp-fusion';
 import type { ToolResponse } from '@vinkius-core/mcp-fusion';
 import { ApiKeyManager } from './ApiKeyManager.js';
 import type { ApiKeyManagerConfig } from './ApiKeyManager.js';
@@ -41,11 +41,11 @@ export interface ApiKeyToolConfig<TContext = unknown> extends ApiKeyManagerConfi
 // ============================================================================
 
 function ok(data: Record<string, unknown>): ToolResponse {
-    return success(data);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
 
 function fail(data: Record<string, unknown>): ToolResponse {
-    return toolError('APIKEY_ERROR', data);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }], isError: true };
 }
 
 // ============================================================================
@@ -75,13 +75,6 @@ export function createApiKeyTool<TContext = unknown>(config: ApiKeyToolConfig<TC
         .action({
             name: 'validate',
             description: 'Validate an API key',
-            schema: {
-                key: {
-                    type: 'string' as const,
-                    description: 'API key to validate',
-                    required: true as const,
-                },
-            },
             handler: async (_ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
                 const key = args['key'] as string | undefined;
                 if (!key) {

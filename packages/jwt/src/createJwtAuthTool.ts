@@ -15,7 +15,7 @@
  * ```
  */
 
-import { createTool, success, toolError } from '@vinkius-core/mcp-fusion';
+import { createTool } from '@vinkius-core/mcp-fusion';
 import type { ToolResponse } from '@vinkius-core/mcp-fusion';
 import { JwtVerifier } from './JwtVerifier.js';
 import type { JwtVerifierConfig, JwtPayload } from './JwtVerifier.js';
@@ -46,11 +46,11 @@ export interface JwtAuthToolConfig<TContext = unknown> extends JwtVerifierConfig
 // ============================================================================
 
 function ok(data: Record<string, unknown>): ToolResponse {
-    return success(data);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
 
 function fail(data: Record<string, unknown>): ToolResponse {
-    return toolError('JWT_ERROR', data);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }], isError: true };
 }
 
 // ============================================================================
@@ -80,13 +80,6 @@ export function createJwtAuthTool<TContext = unknown>(config: JwtAuthToolConfig<
         .action({
             name: 'verify',
             description: 'Verify a JWT and return decoded claims',
-            schema: {
-                token: {
-                    type: 'string' as const,
-                    description: 'JWT to verify',
-                    required: true as const,
-                },
-            },
             handler: async (_ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
                 const token = args['token'] as string | undefined;
                 if (!token) {
