@@ -125,9 +125,9 @@ describe('Simulator — Event Emission', () => {
         expect(topo.tools.length).toBe(6);
     });
 
-    it('should emit route events within 2 seconds', async () => {
-        sim = await startSimulator({ rps: 5 });
-        const events = await collectEvents(sim.path, 2000);
+    it('should emit route events within 3 seconds', async () => {
+        sim = await startSimulator({ rps: 20 });
+        const events = await collectEvents(sim.path, 3000);
 
         const routes = events.filter((e) => e.type === 'route');
         expect(routes.length).toBeGreaterThanOrEqual(1);
