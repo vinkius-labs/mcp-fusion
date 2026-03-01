@@ -14,7 +14,7 @@ Type-safe tools, Presenters for LLM perception, governance lockfiles, and zero b
 [![Downloads](https://img.shields.io/npm/dw/@vinkius-core/mcp-fusion)](https://www.npmjs.com/package/@vinkius-core/mcp-fusion)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP Standard](https://img.shields.io/badge/MCP-Standard-purple)](https://modelcontextprotocol.io/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-green)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green)](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)
 
 [Documentation](https://mcp-fusion.vinkius.com/) · [Quick Start](https://mcp-fusion.vinkius.com/quickstart-lightspeed) · [API Reference](https://mcp-fusion.vinkius.com/api/)
 
