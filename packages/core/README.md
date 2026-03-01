@@ -150,12 +150,12 @@ Full guides, API reference, and cookbook recipes:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and PR guidelines.
+See [CONTRIBUTING.md](https://github.com/vinkius-labs/mcp-fusion/blob/main/CONTRIBUTING.md) for development setup and PR guidelines.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+See [SECURITY.md](https://github.com/vinkius-labs/mcp-fusion/blob/main/SECURITY.md) for reporting vulnerabilities.
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache 2.0](https://github.com/vinkius-labs/mcp-fusion/blob/main/LICENSE)

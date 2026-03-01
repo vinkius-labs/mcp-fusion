@@ -1543,11 +1543,11 @@ describe('E2E: package.json — security & npm best practices', () => {
         expect(pkg.type).toBe('module');
     });
 
-    it('dev script uses tsx for TypeScript execution', async () => {
+    it('dev script uses fusion dev CLI', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir);
 
         const pkg = JSON.parse(readProjectFile(projectDir, 'package.json'));
-        expect(pkg.scripts.dev).toContain('tsx');
+        expect(pkg.scripts.dev).toBe('fusion dev');
     });
 
     it('database vector includes db:generate and db:push scripts', async () => {
