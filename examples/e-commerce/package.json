@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "tsx watch src/server.ts",
+        "dev": "fusion dev",
         "start": "tsx src/server.ts",
         "build": "tsc",
         "typecheck": "tsc --noEmit",

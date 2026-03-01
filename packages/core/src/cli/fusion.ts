@@ -770,9 +770,9 @@ export async function commandCreate(args: CliArgs, reporter?: ProgressReporter):
     // ── Done ─────────────────────────────────────────────
     const steps = [`cd ${config.name}`];
     if (config.transport === 'sse') {
-        steps.push('npm start', '# then connect Cursor or Claude to http://localhost:3001/sse');
+        steps.push('fusion dev', '# then connect Cursor or Claude to http://localhost:3001/sse');
     } else {
-        steps.push('npm run dev');
+        steps.push('fusion dev');
     }
     if (config.testing) steps.push('npm test');
 

@@ -166,7 +166,7 @@ Show system health
 | Command | Description |
 |---------|-------------|
 | `npm start` | Start the MCP server (stdio) |
-| `npm run dev` | Start with hot reload (tsx watch) |
+| `fusion dev` | Start HMR dev server with auto-reload |
 | `npm run build` | Compile TypeScript |
 | `npm run typecheck` | Type-check without compiling |
 | `npm test` | Run tests |

@@ -28,7 +28,7 @@ MCP Server built with [MCP Fusion](https://mcp-fusion.vinkius.com/) — the MVA 
 
 \`\`\`bash
 npm install
-${config.transport === 'sse' ? 'npm start' : 'npm run dev'}
+fusion dev
 \`\`\`
 ${config.testing ? `
 ## Testing

@@ -651,11 +651,11 @@ describe('E2E: Cross-file consistency — contracts between generated files', ()
         expect(server).toContain("from './context.js'");
     });
 
-    it('test setup.ts references src/tools and src/context', async () => {
+    it('test setup.ts references src/tools and src/fusion', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir, { testing: true });
 
         const setup = readProjectFile(projectDir, 'tests/setup.ts');
-        expect(setup).toContain('../src/context.js');
+        expect(setup).toContain('../src/fusion.js');
         expect(setup).toContain('../src/tools');
     });
 

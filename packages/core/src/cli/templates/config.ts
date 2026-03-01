@@ -42,8 +42,8 @@ export function packageJson(config: ProjectConfig): string {
     }
 
     const scripts: Record<string, string> = {
-        'dev': 'tsx watch src/server.ts',
-        'start': 'tsx src/server.ts',
+        'dev': 'fusion dev',
+        'start': 'fusion dev',
         'build': 'tsc',
         'typecheck': 'tsc --noEmit',
     };

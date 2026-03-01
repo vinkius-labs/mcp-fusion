@@ -9,10 +9,13 @@
  */
 import { createFusionTester } from '@vinkius-core/mcp-fusion-testing';
 import { ToolRegistry, autoDiscover } from '@vinkius-core/mcp-fusion';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import type { AppContext } from '../src/context.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const registry = new ToolRegistry<AppContext>();
-await autoDiscover(registry, new URL('../src/tools', import.meta.url).pathname);
+await autoDiscover(registry, join(__dirname, '..', 'src', 'tools'));
 
 export const tester = createFusionTester(registry, {
     contextFactory: () => ({

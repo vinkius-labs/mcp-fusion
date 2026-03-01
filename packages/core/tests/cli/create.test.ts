@@ -353,8 +353,8 @@ describe('Template output — core files', () => {
 
         it('includes scripts', () => {
             const pkg = JSON.parse(tpl.packageJson(baseConfig));
-            expect(pkg.scripts.dev).toContain('tsx');
-            expect(pkg.scripts.start).toContain('tsx');
+            expect(pkg.scripts.dev).toBe('fusion dev');
+            expect(pkg.scripts.start).toBe('fusion dev');
             expect(pkg.scripts.build).toBe('tsc');
         });
 
@@ -690,7 +690,7 @@ describe('Template output — source files', () => {
         it('includes Quick Start and testing section', () => {
             const content = tpl.readme(config);
             expect(content).toContain('npm install');
-            expect(content).toContain('npm run dev');
+            expect(content).toContain('fusion dev');
             expect(content).toContain('npm test');
         });
 
@@ -1445,17 +1445,17 @@ describe('Scaffold — file count invariants', () => {
 
     // Base files always generated (no testing, vanilla vector):
     // package.json, tsconfig.json, .gitignore, .env.example, README.md,
-    // .cursor/mcp.json,
+    // .cursor/mcp.json, .vscode/mcp.json,
     // src/fusion.ts, src/context.ts, src/server.ts,
     // src/tools/system/health.ts, src/tools/system/echo.ts,
     // src/presenters/SystemPresenter.ts,
     // src/prompts/greet.ts,
     // src/middleware/auth.ts
-    // = 14 files
+    // = 15 files
 
-    const BASE_COUNT = 14;
+    const BASE_COUNT = 15;
 
-    it('blank + no testing = exactly 14 files', () => {
+    it('blank + no testing = exactly 15 files', () => {
         const projectDir = join(tmpDir, 'count-base');
         const files = scaffold(projectDir, { name: 'count-base', transport: 'stdio', vector: 'vanilla', testing: false });
         expect(files.length).toBe(BASE_COUNT);
@@ -1775,8 +1775,8 @@ describe('Template output — script & config consistency', () => {
         const pkg = JSON.parse(tpl.packageJson(config));
         const cursor = JSON.parse(tpl.cursorMcpJson(config));
 
-        // dev script uses `tsx watch src/server.ts`, cursor uses `tsx src/server.ts`
-        expect(pkg.scripts.dev).toContain('src/server.ts');
+        // dev script uses `fusion dev`, cursor uses `tsx src/server.ts`
+        expect(pkg.scripts.dev).toBe('fusion dev');
         expect(cursor.mcpServers['consistent'].args).toContain('src/server.ts');
     });
 
@@ -1924,19 +1924,18 @@ describe('SSE transport-aware templates', () => {
         expect(cursor.mcpServers['stdio-proj'].url).toBeUndefined();
     });
 
-    it('README for SSE shows npm start instead of npm run dev', () => {
+    it('README for SSE shows fusion dev', () => {
         const config: ProjectConfig = { name: 'sse-readme', transport: 'sse', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
-        expect(readmeContent).toContain('npm start');
-        expect(readmeContent).not.toContain('npm run dev');
+        expect(readmeContent).toContain('fusion dev');
     });
 
-    it('README for stdio shows npm run dev', () => {
+    it('README for stdio shows fusion dev', () => {
         const config: ProjectConfig = { name: 'stdio-readme', transport: 'stdio', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
-        expect(readmeContent).toContain('npm run dev');
+        expect(readmeContent).toContain('fusion dev');
     });
 
     it('README for SSE includes SSE note about starting server first', () => {
@@ -2197,7 +2196,7 @@ describe('commandCreate — SSE transport path', () => {
 
         // Check stderr output contains SSE-specific next steps
         const output = stderrSpy.mock.calls.map(c => c[0] as string).join('');
-        expect(output).toContain('npm start');
+        expect(output).toContain('fusion dev');
         expect(output).toContain('http://localhost:3001/sse');
 
         stderrSpy.mockRestore();

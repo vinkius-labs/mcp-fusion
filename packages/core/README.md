@@ -26,7 +26,7 @@ Type-safe tools, Presenters for LLM perception, governance lockfiles, and zero b
 
 ```bash
 npx fusion create my-server
-cd my-server && npm run dev
+cd my-server && fusion dev
 ```
 
 14 files scaffolded in 6ms — file-based routing, Presenters, Prompts, middleware, Cursor integration, and tests. Ready to go.

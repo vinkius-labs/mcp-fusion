@@ -55,7 +55,39 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Subpath Exports**: Tree-shakeable imports — `mcp-fusion/client`, `/ui`, `/presenter`, `/schema`, `/dev`, `/prompt`
 - **Governance Stack**: 8-module introspection layer — ToolContract materialization, ContractDiff, BehaviorDigest (SHA-256), CapabilityLockfile (`mcp-fusion.lock`), CryptoAttestation (HMAC-SHA-256), TokenEconomics profiling, EntitlementScanner (blast radius), SemanticProbe (LLM-as-Judge)
 - **GovernanceObserver**: Observability bridge — wraps governance operations with DebugEvent emission and optional OTel tracing spans
-- **CLI**: `fusion lock` / `fusion lock --check` — generate, update, and CI-gate the capability lockfile
+- **CLI**: `fusion` — unified CLI for project management, development, governance, and observability
+
+## CLI Commands
+
+```bash
+# Scaffold a new MCP Fusion server project
+fusion create <name> [--transport stdio|sse] [--vector vanilla|prisma|n8n|openapi|oauth] [--testing|--no-testing] [--yes|-y]
+
+# Start HMR dev server with auto-reload (auto-detects server entrypoint)
+fusion dev [--server|-s <path>] [--dir|-d <path>]
+
+# Generate or update the capability lockfile (mcp-fusion.lock)
+fusion lock [--server|-s <path>] [--name|-n <name>] [--cwd <dir>]
+
+# Verify lockfile is up to date (CI gate — exits non-zero on drift)
+fusion lock --check
+
+# Launch the real-time TUI Inspector dashboard
+fusion inspect [--demo|-d] [--out|-o tui|stderr] [--pid|-p <pid>] [--path <ipc-path>]
+
+# Shorthand aliases
+fusion insp          # = fusion inspect
+fusion dbg           # = fusion debug
+```
+
+| Command | What It Does |
+|---|---|
+| `fusion create <name>` | Scaffold a full MCP server project (15+ files, Cursor pre-configured, autoDiscover, tests) |
+| `fusion dev` | Start the HMR dev server — file changes reload tools, sends `tools/list_changed` notifications |
+| `fusion lock` | Generate/update `mcp-fusion.lock` — capability lockfile with SHA-256 behavioral digest |
+| `fusion lock --check` | CI gate — verify lockfile matches current tool contracts (fails if drift detected) |
+| `fusion inspect` | Real-time TUI dashboard — tool calls, latency, errors, Presenter events |
+| `fusion insp --demo` | Launch Inspector with built-in simulator (no running server needed) |
 
 ## Quick Start — Fluent API with Semantic Verbs (Recommended)
 
