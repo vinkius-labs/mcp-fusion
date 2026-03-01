@@ -33,12 +33,15 @@ cd my-server && fusion dev
 
 ## The MVA Pattern
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/f7593210-de49-46e4-a4b2-d00bd5907795" />
+
 MCP Fusion separates three concerns that raw MCP servers mix into a single handler:
 
 ```
 Model (Zod Schema) → View (Presenter) → Agent (LLM)
    validates            perceives          acts
 ```
+
 
 The **handler** returns raw data. The **Presenter** shapes what the agent sees. The **middleware** governs access. Works with any MCP client — Cursor, Claude Desktop, Claude Code, Windsurf, Cline, VS Code + GitHub Copilot.
 
