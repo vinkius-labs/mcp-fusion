@@ -40,7 +40,7 @@ function connectAndCollect(
     collector: TelemetryEvent[],
     timeout = 5000,
 ): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         let buffer = '';
         const client = connect(ipcPath);
         const timer = setTimeout(() => {
@@ -60,9 +60,11 @@ function connectAndCollect(
             }
         });
 
-        client.on('error', (err) => {
+        client.on('error', () => {
+            // Connection errors (ECONNRESET, ENOENT) are expected
+            // when the server closes while clients are still connected.
             clearTimeout(timer);
-            reject(err);
+            resolve();
         });
 
         client.on('close', () => {
@@ -72,8 +74,34 @@ function connectAndCollect(
     });
 }
 
+// Helper: connect and wait for the 'connect' event (deterministic)
+// After connect, yields 50ms for the server's 'connection' handler to run.
+// On Windows Named Pipes (IOCP), setImmediate is insufficient because the
+// server callback schedules via the I/O thread pool, not the event loop.
+function connectAndReady(
+    ipcPath: string,
+): Promise<import('node:net').Socket> {
+    return new Promise((resolve, reject) => {
+        const client = connect(ipcPath);
+        client.on('connect', () => {
+            // Short yield for server-side 'connection' handler
+            setTimeout(() => resolve(client), 50);
+        });
+        client.on('error', (err) => reject(err));
+    });
+}
+
 // Wait helper
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Unique IPC path per test — avoids EADDRINUSE on Windows Named Pipes
+let testCounter = 0;
+function uniqueTestPath(): string {
+    const id = `test-${process.pid}-${Date.now()}-${testCounter++}`;
+    return platform() === 'win32'
+        ? `\\\\.\\pipe\\mcp-fusion-${id}`
+        : `/tmp/mcp-fusion-${id}.sock`;
+}
 
 // ============================================================================
 // 1. Path Convention
@@ -145,7 +173,7 @@ describe('TelemetryBus — Lifecycle', () => {
     });
 
     it('should create a bus and return emit/close/path', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         expect(typeof bus.emit).toBe('function');
         expect(typeof bus.close).toBe('function');
         expect(typeof bus.path).toBe('string');
@@ -153,12 +181,12 @@ describe('TelemetryBus — Lifecycle', () => {
     });
 
     it('should start with 0 clients', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         expect(bus.clientCount()).toBe(0);
     });
 
     it('should close gracefully', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         await bus.close();
         bus = undefined; // prevent double-close in afterEach
     });
@@ -188,19 +216,17 @@ describe('TelemetryBus — Client Connection', () => {
     });
 
     it('should accept a client connection', async () => {
-        bus = await createTelemetryBus();
-        const collected: TelemetryEvent[] = [];
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
-        // Start collecting in background
-        const collect = connectAndCollect(bus.path, collected, 500);
-        await wait(100); // let connection establish
+        // Deterministic: wait for actual IPC 'connect' event
+        const client = await connectAndReady(bus.path);
 
         expect(bus.clientCount()).toBe(1);
-        await collect;
+        client.destroy();
     });
 
     it('should broadcast events as NDJSON', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         const collected: TelemetryEvent[] = [];
 
         const collect = connectAndCollect(bus.path, collected, 1000);
@@ -263,7 +289,7 @@ describe('TelemetryBus — Zero Overhead', () => {
     });
 
     it('should not throw when emitting with zero clients', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         expect(bus.clientCount()).toBe(0);
 
         // This should be a silent no-op
@@ -278,7 +304,7 @@ describe('TelemetryBus — Zero Overhead', () => {
     });
 
     it('should handle rapid fire events with zero clients', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Fire 1000 events with no clients — should be O(1) no-op
         for (let i = 0; i < 1000; i++) {
@@ -309,15 +335,44 @@ describe('TelemetryBus — Multi-Client', () => {
     });
 
     it('should broadcast to multiple clients', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
+
+        // Deterministic: wait for actual IPC 'connect' events
+        const client1 = await connectAndReady(bus.path);
+        const client2 = await connectAndReady(bus.path);
+
+        expect(bus.clientCount()).toBe(2);
+
+        // Collect events via NDJSON
         const collected1: TelemetryEvent[] = [];
         const collected2: TelemetryEvent[] = [];
 
-        const c1 = connectAndCollect(bus.path, collected1, 800);
-        const c2 = connectAndCollect(bus.path, collected2, 800);
-        await wait(150);
-
-        expect(bus.clientCount()).toBe(2);
+        const dataPromise = Promise.all([
+            new Promise<void>((resolve) => {
+                let buf = '';
+                client1.on('data', (chunk) => {
+                    buf += chunk.toString();
+                    if (buf.includes('\n')) {
+                        for (const line of buf.split('\n').filter(l => l.trim())) {
+                            try { collected1.push(JSON.parse(line)); } catch {}
+                        }
+                        resolve();
+                    }
+                });
+            }),
+            new Promise<void>((resolve) => {
+                let buf = '';
+                client2.on('data', (chunk) => {
+                    buf += chunk.toString();
+                    if (buf.includes('\n')) {
+                        for (const line of buf.split('\n').filter(l => l.trim())) {
+                            try { collected2.push(JSON.parse(line)); } catch {}
+                        }
+                        resolve();
+                    }
+                });
+            }),
+        ]);
 
         bus.emit({
             type: 'route',
@@ -326,10 +381,12 @@ describe('TelemetryBus — Multi-Client', () => {
             timestamp: Date.now(),
         } as TelemetryEvent);
 
-        await wait(200);
+        await dataPromise;
+
+        client1.destroy();
+        client2.destroy();
         await bus.close();
         bus = undefined;
-        await Promise.all([c1, c2]);
 
         expect(collected1.some((e) => e.type === 'route')).toBe(true);
         expect(collected2.some((e) => e.type === 'route')).toBe(true);
@@ -351,7 +408,7 @@ describe('TelemetryBus — Heartbeat', () => {
     });
 
     it('should emit heartbeat events to connected clients', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         const collected: TelemetryEvent[] = [];
 
         const collect = connectAndCollect(bus.path, collected, 6500);
@@ -376,22 +433,23 @@ describe('TelemetryBus — Heartbeat', () => {
 
 describe('TelemetryBus — Clean Shutdown', () => {
     it('should disconnect all clients on close', async () => {
-        const bus = await createTelemetryBus();
-        const collected: TelemetryEvent[] = [];
+        const bus = await createTelemetryBus({ path: uniqueTestPath() });
 
-        const collect = connectAndCollect(bus.path, collected, 2000);
-        await wait(100);
+        // Deterministic: wait for actual IPC 'connect' event
+        const client = await connectAndReady(bus.path);
 
         expect(bus.clientCount()).toBe(1);
         await bus.close();
 
-        await collect;
-        // After close, connecting should fail
+        // Clean up client side
+        client.destroy();
+
+        // After close, all clients should be disconnected
         expect(bus.clientCount()).toBe(0);
     });
 
     it('should handle double-close gracefully', async () => {
-        const bus = await createTelemetryBus();
+        const bus = await createTelemetryBus({ path: uniqueTestPath() });
         await bus.close();
         // Second close should not throw
         await expect(bus.close()).resolves.not.toThrow();
@@ -413,7 +471,7 @@ describe('TelemetryBus — Adversarial', () => {
     });
 
     it('should handle non-serializable events gracefully', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
         const collected: TelemetryEvent[] = [];
 
         const collect = connectAndCollect(bus.path, collected, 500);
@@ -428,7 +486,7 @@ describe('TelemetryBus — Adversarial', () => {
     });
 
     it('should handle rapid client connect/disconnect', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         for (let i = 0; i < 10; i++) {
             const client = connect(bus.path);
@@ -447,7 +505,7 @@ describe('TelemetryBus — Adversarial', () => {
     });
 
     it('should handle emit before any client connects', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         for (let i = 0; i < 50; i++) {
             bus.emit({
