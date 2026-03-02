@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-03-02
+
+### Fixed
+
+- **Flat exposition `_default` suffix on single-action builders** — `compileFlat()` in `ExpositionCompiler` was unconditionally appending `_{actionKey}` to every flat tool name, producing names like `get_pet_findByStatus_default` for standalone `f.query()` / `f.mutation()` / `f.action()` tools. Single-action builders with the `'default'` action key now use the bare tool name (e.g., `get_pet_findByStatus`). Multi-action builders and named single actions retain the `toolName_actionKey` format.
+
+### Test Suite
+
+- **3 new tests** in `ToolExposition.test.ts`:
+  - Single-action builder uses bare tool name (no `_default` suffix)
+  - Multi-action builder still produces `toolName_actionKey`
+  - Routing dispatch map resolves single-action tools by bare name
+
+---
+
 ## [3.0.1] - 2026-02-28
 
 ### 📦 Ecosystem — README Standardization & Inspector Publication

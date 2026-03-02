@@ -255,6 +255,53 @@ describe('ExpositionCompiler', () => {
                 expect.objectContaining({ idempotentHint: true }),
             );
         });
+
+        it('should use bare tool name for single-action builders (no _default suffix)', () => {
+            const builder = new GroupedToolBuilder<void>('get_pet_findByStatus')
+                .action({
+                    name: 'default',
+                    description: 'Find pets by status',
+                    readOnly: true,
+                    handler: dummyHandler,
+                });
+
+            const result = compileExposition([builder], 'flat', '_');
+
+            expect(result.tools).toHaveLength(1);
+            expect(result.tools[0].name).toBe('get_pet_findByStatus');
+            // Must NOT have the _default suffix
+            expect(result.tools[0].name).not.toContain('_default');
+        });
+
+        it('should still use action key suffix for multi-action builders', () => {
+            const builder = new GroupedToolBuilder<void>('pets')
+                .action({ name: 'list', readOnly: true, handler: dummyHandler })
+                .action({ name: 'create', handler: dummyHandler });
+
+            const result = compileExposition([builder], 'flat', '_');
+
+            const names = result.tools.map(t => t.name);
+            expect(names).toEqual(['pets_list', 'pets_create']);
+        });
+
+        it('should route single-action builder via dispatch map with bare name', () => {
+            const builder = new GroupedToolBuilder<void>('inventory')
+                .action({
+                    name: 'default',
+                    readOnly: true,
+                    handler: async () => success('stock'),
+                });
+
+            const result = compileExposition([builder], 'flat', '_');
+
+            // Routing map uses bare name (no _default)
+            expect(result.routingMap.has('inventory')).toBe(true);
+            expect(result.routingMap.has('inventory_default')).toBe(false);
+
+            const route = result.routingMap.get('inventory')!;
+            expect(route.actionKey).toBe('default');
+            expect(route.builder).toBe(builder);
+        });
     });
 
     // ── Grouped Strategy ─────────────────────────────────

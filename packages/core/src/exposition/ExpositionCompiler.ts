@@ -113,8 +113,16 @@ function compileFlat<TContext>(
             continue;
         }
 
+        const isSingleAction = actions.length === 1;
+
         for (const action of actions) {
-            const flatName = `${toolName}${separator}${action.key}`;
+            // Single-action builders with 'default' key use bare tool name
+            // (no _default suffix). This covers standalone f.query/f.mutation/f.action
+            // tools created via the Fluent API which always use 'default' as the key.
+            // Multi-action builders and named single actions retain toolName_actionKey.
+            const flatName = (isSingleAction && action.key === 'default')
+                ? toolName
+                : `${toolName}${separator}${action.key}`;
 
             // ── Schema Purification ──────────────────────────
             const inputSchema = buildAtomicSchema(action, commonSchema, selectEnabled);
