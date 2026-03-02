@@ -59,7 +59,7 @@
         }
     },
     "scripts": {
-        "build": "tsc",
+        "build": "rimraf dist && tsc",
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
         "test": "vitest run",

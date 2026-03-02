@@ -1,28 +1,62 @@
 #!/bin/sh
 #
-# Pre-commit hook: ensures package-lock.json is staged
-# whenever any package.json in the monorepo is modified.
+# Pre-commit hook: mirrors CI/CD pipeline locally.
+#
+# 1. Ensures package-lock.json is staged when package.json changes
+# 2. Builds all packages (same as CI)
+# 3. Runs the full test suite (same as CI)
 #
 
-# Get list of staged package.json files
+# ── 1. Lock file sync check ──────────────────────────────
+
 STAGED_PACKAGE_JSON=$(git diff --cached --name-only --diff-filter=ACM | grep 'package\.json$')
 
-if [ -z "$STAGED_PACKAGE_JSON" ]; then
-    exit 0
+if [ -n "$STAGED_PACKAGE_JSON" ]; then
+    STAGED_LOCK=$(git diff --cached --name-only | grep '^package-lock\.json$')
+
+    if [ -z "$STAGED_LOCK" ]; then
+        echo ""
+        echo "ERROR: package.json was modified but package-lock.json is not staged."
+        echo ""
+        echo "Modified package.json files:"
+        echo "$STAGED_PACKAGE_JSON" | sed 's/^/  - /'
+        echo ""
+        echo "Run 'npm install' and stage the lock file:"
+        echo "  npm install && git add package-lock.json"
+        echo ""
+        exit 1
+    fi
 fi
 
-# Check if package-lock.json is also staged
-STAGED_LOCK=$(git diff --cached --name-only | grep '^package-lock\.json$')
+# ── 2. Build ──────────────────────────────────────────────
 
-if [ -z "$STAGED_LOCK" ]; then
+echo "[pre-commit] Building core..."
+npm run build -w packages/core 2>&1
+if [ $? -ne 0 ]; then
     echo ""
-    echo "ERROR: package.json was modified but package-lock.json is not staged."
-    echo ""
-    echo "Modified package.json files:"
-    echo "$STAGED_PACKAGE_JSON" | sed 's/^/  - /'
-    echo ""
-    echo "Run 'npm install' and stage the lock file:"
-    echo "  npm install && git add package-lock.json"
+    echo "ERROR: Core build failed. Fix build errors before committing."
     echo ""
     exit 1
 fi
+
+echo "[pre-commit] Building satellite packages..."
+npm run build -ws --if-present 2>&1
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: Satellite build failed. Fix build errors before committing."
+    echo ""
+    exit 1
+fi
+
+# ── 3. Tests ──────────────────────────────────────────────
+
+echo "[pre-commit] Running tests..."
+npm test 2>&1
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: Tests failed. Fix the failing tests before committing."
+    echo ""
+    exit 1
+fi
+
+echo "[pre-commit] All checks passed."
