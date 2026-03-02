@@ -143,6 +143,7 @@
     },
     "license": "Apache-2.0",
     "devDependencies": {
-        "fast-redact": "^3.5.0"
+        "fast-redact": "^3.5.0",
+        "rimraf": "^6.0.0"
     }
 }
