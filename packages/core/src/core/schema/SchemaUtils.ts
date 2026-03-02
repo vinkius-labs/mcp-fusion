@@ -64,14 +64,16 @@ function conflictError(field: string, actionKey: string, detail: string): Error 
 }
 
 /**
- * Assert that an incoming JSON Schema field is compatible with an existing one.
+ * Assert that an incoming JSON Schema field is compatible with an existing one,
+ * and optionally merge enum value sets when they differ.
  *
  * Check hierarchy (fail-fast):
  *   1. Base type — e.g. "string" vs "boolean", "number" vs "array"
  *   2. Enum presence — enum vs non-enum of same base type
- *   3. Enum values — enum with different value sets
+ *   3. Enum values — enum with different value sets → MERGE (union)
  *
- * @throws Error with actionable message when types conflict.
+ * @returns The merged property if enums were merged, or undefined if no merge needed.
+ * @throws Error with actionable message when base types or enum presence conflict.
  */
 /** Minimal shape of a JSON Schema node for field compatibility checking */
 interface JsonSchemaNode {
@@ -85,7 +87,7 @@ export function assertFieldCompatibility(
     incoming: object,
     field: string,
     actionKey: string,
-): void {
+): object | undefined {
     const ex: JsonSchemaNode = existing as JsonSchemaNode;
     const inc: JsonSchemaNode = incoming as JsonSchemaNode;
 
@@ -112,13 +114,14 @@ export function assertFieldCompatibility(
             `previously declared ${exHasEnum ? 'enum' : 'non-enum'}`);
     }
 
-    // 3. Enum value-set mismatch
+    // 3. Enum value-set mismatch → MERGE (union) instead of throwing
     if (
         exHasEnum && incHasEnum &&
         JSON.stringify(exEnum) !== JSON.stringify(incEnum)
     ) {
-        throw conflictError(field, actionKey,
-            `enum values ${JSON.stringify(incEnum)} conflict with previously declared ` +
-            `enum values ${JSON.stringify(exEnum)}`);
+        const merged = new Set([...(exEnum as unknown[]), ...(incEnum as unknown[])]);
+        return { ...ex, enum: [...merged] };
     }
+
+    return undefined;
 }

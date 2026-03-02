@@ -120,12 +120,17 @@ describe('Schema Collision — Enum Conflicts', () => {
         expect(() => builder.buildToolDefinition()).toThrow(/Schema conflict for field "status"/);
     });
 
-    it('should reject enum with different values', () => {
+    it('should merge enum with different values (union)', () => {
         const builder = new GroupedToolBuilder('enum_vs_enum')
             .action({ name: 'a', schema: z.object({ status: z.enum(['active', 'archived']) }), handler: dummyHandler })
             .action({ name: 'b', schema: z.object({ status: z.enum(['open', 'closed']) }), handler: dummyHandler });
 
-        expect(() => builder.buildToolDefinition()).toThrow(/Schema conflict for field "status".*enum values/);
+        // Different enum values are now merged (union) instead of throwing
+        expect(() => builder.buildToolDefinition()).not.toThrow();
+        const def = builder.buildToolDefinition();
+        const statusProp = (def.inputSchema.properties as any)?.status;
+        expect(statusProp.enum).toEqual(expect.arrayContaining(['active', 'archived', 'open', 'closed']));
+        expect(statusProp.enum).toHaveLength(4);
     });
 
     it('should reject enum vs number', () => {
@@ -430,24 +435,16 @@ describe('Schema Collision — Error Message Quality', () => {
         );
     });
 
-    it('should include enum values in the error for enum conflicts', () => {
+    it('should produce merged enum containing all values from both actions', () => {
         const builder = new GroupedToolBuilder('msg_enum')
             .action({ name: 'a', schema: z.object({ mode: z.enum(['fast', 'slow']) }), handler: dummyHandler })
             .action({ name: 'b', schema: z.object({ mode: z.enum(['hot', 'cold']) }), handler: dummyHandler });
 
-        try {
-            builder.buildToolDefinition();
-            expect.unreachable('Should have thrown');
-        } catch (err) {
-            const message = (err as Error).message;
-            expect(message).toContain('mode');
-            // Should contain the enum arrays from both declarations
-            expect(message).toContain('fast');
-            expect(message).toContain('slow');
-            expect(message).toContain('hot');
-            expect(message).toContain('cold');
-            expect(message).toContain('enum values');
-        }
+        // No longer throws — enums are merged
+        expect(() => builder.buildToolDefinition()).not.toThrow();
+        const def = builder.buildToolDefinition();
+        const modeProp = (def.inputSchema.properties as any)?.mode;
+        expect(modeProp.enum).toEqual(expect.arrayContaining(['fast', 'slow', 'hot', 'cold']));
     });
 });
 
@@ -626,5 +623,111 @@ describe('Schema Collision — Runtime After Valid Build', () => {
             action: 'lenient', limit: 0,
         });
         expect(r2.isError).toBeUndefined();
+    });
+});
+
+// ============================================================================
+// 10. Enum Merge (Union) — OpenAPI Import Compatibility
+// ============================================================================
+
+describe('Schema Collision — Enum Merge (Union)', () => {
+    it('should merge two different enum sets into union', () => {
+        const builder = new GroupedToolBuilder('enum_merge_basic')
+            .action({ name: 'a', schema: z.object({ type: z.enum(['artist', 'user']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ type: z.enum(['track', 'album']) }), handler: dummyHandler });
+
+        expect(() => builder.buildToolDefinition()).not.toThrow();
+        const def = builder.buildToolDefinition();
+        const typeProp = (def.inputSchema.properties as any)?.type;
+        expect(typeProp.enum).toEqual(expect.arrayContaining(['artist', 'user', 'track', 'album']));
+        expect(typeProp.enum).toHaveLength(4);
+    });
+
+    it('should deduplicate overlapping enum values during merge', () => {
+        const builder = new GroupedToolBuilder('enum_merge_dedup')
+            .action({ name: 'a', schema: z.object({ market: z.enum(['US', 'BR', 'DE']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ market: z.enum(['BR', 'JP', 'US']) }), handler: dummyHandler });
+
+        const def = builder.buildToolDefinition();
+        const marketProp = (def.inputSchema.properties as any)?.market;
+        expect(marketProp.enum).toEqual(expect.arrayContaining(['US', 'BR', 'DE', 'JP']));
+        expect(marketProp.enum).toHaveLength(4);
+    });
+
+    it('should merge enums across 3+ actions (cumulative union)', () => {
+        const builder = new GroupedToolBuilder('enum_merge_3way')
+            .action({ name: 'a', schema: z.object({ status: z.enum(['draft']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ status: z.enum(['published']) }), handler: dummyHandler })
+            .action({ name: 'c', schema: z.object({ status: z.enum(['archived']) }), handler: dummyHandler });
+
+        const def = builder.buildToolDefinition();
+        const statusProp = (def.inputSchema.properties as any)?.status;
+        expect(statusProp.enum).toEqual(expect.arrayContaining(['draft', 'published', 'archived']));
+        expect(statusProp.enum).toHaveLength(3);
+    });
+
+    it('should still accept identical enum values (no merge needed)', () => {
+        const builder = new GroupedToolBuilder('enum_identical')
+            .action({ name: 'a', schema: z.object({ mode: z.enum(['fast', 'slow']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ mode: z.enum(['fast', 'slow']) }), handler: dummyHandler });
+
+        const def = builder.buildToolDefinition();
+        const modeProp = (def.inputSchema.properties as any)?.mode;
+        expect(modeProp.enum).toEqual(['fast', 'slow']);
+    });
+
+    it('should preserve base type in merged enum property', () => {
+        const builder = new GroupedToolBuilder('enum_merge_type')
+            .action({ name: 'a', schema: z.object({ kind: z.enum(['x', 'y']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ kind: z.enum(['z', 'w']) }), handler: dummyHandler });
+
+        const def = builder.buildToolDefinition();
+        const kindProp = (def.inputSchema.properties as any)?.kind;
+        expect(kindProp.type).toBe('string');
+        expect(kindProp.enum).toHaveLength(4);
+    });
+
+    it('should still reject enum vs non-enum (presence mismatch)', () => {
+        const builder = new GroupedToolBuilder('enum_vs_plain_still_throws')
+            .action({ name: 'a', schema: z.object({ val: z.enum(['x', 'y']) }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ val: z.string() }), handler: dummyHandler });
+
+        expect(() => builder.buildToolDefinition()).toThrow(/Schema conflict for field "val"/);
+    });
+
+    it('should still reject base type conflicts (string vs number)', () => {
+        const builder = new GroupedToolBuilder('base_type_still_throws')
+            .action({ name: 'a', schema: z.object({ id: z.string() }), handler: dummyHandler })
+            .action({ name: 'b', schema: z.object({ id: z.number() }), handler: dummyHandler });
+
+        expect(() => builder.buildToolDefinition()).toThrow(/Schema conflict for field "id"/);
+    });
+
+    it('should execute correctly after enum merge', async () => {
+        const builder = new GroupedToolBuilder('enum_merge_runtime')
+            .action({
+                name: 'get_artist',
+                schema: z.object({ type: z.enum(['artist']), id: z.string() }),
+                handler: async (_ctx, args) => success(`artist: ${args.id}`),
+            })
+            .action({
+                name: 'get_track',
+                schema: z.object({ type: z.enum(['track']), id: z.string() }),
+                handler: async (_ctx, args) => success(`track: ${args.id}`),
+            });
+
+        builder.buildToolDefinition();
+
+        const r1 = await builder.execute(undefined as any, {
+            action: 'get_artist', type: 'artist', id: '123',
+        });
+        expect(r1.isError).toBeUndefined();
+        expect(r1.content[0].text).toBe('artist: 123');
+
+        const r2 = await builder.execute(undefined as any, {
+            action: 'get_track', type: 'track', id: '456',
+        });
+        expect(r2.isError).toBeUndefined();
+        expect(r2.content[0].text).toBe('track: 456');
     });
 });

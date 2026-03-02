@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2026-03-02
+
+### Fixed
+
+- **Enum field conflict in grouped tools blocks OpenAPI imports** — `assertFieldCompatibility()` in `SchemaUtils` threw when two actions in the same `GroupedToolBuilder` shared a field name (e.g., `type`) with different enum value sets. Large OpenAPI specs like Spotify naturally have endpoints that share parameter names with different valid enum values (e.g., `type: ["artist","user"]` vs `type: ["track","album"]`). Enum values are now **merged (union)** instead of throwing a conflict error. Base type mismatches and enum-vs-non-enum conflicts still throw as before.
+
+### Changed
+
+- **`assertFieldCompatibility()` return type** — now returns `object | undefined` instead of `void`. Returns the merged JSON Schema property when enum values are merged, or `undefined` when no merge is needed.
+- **`collectActionFields()` in `SchemaGenerator`** — applies the merged property returned by `assertFieldCompatibility()` to update the input schema with the union of all enum values.
+
+### Test Suite
+
+- **8 new tests** in `SchemaCollision.test.ts` (section 10: Enum Merge):
+  - Two different enum sets merged into union
+  - Deduplicate overlapping enum values
+  - 3-way cumulative merge across 3+ actions
+  - Identical enums preserved (no unnecessary merge)
+  - Base type preserved in merged property
+  - Enum vs non-enum still throws
+  - Base type conflicts still throw
+  - Runtime executes correctly after enum merge
+- **2 updated tests** — existing enum conflict tests now validate merge behavior instead of throw
+
+---
+
 ## [3.1.1] - 2026-03-02
 
 ### Fixed

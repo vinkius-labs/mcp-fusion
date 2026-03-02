@@ -165,7 +165,10 @@ function collectActionFields<TContext>(
             if (!existing) {
                 properties[key] = value;
             } else {
-                assertFieldCompatibility(existing, value, key, action.key);
+                const merged = assertFieldCompatibility(existing, value, key, action.key);
+                if (merged) {
+                    properties[key] = merged;
+                }
             }
 
             let tracking = fieldActions.get(key);
