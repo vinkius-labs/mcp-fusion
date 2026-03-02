@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Pre-commit hook: ensures package-lock.json is staged
+# whenever any package.json in the monorepo is modified.
+#
+
+# Get list of staged package.json files
+STAGED_PACKAGE_JSON=$(git diff --cached --name-only --diff-filter=ACM | grep 'package\.json$')
+
+if [ -z "$STAGED_PACKAGE_JSON" ]; then
+    exit 0
+fi
+
+# Check if package-lock.json is also staged
+STAGED_LOCK=$(git diff --cached --name-only | grep '^package-lock\.json$')
+
+if [ -z "$STAGED_LOCK" ]; then
+    echo ""
+    echo "ERROR: package.json was modified but package-lock.json is not staged."
+    echo ""
+    echo "Modified package.json files:"
+    echo "$STAGED_PACKAGE_JSON" | sed 's/^/  - /'
+    echo ""
+    echo "Run 'npm install' and stage the lock file:"
+    echo "  npm install && git add package-lock.json"
+    echo ""
+    exit 1
+fi
