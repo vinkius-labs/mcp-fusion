@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">@vinkius-core/mcp-fusion-openapi-gen</h1>
   <p align="center">
-    <strong>OpenAPI 3.x → MCP Fusion Server Generator</strong> — Parse any spec, generate a complete MCP server
+    <strong>OpenAPI 3.x / Swagger 2.0 → MCP Fusion Server Generator</strong> — Parse any spec, generate a complete MCP server
   </p>
 </p>
 
@@ -13,7 +13,7 @@
 
 ---
 
-> Parse any OpenAPI 3.x spec and generate a **complete, ready-to-run MCP Server** powered by MCP Fusion — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
+> Parse any **OpenAPI 3.x** or **Swagger 2.0** spec and generate a **complete, ready-to-run MCP Server** powered by MCP Fusion — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
 
 ## What It Generates
 
@@ -97,10 +97,45 @@ for (const file of files) {
 }
 ```
 
+## Swagger 2.0 Support
+
+Swagger 2.0 specs are **automatically detected and converted** to OpenAPI 3.0 internally. No extra configuration needed — just point to your spec:
+
+```bash
+# Works with Swagger 2.0 specs out of the box
+npx openapi-gen --input ./petstore-v2.json --output ./generated
+```
+
+The converter handles:
+
+| Swagger 2.0 | → OpenAPI 3.0 |
+|---|---|
+| `host` + `basePath` + `schemes` | `servers` array |
+| `definitions` | `components.schemas` |
+| `parameters[in: body]` | `requestBody` |
+| `parameters[in: formData]` | `requestBody` (multipart) |
+| `#/definitions/Pet` | `#/components/schemas/Pet` |
+| `produces` / `consumes` | Per-operation `content` types |
+
+Runtime mode (`loadOpenAPI()`) also accepts Swagger 2.0:
+
+```typescript
+import { loadOpenAPI } from '@vinkius-core/mcp-fusion-openapi-gen';
+
+// Swagger 2.0 JSON — auto-converted internally
+const tools = loadOpenAPI(swagger2Json, { baseUrl: 'https://petstore.swagger.io/v2' });
+registry.registerAll(...tools);
+```
+
 ## Pipeline
 
 ```
-OpenAPI 3.x Spec (YAML/JSON)
+OpenAPI 3.x / Swagger 2.0 Spec (YAML/JSON)
+        │
+        ▼
+  ┌──────────────────┐
+  │ Swagger2Converter │  → Auto-detect & convert 2.0 → 3.0 (if needed)
+  └──────────────────┘
         │
         ▼
   ┌─────────────┐

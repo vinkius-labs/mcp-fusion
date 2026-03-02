@@ -5,6 +5,7 @@
 - [Schema Fidelity — OpenAPI to Strict Zod](#schema-fidelity)
 - [Annotation Inference](#annotations)
 - [Code Generation Pipeline](#pipeline)
+- [Swagger 2.0 Support](#swagger2)
 - [Runtime Proxy Mode](#runtime)
 - [Full Production Example](#production)
 - [Configuration](#config)
@@ -15,7 +16,7 @@
 - [API Reference](#api)
 - [Requirements](#requirements)
 
-Turn any **REST/OpenAPI 3.x spec into a working MCP server** — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying requests at runtime. 
+Turn any **REST/OpenAPI 3.x or Swagger 2.0 spec into a working MCP server** — either by generating typed TypeScript files ahead of time, or by parsing the spec at startup and proxying requests at runtime. 
 
 This is the ultimate **Legacy API Migration strategy for AI Agents**. Whether you need to connect thousands of legacy corporate endpoints to an LLM, or simply want to bridge **Swagger to Claude Desktop**, this generator completely automates the creation of strict MVA architectures, models, and Presenters.
 
@@ -97,7 +98,7 @@ export const petTools = defineTool<ApiContext>('pet', {
 
 ## Code Generation Pipeline {#pipeline}
 
-Four compilation stages transform the spec into production-ready TypeScript. Each stage is independently importable:
+Five compilation stages transform the spec into production-ready TypeScript. Swagger 2.0 specs are auto-converted before processing. Each stage is independently importable:
 
 ```typescript
 import { parseOpenAPI, mapEndpoints, emitFiles, mergeConfig } from '@vinkius-core/mcp-fusion-openapi-gen';
@@ -120,9 +121,44 @@ for (const file of files) {
 
 The generated code is fully editable — modify handlers, add middleware, attach Presenters.
 
+## Swagger 2.0 Support {#swagger2}
+
+Swagger 2.0 specs are **automatically detected and converted** to OpenAPI 3.0 internally — no configuration needed. Both the CLI and programmatic API accept v2 specs:
+
+```bash
+# Works with legacy Swagger 2.0 specs out of the box
+npx openapi-gen generate -i ./petstore-v2.json -o ./generated
+```
+
+The internal `Swagger2Converter` handles all structural differences:
+
+| Swagger 2.0 | → OpenAPI 3.0 |
+|---|---|
+| `host` + `basePath` + `schemes` | `servers` array |
+| `definitions` | `components.schemas` |
+| `parameters[in: body]` | `requestBody` |
+| `parameters[in: formData]` | `requestBody` (multipart/urlencoded) |
+| `#/definitions/Model` | `#/components/schemas/Model` |
+| `produces` / `consumes` | Per-operation `content` types |
+
+You can also use the converter standalone:
+
+```typescript
+import { isSwagger2, convertSwagger2ToV3, parseOpenAPI } from '@vinkius-core/mcp-fusion-openapi-gen';
+
+const raw = JSON.parse(specJson);
+if (isSwagger2(raw)) {
+    const v3 = convertSwagger2ToV3(raw);
+    // v3 is now a valid OpenAPI 3.0 object
+}
+
+// Or just pass directly — auto-detected:
+const spec = parseOpenAPI(specJson); // works with both v2 and v3
+```
+
 ## Runtime Proxy Mode {#runtime}
 
-For rapid prototyping, `loadOpenAPI()` parses the spec at startup and creates live proxy handlers with no code generation step:
+For rapid prototyping, `loadOpenAPI()` parses the spec at startup and creates live proxy handlers with no code generation step. Accepts both OpenAPI 3.x and Swagger 2.0:
 
 ```typescript
 import { loadOpenAPI } from '@vinkius-core/mcp-fusion-openapi-gen';
@@ -312,14 +348,16 @@ const petTools = defineTool<AppCtx>('pet', { /* handlers receive ctx: AppCtx */ 
 
 | Export | Description |
 |---|---|
-| `parseOpenAPI(input)` | Parse YAML/JSON to `ApiSpec` AST |
+| `parseOpenAPI(input)` | Parse YAML/JSON to `ApiSpec` AST (v2 + v3) |
 | `mapEndpoints(spec)` | Apply naming, annotations, dedup |
 | `emitFiles(mapped, config)` | Generate TypeScript files |
 | `mergeConfig(partial)` | Merge partial config with defaults |
 | `loadConfig(path?)` | Load config from YAML file |
 | `compileZod(schema)` | Compile a `SchemaNode` to Zod code |
-| `loadOpenAPI(input, config)` | Runtime mode — parse + proxy |
+| `loadOpenAPI(input, config)` | Runtime mode — parse + proxy (v2 + v3) |
 | `buildHandler(action)` | Build a single HTTP proxy handler |
+| `isSwagger2(obj)` | Detect Swagger 2.0 documents |
+| `convertSwagger2ToV3(obj)` | Convert Swagger 2.0 → OpenAPI 3.0 |
 
 ## Requirements {#requirements}
 

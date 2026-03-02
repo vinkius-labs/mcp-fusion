@@ -1,5 +1,5 @@
 /**
- * OpenApiParser — OpenAPI 3.x → IR Converter
+ * OpenApiParser — OpenAPI 3.x / Swagger 2.0 → IR Converter
  *
  * Accepts YAML or JSON input (string or pre-parsed object) and produces
  * a normalized {@link ApiSpec} intermediate representation. Resolves all
@@ -10,6 +10,7 @@
  */
 import { parse as parseYaml } from 'yaml';
 import { resolveRefs } from './RefResolver.js';
+import { isSwagger2, convertSwagger2ToV3 } from './Swagger2Converter.js';
 import type {
     ApiSpec, ApiGroup, ApiAction, ApiParam,
     ApiResponseSchema, ApiServer, SchemaNode, ParamSource,
@@ -67,19 +68,27 @@ const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', '
 // ── Parser ───────────────────────────────────────────────
 
 /**
- * Parse an OpenAPI 3.x specification into the normalized IR.
+ * Parse an OpenAPI 3.x or Swagger 2.0 specification into the normalized IR.
+ *
+ * Swagger 2.0 documents are automatically converted to OpenAPI 3.0
+ * format before processing.
  *
  * @param input - YAML string, JSON string, or pre-parsed object
  * @returns Normalized {@link ApiSpec}
- * @throws If the input is not a valid OpenAPI 3.x document
+ * @throws If the input is not a valid OpenAPI document
  */
 export function parseOpenAPI(input: string | object): ApiSpec {
-    const raw: RawOpenApi = typeof input === 'string' ? parseInput(input) : input as RawOpenApi;
+    let raw: RawOpenApi = typeof input === 'string' ? parseInput(input) : input as RawOpenApi;
+
+    // Auto-convert Swagger 2.0 → OpenAPI 3.0
+    if (isSwagger2(raw as Record<string, unknown>)) {
+        raw = convertSwagger2ToV3(raw as Record<string, unknown>) as RawOpenApi;
+    }
 
     // Validate OpenAPI version
     if (!raw.openapi?.startsWith('3.')) {
         throw new Error(
-            `Unsupported OpenAPI version: "${raw.openapi ?? 'missing'}". Only OpenAPI 3.x is supported.`
+            `Unsupported OpenAPI version: "${raw.openapi ?? 'missing'}". OpenAPI 3.x or Swagger 2.0 required.`
         );
     }
 

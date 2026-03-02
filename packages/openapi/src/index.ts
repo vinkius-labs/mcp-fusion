@@ -31,6 +31,7 @@ export type {
     ApiResponseSchema, ApiServer, SchemaNode,
 } from './parser/types.js';
 export { resolveRefs } from './parser/RefResolver.js';
+export { isSwagger2, convertSwagger2ToV3 } from './parser/Swagger2Converter.js';
 
 // ── Zod Compiler ─────────────────────────────────────────
 export { compileZod, compileInputSchema, compileResponseSchema } from './schema/ZodCompiler.js';
