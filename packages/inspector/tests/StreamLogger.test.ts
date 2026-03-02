@@ -125,6 +125,15 @@ const ALL_EVENTS = [
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Unique IPC path per test — prevents EADDRINUSE on Windows Named Pipes
+let _testPathCounter = 0;
+function uniqueTestPath(): string {
+    const id = `${process.pid}-${Date.now()}-${_testPathCounter++}`;
+    return platform() === 'win32'
+        ? `\\\\.\\pipe\\mcp-fusion-streamlogger-${id}`
+        : `/tmp/mcp-fusion-streamlogger-${id}.sock`;
+}
+
 // ============================================================================
 // 1. formatEvent — Human-Readable Formatter (ALL 13 event types)
 // ============================================================================
@@ -407,7 +416,7 @@ describe('StreamLogger — Cross-Platform IPC Paths', () => {
 
     it('should produce path compatible with net.createConnection', async () => {
         // Create a real bus and verify the path works
-        const bus = await createTelemetryBus();
+        const bus = await createTelemetryBus({ path: uniqueTestPath() });
         expect(bus.path.length).toBeGreaterThan(0);
 
         if (isWindows) {
@@ -441,6 +450,7 @@ describe('StreamLogger — NDJSON Buffer Splitting Robustness', () => {
         } as TelemetryEvent;
 
         bus = await createTelemetryBus({
+            path: uniqueTestPath(),
             onConnect: () => topologyEvent,
         });
 
@@ -471,7 +481,7 @@ describe('StreamLogger — NDJSON Buffer Splitting Robustness', () => {
     });
 
     it('should handle rapid burst of events without line merging', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Push many events in tight loop
         for (let i = 0; i < 50; i++) {
@@ -511,7 +521,7 @@ describe('StreamLogger — NDJSON Buffer Splitting Robustness', () => {
     });
 
     it('should NOT corrupt JSON when events contain special chars', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Event with special characters that could break NDJSON
         bus.emit({
@@ -561,7 +571,7 @@ describe('StreamLogger — Stderr Integration (IPC → Format)', () => {
     });
 
     it('should format every IPC event into a non-empty string line', async () => {
-        sim = await startSimulator({ rps: 20 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
 
         const events: TelemetryEvent[] = [];
         await new Promise<void>((resolve) => {
@@ -594,7 +604,7 @@ describe('StreamLogger — Stderr Integration (IPC → Format)', () => {
     });
 
     it('should deliver enriched error events with recovery data through IPC', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
 
         const events: TelemetryEvent[] = [];
         await new Promise<void>((resolve) => {
@@ -633,7 +643,7 @@ describe('StreamLogger — Stderr Integration (IPC → Format)', () => {
     }, 6000);
 
     it('should deliver enriched execute events with select reflection through IPC', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
 
         const events: TelemetryEvent[] = [];
         await new Promise<void>((resolve) => {
@@ -672,7 +682,7 @@ describe('StreamLogger — Stderr Integration (IPC → Format)', () => {
     }, 6000);
 
     it('should deliver enriched execute events with guardrail data through IPC', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
 
         const events: TelemetryEvent[] = [];
         await new Promise<void>((resolve) => {
@@ -736,7 +746,7 @@ describe('StreamLogger — Trace ID Correlation', () => {
     });
 
     it('should correlate same traceId across pipeline stages', async () => {
-        const sim = await startSimulator({ rps: 30 });
+        const sim = await startSimulator({ path: uniqueTestPath(), rps: 30 });
 
         const events: TelemetryEvent[] = [];
         await new Promise<void>((resolve) => {
@@ -881,7 +891,7 @@ describe('StreamLogger — Cross-Platform Connection Stability', () => {
     });
 
     it('should accept connections on platform-specific IPC path', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         const connected = await new Promise<boolean>((resolve) => {
             const client = connect(bus!.path);
@@ -912,7 +922,7 @@ describe('StreamLogger — Cross-Platform Connection Stability', () => {
     });
 
     it('should survive multiple rapid connect/disconnect cycles', async () => {
-        bus = await createTelemetryBus();
+        bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // 10 rapid connect/disconnect cycles
         for (let i = 0; i < 10; i++) {
@@ -945,6 +955,7 @@ describe('StreamLogger — Cross-Platform Connection Stability', () => {
         } as TelemetryEvent;
 
         bus = await createTelemetryBus({
+            path: uniqueTestPath(),
             onConnect: () => topologyEvent,
         });
 

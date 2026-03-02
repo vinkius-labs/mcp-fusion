@@ -28,6 +28,7 @@ import { Writable } from 'node:stream';
 import { startSimulator } from '../src/Simulator.js';
 import { parseInspectorArgs } from '../src/cli/inspector.js';
 import type { TelemetryEvent, TelemetryBusInstance } from '@vinkius-core/mcp-fusion';
+import { platform } from 'node:os';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -69,6 +70,15 @@ function connectRaw(ipcPath: string): { client: Socket; getBuffer: () => string 
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Unique IPC path per test — prevents EADDRINUSE on Windows Named Pipes
+let _testPathCounter = 0;
+function uniqueTestPath(): string {
+    const id = `${process.pid}-${Date.now()}-${_testPathCounter++}`;
+    return platform() === 'win32'
+        ? `\\\\.\\pipe\\mcp-fusion-e2etest-${id}`
+        : `/tmp/mcp-fusion-e2etest-${id}.sock`;
+}
+
 // ============================================================================
 // 1. Full Pipeline — Simulator → IPC → Client → Events
 // ============================================================================
@@ -81,7 +91,7 @@ describe('E2E — Full Pipeline', () => {
     });
 
     it('should deliver a complete event stream from Simulator through IPC', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEventsFromIPC(sim.path, 3000);
 
         // Must have received events
@@ -94,7 +104,7 @@ describe('E2E — Full Pipeline', () => {
     });
 
     it('should produce valid JSON for every single event (no corruption)', async () => {
-        sim = await startSimulator({ rps: 20 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
         const { client, getBuffer } = connectRaw(sim.path);
         await wait(2000);
         client.destroy();
@@ -112,7 +122,7 @@ describe('E2E — Full Pipeline', () => {
     });
 
     it('should maintain event.type field on every event through the wire', async () => {
-        sim = await startSimulator({ rps: 15 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 15 });
         const events = await collectEventsFromIPC(sim.path, 2500);
 
         for (const event of events) {
@@ -135,7 +145,7 @@ describe('E2E — Topology Handshake', () => {
     });
 
     it('should send topology as the FIRST event to a new client', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEventsFromIPC(sim.path, 500);
 
         expect(events.length).toBeGreaterThanOrEqual(1);
@@ -143,7 +153,7 @@ describe('E2E — Topology Handshake', () => {
     });
 
     it('should include server metadata in topology', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEventsFromIPC(sim.path, 500);
 
         const topo = events[0] as any;
@@ -154,7 +164,7 @@ describe('E2E — Topology Handshake', () => {
     });
 
     it('should send topology to EACH new client independently', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
 
         const events1 = await collectEventsFromIPC(sim.path, 500);
         const events2 = await collectEventsFromIPC(sim.path, 500);
@@ -176,7 +186,7 @@ describe('E2E — Event Completeness', () => {
     });
 
     it('should deliver route → validate → middleware → execute in sequence', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEventsFromIPC(sim.path, 4000);
 
         // Group events by tool+action to find complete pipelines
@@ -215,7 +225,7 @@ describe('E2E — Multi-Client Broadcast', () => {
     });
 
     it('should broadcast the SAME route events to two independent clients', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
 
         // Connect two clients simultaneously
         const [events1, events2] = await Promise.all([
@@ -236,7 +246,7 @@ describe('E2E — Multi-Client Broadcast', () => {
     });
 
     it('should not cross-contaminate events between clients', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
 
         const events1 = await collectEventsFromIPC(sim.path, 1500);
         // Connect second client after first disconnects
@@ -253,7 +263,7 @@ describe('E2E — Multi-Client Broadcast', () => {
 
 describe('E2E — Graceful Shutdown', () => {
     it('should close all IPC connections when simulator stops', async () => {
-        const sim = await startSimulator({ rps: 10 });
+        const sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const { client } = connectRaw(sim.path);
         await wait(200);
 
@@ -267,7 +277,7 @@ describe('E2E — Graceful Shutdown', () => {
     });
 
     it('should not emit events after close (no timer leaks)', async () => {
-        const sim = await startSimulator({ rps: 50 });
+        const sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         await wait(200);
         await sim.close();
 
@@ -293,7 +303,7 @@ describe('E2E — Graceful Shutdown', () => {
     });
 
     it('should handle client disconnecting mid-stream without crashing simulator', async () => {
-        const sim = await startSimulator({ rps: 20 });
+        const sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
 
         // Connect and immediately disconnect
         const client = connect(sim.path);
@@ -321,7 +331,7 @@ describe('E2E — StreamLogger Format Verification', () => {
     });
 
     it('should format topology events with server name and tool count', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEventsFromIPC(sim.path, 500);
 
         const topo = events.find((e) => e.type === 'topology') as any;
@@ -335,7 +345,7 @@ describe('E2E — StreamLogger Format Verification', () => {
     });
 
     it('should deliver heartbeat with all required memory fields', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEventsFromIPC(sim.path, 6500);
 
         const hb = events.find((e) => e.type === 'heartbeat') as any;
@@ -350,7 +360,7 @@ describe('E2E — StreamLogger Format Verification', () => {
     }, 8000);
 
     it('should deliver DLP events with paths array for StreamLogger', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         const events = await collectEventsFromIPC(sim.path, 4000);
 
         const dlps = events.filter((e) => e.type === 'dlp.redact');
@@ -367,7 +377,7 @@ describe('E2E — StreamLogger Format Verification', () => {
     }, 6000);
 
     it('should deliver governance events with operation and outcome', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
         const events = await collectEventsFromIPC(sim.path, 10_000);
 
         const govs = events.filter((e) => e.type === 'governance');
@@ -464,7 +474,7 @@ describe('E2E — Stress Pipeline', () => {
     });
 
     it('should handle high RPS without data loss or corruption', async () => {
-        sim = await startSimulator({ rps: 100 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 100 });
         const events = await collectEventsFromIPC(sim.path, 3000);
 
         // At 100 rps for 3s → expect ~300 route events + other types
@@ -478,7 +488,7 @@ describe('E2E — Stress Pipeline', () => {
     });
 
     it('should maintain NDJSON framing under burst load', async () => {
-        sim = await startSimulator({ rps: 200 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 200 });
         const { client, getBuffer } = connectRaw(sim.path);
         await wait(2000);
         client.destroy();
@@ -511,7 +521,7 @@ describe('E2E — Reconnection', () => {
     });
 
     it('should serve new topology to reconnecting client', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
 
         // First connection
         const events1 = await collectEventsFromIPC(sim.path, 500);
@@ -529,7 +539,7 @@ describe('E2E — Reconnection', () => {
     });
 
     it('should continue emitting events after client disconnect', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
 
         // Connect → collect → disconnect
         const events1 = await collectEventsFromIPC(sim.path, 500);
@@ -565,7 +575,7 @@ describe('E2E — Event Ordering', () => {
     });
 
     it('should have monotonically non-decreasing timestamps within each tool pipeline', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEventsFromIPC(sim.path, 3000);
 
         // Group by tool.action and check timestamp ordering
@@ -591,7 +601,7 @@ describe('E2E — Event Ordering', () => {
 
     it('should have recent timestamps (not stale or future)', async () => {
         const before = Date.now();
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEventsFromIPC(sim.path, 2000);
         const after = Date.now();
 

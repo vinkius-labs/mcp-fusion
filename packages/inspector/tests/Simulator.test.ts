@@ -19,6 +19,7 @@ import type { TelemetryEvent } from '@vinkius-core/mcp-fusion';
 import { startSimulator } from '../src/Simulator.js';
 import type { TelemetryBusInstance } from '@vinkius-core/mcp-fusion';
 import { parseInspectorArgs } from '../src/cli/inspector.js';
+import { platform } from 'node:os';
 
 // Helper: collect events via IPC
 function collectEvents(
@@ -60,6 +61,15 @@ function collectEvents(
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Unique IPC path per test — prevents EADDRINUSE on Windows Named Pipes
+let _testPathCounter = 0;
+function uniqueTestPath(): string {
+    const id = `${process.pid}-${Date.now()}-${_testPathCounter++}`;
+    return platform() === 'win32'
+        ? `\\\\.\\pipe\\mcp-fusion-simtest-${id}`
+        : `/tmp/mcp-fusion-simtest-${id}.sock`;
+}
+
 // ============================================================================
 // 1. Simulator — Lifecycle & Events
 // ============================================================================
@@ -75,7 +85,7 @@ describe('Simulator — Lifecycle', () => {
     });
 
     it('should start and return a TelemetryBusInstance', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         expect(typeof sim.emit).toBe('function');
         expect(typeof sim.close).toBe('function');
         expect(typeof sim.path).toBe('string');
@@ -83,7 +93,7 @@ describe('Simulator — Lifecycle', () => {
     });
 
     it('should close cleanly (all timers stopped)', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         await sim.close();
         sim = undefined; // prevent double-close
 
@@ -111,7 +121,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit topology event immediately on start', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
         const events = await collectEvents(sim.path, 500);
 
         const topos = events.filter((e) => e.type === 'topology');
@@ -126,7 +136,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit route events within 3 seconds', async () => {
-        sim = await startSimulator({ rps: 20 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
         const events = await collectEvents(sim.path, 3000);
 
         const routes = events.filter((e) => e.type === 'route');
@@ -139,7 +149,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit validate events', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEvents(sim.path, 2000);
 
         const validates = events.filter((e) => e.type === 'validate');
@@ -151,7 +161,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit middleware events', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEvents(sim.path, 2000);
 
         const mws = events.filter((e) => e.type === 'middleware');
@@ -159,7 +169,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit execute events', async () => {
-        sim = await startSimulator({ rps: 10 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 10 });
         const events = await collectEvents(sim.path, 2500);
 
         const execs = events.filter((e) => e.type === 'execute');
@@ -171,7 +181,7 @@ describe('Simulator — Event Emission', () => {
     });
 
     it('should emit all 13 event types given enough time', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         const events = await collectEvents(sim.path, 8000);
 
         const types = new Set(events.map((e) => e.type));
@@ -201,7 +211,7 @@ describe('Simulator — Topology Tools', () => {
     });
 
     it('should include all 6 simulated tools', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEvents(sim.path, 500);
 
         const topo = events.find((e) => e.type === 'topology') as any;
@@ -217,7 +227,7 @@ describe('Simulator — Topology Tools', () => {
     });
 
     it('should mark billing as destructive', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEvents(sim.path, 500);
 
         const topo = events.find((e) => e.type === 'topology') as any;
@@ -226,7 +236,7 @@ describe('Simulator — Topology Tools', () => {
     });
 
     it('should mark analytics as sandboxed', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEvents(sim.path, 500);
 
         const topo = events.find((e) => e.type === 'topology') as any;
@@ -236,7 +246,7 @@ describe('Simulator — Topology Tools', () => {
     });
 
     it('should have auth tool with FSM states', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEvents(sim.path, 500);
 
         const topo = events.find((e) => e.type === 'topology') as any;
@@ -262,7 +272,7 @@ describe('Simulator — Event Structure', () => {
     });
 
     it('all events should have type and timestamp', async () => {
-        sim = await startSimulator({ rps: 20 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
         const events = await collectEvents(sim.path, 3000);
 
         for (const event of events) {
@@ -273,7 +283,7 @@ describe('Simulator — Event Structure', () => {
     });
 
     it('route events should have tool and action', async () => {
-        sim = await startSimulator({ rps: 20 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 20 });
         const events = await collectEvents(sim.path, 2000);
 
         for (const event of events.filter((e) => e.type === 'route')) {
@@ -286,7 +296,7 @@ describe('Simulator — Event Structure', () => {
     });
 
     it('heartbeat events should have memory metrics', async () => {
-        sim = await startSimulator({ rps: 1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1 });
         const events = await collectEvents(sim.path, 6500);
 
         const hbs = events.filter((e) => e.type === 'heartbeat');
@@ -301,7 +311,7 @@ describe('Simulator — Event Structure', () => {
     }, 8000);
 
     it('DLP events should have fieldsRedacted and paths', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         const events = await collectEvents(sim.path, 4000);
 
         const dlps = events.filter((e) => e.type === 'dlp.redact');
@@ -315,7 +325,7 @@ describe('Simulator — Event Structure', () => {
     }, 6000);
 
     it('presenter.slice events should have byte metrics', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         const events = await collectEvents(sim.path, 4000);
 
         const slices = events.filter((e) => e.type === 'presenter.slice');
@@ -330,7 +340,7 @@ describe('Simulator — Event Structure', () => {
     }, 6000);
 
     it('sandbox.exec events should have executionMs', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         const events = await collectEvents(sim.path, 5000);
 
         const sandboxes = events.filter((e) => e.type === 'sandbox.exec');
@@ -342,7 +352,7 @@ describe('Simulator — Event Structure', () => {
     }, 7000);
 
     it('fsm.transition events should have state fields', async () => {
-        sim = await startSimulator({ rps: 5 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 5 });
         const events = await collectEvents(sim.path, 10_000);
 
         const fsms = events.filter((e) => e.type === 'fsm.transition');
@@ -430,19 +440,19 @@ describe('Adversarial — Simulator', () => {
 
     it('should handle rps = 0 without crashing', async () => {
         // rps=0 means intervalMs=Infinity → no events emitted
-        sim = await startSimulator({ rps: 0.1 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 0.1 });
         expect(sim.path).toBeDefined();
     });
 
     it('should handle very high rps gracefully', async () => {
-        sim = await startSimulator({ rps: 1000 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 1000 });
         await wait(200);
         await sim.close();
         sim = undefined; // prevent double-close
     });
 
     it('should not leak events after close', async () => {
-        sim = await startSimulator({ rps: 50 });
+        sim = await startSimulator({ path: uniqueTestPath(), rps: 50 });
         await sim.close();
         sim = undefined;
 

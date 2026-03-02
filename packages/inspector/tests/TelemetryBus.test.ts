@@ -74,18 +74,30 @@ function connectAndCollect(
     });
 }
 
-// Helper: connect and wait for the 'connect' event (deterministic)
-// After connect, yields 50ms for the server's 'connection' handler to run.
-// On Windows Named Pipes (IOCP), setImmediate is insufficient because the
-// server callback schedules via the I/O thread pool, not the event loop.
+// Helper: connect, wait for 'connect' event, and yield until the server
+// has registered the client. On Windows Named Pipes (IOCP), the server's
+// 'connection' handler fires asynchronously via the I/O thread pool.
 function connectAndReady(
     ipcPath: string,
+    bus?: { clientCount(): number },
 ): Promise<import('node:net').Socket> {
     return new Promise((resolve, reject) => {
         const client = connect(ipcPath);
         client.on('connect', () => {
-            // Short yield for server-side 'connection' handler
-            setTimeout(() => resolve(client), 50);
+            if (!bus) {
+                // No bus reference — yield generously
+                setTimeout(() => resolve(client), 200);
+                return;
+            }
+            // Poll until server registers the client (deterministic)
+            const expected = bus.clientCount() + 1;
+            const deadline = Date.now() + 2000;
+            const poll = () => {
+                if (bus.clientCount() >= expected) return resolve(client);
+                if (Date.now() > deadline) return resolve(client); // safety
+                setTimeout(poll, 10);
+            };
+            poll();
         });
         client.on('error', (err) => reject(err));
     });
@@ -219,7 +231,7 @@ describe('TelemetryBus — Client Connection', () => {
         bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Deterministic: wait for actual IPC 'connect' event
-        const client = await connectAndReady(bus.path);
+        const client = await connectAndReady(bus.path, bus);
 
         expect(bus.clientCount()).toBe(1);
         client.destroy();
@@ -261,6 +273,7 @@ describe('TelemetryBus — Client Connection', () => {
         } as TelemetryEvent;
 
         bus = await createTelemetryBus({
+            path: uniqueTestPath(),
             onConnect: () => topology,
         });
 
@@ -338,8 +351,8 @@ describe('TelemetryBus — Multi-Client', () => {
         bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Deterministic: wait for actual IPC 'connect' events
-        const client1 = await connectAndReady(bus.path);
-        const client2 = await connectAndReady(bus.path);
+        const client1 = await connectAndReady(bus.path, bus);
+        const client2 = await connectAndReady(bus.path, bus);
 
         expect(bus.clientCount()).toBe(2);
 
@@ -436,7 +449,7 @@ describe('TelemetryBus — Clean Shutdown', () => {
         const bus = await createTelemetryBus({ path: uniqueTestPath() });
 
         // Deterministic: wait for actual IPC 'connect' event
-        const client = await connectAndReady(bus.path);
+        const client = await connectAndReady(bus.path, bus);
 
         expect(bus.clientCount()).toBe(1);
         await bus.close();

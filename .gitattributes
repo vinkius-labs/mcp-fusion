@@ -1,0 +1,2 @@
+# Force LF line endings on hook scripts (shebang requires LF)
+.githooks/* text eol=lf
