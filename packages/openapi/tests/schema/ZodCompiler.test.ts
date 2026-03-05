@@ -140,9 +140,19 @@ describe('ZodCompiler', () => {
             expect(code).toBe('z.array(z.string())');
         });
 
-        it('should compile array with min/max length', () => {
+        it('should compile array with minItems/maxItems (OpenAPI standard)', () => {
+            const code = compileZod({ type: 'array', items: { type: 'integer' }, minItems: 1, maxItems: 10 });
+            expect(code).toBe('z.array(z.number().int()).min(1).max(10)');
+        });
+
+        it('should still accept legacy minLength/maxLength for backwards compat', () => {
             const code = compileZod({ type: 'array', items: { type: 'integer' }, minLength: 1, maxLength: 10 });
             expect(code).toBe('z.array(z.number().int()).min(1).max(10)');
+        });
+
+        it('should prefer minItems over minLength when both are present', () => {
+            const code = compileZod({ type: 'array', items: { type: 'string' }, minItems: 2, minLength: 5 });
+            expect(code).toBe('z.array(z.string()).min(2)');
         });
 
         it('should compile array without items as z.unknown()', () => {

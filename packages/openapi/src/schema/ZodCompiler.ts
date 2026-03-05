@@ -185,8 +185,11 @@ function compileArray(schema: SchemaNode, coerce: boolean): string {
     const itemsCode = schema.items ? compileNode(schema.items, coerce) : 'z.unknown()';
     let code = `z.array(${itemsCode})`;
 
-    if (schema.minLength !== undefined) code += `.min(${schema.minLength})`;
-    if (schema.maxLength !== undefined) code += `.max(${schema.maxLength})`;
+    // OpenAPI uses minItems/maxItems for array constraints (not minLength/maxLength)
+    const minArr = schema.minItems ?? schema.minLength;
+    const maxArr = schema.maxItems ?? schema.maxLength;
+    if (minArr !== undefined) code += `.min(${minArr})`;
+    if (maxArr !== undefined) code += `.max(${maxArr})`;
 
     return code;
 }

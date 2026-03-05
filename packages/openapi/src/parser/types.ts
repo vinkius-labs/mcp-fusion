@@ -33,6 +33,9 @@ export interface SchemaNode {
     readonly maxLength?: number;
     readonly minimum?: number;
     readonly maximum?: number;
+    /** Array item count constraints (OpenAPI `minItems`/`maxItems`) */
+    readonly minItems?: number;
+    readonly maxItems?: number;
     readonly pattern?: string;
     readonly default?: unknown;
     readonly nullable?: boolean;

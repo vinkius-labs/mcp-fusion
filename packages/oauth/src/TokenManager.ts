@@ -23,6 +23,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { execSync } from 'node:child_process';
 
 // ============================================================================
 // Types
@@ -55,6 +56,33 @@ const DEFAULT_TOKEN_FILE = 'token.json';
 const DEFAULT_PENDING_FILE = 'pending-auth.json';
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
+
+// ============================================================================
+// Windows Permission Helper
+// ============================================================================
+
+/**
+ * Restrict file/directory permissions to the current user only.
+ *
+ * On POSIX systems `mode: 0o600` / `0o700` is sufficient.
+ * On Windows, `mode` is silently ignored by Node.js — we fall back to
+ * `icacls` to remove inherited ACEs and grant access only to the current user.
+ *
+ * This is a best-effort operation: if `icacls` fails (e.g., non-NTFS
+ * volume or insufficient privileges), we log nothing and continue.
+ */
+function restrictPermissions(targetPath: string): void {
+    if (process.platform !== 'win32') return;
+    try {
+        const normalized = path.resolve(targetPath);
+        execSync(
+            `icacls "${normalized}" /inheritance:r /grant:r "%USERNAME%:F"`,
+            { stdio: 'ignore', windowsHide: true },
+        );
+    } catch {
+        // Best-effort — do not throw on ACL failure
+    }
+}
 
 // ============================================================================
 // TokenManager
@@ -121,6 +149,7 @@ export class TokenManager {
             savedAt: new Date().toISOString(),
         };
         fs.writeFileSync(this.tokenFilePath, JSON.stringify(data, null, 2), { mode: FILE_MODE });
+        restrictPermissions(this.tokenFilePath);
     }
 
     /** Remove saved token file. */
@@ -141,6 +170,7 @@ export class TokenManager {
             expires_at: Date.now() + (expiresIn * 1000),
         };
         fs.writeFileSync(this.pendingAuthFilePath, JSON.stringify(data, null, 2), { mode: FILE_MODE });
+        restrictPermissions(this.pendingAuthFilePath);
     }
 
     /** Get pending device_code if still valid (not expired). */
@@ -172,6 +202,7 @@ export class TokenManager {
     private ensureConfigDir(): void {
         if (!fs.existsSync(this.configDirPath)) {
             fs.mkdirSync(this.configDirPath, { recursive: true, mode: DIR_MODE });
+            restrictPermissions(this.configDirPath);
         }
     }
 

@@ -115,6 +115,25 @@ describe('toToolName', () => {
     it('should handle single word', () => {
         expect(toToolName('deploy')).toBe('deploy');
     });
+
+    it('should throw on empty string', () => {
+        expect(() => toToolName('')).toThrow('unable to derive a valid tool name');
+    });
+
+    it('should throw on whitespace-only string', () => {
+        expect(() => toToolName('   ')).toThrow('unable to derive a valid tool name');
+    });
+
+    it('should throw when name is entirely special characters', () => {
+        expect(() => toToolName('---')).toThrow('unable to derive a valid tool name');
+        expect(() => toToolName('!!!')).toThrow('unable to derive a valid tool name');
+        expect(() => toToolName('...')).toThrow('unable to derive a valid tool name');
+    });
+
+    it('should handle unicode workflow names that contain alphanumeric chars', () => {
+        expect(toToolName('日本語workflow')).toBe('workflow');
+        expect(toToolName('café')).toBe('caf');
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════

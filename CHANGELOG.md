@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.18] - 2026-03-05
+
+### Fixed
+
+- `TokenManager` now restricts file permissions on Windows via `icacls` — `mode: 0o600` is silently ignored on NTFS, so saved tokens and device codes were readable by any local user
+- `ZodCompiler.compileArray()` now prefers `minItems`/`maxItems` over legacy `minLength`/`maxLength` for array constraints — previously emitted `.min()`/`.max()` based on string-level fields, producing incorrect validation for arrays
+- `HttpHandlerFactory` no longer adds `Content-Type: application/json` to GET and HEAD requests — prevents servers from rejecting body-less requests that carry an unexpected content header
+- `RefResolver` deep-clones `$ref` targets before recursive resolution — multiple `$ref` pointers to the same definition no longer share a single mutable object, preventing cross-contamination during in-place resolution
+- `ToolSynthesizer.toToolName()` in the n8n package now throws when the sanitized name is empty (e.g. `"---"`, `"   "`) — previously returned `""`, which produced an invalid MCP tool definition
+
 ## [3.1.17] - 2026-03-05
 
 ### Fixed

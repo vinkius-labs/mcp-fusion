@@ -59,13 +59,15 @@ export function buildHandler(action: ApiAction): HandlerFn {
             }
         }
 
-        // Build request options
+        // Build request options — only set Content-Type for methods that send a body
+        const hasBody = method !== 'GET' && method !== 'HEAD';
+        const headers: Record<string, string> = {
+            ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+            ...ctx.headers,
+        };
         const options: RequestInit = {
             method,
-            headers: {
-                'Content-Type': 'application/json',
-                ...ctx.headers,
-            },
+            headers,
         };
 
         // Attach body for methods that accept it

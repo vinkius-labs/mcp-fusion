@@ -41,10 +41,19 @@ export interface SynthesizedAction {
  * "My Awesome Workflow (v2)" → "my_awesome_workflow_v2"
  */
 export function toToolName(workflowName: string): string {
-    return workflowName
+    const result = workflowName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '');
+
+    if (result === '') {
+        throw new Error(
+            `toToolName: unable to derive a valid tool name from "${workflowName}". ` +
+            'Workflow names must contain at least one alphanumeric character.',
+        );
+    }
+
+    return result;
 }
 
 /**

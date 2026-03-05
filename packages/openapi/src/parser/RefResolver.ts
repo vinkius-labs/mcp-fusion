@@ -85,8 +85,10 @@ function resolveNode(node: JsonValue, root: JsonObject, resolving: Set<string>):
         const resolved = lookupRef(root, ref);
 
         if (resolved !== undefined && typeof resolved === 'object' && resolved !== null) {
-            // Recursively resolve the target (it may contain its own $refs)
-            const result = resolveNode(resolved, root, resolving);
+            // Deep-clone to prevent shared-object mutation when the same $ref
+            // is referenced from multiple locations in the document.
+            const cloned = structuredClone(resolved) as JsonValue;
+            const result = resolveNode(cloned, root, resolving);
             resolving.delete(ref);
             return result;
         }
