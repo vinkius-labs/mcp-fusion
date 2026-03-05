@@ -80,6 +80,7 @@ function base64UrlDecode(base64: string): Uint8Array {
 export class CursorCodec {
     private readonly _mode: CursorMode;
     private _secretBytes: Uint8Array | undefined;
+    private _secretPromise: Promise<Uint8Array> | undefined;
     private readonly _providedSecret: string | undefined;
     private _hmacKey?: CryptoKey;
     private _aesKey?: CryptoKey;
@@ -101,9 +102,14 @@ export class CursorCodec {
 
     private async ensureSecret(): Promise<Uint8Array> {
         if (this._secretBytes) return this._secretBytes;
-        const crypto = await getCrypto();
-        this._secretBytes = crypto.getRandomValues(new Uint8Array(32));
-        return this._secretBytes;
+        if (!this._secretPromise) {
+            this._secretPromise = (async () => {
+                const crypto = await getCrypto();
+                this._secretBytes = crypto.getRandomValues(new Uint8Array(32));
+                return this._secretBytes;
+            })();
+        }
+        return this._secretPromise;
     }
 
     private async getHmacKey(): Promise<CryptoKey> {

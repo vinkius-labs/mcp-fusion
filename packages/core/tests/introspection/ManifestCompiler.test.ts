@@ -42,6 +42,7 @@ function createMockBuilder(
         presenterSchemaKeys: a.presenterSchemaKeys,
         presenterUiBlockTypes: a.presenterUiBlockTypes,
         presenterHasContextualRules: a.presenterHasContextualRules,
+        presenterStaticRules: a.presenterStaticRules,
     }));
 
     return {

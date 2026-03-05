@@ -230,11 +230,17 @@ async function materializeBehavior<TContext>(
 
     // Collect unique Presenter metadata across all actions
     const presenterSchemaKeys = new Set<string>();
+    const staticRuleStrings: string[] = [];
 
     for (const action of metadata) {
         if (action.presenterSchemaKeys) {
             for (const key of action.presenterSchemaKeys) {
                 presenterSchemaKeys.add(key);
+            }
+        }
+        if (action.presenterStaticRules) {
+            for (const rule of action.presenterStaticRules) {
+                staticRuleStrings.push(rule);
             }
         }
         if (action.presenterHasContextualRules) {
@@ -247,8 +253,10 @@ async function materializeBehavior<TContext>(
         egressSchemaDigest = await sha256(sortedKeys.join(','));
     }
 
-    if (systemRulesFingerprint !== 'dynamic' && presenterSchemaKeys.size > 0) {
-        systemRulesFingerprint = 'static:' + await sha256([...presenterSchemaKeys].sort().join(','));
+    if (systemRulesFingerprint !== 'dynamic' && (presenterSchemaKeys.size > 0 || staticRuleStrings.length > 0)) {
+        // Hash actual rule strings (sorted) for a stable fingerprint
+        const sortedRules = [...new Set(staticRuleStrings)].sort();
+        systemRulesFingerprint = 'static:' + await sha256(sortedRules.join(','));
     }
 
     // Middleware chain — extract names from builder

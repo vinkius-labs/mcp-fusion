@@ -119,12 +119,6 @@ export function registerIntrospectionResource<TContext>(
             const ctx = await contextFactory(extra);
             // Clone before mutation to protect the compiled tree
             manifest = config.filter(cloneManifest(fullManifest), ctx);
-        } else if (config.filter) {
-            // Filter without context (e.g. static rules)
-            manifest = config.filter(
-                cloneManifest(fullManifest),
-                undefined as TContext,
-            );
         } else {
             manifest = fullManifest;
         }

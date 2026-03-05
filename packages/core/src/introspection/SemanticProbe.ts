@@ -346,10 +346,28 @@ export async function evaluateProbes(
     const results: SemanticProbeResult[] = [];
     for (let i = 0; i < probes.length; i += concurrency) {
         const batch = probes.slice(i, i + concurrency);
-        const batchResults = await Promise.all(
+        const settled = await Promise.allSettled(
             batch.map(probe => evaluateProbe(probe, config)),
         );
-        results.push(...batchResults);
+        for (let j = 0; j < settled.length; j++) {
+            const outcome = settled[j]!;
+            if (outcome.status === 'fulfilled') {
+                results.push(outcome.value);
+            } else {
+                // Graceful degradation — treat failed probes as fallback results
+                const probe = batch[j]!;
+                results.push({
+                    probe,
+                    similarityScore: 0.5,
+                    driftLevel: 'medium',
+                    contractViolated: false,
+                    violations: [`Probe evaluation failed: ${String(outcome.reason)}`],
+                    reasoning: 'Fallback: probe threw an exception during evaluation',
+                    rawResponse: null,
+                    evaluatedAt: new Date().toISOString(),
+                });
+            }
+        }
     }
 
     return aggregateResults(probes[0]?.toolName ?? 'unknown', results);

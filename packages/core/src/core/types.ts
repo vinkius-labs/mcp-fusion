@@ -159,6 +159,8 @@ export interface ActionMetadata {
     readonly presenterUiBlockTypes: readonly string[] | undefined;
     /** Whether the Presenter has dynamic (context-aware) system rules */
     readonly presenterHasContextualRules: boolean | undefined;
+    /** Static rule strings for fingerprinting (empty if rules are contextual) */
+    readonly presenterStaticRules: readonly string[] | undefined;
 }
 
 // ── Internal Action (Strategy Input) ─────────────────────

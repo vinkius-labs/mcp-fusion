@@ -1472,6 +1472,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
                 presenterSchemaKeys: presenter?.getSchemaKeys(),
                 presenterUiBlockTypes: presenter?.getUiBlockTypes(),
                 presenterHasContextualRules: presenter?.hasContextualRules(),
+                presenterStaticRules: presenter?.getStaticRuleStrings(),
             };
         });
     }

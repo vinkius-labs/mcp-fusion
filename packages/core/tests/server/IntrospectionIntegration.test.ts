@@ -353,6 +353,7 @@ describe('IntrospectionResource: RBAC Filter Integration', () => {
             { enabled: true, filter: destructiveFilter },
             'srv',
             { values: () => registry.getBuilders() },
+            () => Promise.resolve({}), // provide contextFactory so filter runs
         );
 
         // First read — destructive filter wipes everything
@@ -369,7 +370,7 @@ describe('IntrospectionResource: RBAC Filter Integration', () => {
         // This proves the compiled manifest is re-generated each time
     });
 
-    it('filter without contextFactory should receive undefined context', async () => {
+    it('filter without contextFactory should be skipped (full manifest returned)', async () => {
         const server = createMockServer();
         const registry = createIntrospectionRegistry();
 
@@ -391,11 +392,10 @@ describe('IntrospectionResource: RBAC Filter Integration', () => {
         const result = await server.callReadResource('fusion://manifest.json');
         const manifest: ManifestPayload = JSON.parse(result.contents[0].text);
 
-        // Filter should have removed admin
-        expect(manifest.capabilities.tools['admin']).toBeUndefined();
-        // Filter should have been called with undefined context
-        expect(filter).toHaveBeenCalledTimes(1);
-        expect(filter.mock.calls[0][1]).toBeUndefined();
+        // Filter should NOT be called when contextFactory is absent
+        expect(filter).not.toHaveBeenCalled();
+        // Full manifest should be returned unfiltered
+        expect(manifest.capabilities.tools['admin']).toBeDefined();
     });
 });
 

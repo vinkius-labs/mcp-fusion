@@ -651,8 +651,8 @@ function registerPromptHandlers<TContext>(
             : (undefined as TContext);
         const signal = extractSignal(extra);
 
-        injectLoopbackDispatcher(ctx, registry, signal);
-        return prompts.routeGet(ctx, name, args);
+        const enrichedCtx = injectLoopbackDispatcher(ctx, registry, signal);
+        return prompts.routeGet(enrichedCtx, name, args);
     });
 }
 
@@ -665,12 +665,16 @@ function injectLoopbackDispatcher<TContext>(
     ctx: TContext,
     registry: RegistryDelegate<TContext>,
     signal?: AbortSignal,
-): void {
-    (ctx as Record<string, unknown>)['invokeTool'] = async (
+): TContext {
+    // Protect the original context from mutation — use prototype-based proxy
+    const wrapped = (ctx != null && typeof ctx === 'object'
+        ? Object.create(ctx as object)
+        : Object.assign({}, ctx ?? {})) as Record<string, unknown>;
+    wrapped['invokeTool'] = async (
         toolName: string,
         toolArgs: Record<string, unknown> = {},
     ) => {
-        const response = await registry.routeCall(ctx, toolName, toolArgs, undefined, signal);
+        const response = await registry.routeCall(wrapped as TContext, toolName, toolArgs, undefined, signal);
         const text = response.content
             .filter((c: { type: string }): c is { type: 'text'; text: string } => c.type === 'text')
             .map((c: { type: 'text'; text: string }) => c.text)
@@ -681,6 +685,7 @@ function injectLoopbackDispatcher<TContext>(
             raw: response,
         };
     };
+    return wrapped as TContext;
 }
 
 /**

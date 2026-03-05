@@ -641,6 +641,19 @@ export class Presenter<T> {
         return typeof this._rules === 'function';
     }
 
+    /**
+     * Return static rule strings for introspection hashing.
+     *
+     * If rules are dynamic (function), returns an empty array because
+     * the actual rule content depends on runtime data/context.
+     *
+     * @returns Static rule strings, or empty array if rules are contextual
+     */
+    getStaticRuleStrings(): readonly string[] {
+        if (typeof this._rules === 'function') return [];
+        return this._rules;
+    }
+
     // ── Execution ────────────────────────────────────────
 
     /**

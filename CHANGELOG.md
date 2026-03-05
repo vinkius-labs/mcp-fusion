@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.9] - 2026-03-05
+
+### Fixed
+
+- **Race condition in `CursorCodec.ensureSecret()` — concurrent calls generate different keys (Bug #17)** — When no explicit secret is provided, two concurrent `encode()` calls could both enter `ensureSecret()` before `_secretBytes` was set, generating different keys. The second would overwrite the first, invalidating earlier cursors. Fixed by adding a `_secretPromise` field as a promise-based lock — the first call creates the promise, subsequent concurrent calls reuse it.
+
+- **`IntrospectionResource` passes `undefined as TContext` to RBAC filter (Bug #18)** — When `config.filter` was defined but `contextFactory` was absent, the filter was called with `undefined` force-cast as `TContext`. If the filter accessed `ctx.user.role`, it threw `TypeError`. Fixed by removing the `else if (config.filter)` branch — when contextFactory is absent, the filter is skipped and the full manifest is returned.
+
+- **`SemanticProbe.evaluateProbes` uses `Promise.all` — one failure rejects entire batch (Bug #19)** — If any single probe failed (network error, timeout), `Promise.all` rejected the entire batch, discarding all other successful results. Fixed by replacing `Promise.all` with `Promise.allSettled` — fulfilled results are used normally, rejected probes produce graceful fallback results with `similarityScore: 0.5` and `driftLevel: 'medium'`.
+
+- **`systemRulesFingerprint` hashes schema keys instead of actual rules (Bug #20)** — The `ToolBehavior` interface promised "SHA-256 of sorted rule strings" but `materializeBehavior` hashed presenter schema keys. Changing rules without changing the schema produced the same fingerprint. Fixed by adding `getStaticRuleStrings()` to Presenter, `presenterStaticRules` to ActionMetadata, and wiring through GroupedToolBuilder. The fingerprint now hashes actual rule strings.
+
+- **Duplicate prompt names corrupt lockfile integrity digest (Bug #21)** — If two prompt builders shared the same name, the code produced duplicate entries in `promptDigestParts`, inflating the integrity digest. `.find()` always returned the first, silently ignoring the second. Fixed by replacing the array+find pattern with a `Map<string, PromptBuilder>` (last-wins deduplication) before iterating.
+
+- **`injectLoopbackDispatcher` mutates context object unsafely (Bug #22)** — Direct `ctx['invokeTool'] = ...` mutation failed with frozen objects, read-only getters, or shared contexts across requests. Fixed by changing the function to return a new `TContext` via `Object.create(ctx)` (prototype-based proxy) for objects, or `Object.assign({})` for null/undefined. Caller updated to use the enriched context.
+
+### Test Suite
+
+- **15 new regression tests** in `MediumBugs-17-18-19-20-21-22.test.ts` — CursorCodec concurrency (3 tests), IntrospectionResource filter safety (1 test), SemanticProbe batch resilience (3 tests), ToolContract fingerprint accuracy (3 tests), CapabilityLockfile dedup (2 tests), ServerAttachment ctx isolation (3 tests).
+- **Updated** 2 existing IntrospectionIntegration tests to align with the new filter-skip behavior (Bug #18).
+- **Updated** ManifestCompiler test helper to include new `presenterStaticRules` field.
+
 ## [3.1.8] - 2026-03-05
 
 ### Fixed

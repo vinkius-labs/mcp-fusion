@@ -275,12 +275,15 @@ export async function generateLockfile(
 
     if (promptBuilders.length > 0) {
         prompts = {};
-        const sortedPromptNames = promptBuilders
-            .map(b => b.getName())
-            .sort();
+        // Deduplicate by name — last-registered builder wins
+        const buildersByName = new Map<string, (typeof promptBuilders)[number]>();
+        for (const b of promptBuilders) {
+            buildersByName.set(b.getName(), b);
+        }
+        const sortedPromptNames = [...buildersByName.keys()].sort();
 
         for (const name of sortedPromptNames) {
-            const builder = promptBuilders.find(b => b.getName() === name)!;
+            const builder = buildersByName.get(name)!;
             const snapshot = await snapshotPrompt(builder);
             prompts[name] = snapshot;
             promptDigestParts.push(`${name}:${snapshot.integrityDigest}`);
