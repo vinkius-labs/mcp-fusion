@@ -42,7 +42,7 @@
  * @module
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { type ToolResponse } from '../core/response.js';
+import { type ToolResponse, error as toolError } from '../core/response.js';
 import { type MiddlewareFn } from '../core/types.js';
 
 // ── Types ────────────────────────────────────────────────
@@ -195,16 +195,35 @@ export function createGroup<TContext = void>(config: GroupConfig<TContext>): Com
         }
     }
 
+    // Pre-compute strict schemas at creation time (avoids re-allocation per call)
+    const strictSchemaMap = new Map<string, ZodObject<ZodRawShape>>();
+    for (const [name, schema] of schemaMap) {
+        strictSchemaMap.set(name, schema.strict() as ZodObject<ZodRawShape>);
+    }
+
     const execute = async (ctx: TContext, action: string, args: Record<string, unknown>): Promise<ToolResponse> => {
         const chain = dispatchMap.get(action);
         if (!chain) {
-            throw new Error(`Unknown action "${action}" in group "${config.name}". Available: ${actionNames.join(', ')}`);
+            return toolError(
+                `Unknown action "${action}" in group "${config.name}". Available: ${actionNames.join(', ')}`,
+                'INVALID_PARAMS',
+            );
         }
 
-        // Validate with Zod if schema is defined
-        const schema = schemaMap.get(action);
+        // Validate with Zod if schema is defined — use safeParse to return
+        // ToolResponse instead of throwing ZodError (contract compliance)
+        const schema = strictSchemaMap.get(action);
         if (schema) {
-            schema.strict().parse(args);
+            const result = schema.safeParse(args);
+            if (!result.success) {
+                const issues = result.error.issues
+                    .map(i => `${i.path.join('.')}: ${i.message}`)
+                    .join('; ');
+                return toolError(
+                    `Validation failed for action "${action}" in group "${config.name}": ${issues}`,
+                    'INVALID_PARAMS',
+                );
+            }
         }
 
         return chain(ctx, args);

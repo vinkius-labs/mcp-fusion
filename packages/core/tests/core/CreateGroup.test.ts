@@ -50,7 +50,7 @@ describe('createGroup', () => {
         expect(result.content[0]?.text).toContain('Hello alice');
     });
 
-    it('should throw for unknown action', async () => {
+    it('should return error ToolResponse for unknown action', async () => {
         const group = createGroup({
             name: 'test',
             actions: {
@@ -58,11 +58,13 @@ describe('createGroup', () => {
             },
         });
 
-        await expect(group.execute(undefined as never, 'unknown', {}))
-            .rejects.toThrow('Unknown action "unknown" in group "test"');
+        const result = await group.execute(undefined as never, 'unknown', {});
+        expect(result.isError).toBe(true);
+        expect(result.content[0]?.text).toContain('Unknown action "unknown"');
+        expect(result.content[0]?.text).toContain('INVALID_PARAMS');
     });
 
-    it('should validate args with Zod schema', async () => {
+    it('should return error ToolResponse for invalid args', async () => {
         const group = createGroup({
             name: 'test',
             actions: {
@@ -73,8 +75,10 @@ describe('createGroup', () => {
             },
         });
 
-        await expect(group.execute(undefined as never, 'create', { name: 123 as unknown }))
-            .rejects.toThrow();
+        const errorResult = await group.execute(undefined as never, 'create', { name: 123 as unknown });
+        expect(errorResult.isError).toBe(true);
+        expect(errorResult.content[0]?.text).toContain('Validation failed');
+        expect(errorResult.content[0]?.text).toContain('INVALID_PARAMS');
 
         const result = await group.execute(undefined as never, 'create', { name: 'valid' });
         expect(result.content[0]?.text).toContain('valid');

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.6] - 2026-03-05
+
+### Fixed
+
+- **Race condition: concurrent requests share mutable FSM state (Bug #3)** — The `StateMachineGate` instance was shared across all concurrent requests. In serverless/edge deployments, two simultaneous requests could interleave `restore()` → `transition()` → `save()`, corrupting the FSM state. Fixed by adding a `clone()` method to `StateMachineGate` that creates an independent copy with the same config and bindings but isolated mutable state. The `createToolListHandler` and `createToolCallHandler` in `ServerAttachment` now clone the FSM per-request when `fsmStore` is present.
+
+- **Underscore parsing breaks Inspector topology (Bug #4)** — `startServer.ts` split flat tool names by `'_'` to extract group/action for the telemetry bus topology. For a tool named `user_accounts_list`, this produced `group = "user"` and `action = "accounts_list"` — incorrect. Fixed by using `builder.getName()` directly as the group and `actionKey` as the action, eliminating the naive underscore split.
+
+- **Same underscore split bug in telemetry route events (Bug #5)** — `ServerAttachment.ts` used `name.split('_')` in the telemetry route event emission, producing incorrect group/action attribution for tools with underscores in their names. Fixed by resolving group/action from the exposition routing map (`flatRoute.builder.getName()` and `flatRoute.actionKey`).
+
+- **`createGroup.execute()` throws exceptions instead of returning `ToolResponse` (Bug #6)** — The function threw `Error` for unknown actions and `ZodError` for validation failures, but the signature promises `Promise<ToolResponse>`. Callers without try-catch would get unhandled exceptions, potentially crashing the MCP server. Fixed by returning `toolError()` with code `INVALID_PARAMS` for unknown actions and using `safeParse()` to return validation errors as `ToolResponse` with `isError: true` and detailed issue descriptions.
+
+- **`schema.strict()` re-allocated on every `execute()` call (Bug #23)** — `schema.strict()` returns a new `ZodObject` on each invocation. Strict schemas are now pre-computed at group creation time in a `strictSchemaMap`.
+
+### Test Suite
+
+- **8 new regression tests** in `StateMachineGate.concurrency-bug3.test.ts` — Simulates actual serverless race conditions with concurrent restore/transition/save on shared vs cloned gates, verifies clone isolation, binding deep-copy, visibility, snapshots, callbacks, and dispose independence.
+- **10 new regression tests** in `StateMachineGate.clone-regression.test.ts` — Tests clone independence, state mutation isolation, restored state preservation, binding/event preservation, concurrent session simulation, snapshot independence, tool visibility, uninitialized clone safety, and rapid parallel clones.
+- **10 new regression tests** in `UnderscoreParsing.bug4-5.test.ts` — Demonstrates naive split vs routing map for multi-underscore names, topology map correctness with `getName()`, telemetry event attribution, action-with-underscores edge case, dot separator, and fallback behavior.
+- **7 new regression tests** in `UnderscoreParsing.regression.test.ts` — Routing map group resolution, multi-underscore names, simple names, naive split comparison, topology map, dot separator, and fallback.
+- **12 new regression tests** in `CreateGroup.contractCompliance-bug6.test.ts` — Verifies execute() never throws for input errors, returns isError ToolResponse for unknown actions/validation failures, includes field paths and available actions, strict schema enforcement, handler runtime errors still propagate, and empty group edge case.
+- **8 new regression tests** in `CreateGroup.errorHandling-regression.test.ts` — Unknown action error response, Zod validation failure response, wrong field type, strict schema unknown fields, successful execution, field path inclusion, available actions listing, and handler error propagation.
+
+---
+
 ## [3.1.5] - 2026-03-05
 
 ### Fixed

@@ -172,13 +172,10 @@ export async function startServer<TContext>(
             // Build topology from registry builders
             const toolGroups = new Map<string, string[]>();
             for (const b of registry.getBuilders()) {
+                const group = b.getName();
                 for (const actionKey of b.getActionNames()) {
-                    const flatName = `${b.getName()}_${actionKey}`;
-                    const parts = flatName.split('_');
-                    const group = parts[0]!;
-                    const action = parts.slice(1).join('_');
                     const list = toolGroups.get(group) ?? [];
-                    list.push(action);
+                    list.push(actionKey);
                     toolGroups.set(group, list);
                 }
             }

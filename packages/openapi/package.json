@@ -1,6 +1,6 @@
 {
     "name": "@vinkius-core/mcp-fusion-openapi-gen",
-    "version": "3.1.5",
+    "version": "3.1.6",
     "description": "OpenAPI-to-MCP Fusion Server Generator. Parses OpenAPI 3.x and Swagger 2.0 specs and generates a complete, ready-to-run MCP Server with full MVA tool stacks (Presenters, Tools, Registry, Server) — all features configurable via YAML.",
     "type": "module",
     "main": "dist/index.js",

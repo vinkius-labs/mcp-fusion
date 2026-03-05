@@ -452,12 +452,16 @@ function propagateObservability<TContext>(
  */
 function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
     return async (_request: unknown, extra: unknown) => {
-        // Restore FSM state from external store (serverless/edge)
-        if (hCtx.fsm && hCtx.fsmStore) {
+        // Per-request FSM clone for serverless isolation (Bug #3 fix).
+        // When fsmStore is present, concurrent requests each get their
+        // own gate clone so restore/transition/save never interleave.
+        let fsm = hCtx.fsm;
+        if (fsm && hCtx.fsmStore) {
+            fsm = fsm.clone();
             const sessionId = extractSessionId(extra);
             if (sessionId) {
                 const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) hCtx.fsm.restore(snap);
+                if (snap) fsm.restore(snap);
             }
         }
 
@@ -475,8 +479,8 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
         }
 
         // FSM State Gate: remove tools not allowed in the current state
-        if (hCtx.fsm && hCtx.fsm.hasBindings) {
-            tools = tools.filter(tool => hCtx.fsm!.isToolAllowed(tool.name));
+        if (fsm && fsm.hasBindings) {
+            tools = tools.filter(tool => fsm!.isToolAllowed(tool.name));
         }
 
         return { tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(tools) : tools };
@@ -504,17 +508,23 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         const emit = hCtx.telemetry;
 
         // ── Telemetry: route event ──────────────────────────
-        const parts = name.split('_');
-        const toolGroup = parts.length > 1 ? parts[0]! : name;
-        const action = parts.length > 1 ? parts.slice(1).join('_') : name;
+        // Resolve group/action from the routing map instead of naive
+        // split('_') — avoids misattributing tools with underscores
+        // in their names (e.g. 'user_accounts_list' → group='user_accounts', action='list').
+        const exposition = hCtx.isFlat ? hCtx.recompile() : undefined;
+        const flatRoute = exposition?.routingMap.get(name);
+        const toolGroup = flatRoute ? flatRoute.builder.getName() : name;
+        const action = flatRoute ? flatRoute.actionKey : name;
         emit?.({ type: 'route', tool: toolGroup, action, args, timestamp: Date.now() } as any);
 
-        // Restore FSM state from external store (serverless/edge)
-        if (hCtx.fsm && hCtx.fsmStore) {
+        // Per-request FSM clone for serverless isolation (Bug #3 fix).
+        let fsm = hCtx.fsm;
+        if (fsm && hCtx.fsmStore) {
+            fsm = fsm.clone();
             const sessionId = extractSessionId(extra);
             if (sessionId) {
                 const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) hCtx.fsm.restore(snap);
+                if (snap) fsm.restore(snap);
             }
         }
 
@@ -551,11 +561,11 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         } as any);
 
         // FSM State Gate: auto-transition on successful execution
-        if (hCtx.fsm && !result.isError) {
-            const transitionEvent = hCtx.fsm.getTransitionEvent(name);
+        if (fsm && !result.isError) {
+            const transitionEvent = fsm.getTransitionEvent(name);
             if (transitionEvent) {
-                const fromState = hCtx.fsm.currentState;
-                const transition = await hCtx.fsm.transition(transitionEvent);
+                const fromState = fsm.currentState;
+                const transition = await fsm.transition(transitionEvent);
                 if (transition.changed) {
                     // Emit fsm.transition telemetry event
                     if (hCtx.telemetry) {
@@ -564,7 +574,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                             tool: name,
                             action: transitionEvent,
                             from: fromState,
-                            to: hCtx.fsm.currentState,
+                            to: fsm.currentState,
                             timestamp: Date.now(),
                         } as any);
                     }
@@ -572,7 +582,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                     if (hCtx.fsmStore) {
                         const sessionId = extractSessionId(extra);
                         if (sessionId) {
-                            await hCtx.fsmStore.save(sessionId, hCtx.fsm.snapshot());
+                            await hCtx.fsmStore.save(sessionId, fsm.snapshot());
                         }
                     }
                     // Notify client to re-fetch tools/list

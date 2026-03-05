@@ -455,6 +455,34 @@ export class StateMachineGate {
         }
     }
 
+    // ── Clone (Serverless Isolation) ─────────────────────
+
+    /**
+     * Create a lightweight clone of this gate with the same config
+     * and bindings but independent mutable state.
+     *
+     * Used in serverless/edge deployments where concurrent requests
+     * must not share `_currentState`. Each request gets its own clone,
+     * restores session state into it, transitions, and saves — without
+     * interfering with other concurrent requests.
+     *
+     * The clone starts **uninitialized** (no XState actor) so the first
+     * `transition()` call will create a fresh actor from the cloned state.
+     *
+     * @returns A new `StateMachineGate` with identical config and bindings
+     */
+    clone(): StateMachineGate {
+        const copy = new StateMachineGate(this._config);
+        for (const [toolName, binding] of this._bindings) {
+            copy._bindings.set(toolName, {
+                allowedStates: new Set(binding.allowedStates),
+                ...(binding.transitionEvent !== undefined ? { transitionEvent: binding.transitionEvent } : {}),
+            });
+        }
+        copy._currentState = this._currentState;
+        return copy;
+    }
+
     // ── Cleanup ──────────────────────────────────────────
 
     /**
