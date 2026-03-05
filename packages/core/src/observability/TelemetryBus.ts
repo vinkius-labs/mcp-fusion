@@ -482,8 +482,11 @@ export async function createTelemetryBus(config?: TelemetryBusConfig): Promise<T
         cleanup();
         process.kill(process.pid, signal);
     };
-    process.once('SIGINT', () => sigHandler('SIGINT'));
-    process.once('SIGTERM', () => sigHandler('SIGTERM'));
+    // Bug #49 fix: store arrow function references so close() can remove them
+    const sigintHandler = (): void => sigHandler('SIGINT');
+    const sigtermHandler = (): void => sigHandler('SIGTERM');
+    process.once('SIGINT', sigintHandler);
+    process.once('SIGTERM', sigtermHandler);
 
     // ── Close Method ──────────────────────────────────────
     async function close(): Promise<void> {
@@ -491,8 +494,8 @@ export async function createTelemetryBus(config?: TelemetryBusConfig): Promise<T
         // Signal handlers were registered with process.once, so they
         // auto-remove after firing. Remove them explicitly only if
         // close() is called before a signal arrives.
-        process.removeListener('SIGINT', sigHandler as NodeJS.SignalsListener);
-        process.removeListener('SIGTERM', sigHandler as NodeJS.SignalsListener);
+        process.removeListener('SIGINT', sigintHandler);
+        process.removeListener('SIGTERM', sigtermHandler);
         cleanup();
     }
 

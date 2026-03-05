@@ -64,8 +64,8 @@ interface ToolBuilderLike {
 
 /** Result returned by `startServer`. */
 export interface StartServerResult {
-    /** The MCP Server instance. */
-    readonly server: InstanceType<typeof Server>;
+    /** The MCP Server instance (`null` in edge/interceptor mode). */
+    readonly server: InstanceType<typeof Server> | null;
     /** The Telemetry Bus (if enabled). */
     readonly bus?: TelemetryBusInstance;
     /** Gracefully shut down everything. */
@@ -156,9 +156,8 @@ export async function startServer<TContext>(
             }
         };
 
-        // Abort normal startup — no Server, no Transport
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return { server: null as any, close: async () => {} };
+        // Abort normal startup — no Server, no Transport (Bug #45 fix)
+        return { server: null, close: async () => {} };
     }
 
     // ── Normal Server Startup ────────────────────────────────────────────

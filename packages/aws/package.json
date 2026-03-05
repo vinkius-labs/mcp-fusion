@@ -1,6 +1,6 @@
 {
   "name": "@vinkius-core/mcp-fusion-aws",
-  "version": "3.1.13",
+  "version": "3.1.14",
   "description": "AWS Lambda & Step Functions connector for MCP Fusion. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.",
   "type": "module",
   "main": "dist/index.js",

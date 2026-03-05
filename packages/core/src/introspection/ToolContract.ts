@@ -253,10 +253,14 @@ async function materializeBehavior<TContext>(
         egressSchemaDigest = await sha256(sortedKeys.join(','));
     }
 
-    if (systemRulesFingerprint !== 'dynamic' && (presenterSchemaKeys.size > 0 || staticRuleStrings.length > 0)) {
-        // Hash actual rule strings (sorted) for a stable fingerprint
+    // Bug #47 fix: condition should only check staticRuleStrings, not presenterSchemaKeys
+    // Bug #48 fix: always hash static rules even when dynamic rules coexist
+    if (staticRuleStrings.length > 0) {
         const sortedRules = [...new Set(staticRuleStrings)].sort();
-        systemRulesFingerprint = 'static:' + await sha256(sortedRules.join(','));
+        const hash = await sha256(sortedRules.join(','));
+        // Composite fingerprint preserves static rule coverage alongside dynamic indicator
+        const prefix = systemRulesFingerprint === 'dynamic' ? 'dynamic' : 'static';
+        systemRulesFingerprint = prefix + ':' + hash;
     }
 
     // Middleware chain — extract names from builder

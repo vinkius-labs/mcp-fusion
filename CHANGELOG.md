@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.14] - 2026-03-05
+
+### Fixed
+
+- **`startServer` edge interceptor returns `server: null` typed as `Server` (Bug #45)** — In edge/interceptor mode (Vinkius Cloud V8 Isolate), `startServer` returned `{ server: null as any }`, hiding the null from TypeScript. Callers accessing `result.server.close()` crashed with null dereference. Fixed by changing `StartServerResult.server` type to `Server | null` and removing the `as any` cast.
+
+- **`TokenEconomics` overhead ratio is 0 when ALL blocks are overhead (Bug #46)** — `overheadRatio = dataTokens > 0 ? overheadTokens / dataTokens : 0` reported 0 (minimum) when all blocks were overhead (100% overhead case), semantically inverting the metric. The `OVERHEAD WARNING` advisory never triggered for the most extreme case. Fixed by returning `Infinity` when `dataTokens === 0 && overheadTokens > 0`.
+
+- **`ToolContract.materializeBehavior` fingerprint includes schema keys in condition gate (Bug #47)** — Condition `presenterSchemaKeys.size > 0 || staticRuleStrings.length > 0` caused the fingerprint to change from `'none'` to `'static:e3b0c44...'` (hash of empty string) when Presenter had schema keys but zero rules. Adding/removing schema keys changed the fingerprint without any rules changing. Fixed by checking only `staticRuleStrings.length > 0`.
+
+- **Static rules silently discarded when dynamic rules coexist (Bug #48)** — When any action had `presenterHasContextualRules: true`, the fingerprint became `'dynamic'` and static rule hashing was skipped entirely. A tool with 2 static + 1 dynamic action lost cryptographic coverage of its static rules. Fixed by computing a composite fingerprint `'dynamic:<hash>'` that preserves static rule integrity alongside the dynamic indicator.
+
+- **`TelemetryBus.close()` doesn't remove signal handlers — wrong function reference (Bug #49)** — Signal handlers were registered as anonymous arrow functions (`() => sigHandler('SIGINT')`) but `close()` tried to remove `sigHandler` directly — a different function reference. `removeListener` was a no-op, leaving stale handlers that could kill the process after explicit `close()`. Fixed by storing arrow function references in named variables and using those same references in both registration and removal.
+
 ## [3.1.13] - 2026-03-05
 
 ### Fixed

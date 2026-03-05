@@ -223,7 +223,11 @@ export function profileResponse(
         .slice(0, overheadBlocks)
         .reduce((sum, b) => sum + b.estimatedTokens, 0);
     const dataTokens = totalTokens - overheadTokens;
-    const overheadRatio = dataTokens > 0 ? overheadTokens / dataTokens : 0;
+    // Bug #46 fix: when ALL blocks are overhead (dataTokens === 0),
+    // report Infinity instead of 0 to correctly trigger OVERHEAD WARNING
+    const overheadRatio = dataTokens > 0
+        ? overheadTokens / dataTokens
+        : (overheadTokens > 0 ? Infinity : 0);
 
     const risk = classifyRisk(totalTokens, thresholds);
     const advisory = generateAdvisory(toolName, totalTokens, risk, overheadRatio, config);
