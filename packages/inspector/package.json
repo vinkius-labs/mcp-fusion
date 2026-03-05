@@ -1,61 +1,61 @@
 {
-    "name": "@vinkius-core/mcp-fusion-inspector",
-    "version": "3.1.12",
-    "description": "MCP Fusion Inspector — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
-    "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "bin": {
-        "fusion-inspect": "./dist/cli/inspector.js"
-    },
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
-    "scripts": {
-        "build": "tsc",
-        "test": "vitest run",
-        "prepublishOnly": "npm run build"
-    },
-    "keywords": [
-        "mcp",
-        "inspector",
-        "mcp-inspector",
-        "mcp-fusion",
-        "tui",
-        "terminal",
-        "dashboard",
-        "observability",
-        "telemetry",
-        "devtools",
-        "cli",
-        "ai",
-        "llm"
-    ],
-    "author": "Vinkius Labs",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
-        "directory": "packages/inspector"
-    },
-    "bugs": {
-        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
-    },
-    "homepage": "https://mcp-fusion.vinkius.com/",
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "peerDependencies": {
-        "@vinkius-core/mcp-fusion": "^3.0.0"
-    },
-    "license": "Apache-2.0"
+  "name": "@vinkius-core/mcp-fusion-inspector",
+  "version": "3.1.13",
+  "description": "MCP Fusion Inspector — Real-time interactive terminal dashboard for MCP Fusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "fusion-inspect": "./dist/cli/inspector.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "inspector",
+    "mcp-inspector",
+    "mcp-fusion",
+    "tui",
+    "terminal",
+    "dashboard",
+    "observability",
+    "telemetry",
+    "devtools",
+    "cli",
+    "ai",
+    "llm"
+  ],
+  "author": "Vinkius Labs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+    "directory": "packages/inspector"
+  },
+  "bugs": {
+    "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+  },
+  "homepage": "https://mcp-fusion.vinkius.com/",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@vinkius-core/mcp-fusion": "^3.0.0"
+  },
+  "license": "Apache-2.0"
 }

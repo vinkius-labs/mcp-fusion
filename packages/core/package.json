@@ -1,153 +1,153 @@
 {
-    "name": "@vinkius-core/mcp-fusion",
-    "version": "3.1.12",
-    "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety — so AI agents perceive and act on your data deterministically.",
-    "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "bin": {
-        "fusion": "./dist/cli/fusion.js"
+  "name": "@vinkius-core/mcp-fusion",
+  "version": "3.1.13",
+  "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety — so AI agents perceive and act on your data deterministically.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "fusion": "./dist/cli/fusion.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        },
-        "./client": {
-            "import": "./dist/client/index.js",
-            "types": "./dist/client/index.d.ts"
-        },
-        "./ui": {
-            "import": "./dist/presenter/ui.js",
-            "types": "./dist/presenter/ui.d.ts"
-        },
-        "./presenter": {
-            "import": "./dist/presenter/index.js",
-            "types": "./dist/presenter/index.d.ts"
-        },
-        "./prompt": {
-            "import": "./dist/prompt/index.js",
-            "types": "./dist/prompt/index.d.ts"
-        },
-        "./state-sync": {
-            "import": "./dist/state-sync/index.js",
-            "types": "./dist/state-sync/index.d.ts"
-        },
-        "./observability": {
-            "import": "./dist/observability/index.js",
-            "types": "./dist/observability/index.d.ts"
-        },
-        "./dev": {
-            "import": "./dist/server/DevServer.js",
-            "types": "./dist/server/DevServer.d.ts"
-        },
-        "./schema": {
-            "import": "./dist/core/StandardSchema.js",
-            "types": "./dist/core/StandardSchema.d.ts"
-        },
-        "./testing": {
-            "import": "./dist/testing/MvaMetaSymbol.js",
-            "types": "./dist/testing/MvaMetaSymbol.d.ts"
-        },
-        "./introspection": {
-            "import": "./dist/introspection/index.js",
-            "types": "./dist/introspection/index.d.ts"
-        },
-        "./sandbox": {
-            "import": "./dist/sandbox/index.js",
-            "types": "./dist/sandbox/index.d.ts"
-        }
+    "./client": {
+      "import": "./dist/client/index.js",
+      "types": "./dist/client/index.d.ts"
     },
-    "scripts": {
-        "build": "rimraf dist && tsc",
-        "lint": "eslint src/",
-        "lint:fix": "eslint src/ --fix",
-        "test": "vitest run",
-        "test:coverage": "vitest run --coverage",
-        "prepublishOnly": "npm run build"
+    "./ui": {
+      "import": "./dist/presenter/ui.js",
+      "types": "./dist/presenter/ui.d.ts"
     },
-    "keywords": [
-        "mcp",
-        "model-context-protocol",
-        "ai",
-        "llm",
-        "tools",
-        "typescript",
-        "framework",
-        "middleware",
-        "zod",
-        "mva",
-        "model-view-agent",
-        "presenter",
-        "guardrails",
-        "agentic",
-        "structured-data",
-        "action-consolidation",
-        "dlp",
-        "compliance",
-        "pii-redaction",
-        "fsm",
-        "state-machine",
-        "anti-hallucination"
-    ],
-    "author": "Vinkius Labs",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
-        "directory": "packages/core"
+    "./presenter": {
+      "import": "./dist/presenter/index.js",
+      "types": "./dist/presenter/index.d.ts"
     },
-    "bugs": {
-        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+    "./prompt": {
+      "import": "./dist/prompt/index.js",
+      "types": "./dist/prompt/index.d.ts"
     },
-    "homepage": "https://mcp-fusion.vinkius.com/",
-    "files": [
-        "dist",
-        "README.md",
-        "CHANGELOG.md",
-        "LICENSE"
-    ],
-    "engines": {
-        "node": ">=18.0.0"
+    "./state-sync": {
+      "import": "./dist/state-sync/index.js",
+      "types": "./dist/state-sync/index.d.ts"
     },
-    "publishConfig": {
-        "access": "public"
+    "./observability": {
+      "import": "./dist/observability/index.js",
+      "types": "./dist/observability/index.d.ts"
     },
-    "dependencies": {
-        "@toon-format/toon": "^2.1.0",
-        "zod-to-json-schema": "^3.25.1"
+    "./dev": {
+      "import": "./dist/server/DevServer.js",
+      "types": "./dist/server/DevServer.d.ts"
     },
-    "peerDependencies": {
-        "@modelcontextprotocol/sdk": "^1.12.1",
-        "esbuild": "^0.24.0",
-        "fast-json-stringify": "^6.0.0",
-        "fast-redact": "^3.0.0",
-        "isolated-vm": "^5.0.4",
-        "xstate": "^5.0.0",
-        "zod": "^3.25.1 || ^4.0.0"
+    "./schema": {
+      "import": "./dist/core/StandardSchema.js",
+      "types": "./dist/core/StandardSchema.d.ts"
     },
-    "peerDependenciesMeta": {
-        "zod": {
-            "optional": true
-        },
-        "isolated-vm": {
-            "optional": true
-        },
-        "esbuild": {
-            "optional": true
-        },
-        "fast-json-stringify": {
-            "optional": true
-        },
-        "fast-redact": {
-            "optional": true
-        },
-        "xstate": {
-            "optional": true
-        }
+    "./testing": {
+      "import": "./dist/testing/MvaMetaSymbol.js",
+      "types": "./dist/testing/MvaMetaSymbol.d.ts"
     },
-    "license": "Apache-2.0",
-    "devDependencies": {
-        "fast-redact": "^3.5.0",
-        "rimraf": "^6.0.0"
+    "./introspection": {
+      "import": "./dist/introspection/index.js",
+      "types": "./dist/introspection/index.d.ts"
+    },
+    "./sandbox": {
+      "import": "./dist/sandbox/index.js",
+      "types": "./dist/sandbox/index.d.ts"
     }
+  },
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "llm",
+    "tools",
+    "typescript",
+    "framework",
+    "middleware",
+    "zod",
+    "mva",
+    "model-view-agent",
+    "presenter",
+    "guardrails",
+    "agentic",
+    "structured-data",
+    "action-consolidation",
+    "dlp",
+    "compliance",
+    "pii-redaction",
+    "fsm",
+    "state-machine",
+    "anti-hallucination"
+  ],
+  "author": "Vinkius Labs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+  },
+  "homepage": "https://mcp-fusion.vinkius.com/",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@toon-format/toon": "^2.1.0",
+    "zod-to-json-schema": "^3.25.1"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "esbuild": "^0.24.0",
+    "fast-json-stringify": "^6.0.0",
+    "fast-redact": "^3.0.0",
+    "isolated-vm": "^5.0.4",
+    "xstate": "^5.0.0",
+    "zod": "^3.25.1 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    },
+    "isolated-vm": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    },
+    "fast-json-stringify": {
+      "optional": true
+    },
+    "fast-redact": {
+      "optional": true
+    },
+    "xstate": {
+      "optional": true
+    }
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "fast-redact": "^3.5.0",
+    "rimraf": "^6.0.0"
+  }
 }

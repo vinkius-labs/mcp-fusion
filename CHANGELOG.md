@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.13] - 2026-03-05
+
+### Fixed
+
+- **Auto-wrap `success(undefined)` produces malformed ToolResponse for void handlers (Bug #41)** — When a handler returns `void` (fire-and-forget pattern), `result` is `undefined`. The duck-type ToolResponse check failed, and `success(undefined)` was called, producing `{ content: [{ type: 'text', text: undefined }] }` which violates the MCP contract (`text` must be a string). Fixed by guarding `if (result === undefined || result === null) return success('OK')` before the duck-type check.
+
+- **`DevServer.performReload` collects builders in disposable registry (Bug #42)** — `performReload` created a local `reloadRegistry`, called `setup(reloadRegistry)`, collected builders, but never transferred them to the real MCP server's registry. The client received `notifications/tools/list_changed` but the actual tool list hadn't changed — hot-reload was effectively a no-op. Fixed by accepting an optional `registry` in `DevServerConfig` and transferring collected builders after each reload (with `clear()` before re-registration to avoid duplicates).
+
+- **`selfHealing` option accepted but never used in `attachToServer` (Bug #43)** — `AttachOptions` declared `selfHealing?: SelfHealingConfig` and imported the type, but `attachToServer` never destructured or wired it into the handler pipeline. Users configuring `selfHealing` got zero effect. Fixed by destructuring `selfHealing`, adding it to `HandlerContext`, passing it through to `hCtx`, and calling `enrichValidationError` on error results in `createToolCallHandler`.
+
+- **FSM state lost when `fsmStore` exists but session ID is not extractable (Bug #44)** — After FSM transition, state was saved to `fsmStore` only if `extractSessionId(extra)` returned a value. In stdio transports (no session ID), the transition was applied to the per-request clone and then discarded — state was silently lost. Fixed by using `extractSessionId(extra) ?? '__default__'` as a fallback session ID at all three call sites (tool list handler load, tool call handler load, post-transition save).
+
 ## [3.1.12] - 2026-03-05
 
 ### Fixed

@@ -59,6 +59,8 @@ interface ToolRegistryLike {
     register(builder: unknown): void;
     // Optional: clear for re-registration
     getBuilders?(): unknown[];
+    /** Optional: clear all builders before re-registering (for hot-reload) */
+    clear?(): void;
 }
 
 /**
@@ -107,6 +109,19 @@ export interface DevServerConfig {
      * on every reload, so the LLM client picks up changes automatically.
      */
     readonly server?: McpServerLike;
+
+    /**
+     * Optional real ToolRegistry reference for hot-reload.
+     *
+     * When provided, builders collected during `setup()` are automatically
+     * transferred to this registry after each reload, making hot-reload
+     * effective. Without this, the user must close over their own registry
+     * in the setup callback (fragile and undocumented pattern).
+     *
+     * If the registry implements `clear()`, old builders are removed
+     * before re-registration to avoid duplicates.
+     */
+    readonly registry?: ToolRegistryLike;
 }
 
 /**
@@ -223,6 +238,16 @@ export function createDevServer(config: DevServerConfig): DevServer {
             // eslint-disable-next-line no-console
             console.error(`[fusion dev] Reload failed: ${message}`);
             return;
+        }
+
+        // Transfer collected builders to the real registry (Bug #42 fix)
+        if (builders.length > 0 && config.registry) {
+            if (typeof config.registry.clear === 'function') {
+                config.registry.clear();
+            }
+            for (const b of builders) {
+                config.registry.register(b);
+            }
         }
 
         // Notify MCP client about tool list changes

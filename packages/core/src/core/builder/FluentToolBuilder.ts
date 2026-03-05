@@ -689,6 +689,11 @@ export class FluentToolBuilder<
         const wrappedHandler = async (ctx: TContext, args: Record<string, unknown>): Promise<ToolResponse> => {
             const result = await resolvedHandler(args as never, ctx as never);
 
+            // Guard: void/null handlers → safe fallback (Bug #41)
+            if (result === undefined || result === null) {
+                return success('OK');
+            }
+
             // Auto-wrap non-ToolResponse results (implicit success)
             // Check for MCP ToolResponse shape: { content: [{ type: 'text', text: string }] }
             // We verify content[0].type === 'text' AND that the object has no extra

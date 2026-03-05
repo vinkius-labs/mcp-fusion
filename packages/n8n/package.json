@@ -1,58 +1,58 @@
 {
-    "name": "@vinkius-core/mcp-fusion-n8n",
-    "version": "3.1.12",
-    "description": "n8n connector for MCP Fusion. Auto-discovers webhook workflows and produces ToolBuilders — so AI agents can call your automations natively.",
-    "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
-    "scripts": {
-        "build": "tsc",
-        "test": "vitest run",
-        "prepublishOnly": "npm run build"
-    },
-    "keywords": [
-        "mcp",
-        "n8n",
-        "mcp-fusion",
-        "workflow",
-        "automation",
-        "ai",
-        "llm",
-        "connector"
-    ],
-    "author": "Vinkius Labs",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
-        "directory": "packages/n8n"
-    },
-    "bugs": {
-        "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
-    },
-    "homepage": "https://mcp-fusion.vinkius.com/",
-    "files": [
-        "dist",
-        "README.md"
-    ],
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "peerDependencies": {
-        "@vinkius-core/mcp-fusion": "^2.0.0",
-        "zod": "^3.25.1 || ^4.0.0"
-    },
-    "devDependencies": {
-        "@types/node": "^25.3.0",
-        "@vinkius-core/mcp-fusion": ">=2.14.0"
-    },
-    "license": "Apache-2.0"
+  "name": "@vinkius-core/mcp-fusion-n8n",
+  "version": "3.1.13",
+  "description": "n8n connector for MCP Fusion. Auto-discovers webhook workflows and produces ToolBuilders — so AI agents can call your automations natively.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "n8n",
+    "mcp-fusion",
+    "workflow",
+    "automation",
+    "ai",
+    "llm",
+    "connector"
+  ],
+  "author": "Vinkius Labs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinkius-labs/mcp-fusion.git",
+    "directory": "packages/n8n"
+  },
+  "bugs": {
+    "url": "https://github.com/vinkius-labs/mcp-fusion/issues"
+  },
+  "homepage": "https://mcp-fusion.vinkius.com/",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@vinkius-core/mcp-fusion": "^2.0.0",
+    "zod": "^3.25.1 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "@vinkius-core/mcp-fusion": ">=2.14.0"
+  },
+  "license": "Apache-2.0"
 }

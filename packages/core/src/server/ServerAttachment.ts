@@ -26,7 +26,7 @@ import { type StateSyncConfig, type SyncPolicy } from '../state-sync/types.js';
 import { type IntrospectionConfig } from '../introspection/types.js';
 import { registerIntrospectionResource } from '../introspection/IntrospectionResource.js';
 import { type ZeroTrustConfig, AttestationError } from '../introspection/CryptoAttestation.js';
-import { type SelfHealingConfig } from '../introspection/ContractAwareSelfHealing.js';
+import { type SelfHealingConfig, enrichValidationError } from '../introspection/ContractAwareSelfHealing.js';
 import { compileContracts } from '../introspection/ToolContract.js';
 import { computeServerDigest } from '../introspection/BehaviorDigest.js';
 import { type ToolExposition } from '../exposition/types.js';
@@ -417,6 +417,7 @@ interface HandlerContext<TContext> {
     readonly fsmStore?: FsmStateStore;
     readonly notifyToolListChanged?: () => void;
     readonly telemetry?: TelemetrySink;
+    readonly selfHealing?: SelfHealingConfig;
 }
 
 // ── Observability Propagation ────────────────────────────
@@ -458,11 +459,9 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
         let fsm = hCtx.fsm;
         if (fsm && hCtx.fsmStore) {
             fsm = fsm.clone();
-            const sessionId = extractSessionId(extra);
-            if (sessionId) {
-                const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) fsm.restore(snap);
-            }
+            const sessionId = extractSessionId(extra) ?? '__default__';
+            const snap = await hCtx.fsmStore.load(sessionId);
+            if (snap) fsm.restore(snap);
         }
 
         let tools: McpTool[];
@@ -521,11 +520,9 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         let fsm = hCtx.fsm;
         if (fsm && hCtx.fsmStore) {
             fsm = fsm.clone();
-            const sessionId = extractSessionId(extra);
-            if (sessionId) {
-                const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) fsm.restore(snap);
-            }
+            const sessionId = extractSessionId(extra) ?? '__default__';
+            const snap = await hCtx.fsmStore.load(sessionId);
+            if (snap) fsm.restore(snap);
         }
 
         let result: ToolResponse;
@@ -550,6 +547,17 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         } catch (err) {
             emit?.({ type: 'error', tool: toolGroup, action, error: String(err), timestamp: Date.now() } as any);
             throw err;
+        }
+
+        // ── Self-Healing: enrich validation errors with contract deltas (Bug #43 fix) ──
+        if (result.isError && hCtx.selfHealing) {
+            const text = result.content?.[0]?.type === 'text' ? (result.content[0] as { text: string }).text : '';
+            if (text) {
+                const healing = enrichValidationError(text, toolGroup, action, hCtx.selfHealing);
+                if (healing.injected) {
+                    result = { ...result, content: [{ type: 'text' as const, text: healing.enrichedError }] };
+                }
+            }
         }
 
         // ── Telemetry: execute event ─────────────────────────
@@ -579,11 +587,10 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                         } as any);
                     }
                     // Persist new state to external store (serverless/edge)
+                    // Use fallback session ID for transports without sessions (e.g., stdio) (Bug #44 fix)
                     if (hCtx.fsmStore) {
-                        const sessionId = extractSessionId(extra);
-                        if (sessionId) {
-                            await hCtx.fsmStore.save(sessionId, fsm.snapshot());
-                        }
+                        const sessionId = extractSessionId(extra) ?? '__default__';
+                        await hCtx.fsmStore.save(sessionId, fsm.snapshot());
                     }
                     // Notify client to re-fetch tools/list
                     hCtx.notifyToolListChanged?.();
@@ -733,7 +740,7 @@ export async function attachToServer<TContext>(
         filter, contextFactory, debug, tracing, stateSync,
         introspection, serverName,
         toolExposition = 'flat', actionSeparator = '_',
-        prompts, zeroTrust,
+        prompts, zeroTrust, selfHealing,
     } = options;
 
     // 1. Propagate observability to all registered builders
@@ -818,6 +825,7 @@ export async function attachToServer<TContext>(
         ...(fsmStore ? { fsmStore } : {}),
         ...(notifyToolListChanged ? { notifyToolListChanged } : {}),
         ...(options.telemetry ? { telemetry: options.telemetry } : {}),
+        ...(selfHealing ? { selfHealing } : {}),
     };
 
     // 5. Register tool handlers
