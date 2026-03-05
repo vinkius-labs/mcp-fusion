@@ -37,6 +37,7 @@ export class GroupItem extends BaseModel {
      *
      * @param parentGroup - The group to join
      * @returns `false` if already a member, `true` if added
+     * @internal Use {@link Group.addChildTool} / {@link Group.addChildPrompt} / {@link Group.addChildResource} instead.
      */
     public addParentGroup(parentGroup: Group): boolean {
         if (this.parentGroups.includes(parentGroup)) return false;

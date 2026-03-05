@@ -225,6 +225,13 @@ function buildAtomicSchema<TContext>(
         };
 
         for (const [key, value] of Object.entries(jsonSchema.properties ?? {})) {
+            // Bug #54: Warn when action schema overwrites a common schema field
+            if (key in properties) {
+                console.warn(
+                    `[MCP Fusion] Action schema field '${key}' overwrites common schema field with the same name. ` +
+                    `Use omitCommonFields to exclude the common field, or rename the action field.`,
+                );
+            }
             properties[key] = value;
         }
 

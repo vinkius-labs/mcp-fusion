@@ -31,10 +31,14 @@
 import type { ToolContract } from './ToolContract.js';
 import type { ServerDigest, BehaviorDigestResult } from './BehaviorDigest.js';
 
-// Node 18 does not expose `crypto` as a global — resolve via node:crypto.webcrypto
-const subtle: SubtleCrypto = globalThis.crypto?.subtle
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ?? (await import('node:crypto')).webcrypto.subtle as SubtleCrypto;
+// Bug #55: Lazy resolution instead of top-level await (breaks CJS consumers)
+let _subtle: SubtleCrypto | undefined;
+async function getSubtle(): Promise<SubtleCrypto> {
+    if (_subtle) return _subtle;
+    _subtle = globalThis.crypto?.subtle
+        ?? (await import('node:crypto')).webcrypto.subtle as SubtleCrypto;
+    return _subtle;
+}
 
 // ============================================================================
 // Types
@@ -325,6 +329,7 @@ async function hmacSign(data: string, secret: string): Promise<string> {
     const keyData = encoder.encode(secret);
     const msgData = encoder.encode(data);
 
+    const subtle = await getSubtle();
     const key = await subtle.importKey(
         'raw', keyData, { name: 'HMAC', hash: 'SHA-256' },
         false, ['sign'],

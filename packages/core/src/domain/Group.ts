@@ -99,6 +99,18 @@ export class Group extends BaseModel {
     public addChildGroup(childGroup: Group): boolean {
         if (this.childGroups.includes(childGroup)) return false;
 
+        // Bug #52: Cycle detection — walk the parent chain to prevent infinite recursion
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        let ancestor: Group | null = this;
+        while (ancestor !== null) {
+            if (ancestor === childGroup) {
+                throw new Error(
+                    `[MCP Fusion] Cycle detected: adding '${childGroup.name}' as a child of '${this.name}' would create a circular reference.`,
+                );
+            }
+            ancestor = ancestor.parent;
+        }
+
         // Remove from previous parent to avoid ghost references (Bug #7 fix)
         if (childGroup.parent !== null) {
             childGroup.parent.removeChildGroup(childGroup);

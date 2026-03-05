@@ -215,14 +215,14 @@ describe('FusionClient error handling', () => {
         });
     });
 
-    it('should preserve args that include an "action" key (override)', async () => {
+    it('should preserve routing action even when args include an "action" key (Bug #51 fix)', async () => {
         const transport = createMockTransport();
         const client = createFusionClient(transport);
 
-        // User passes { action: 'custom' } — but the client also sets action from the path
+        // User passes { action: 'custom' } — but the routing action must take precedence
         await client.execute('tool.fromPath', { action: 'fromUser' });
 
-        // Since spread comes after the explicit action, user's "action" key wins
-        expect(transport.calls[0].args['action']).toBe('fromUser');
+        // Routing action wins — spread order is { ...args, action: actionName }
+        expect(transport.calls[0].args['action']).toBe('fromPath');
     });
 });

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.15] - 2026-03-05
+
+### Fixed
+
+- **`GovernanceObserver.observe()` sync mishandles async callbacks (Bug #50)** — `observe<T>(fn: () => T): T` accepted async callbacks since `() => Promise<T>` is assignable to `() => T`. The span ended immediately, `durationMs` was near-zero, async rejections were never caught, and the debug event registered success before async work completed. Fixed by adding a runtime guard that throws when the result is thenable, directing users to `observeAsync()`.
+
+- **`FusionClient.terminalCall` — user `action` field overwrites routing field (Bug #51)** — `{ action: actionName, ...args }` placed the routing `action` before user args. If the user's schema had a field named `action`, the user's value silently overwrote the routing field, causing the server to route to the wrong handler. Fixed by inverting spread order to `{ ...args, action: actionName }`.
+
+- **`Group.addChildGroup()` without cycle detection — infinite recursion (Bug #52)** — Adding a group as a child of itself or creating an indirect cycle caused infinite recursion in `getRoot()` and `getFullyQualifiedNameRecursive()`. Fixed by walking the parent chain before adding; if the child is an ancestor, throw.
+
+- **`GroupItem.addParentGroup()` is public — allows inconsistent bidirectional links (Bug #53)** — `addParentGroup()` added a group to the item's `parentGroups` but did not add the item to the group's `childTools`. The two collections became inconsistent. Fixed by marking as `@internal` with documentation directing users to `Group.addChildTool()` / `addChildPrompt()` / `addChildResource()`.
+
+- **`ExpositionCompiler` action schema silently overwrites common schema fields (Bug #54)** — When both common and action schemas defined a field with the same name, the action version silently won with no warning. Fixed by emitting `console.warn()` when an action field overwrites a common field.
+
+- **`CryptoAttestation` top-level `await` breaks CommonJS consumers (Bug #55)** — `const subtle = globalThis.crypto?.subtle ?? (await import('node:crypto')).webcrypto.subtle` used top-level await, requiring ESM. The module failed to load in CJS contexts. Fixed by replacing with lazy async `getSubtle()` resolution per-call, following the same pattern as `canonicalize.ts`.
+
 ## [3.1.14] - 2026-03-05
 
 ### Fixed

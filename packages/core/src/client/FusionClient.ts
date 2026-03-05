@@ -453,8 +453,8 @@ export function createFusionClient<TRouter extends RouterMap>(
         const actionName = action.substring(dotIndex + 1);
 
         return transport.callTool(toolName, {
-            action: actionName,
             ...args,
+            action: actionName,
         });
     }
 

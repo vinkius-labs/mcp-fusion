@@ -124,6 +124,14 @@ export function createGovernanceObserver(config: GovernanceObserverConfig): Gove
 
         try {
             const result = fn();
+
+            // Bug #50: Runtime guard — reject async callbacks passed to sync observe()
+            if (result != null && typeof (result as Record<string, unknown>).then === 'function') {
+                throw new Error(
+                    '[MCP Fusion] observe() received an async callback. Use observeAsync() for async operations.',
+                );
+            }
+
             const durationMs = Date.now() - start;
 
             span?.setAttribute('mcp.governance.outcome', 'success');
