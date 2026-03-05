@@ -37,8 +37,8 @@ export function decorateDescription(
 ): McpTool {
     if (!policy?.cacheControl) return tool;
 
-    const suffix = ` [Cache-Control: ${policy.cacheControl}]`;
+    const tag = `[Cache-Control: ${policy.cacheControl}]`;
     const base = (tool.description ?? '').replace(CACHE_CONTROL_PATTERN, '');
 
-    return { ...tool, description: base + suffix };
+    return { ...tool, description: base.length > 0 ? `${base} ${tag}` : tag };
 }

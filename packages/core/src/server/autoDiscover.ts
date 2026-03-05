@@ -92,6 +92,20 @@ export interface AutoDiscoverOptions {
      * Default behavior: looks for `default` export or named `tool` export.
      */
     resolve?: (mod: Record<string, unknown>) => ToolBuilderLike | ToolBuilderLike[] | undefined;
+
+    /**
+     * Error handler called when a file fails to import.
+     * Receives the file path and the thrown error.
+     * If not provided, import errors are silently ignored.
+     */
+    onError?: (filePath: string, error: unknown) => void;
+
+    /**
+     * When `true`, rethrow import errors instead of skipping.
+     * Takes precedence over `onError`.
+     * @default false
+     */
+    strict?: boolean;
 }
 
 // ── Internal ─────────────────────────────────────────────
@@ -189,6 +203,8 @@ export async function autoDiscover(
         recursive = true,
         loader = 'esm',
         resolve: customResolve,
+        onError,
+        strict = false,
     } = options;
 
     const absoluteDir = resolve(dir);
@@ -220,9 +236,9 @@ export async function autoDiscover(
             }
 
             discoveredFiles.push(filePath);
-        } catch {
-            // Skip files that fail to import (syntax errors, missing deps, etc.)
-            // In production, this should be logged via the observability layer
+        } catch (err: unknown) {
+            if (strict) throw err;
+            onError?.(filePath, err);
             continue;
         }
     }

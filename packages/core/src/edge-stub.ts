@@ -71,10 +71,12 @@ export const Buffer = {
     allocUnsafe: () => CRASH('Buffer.allocUnsafe (use Uint8Array)'),
 };
 
-// Path stubs (structural, satisfy imports)
-export function resolve() { return ''; }
-export function join() { return ''; }
-export function dirname() { return ''; }
-export function basename() { return ''; }
+// Path stubs — crash like Tier 2 stubs for consistency.
+// If these are ever reached at runtime, a silent empty string
+// would propagate and create hard-to-debug path errors.
+export const resolve = () => CRASH('node:path.resolve');
+export const join = () => CRASH('node:path.join');
+export const dirname = () => CRASH('node:path.dirname');
+export const basename = () => CRASH('node:path.basename');
 
 export default {};

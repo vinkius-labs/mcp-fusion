@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.11] - 2026-03-05
+
+### Fixed
+
+- **Case-sensitive boolean coercion in `PromptExecutionPipeline` (Bug #31)** — `value === 'true'` was case-sensitive, so `'True'`, `'TRUE'`, and `'1'` were all coerced to `false`. Fixed by using `value.toLowerCase() === 'true' || value === '1'` with a `typeof` guard.
+
+- **Leading space in description when `tool.description` is `undefined` (Bug #32)** — `DescriptionDecorator` baked a space into the suffix constant, producing `" [Cache-Control: ...]"` when the base description was empty. Fixed by conditionally inserting the space only when `base.length > 0`.
+
+- **`ZodDescriptionExtractor` fails to unwrap `ZodPipeline` (Bug #33)** — `ZodPipeline` stores its inner schema in `_def.in`, not in `innerType`/`type`/`schema`. The fallback chain returned `undefined`, silently losing `.describe()` annotations on piped fields. Fixed by adding `(def as Record<string, unknown>)['in']` to the fallback chain.
+
+- **`autoDiscover` silently swallows all import errors (Bug #34)** — Syntax errors, missing dependencies, and runtime exceptions were all caught and ignored, making tools disappear without any diagnostic. Fixed by adding `onError` callback and `strict` option to `AutoDiscoverOptions`. When `strict` is `true`, errors are rethrown.
+
+- **`edge-stub.ts` path functions return empty string silently (Bug #35)** — `resolve()`, `join()`, `dirname()`, and `basename()` returned `''` instead of crashing, allowing empty paths to silently propagate. Fixed by replacing them with `CRASH('node:path.<fn>')` calls for consistency with Tier 2 stubs.
+
+- **`TokenEconomics` collection detection via `endsWith('s')` produces false positives (Bug #36)** — Fields like `status`, `address`, `progress`, `class`, and `success` were incorrectly classified as collections, inflating risk assessments. Fixed by replacing `endsWith('s')` with a specific regex of 20 known plural suffixes plus case-insensitive `includes('list')` and `includes('items')` checks.
+
 ## [3.1.10] - 2026-03-05
 
 ### Fixed

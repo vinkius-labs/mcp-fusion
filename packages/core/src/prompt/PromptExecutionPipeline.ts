@@ -116,7 +116,9 @@ export function coercePromptArgs(
 
         switch (typeName) {
             case 'ZodBoolean':
-                coerced[key] = value === 'true';
+                coerced[key] = typeof value === 'string'
+                    ? value.toLowerCase() === 'true' || value === '1'
+                    : Boolean(value);
                 break;
             case 'ZodNumber':
                 coerced[key] = Number(value);

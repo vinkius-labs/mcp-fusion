@@ -269,7 +269,7 @@ export function computeStaticProfile(
     const fieldBreakdown: FieldTokenEstimate[] = schemaKeys.map(name => ({
         name,
         estimatedTokens: estimateFieldTokens(name),
-        isCollection: name.endsWith('s') || name.includes('list') || name.includes('items'),
+        isCollection: /(?:ids|keys|values|records|results|rows|elements|entries|tags|items|users|events|files|nodes|edges|logs|names|emails|roles)$/i.test(name) || name.toLowerCase().includes('list') || name.toLowerCase().includes('items'),
     }));
 
     // Base token cost: field names + structure + JSON overhead

@@ -61,13 +61,13 @@ describe('DescriptionDecorator', () => {
         const tool = makeTool('tool', '');
         const result = decorateDescription(tool, { cacheControl: 'no-store' });
 
-        expect(result.description).toBe(' [Cache-Control: no-store]');
+        expect(result.description).toBe('[Cache-Control: no-store]');
     });
 
     it('handles undefined description gracefully', () => {
         const tool = makeTool('tool');
         const result = decorateDescription(tool, { cacheControl: 'no-store' });
 
-        expect(result.description).toBe(' [Cache-Control: no-store]');
+        expect(result.description).toBe('[Cache-Control: no-store]');
     });
 });

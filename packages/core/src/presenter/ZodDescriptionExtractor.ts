@@ -65,8 +65,8 @@ function unwrap(node: ZodNode): ZodNode {
     ];
 
     if (wrapperTypes.includes(typeName)) {
-        const inner = def.innerType ?? def.type ?? def.schema;
-        if (inner) return unwrap(inner);
+        const inner = def.innerType ?? def.type ?? def.schema ?? (def as Record<string, unknown>)['in'];
+        if (inner) return unwrap(inner as ZodNode);
     }
 
     return node;
