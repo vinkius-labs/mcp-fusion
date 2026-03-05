@@ -1775,6 +1775,7 @@ Serverless: provide `fsmStore` in `attachToServer()` options. The framework load
 Fluent API: `.bindState(states, transitionEvent?)` on any FluentToolBuilder.
 Factory: `f.fsm(config)` — creates a StateMachineGate from the fusion instance.
 Boot: `initFsmEngine()` — pre-load xstate at startup (optional optimization).
+Reset: `resetXStateCache()` — flush the cached xstate module. Useful in test suites that mock xstate and need a fresh import between tests.
 
 ### JWT Verification (`@vinkius-core/mcp-fusion-jwt`)
 
@@ -1784,6 +1785,7 @@ Standards-compliant JWT verification for MCP servers. Verifies tokens using `jos
   - `config.secret` — symmetric secret for HS256 (native crypto fallback)
   - `config.jwksUri` — JWKS endpoint URL for RS256/ES256 (requires jose)
   - `config.publicKey` — PEM-encoded public key for RS256/ES256 (requires jose)
+  - `config.algorithm` — algorithm for `publicKey` verification (default: `'RS256'`). Accepts any `jose`-compatible algorithm string: `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, etc. Ignored when using `secret` (always HS256) or `jwksUri` (algorithm auto-detected from JWKS).
   - `config.issuer` — expected `iss` claim (string or string[])
   - `config.audience` — expected `aud` claim (string or string[])
   - `config.clockTolerance` — seconds tolerance for exp/nbf (default: 60)
