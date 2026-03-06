@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.25] - 2026-03-06
+
+### Fixed
+
+- `ServerAttachment` `createToolCallHandler` now enforces the FSM State Gate at dispatch — previously only filtered `tools/list`, allowing clients that knew a tool's name to bypass the gate and call it regardless of FSM state; rejected calls return a structured `toolError('FORBIDDEN')` with current state, blocked tool name, and available actions
+- `ServerAttachment` in-memory FSM snapshot store now uses a bounded LRU map (max 10 000 entries) — previously used an unbounded `Map` that never evicted entries, causing linear memory growth proportional to unique session count in long-running servers
+
 ## [3.1.24] - 2026-03-06
 
 ### Fixed

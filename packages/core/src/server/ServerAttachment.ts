@@ -15,7 +15,7 @@ import {
     GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import { type ToolResponse, error } from '../core/response.js';
+import { type ToolResponse, error, toolError } from '../core/response.js';
 import { type ToolBuilder } from '../core/types.js';
 import { type ProgressSink, type ProgressEvent } from '../core/execution/ProgressHelper.js';
 import { resolveServer } from './ServerResolver.js';
@@ -539,6 +539,20 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             }
         }
 
+        // Bug #107 fix: enforce FSM gate on tools/call — not just tools/list.
+        // Without this, a client that knows a tool's name can bypass the gate.
+        if (fsm && fsm.hasBindings && !fsm.isToolAllowed(name)) {
+            return toolError('FORBIDDEN', {
+                message: `Tool "${name}" is not available in the current FSM state ("${fsm.currentState}").`,
+                suggestion: 'This tool is gated by the FSM State Gate. Call an allowed tool to advance the state first.',
+                availableActions: fsm.getVisibleToolNames([...new Set(
+                    (exposition?.tools ?? hCtx.registry.getAllTools()).map(t => t.name),
+                )]),
+                severity: 'error',
+                details: { currentState: fsm.currentState, blockedTool: name },
+            });
+        }
+
         let result: ToolResponse;
         const t0 = Date.now();
 
@@ -851,7 +865,9 @@ export async function attachToServer<TContext>(
         ...(fsm ? { fsm } : {}),
         ...(fsmStore ? { fsmStore } : {}),
         // Bug #77 fix: in-memory FSM snapshot store when no external fsmStore
-        ...(fsm && !fsmStore ? { fsmMemorySnapshots: new Map<string, FsmSnapshot>() } : {}),
+        // Bug #108 fix: bounded LRU eviction (max 10,000 entries) to prevent
+        // unbounded memory growth proportional to unique session count.
+        ...(fsm && !fsmStore ? { fsmMemorySnapshots: createBoundedSnapshotMap(10_000) } : {}),
         ...(notifyToolListChanged ? { notifyToolListChanged } : {}),
         ...(options.telemetry ? { telemetry: options.telemetry } : {}),
         ...(selfHealing ? { selfHealing } : {}),
@@ -1045,6 +1061,50 @@ function collectHintPolicies<TContext>(
 }
 
 // ── Session ID Extraction ──────────────────────────────
+
+/**
+ * Create a bounded Map for in-memory FSM snapshots with LRU eviction.
+ *
+ * When the map exceeds `maxSize`, the oldest entry (first inserted) is evicted.
+ * Uses native `Map` iteration order guarantee (insertion order) as the LRU proxy.
+ * On `get()`, the accessed entry is re-inserted to refresh its position.
+ *
+ * Bug #108 fix: prevents unbounded memory growth proportional to unique sessions.
+ */
+function createBoundedSnapshotMap(maxSize: number): Map<string, FsmSnapshot> {
+    const map = new Map<string, FsmSnapshot>();
+    const originalSet = map.set.bind(map);
+    const originalGet = map.get.bind(map);
+    const originalHas = map.has.bind(map);
+    const originalDelete = map.delete.bind(map);
+
+    map.get = (key: string): FsmSnapshot | undefined => {
+        const value = originalGet(key);
+        if (value !== undefined) {
+            // Refresh position: delete and re-insert to make it "most recently used"
+            originalDelete(key);
+            originalSet(key, value);
+        }
+        return value;
+    };
+
+    map.set = (key: string, value: FsmSnapshot): Map<string, FsmSnapshot> => {
+        // If key already exists, delete first to refresh position
+        if (originalHas(key)) {
+            originalDelete(key);
+        }
+        originalSet(key, value);
+        // Evict oldest entry if over capacity
+        if (map.size > maxSize) {
+            const oldest = map.keys().next().value;
+            if (oldest !== undefined) originalDelete(oldest);
+        }
+        return map;
+    };
+
+    return map;
+}
+
 
 /**
  * Extract the MCP session identifier from the request `extra` object.

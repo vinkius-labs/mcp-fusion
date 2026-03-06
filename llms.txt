@@ -221,7 +221,7 @@ Each `with*()` call narrows the TypeScript generic `TInput` — the IDE provides
 | `.instructions(text)` | AI-First instructions injected as `[INSTRUCTIONS]` — prompt engineering in the framework |
 | `.use(mw)` | tRPC-style context derivation — enriches `TCtx` type for `.handle()` |
 | `.returns(presenter)` | Attach MVA Presenter for automatic response formatting |
-| `.tags(...tags)` | Capability tags for selective tool exposure |
+| `.tags(...tags)` | Set capability tags (replaces existing) |
 | `.readOnly()` | Override: mark as read-only |
 | `.destructive()` | Override: mark as destructive |
 | `.idempotent()` | Override: mark as idempotent (safe to retry) |
@@ -759,7 +759,7 @@ return toolError('INVALID_DATE_RANGE', {
 </tool_error>
 ```
 
-All error XML output is automatically escaped to prevent injection. Detail keys are rendered as XML attributes (safe for any string). Pipeline errors use structured codes: `MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`, `UNKNOWN_TOOL`, `MISSING_REQUIRED_FIELD`.
+Error XML output escapes `&` and `<` in element content; `>` is intentionally preserved for LLM readability. Detail keys are rendered as XML attributes (safe for any string). Pipeline errors use structured codes: `MISSING_DISCRIMINATOR`, `UNKNOWN_ACTION`, `UNKNOWN_TOOL`, `MISSING_REQUIRED_FIELD`.
 
 ## State Sync
 
@@ -1076,7 +1076,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `.withOptionalArray(name, itemType, desc?)` → FluentToolBuilder<..., TInput & Partial<Record<K, T[]>>, ...>
 - `.use(mw)` → FluentToolBuilder<..., ..., TCtx & TDerived> — tRPC-style context derivation, `{ ctx, next }` signature
 - `.returns(presenter)` → FluentToolBuilder — attach MVA Presenter
-- `.tags(...tags)` → FluentToolBuilder — capability tags for filtering
+- `.tags(...tags)` → FluentToolBuilder — set capability tags (replaces existing)
 - `.readOnly()` → FluentToolBuilder — override: mark read-only
 - `.destructive()` → FluentToolBuilder — override: mark destructive
 - `.idempotent()` → FluentToolBuilder — override: mark idempotent
@@ -1093,7 +1093,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `FluentRouter<TContext>` — shares prefix, middleware, tags across child tools
 - `.describe(text)` → this — shared description
 - `.use(mw)` → this — shared middleware (standard MiddlewareFn)
-- `.tags(...tags)` → this — shared capability tags
+- `.tags(...tags)` → this — set shared capability tags (replaces existing)
 - `.query(action)` → FluentToolBuilder — prefixed read-only tool
 - `.mutation(action)` → FluentToolBuilder — prefixed destructive tool
 - `.action(action)` → FluentToolBuilder — prefixed neutral tool
@@ -1124,7 +1124,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `.title(title)` → this — human-readable title for UI display
 - `.describe(description)` → this — slash command palette description
 - `.icons(icons)` → this — light/dark theme icons
-- `.tags(...tags)` → this — capability tags for selective exposure
+- `.tags(...tags)` → this — set capability tags (replaces existing)
 - `.input(schema | params)` → this — accepts Zod schema or FluentParamsMap (f.string(), f.number(), etc.)
 - `.use(...fns)` → this — middleware (onion model, same as tool middleware)
 - `.timeout(ms)` → this — hydration timeout in milliseconds
@@ -1743,7 +1743,7 @@ Prevents LLMs from calling tools out of order by physically removing them from `
 
 1. **Layer 1 — Format**: Zod validates input shape
 2. **Layer 2 — Guidance**: `suggestActions` (HATEOAS) recommends next tool — LLM can ignore
-3. **Layer 3 — Gate**: FSM State Gate physically removes tools — LLM cannot call them
+3. **Layer 3 — Gate**: FSM State Gate physically removes tools from `tools/list` — LLM won't see them (advisory, not enforced at dispatch)
 
 - `StateMachineGate(config)` — creates an FSM engine from `FsmConfig` (XState v5 shape)
   - `.bindTool(name, allowedStates, transitionEvent?)` — bind tool to FSM states (chainable)
@@ -1800,7 +1800,7 @@ Standards-compliant JWT verification for MCP servers. Verifies tokens using `jos
   - Custom `extractToken`, `errorCode`, `recoveryHint`, `recoveryAction`
 - `createJwtAuthTool(config)` — pre-built MCP tool with `verify` and `status` actions
 
-`jose` is an **optional** peer dependency — lazy-loaded. Without it, only HS256 is supported via native `crypto.createHmac` + `crypto.timingSafeEqual`.
+`jose` is an **optional** peer dependency — lazy-loaded. Without it, only HS256 is supported via native `crypto.createHmac` + constant-time XOR comparison.
 
 ### API Key Validation (`@vinkius-core/mcp-fusion-api-key`)
 
@@ -1823,7 +1823,7 @@ Timing-safe API key validation for MCP servers. Zero external dependencies — u
   - Custom `extractKey`, `errorCode`, `recoveryHint`, `recoveryAction`
 - `createApiKeyTool(config)` — pre-built MCP tool with `validate` and `status` actions
 
-All comparisons use `crypto.timingSafeEqual` to prevent timing attacks.
+All comparisons use constant-time XOR accumulation to prevent timing attacks.
 
 ### Domain Models
 - `BaseModel` — abstract base (name, title, description, meta, icons)
