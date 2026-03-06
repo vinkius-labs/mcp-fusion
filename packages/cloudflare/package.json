@@ -1,6 +1,6 @@
 {
   "name": "@vinkius-core/mcp-fusion-cloudflare",
-  "version": "3.1.20",
+  "version": "3.1.21",
   "description": "Cloudflare Workers adapter for MCP Fusion. Deploys your MCP server to the edge with zero config — stateless JSON-RPC, cold-start caching, and native env injection.",
   "type": "module",
   "main": "dist/index.js",

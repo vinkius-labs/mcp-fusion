@@ -133,8 +133,11 @@ export async function createAwsConnector(
     }
 
     // Start polling if interval is configured
+    let refreshing = false;
     if (config.pollInterval != null && config.pollInterval > 0) {
         pollTimer = setInterval(async () => {
+            if (refreshing) return; // prevent re-entrant refresh
+            refreshing = true;
             try {
                 const changed = await refresh();
                 if (changed && config.onChange) {
@@ -147,6 +150,8 @@ export async function createAwsConnector(
                 }
                 // Otherwise silently retry on next cycle —
                 // AWS might be temporarily unreachable.
+            } finally {
+                refreshing = false;
             }
         }, config.pollInterval);
 

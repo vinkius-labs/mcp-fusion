@@ -14,7 +14,7 @@ export { autoDiscover } from './autoDiscover.js';
 export type { AutoDiscoverOptions } from './autoDiscover.js';
 
 // ── Dev Server (HMR) ────────────────────────────────────
-export { createDevServer } from './DevServer.js';
+export { createDevServer, cacheBustUrl } from './DevServer.js';
 export type { DevServerConfig, DevServer } from './DevServer.js';
 
 // ── Quick Start (One-Liner Bootstrap) ────────────────────

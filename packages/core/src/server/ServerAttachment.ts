@@ -835,9 +835,19 @@ export async function attachToServer<TContext>(
         ...(syncLayer ? { syncLayer } : {}),
         toolExposition, actionSeparator,
         isFlat: toolExposition === 'flat',
-        recompile: () => compileExposition(
-            registry.getBuilders(), toolExposition, actionSeparator,
-        ),
+        recompile: (() => {
+            let cachedBuilders: unknown[] | undefined;
+            let cachedResult: ExpositionResult<TContext> | undefined;
+            return () => {
+                const builders = [...registry.getBuilders()];
+                if (cachedResult && cachedBuilders && builders.length === cachedBuilders.length && builders.every((b, i) => b === cachedBuilders![i])) {
+                    return cachedResult;
+                }
+                cachedBuilders = builders;
+                cachedResult = compileExposition(builders, toolExposition, actionSeparator);
+                return cachedResult;
+            };
+        })(),
         ...(fsm ? { fsm } : {}),
         ...(fsmStore ? { fsmStore } : {}),
         // Bug #77 fix: in-memory FSM snapshot store when no external fsmStore

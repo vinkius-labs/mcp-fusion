@@ -219,9 +219,22 @@ export function cloudflareWorkersAdapter<TEnv = unknown, TContext = void>(
             });
 
             // 3. Build context from Cloudflare env (per-request)
-            const requestContext = contextFactory
-                ? await contextFactory(request, env, ctx)
-                : undefined;
+            let requestContext: unknown;
+            if (contextFactory) {
+                try {
+                    requestContext = await contextFactory(request, env, ctx);
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    return new Response(
+                        JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: null,
+                            error: { code: -32603, message: `Context factory error: ${message}` },
+                        }),
+                        { status: 200, headers: { 'Content-Type': 'application/json' } },
+                    );
+                }
+            }
 
             // 4. Wire the pre-compiled registry to the ephemeral server
             const mergedOptions: Record<string, unknown> = {

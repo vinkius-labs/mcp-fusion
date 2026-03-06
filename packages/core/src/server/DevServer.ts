@@ -156,9 +156,17 @@ function invalidateModule(filePath: string): void {
         invalidateCjsTree(absolutePath);
     }
 
-    // ESM modules can't be uncached directly — the caller must
-    // re-import with a cache-busting query parameter.
+    // ESM modules can't be uncached directly — use a cache-busting
+    // query parameter so the next dynamic import() re-evaluates the module.
+    lastCacheBustUrl = cacheBustUrl(absolutePath);
 }
+
+/**
+ * The last cache-busted URL produced by `invalidateModule()`.
+ * The setup callback can use this to re-import an ESM module that was invalidated.
+ * @internal
+ */
+let lastCacheBustUrl: string | undefined;
 
 /**
  * Recursively invalidate a CJS module and all modules that depend on it.
@@ -193,9 +201,13 @@ function invalidateCjsTree(entryPath: string): void {
 /**
  * Create a cache-busting import URL for ESM modules.
  * Appends a timestamp query to force the module to be re-evaluated.
- * @internal
+ *
+ * Use this inside a DevServer `setup` callback to re-import ESM modules:
+ * ```ts
+ * const mod = await import(cacheBustUrl('./src/tools.ts'));
+ * ```
  */
-function cacheBustUrl(filePath: string): string {
+export function cacheBustUrl(filePath: string): string {
     const url = pathToFileURL(resolve(filePath));
     url.searchParams.set('t', String(Date.now()));
     return url.href;

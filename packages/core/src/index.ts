@@ -151,7 +151,7 @@ export { autoDiscover } from './server/index.js';
 /** @category Server */
 export type { AutoDiscoverOptions } from './server/index.js';
 /** @category Server */
-export { createDevServer } from './server/index.js';
+export { createDevServer, cacheBustUrl } from './server/index.js';
 /** @category Server */
 export type { DevServerConfig, DevServer } from './server/index.js';
 /** @category Server */

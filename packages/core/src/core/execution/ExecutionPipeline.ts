@@ -93,8 +93,10 @@ export function validateArgs<TContext>(
         : undefined;
 
     if (!validationSchema) {
-        // No schema — pass through unchanged
-        return succeed({ validated: args, selectFields });
+        // No schema — strip _select (framework field) but preserve discriminator
+        // (handlers rely on it). Re-inject with resolved value like the with-schema path.
+        const { _select: _sel, ...cleaned } = args;
+        return succeed({ validated: cleaned, selectFields });
     }
 
     // Remove discriminator AND _select before validation
