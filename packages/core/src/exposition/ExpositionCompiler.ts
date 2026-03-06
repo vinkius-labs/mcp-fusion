@@ -66,15 +66,23 @@ export interface ExpositionResult<TContext> {
  * @param separator - Action separator for flat naming (default: '_')
  * @returns Compiled tools and routing map
  */
+/**
+ * Optional warning callback for diagnostics.
+ * Replaces console.warn to avoid polluting stdout/stderr in production.
+ * @see Bug #131
+ */
+export type ExpositionWarnFn = (message: string) => void;
+
 export function compileExposition<TContext>(
     builders: Iterable<ToolBuilder<TContext>>,
     exposition: ToolExposition = 'flat',
     separator: string = '_',
+    onWarn?: ExpositionWarnFn,
 ): ExpositionResult<TContext> {
     if (exposition === 'grouped') {
         return compileGrouped(builders);
     }
-    return compileFlat(builders, separator);
+    return compileFlat(builders, separator, onWarn);
 }
 
 // ── Flat Strategy ────────────────────────────────────────
@@ -92,6 +100,7 @@ export function compileExposition<TContext>(
 function compileFlat<TContext>(
     builders: Iterable<ToolBuilder<TContext>>,
     separator: string,
+    onWarn?: ExpositionWarnFn,
 ): ExpositionResult<TContext> {
     const tools: McpTool[] = [];
     const routingMap = new Map<string, FlatRoute<TContext>>();
@@ -125,7 +134,7 @@ function compileFlat<TContext>(
                 : `${toolName}${separator}${action.key}`;
 
             // ── Schema Purification ──────────────────────────
-            const inputSchema = buildAtomicSchema(action, commonSchema, selectEnabled);
+            const inputSchema = buildAtomicSchema(action, commonSchema, selectEnabled, onWarn);
 
             // ── Boundary Isolation (Annotations) ─────────────
             const annotations = buildAtomicAnnotations(action);
@@ -189,6 +198,7 @@ function buildAtomicSchema<TContext>(
     action: InternalAction<TContext>,
     commonSchema: ZodObject<ZodRawShape> | undefined,
     selectEnabled = false,
+    onWarn?: ExpositionWarnFn,
 ): McpTool['inputSchema'] {
     const properties: Record<string, object> = {};
     const required: string[] = [];
@@ -226,8 +236,9 @@ function buildAtomicSchema<TContext>(
 
         for (const [key, value] of Object.entries(jsonSchema.properties ?? {})) {
             // Bug #54: Warn when action schema overwrites a common schema field
-            if (key in properties) {
-                console.warn(
+            // Bug #131: Route through onWarn callback instead of console.warn
+            if (key in properties && onWarn) {
+                onWarn(
                     `[MCP Fusion] Action schema field '${key}' overwrites common schema field with the same name. ` +
                     `Use omitCommonFields to exclude the common field, or rename the action field.`,
                 );

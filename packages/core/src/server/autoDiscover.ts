@@ -211,6 +211,7 @@ export async function autoDiscover(
     const absoluteDir = resolve(dir);
     const files = await walkDir(absoluteDir, pattern, recursive);
     const discoveredFiles: string[] = [];
+    const seen = new Set<string>();   // Bug #129: dedup by tool name
 
     for (const filePath of files) {
         try {
@@ -233,6 +234,9 @@ export async function autoDiscover(
             const builders = Array.isArray(result) ? result : [result];
 
             for (const builder of builders) {
+                const name = builder.getName();
+                if (seen.has(name)) continue;   // Bug #129: deduplicate by tool name
+                seen.add(name);
                 registry.register(builder);
             }
 

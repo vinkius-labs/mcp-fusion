@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.28] - 2026-03-06
+
+### Fixed
+
+- `autoDiscover()` now deduplicates discovered tool builders by tool name — previously, a directory containing both `index.ts` and a barrel re-export could register the same tool twice
+- `FusionClient` fluent proxy now guards `Symbol.toPrimitive`, `Symbol.toStringTag`, `Symbol.iterator`, `Symbol.asyncIterator`, `Symbol.hasInstance`, and `nodejs.util.inspect.custom` — previously, debugging tools and `util.inspect()` triggered unexpected recursive proxy traversal
+- `ExpositionCompiler.buildAtomicSchema()` no longer emits `console.warn()` in production when action schema fields overlap common schema fields — diagnostic warnings are now routed through the optional `onWarn` callback (wired to the debug observer in `ServerAttachment`)
+
+### Changed
+
+- `llms.txt`: Updated stale peer dependency versions from `^2.0.0` to `^3.0.0` for Cloudflare and Vercel adapters
+- `llms.txt`: Added deduplication-by-tool-name mention to `autoDiscover()` documentation
+
 ## [3.1.27] - 2026-03-06
 
 ### Fixed

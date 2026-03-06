@@ -49,7 +49,7 @@ The Presenter replaces the human-centric View with an agent-centric perception l
 - **Select Reflection**: Opt-in `_select` parameter for context window optimization — AI agents request only the response fields they need. Uses Late Guillotine pattern (filter wire data AFTER UI/rules generation) to preserve UI integrity. Shallow top-level filtering only.
 - **Dynamic Manifest**: RBAC-filtered server capabilities exposed as a native MCP Resource
 - **createGroup()**: Functional closure-based tool groups — pre-composed middleware, frozen by default, minifies 30-40% better
-- **autoDiscover()**: File-based routing — scan directory, auto-register tools from file structure
+- **autoDiscover()**: File-based routing — scan directory, auto-register tools from file structure. Deduplicates by tool name (barrel re-exports don't cause double registration)
 - **createDevServer()**: HMR dev server — file changes reload tools, sends MCP notifications/tools/list_changed
 - **Standard Schema**: Decouple from Zod — `autoValidator()` supports Valibot, ArkType, TypeBox via Standard Schema v1
 - **Subpath Exports**: Tree-shakeable imports — `mcp-fusion/client`, `/ui`, `/presenter`, `/schema`, `/dev`, `/prompt`
@@ -1144,7 +1144,7 @@ registry.configurePagination({ pageSize: 50 }); // enable pagination
 - `CompiledGroup<TContext>` — .name, .description, .tags, .actionNames, .execute(ctx, action, args), .getAction(name)
 
 ### File-Based Routing (v2.7+)
-- `autoDiscover(registry, dir, options?)` — scan directory, auto-register tool builders
+- `autoDiscover(registry, dir, options?)` — scan directory, auto-register tool builders (deduplicates by tool name)
 - `AutoDiscoverOptions` — { pattern?, recursive?, loader?, resolve? }
 
 ### Dev Server (v2.7+, from 'mcp-fusion/dev')
@@ -1592,7 +1592,7 @@ Deploy MCP Fusion servers to Cloudflare Workers edge. Stateless JSON-RPC — no 
 - `RegistryLike` — duck-typed interface (any object with `attachToServer()`)
 - `ExecutionContext` — inline Cloudflare Workers types (waitUntil, passThroughOnException)
 
-Peer dependencies: `@vinkius-core/mcp-fusion` (^2.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
+Peer dependencies: `@vinkius-core/mcp-fusion` (^3.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
 
 ```typescript
 import { initFusion } from '@vinkius-core/mcp-fusion';
@@ -1639,7 +1639,7 @@ Deploy MCP Fusion servers to Vercel Functions (Edge or Node.js). Stateless JSON-
 - `VercelAdapterOptions<TContext>` — full configuration interface
 - `RegistryLike` — duck-typed interface (any object with `attachToServer()`)
 
-Peer dependencies: `@vinkius-core/mcp-fusion` (^2.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
+Peer dependencies: `@vinkius-core/mcp-fusion` (^3.0.0), `@modelcontextprotocol/sdk` (^1.12.0).
 
 ```typescript
 // app/api/mcp/route.ts

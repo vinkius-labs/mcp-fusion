@@ -548,13 +548,30 @@ export function createFusionClient<TRouter extends RouterMap>(
  *
  * @internal
  */
+// Bug #130: Symbols that debugging / inspection tools access on every object.
+// Returning undefined for these prevents the proxy from recursing into itself
+// when inspected in DevTools, Node REPL, or util.inspect().
+const INSPECTION_SYMBOLS: ReadonlySet<symbol> = new Set([
+    Symbol.toPrimitive,
+    Symbol.toStringTag,
+    Symbol.iterator,
+    Symbol.asyncIterator,
+    Symbol.hasInstance,
+    ...(typeof Symbol.for === 'function' ? [Symbol.for('nodejs.util.inspect.custom')] : []),
+]);
+
 function buildFluentProxy(
     execute: (action: string, args: Record<string, unknown>) => Promise<ToolResponse>,
     segments: string[] = [],
 ): unknown {
     return new Proxy(function () {} as any, {
         get(_target: unknown, prop: string | symbol): unknown {
-            if (typeof prop !== 'string' || prop === 'then') return undefined;
+            if (typeof prop === 'symbol') {
+                // Bug #130: guard inspection symbols
+                if (INSPECTION_SYMBOLS.has(prop)) return undefined;
+                return undefined;           // all other symbols → safe no-op
+            }
+            if (prop === 'then') return undefined;
             return buildFluentProxy(execute, [...segments, prop]);
         },
 

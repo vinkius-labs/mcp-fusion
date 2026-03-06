@@ -859,7 +859,11 @@ export async function attachToServer<TContext>(
                     return cachedResult;
                 }
                 cachedBuilders = builders;
-                cachedResult = compileExposition(builders, toolExposition, actionSeparator);
+                // Bug #131: route diagnostic warnings through debug observer
+                const warnFn = debug
+                    ? (msg: string) => debug({ type: 'error', tool: '', action: '', error: new Error(msg), durationMs: 0 })
+                    : undefined;
+                cachedResult = compileExposition(builders, toolExposition, actionSeparator, warnFn);
                 return cachedResult;
             };
         })(),

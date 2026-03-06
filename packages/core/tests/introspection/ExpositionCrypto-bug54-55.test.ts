@@ -18,7 +18,7 @@
  * - #54: Emit console.warn when action schema overwrites a common field.
  * - #55: Replace top-level await with lazy async getter `getSubtle()`.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { compileExposition } from '../../src/exposition/ExpositionCompiler.js';
 import { GroupedToolBuilder } from '../../src/core/builder/GroupedToolBuilder.js';
@@ -33,108 +33,94 @@ const handler = async (): Promise<ToolResponse> => success('ok');
 
 describe('Bug #54: ExpositionCompiler warns on schema field overwrite', () => {
     it('emits warning when action schema overwrites common schema field', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        try {
-            // Same type but different description — action overwrites common
-            const builder = new GroupedToolBuilder<void>('users')
-                .description('User management')
-                .commonSchema(z.object({ id: z.string().describe('Common user ID') }))
-                .action({
-                    name: 'create',
-                    description: 'Create user',
-                    schema: z.object({ id: z.string().describe('Action-specific ID') }),
-                    handler,
-                });
+        const warnings: string[] = [];
+        const onWarn = (msg: string) => warnings.push(msg);
 
-            compileExposition([builder]);
+        // Same type but different description — action overwrites common
+        const builder = new GroupedToolBuilder<void>('users')
+            .description('User management')
+            .commonSchema(z.object({ id: z.string().describe('Common user ID') }))
+            .action({
+                name: 'create',
+                description: 'Create user',
+                schema: z.object({ id: z.string().describe('Action-specific ID') }),
+                handler,
+            });
 
-            expect(warnSpy).toHaveBeenCalledWith(
-                expect.stringContaining("'id'"),
-            );
-            expect(warnSpy).toHaveBeenCalledWith(
-                expect.stringContaining('overwrites common schema'),
-            );
-        } finally {
-            warnSpy.mockRestore();
-        }
+        compileExposition([builder], 'flat', '_', onWarn);
+
+        expect(warnings.some(w => w.includes("'id'"))).toBe(true);
+        expect(warnings.some(w => w.includes('overwrites common schema'))).toBe(true);
     });
 
     it('does NOT warn when action schema uses different field names', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        try {
-            const builder = new GroupedToolBuilder<void>('projects')
-                .description('Project management')
-                .commonSchema(z.object({ orgId: z.string() }))
-                .action({
-                    name: 'list',
-                    description: 'List projects',
-                    schema: z.object({ page: z.number().optional() }),
-                    handler,
-                });
+        const warnings: string[] = [];
+        const onWarn = (msg: string) => warnings.push(msg);
 
-            compileExposition([builder]);
+        const builder = new GroupedToolBuilder<void>('projects')
+            .description('Project management')
+            .commonSchema(z.object({ orgId: z.string() }))
+            .action({
+                name: 'list',
+                description: 'List projects',
+                schema: z.object({ page: z.number().optional() }),
+                handler,
+            });
 
-            expect(warnSpy).not.toHaveBeenCalled();
-        } finally {
-            warnSpy.mockRestore();
-        }
+        compileExposition([builder], 'flat', '_', onWarn);
+
+        expect(warnings).toHaveLength(0);
     });
 
     it('warns for each overlapping field separately', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        try {
-            const builder = new GroupedToolBuilder<void>('items')
-                .description('Item management')
-                .commonSchema(z.object({
+        const warnings: string[] = [];
+        const onWarn = (msg: string) => warnings.push(msg);
+
+        const builder = new GroupedToolBuilder<void>('items')
+            .description('Item management')
+            .commonSchema(z.object({
+                id: z.string(),
+                name: z.string(),
+            }))
+            .action({
+                name: 'update',
+                description: 'Update item',
+                schema: z.object({
                     id: z.string(),
                     name: z.string(),
-                }))
-                .action({
-                    name: 'update',
-                    description: 'Update item',
-                    schema: z.object({
-                        id: z.string(),
-                        name: z.string(),
-                        extra: z.string(),
-                    }),
-                    handler,
-                });
+                    extra: z.string(),
+                }),
+                handler,
+            });
 
-            compileExposition([builder]);
+        compileExposition([builder], 'flat', '_', onWarn);
 
-            // Two overlapping fields: id and name
-            const warnCalls = warnSpy.mock.calls.filter(
-                (call) => typeof call[0] === 'string' && call[0].includes('overwrites common schema'),
-            );
-            expect(warnCalls).toHaveLength(2);
-        } finally {
-            warnSpy.mockRestore();
-        }
+        // Two overlapping fields: id and name
+        const overwriteWarns = warnings.filter(w => w.includes('overwrites common schema'));
+        expect(overwriteWarns).toHaveLength(2);
     });
 
     it('action field takes precedence (overwrite still happens, just warned)', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        try {
-            const builder = new GroupedToolBuilder<void>('data')
-                .description('Data tool')
-                .commonSchema(z.object({ value: z.string().describe('Common value') }))
-                .action({
-                    name: 'process',
-                    description: 'Process data',
-                    schema: z.object({ value: z.string().describe('Action value') }),
-                    handler,
-                });
+        const warnings: string[] = [];
+        const onWarn = (msg: string) => warnings.push(msg);
 
-            const exposition = compileExposition([builder]);
-            const schema = exposition.tools[0]!.inputSchema;
-            const props = schema.properties as Record<string, { type: string; description?: string }>;
+        const builder = new GroupedToolBuilder<void>('data')
+            .description('Data tool')
+            .commonSchema(z.object({ value: z.string().describe('Common value') }))
+            .action({
+                name: 'process',
+                description: 'Process data',
+                schema: z.object({ value: z.string().describe('Action value') }),
+                handler,
+            });
 
-            // Action schema wins — description comes from action
-            expect(props['value']!.type).toBe('string');
-            expect(props['value']!.description).toBe('Action value');
-        } finally {
-            warnSpy.mockRestore();
-        }
+        const exposition = compileExposition([builder], 'flat', '_', onWarn);
+        const schema = exposition.tools[0]!.inputSchema;
+        const props = schema.properties as Record<string, { type: string; description?: string }>;
+
+        // Action schema wins — description comes from action
+        expect(props['value']!.type).toBe('string');
+        expect(props['value']!.description).toBe('Action value');
     });
 });
 
