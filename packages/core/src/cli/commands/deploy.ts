@@ -9,7 +9,7 @@
  * @module
  */
 import { resolve, dirname } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { createRequire } from 'node:module';
@@ -32,6 +32,7 @@ function edgeStubAliases(): Record<string, string> {
     for (const mod of [
         'child_process', 'fs', 'net', 'events', 'stream',
         'http', 'https', 'tls', 'os', 'path', 'url', 'crypto', 'buffer',
+        'util', 'zlib', 'string_decoder', 'querystring', 'assert',
     ]) {
         stubs[`node:${mod}`] = stubPath;
         stubs[mod] = stubPath; // bare specifiers used by some libs
@@ -54,7 +55,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     const token = args.token ?? process.env['VURB_DEPLOY_TOKEN'];
 
     // Bug #76 fix: warn when token would be sent over plaintext HTTP
-    if (token && remote) {
+    if (token && remote && !args.allowInsecure) {
         try {
             const remoteUrl = new URL(remote);
             if (remoteUrl.protocol === 'http:' && remoteUrl.hostname !== 'localhost' && remoteUrl.hostname !== '127.0.0.1') {
@@ -89,6 +90,39 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         process.exit(1);
     }
     progress.done('resolve', `Resolving entrypoint (${entrypoint})`);
+
+    // Warn if the entrypoint uses autoDiscover() — it relies on fs.readdir
+    // at runtime, which is stubbed in edge V8 isolates. The user must switch
+    // to explicit import + registry.register() for edge deployment.
+    try {
+        const src = readFileSync(absEntry, 'utf-8');
+        if (/\bautoDiscover\s*\(/.test(src)) {
+            process.stderr.write(
+                `\n  ${ansi.yellow('⚠')} Warning: ${entrypoint} uses autoDiscover() which requires fs.readdir\n` +
+                `  ${ansi.dim('Edge V8 isolates do not support filesystem access.')}\n` +
+                `  ${ansi.dim('Replace with explicit imports: import tool from "./tools/myTool.js"; registry.register(tool);')}\n\n`,
+            );
+        }
+        if (/\bSandboxEngine\b/.test(src)) {
+            process.stderr.write(
+                `\n  ${ansi.yellow('⚠')} Warning: ${entrypoint} uses SandboxEngine — not supported on edge\n` +
+                `  ${ansi.dim('SandboxEngine requires child_process and fs, which are unavailable in V8 isolates.')}\n` +
+                `  ${ansi.dim('Remove SandboxEngine for edge deploys; tool code runs directly in the isolate.')}\n\n`,
+            );
+        }
+        if (/\bInspector\b/.test(src)) {
+            process.stderr.write(
+                `\n  ${ansi.yellow('⚠')} Warning: ${entrypoint} references Inspector — not supported on edge\n` +
+                `  ${ansi.dim('Inspector requires Node.js IPC and cannot run inside V8 isolates.')}\n\n`,
+            );
+        }
+        if (/\bfast-redact\b/.test(src)) {
+            process.stderr.write(
+                `\n  ${ansi.yellow('⚠')} Warning: ${entrypoint} uses fast-redact — may have limited support on edge\n` +
+                `  ${ansi.dim('fast-redact uses Function constructor internally; verify it works in your isolate.')}\n\n`,
+            );
+        }
+    } catch { /* non-critical — if read fails, esbuild will catch it later */ }
 
     // ── Step 3: bundle (esbuild) ──
     progress.start('bundle', 'Bundling with esbuild');

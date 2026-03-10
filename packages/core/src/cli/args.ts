@@ -37,6 +37,7 @@ export interface CliArgs {
     token: string | undefined;
     serverId: string | undefined;
     remoteUrl: string | undefined;
+    allowInsecure: boolean;
 }
 
 // ─── Parser ──────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ export function parseArgs(argv: string[]): CliArgs {
         token: undefined,
         serverId: undefined,
         remoteUrl: undefined,
+        allowInsecure: false,
     };
 
     let seenCommand = false;
@@ -131,6 +133,9 @@ export function parseArgs(argv: string[]): CliArgs {
             case '--server-id':
                 result.serverId = consumeValue(args, i, arg);
                 i++;
+                break;
+            case '--allow-insecure':
+                result.allowInsecure = true;
                 break;
             default:
                 if (!seenCommand) {

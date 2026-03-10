@@ -126,9 +126,39 @@ export async function startServer<TContext>(
             });
         }
 
+        // ── Prompt Definitions ───────────────────────────────
+        // Serialize all registered prompts so the host can expose
+        // them via MCP prompts/list + prompts/get.
+        // McpPromptDef is already the serializable shape (name, description, arguments)
+        const promptDefs = prompts ? prompts.getAllPrompts() : [];
+
+        // ── FSM Config ───────────────────────────────────────
+        // Serialize FSM config and tool bindings so the host can
+        // implement state-gated tool visibility at edge.
+        let fsmData: { config: unknown; bindings: Array<{ tool: string; states: string[]; event?: string }> } | undefined;
+        const fsmGate = (attach as Record<string, unknown>)?.['fsm'] as
+            { _config?: unknown; _bindings?: Map<string, { allowedStates: Set<string>; transitionEvent?: string }> } | undefined;
+        if (fsmGate?._config && fsmGate?._bindings) {
+            const bindings: Array<{ tool: string; states: string[]; event?: string }> = [];
+            for (const [toolName, binding] of fsmGate._bindings) {
+                bindings.push({
+                    tool: toolName,
+                    states: [...binding.allowedStates],
+                    ...(binding.transitionEvent ? { event: binding.transitionEvent } : {}),
+                });
+            }
+            fsmData = { config: fsmGate._config, bindings };
+        }
+
         // Send definitions to host via C++ IPC
         g.__vinkius_edge_interceptor.applySync(undefined, [
-            JSON.stringify({ serverName: name, version, tools }),
+            JSON.stringify({
+                serverName: name,
+                version,
+                tools,
+                ...(promptDefs.length > 0 ? { prompts: promptDefs } : {}),
+                ...(fsmData ? { fsm: fsmData } : {}),
+            }),
         ]);
 
         // Expose async dispatcher — PLAIN OBJECT return, never Error class.
@@ -155,6 +185,33 @@ export async function startServer<TContext>(
                 };
             }
         };
+
+        // ── Prompt Dispatcher ────────────────────────────────
+        // Expose prompt handler for host-side prompt/get invocation.
+        if (prompts) {
+            g.__vinkius_edge_prompt_get = async (
+                promptName: string,
+                args: Record<string, string>,
+            ) => {
+                try {
+                    const ctx = contextFactory
+                        ? await contextFactory(undefined)
+                        : _missingContextProxy as TContext;
+                    return await prompts.routeGet(ctx, promptName, args);
+                } catch (e: unknown) {
+                    const err = e as { stack?: string; message?: string };
+                    return {
+                        messages: [{
+                            role: 'user',
+                            content: {
+                                type: 'text',
+                                text: `[ERROR] ${String(err?.message || e)}`,
+                            },
+                        }],
+                    };
+                }
+            };
+        }
 
         // Abort normal startup — no Server, no Transport (Bug #45 fix)
         return { server: null, close: async () => {} };

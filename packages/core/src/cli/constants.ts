@@ -65,6 +65,7 @@ DEV OPTIONS
 DEPLOY OPTIONS
   --server, -s <path>      Path to server entrypoint (default: auto-detect)
   --token <token>          Override VURB_DEPLOY_TOKEN (connection token)
+  --allow-insecure         Suppress HTTP plaintext warning
 
 REMOTE OPTIONS
   vurb remote <url>          Override API endpoint (default: Vinkius Cloud)

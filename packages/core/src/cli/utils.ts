@@ -25,7 +25,7 @@ export function inferServerEntry(cwd: string): string | undefined {
     ];
     for (const candidate of candidates) {
         const fullPath = resolve(cwd, candidate);
-        if (existsSync(fullPath)) return fullPath;
+        if (existsSync(fullPath)) return candidate;
     }
     return undefined;
 }
