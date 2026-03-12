@@ -301,9 +301,16 @@ export class ResponseBuilder {
 
         // Block 2: UI Blocks — XML semantic boundary for pass-through rendering
         for (const block of this._uiBlocks) {
+            // Build XML attributes: type is always present, meta fields are optional
+            let attrs = `type="${block.type}"`;
+            if (block.meta) {
+                if (block.meta.title) attrs += ` title="${block.meta.title}"`;
+                if (block.meta.width) attrs += ` width="${block.meta.width}"`;
+                if (block.meta.priority !== undefined) attrs += ` priority="${block.meta.priority}"`;
+            }
             content.push({
                 type: 'text',
-                text: `<ui_passthrough type="${block.type}">\n${block.content}\n</ui_passthrough>`,
+                text: `<ui_passthrough ${attrs}>\n${block.content}\n</ui_passthrough>`,
             });
         }
 

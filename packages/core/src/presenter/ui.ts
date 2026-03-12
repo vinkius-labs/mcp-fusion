@@ -28,6 +28,28 @@
 // ── Types ────────────────────────────────────────────────
 
 /**
+ * Optional metadata for a UI block — layout hints and presentation context.
+ *
+ * Metadata is rendered as XML attributes on the `<ui_passthrough>` wrapper,
+ * providing downstream clients and AI agents with structured display hints
+ * without altering the content payload.
+ *
+ * @example
+ * ```typescript
+ * ui.echarts(chartConfig, { title: 'Revenue', width: 'half' });
+ * ui.table(headers, rows, { title: 'Invoices', priority: 1 });
+ * ```
+ */
+export interface UiBlockMeta {
+    /** Human-readable label for the block (e.g. chart title, section name) */
+    readonly title?: string;
+    /** Layout width hint for rendering clients */
+    readonly width?: 'full' | 'half' | 'third';
+    /** Rendering priority (lower = rendered first). Default: insertion order */
+    readonly priority?: number;
+}
+
+/**
  * A structured UI block produced by a Presenter's SSR layer.
  *
  * Each block carries a semantic `type` for future protocol
@@ -38,6 +60,8 @@ export interface UiBlock {
     readonly type: string;
     /** Ready-to-transport content string */
     readonly content: string;
+    /** Optional layout and presentation metadata */
+    readonly meta?: UiBlockMeta;
 }
 
 // ── Internal Helpers ─────────────────────────────────────
@@ -74,8 +98,8 @@ function fence(lang: string, body: string): string {
  * });
  * ```
  */
-function echarts(config: Record<string, unknown>): UiBlock {
-    return { type: 'echarts', content: fence('echarts', JSON.stringify(config, null, 2)) };
+function echarts(config: Record<string, unknown>, meta?: UiBlockMeta): UiBlock {
+    return { type: 'echarts', content: fence('echarts', JSON.stringify(config, null, 2)), ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -89,8 +113,8 @@ function echarts(config: Record<string, unknown>): UiBlock {
  * ui.mermaid('graph TD; A["Start"] --> B["Process"] --> C["End"]');
  * ```
  */
-function mermaid(diagram: string): UiBlock {
-    return { type: 'mermaid', content: fence('mermaid', diagram) };
+function mermaid(diagram: string, meta?: UiBlockMeta): UiBlock {
+    return { type: 'mermaid', content: fence('mermaid', diagram), ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -107,8 +131,8 @@ function mermaid(diagram: string): UiBlock {
  * ui.markdown('| Task | Status |\n|---|---|\n| Deploy | ✅ Done |');
  * ```
  */
-function markdown(md: string): UiBlock {
-    return { type: 'markdown', content: md };
+function markdown(md: string, meta?: UiBlockMeta): UiBlock {
+    return { type: 'markdown', content: md, ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -127,8 +151,8 @@ function markdown(md: string): UiBlock {
  * ui.codeBlock('xml', '<root><item>value</item></root>');
  * ```
  */
-function codeBlock(lang: string, code: string): UiBlock {
-    return { type: lang, content: fence(lang, code) };
+function codeBlock(lang: string, code: string, meta?: UiBlockMeta): UiBlock {
+    return { type: lang, content: fence(lang, code), ...(meta ? { meta } : {}) };
 }
 
 // ── DX Helpers ───────────────────────────────────────────
@@ -155,11 +179,11 @@ function codeBlock(lang: string, code: string): UiBlock {
  * );
  * ```
  */
-function table(headers: readonly string[], rows: readonly (readonly string[])[]): UiBlock {
+function table(headers: readonly string[], rows: readonly (readonly string[])[], meta?: UiBlockMeta): UiBlock {
     const headerRow = `| ${headers.join(' | ')} |`;
     const separator = `| ${headers.map(() => '---').join(' | ')} |`;
     const bodyRows = rows.map(row => `| ${row.join(' | ')} |`).join('\n');
-    return { type: 'markdown', content: `${headerRow}\n${separator}\n${bodyRows}` };
+    return { type: 'markdown', content: `${headerRow}\n${separator}\n${bodyRows}`, ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -176,8 +200,8 @@ function table(headers: readonly string[], rows: readonly (readonly string[])[])
  * // → "- Deploy API server\n- Run database migrations\n- Verify health checks"
  * ```
  */
-function list(items: readonly string[]): UiBlock {
-    return { type: 'markdown', content: items.map(item => `- ${item}`).join('\n') };
+function list(items: readonly string[], meta?: UiBlockMeta): UiBlock {
+    return { type: 'markdown', content: items.map(item => `- ${item}`).join('\n'), ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -194,8 +218,8 @@ function list(items: readonly string[]): UiBlock {
  * ui.json({ host: 'api.example.com', port: 3000, ssl: true });
  * ```
  */
-function json(data: unknown): UiBlock {
-    return { type: 'json', content: fence('json', JSON.stringify(data, null, 2)) };
+function json(data: unknown, meta?: UiBlockMeta): UiBlock {
+    return { type: 'json', content: fence('json', JSON.stringify(data, null, 2)), ...(meta ? { meta } : {}) };
 }
 
 /**
@@ -212,8 +236,8 @@ function json(data: unknown): UiBlock {
  * ui.summary('3 invoices totaling $5,700.00. 2 paid, 1 pending.');
  * ```
  */
-function summary(text: string): UiBlock {
-    return { type: 'summary', content: `📊 **Summary**: ${text}` };
+function summary(text: string, meta?: UiBlockMeta): UiBlock {
+    return { type: 'summary', content: `📊 **Summary**: ${text}`, ...(meta ? { meta } : {}) };
 }
 
 // ── Public Namespace ─────────────────────────────────────

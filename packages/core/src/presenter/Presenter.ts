@@ -122,6 +122,20 @@ type CollectionSuggestActionsFn<T> = (items: T[], ctx?: unknown) => (ActionSugge
 /** Collection-level rules callback — receives full array */
 type CollectionRulesFn<T> = readonly string[] | ((items: T[], ctx?: unknown) => (string | null)[]);
 
+// ── Async Callback Types ─────────────────────────────────
+
+/** Async UI blocks callback (single item) */
+type AsyncItemUiBlocksFn<T> = (item: T, ctx?: unknown) => Promise<(UiBlock | null)[]>;
+
+/** Async UI blocks callback (collection) */
+type AsyncCollectionUiBlocksFn<T> = (items: T[], ctx?: unknown) => Promise<(UiBlock | null)[]>;
+
+/** Async rules callback */
+type AsyncRulesFn<T> = (data: T, ctx?: unknown) => Promise<(string | null)[]>;
+
+/** Async suggest actions callback */
+type AsyncSuggestActionsFn<T> = (data: T, ctx?: unknown) => Promise<(ActionSuggestion | null)[]>;
+
 // ── Presenter ────────────────────────────────────────────
 
 /**
@@ -160,6 +174,10 @@ export class Presenter<T> {
     private _compiledRedactor: RedactFn | undefined;
     private _redactConfig: RedactConfig | undefined;
     private _redactPaths: readonly string[] = [];
+    private _asyncItemUiBlocks?: AsyncItemUiBlocksFn<T>;
+    private _asyncCollectionUiBlocks?: AsyncCollectionUiBlocksFn<T>;
+    private _asyncRules?: AsyncRulesFn<T>;
+    private _asyncSuggestActions?: AsyncSuggestActionsFn<T>;
 
     /** @internal Use {@link createPresenter} factory instead */
     constructor(name: string) {
@@ -733,6 +751,64 @@ export class Presenter<T> {
         return this._rules;
     }
 
+    // ── Async Configuration ──────────────────────────────
+
+    /**
+     * Register an **async** UI block callback for single items.
+     *
+     * Use when UI generation requires I/O (database, API, file system).
+     * Must be consumed via `makeAsync()` — `make()` ignores async callbacks.
+     *
+     * @param fn - Async function receiving validated data + optional context
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * createPresenter('Invoice')
+     *     .asyncUiBlocks(async (inv, ctx) => {
+     *         const history = await ctx.db.payments.history(inv.id);
+     *         return [ui.echarts(buildTimeline(history))];
+     *     });
+     * ```
+     */
+    asyncUiBlocks(fn: AsyncItemUiBlocksFn<T>): this {
+        this._asyncItemUiBlocks = fn;
+        return this;
+    }
+
+    /**
+     * Register an **async** UI block callback for collections.
+     *
+     * @param fn - Async function receiving the full validated array + optional context
+     * @returns `this` for chaining
+     */
+    asyncCollectionUiBlocks(fn: AsyncCollectionUiBlocksFn<T>): this {
+        this._asyncCollectionUiBlocks = fn;
+        return this;
+    }
+
+    /**
+     * Register **async** system rules generation.
+     *
+     * @param fn - Async function receiving validated data + optional context
+     * @returns `this` for chaining
+     */
+    asyncRules(fn: AsyncRulesFn<T>): this {
+        this._asyncRules = fn;
+        return this;
+    }
+
+    /**
+     * Register **async** action suggestions generation.
+     *
+     * @param fn - Async function receiving validated data + optional context
+     * @returns `this` for chaining
+     */
+    asyncSuggestActions(fn: AsyncSuggestActionsFn<T>): this {
+        this._asyncSuggestActions = fn;
+        return this;
+    }
+
     // ── Execution ────────────────────────────────────────
 
     /**
@@ -830,6 +906,93 @@ export class Presenter<T> {
 
         // Step 7: Attach action suggestions (using FULL validated data)
         this._attachSuggestions(builder, validated, isArray, ctx);
+
+        return builder;
+    }
+
+    // ── Async Make ───────────────────────────────────────
+
+    /**
+     * Check if this Presenter has any async callbacks configured.
+     *
+     * Used by the pipeline to decide between sync `make()` and async
+     * `makeAsync()`. When no async callbacks are set, `makeAsync()` is
+     * equivalent to `Promise.resolve(make())`, so the sync path is preferred.
+     *
+     * @returns `true` if any async callback is configured
+     */
+    hasAsyncCallbacks(): boolean {
+        return !!(this._asyncItemUiBlocks || this._asyncCollectionUiBlocks
+            || this._asyncRules || this._asyncSuggestActions);
+    }
+
+    /**
+     * Async version of `make()` — enriches the response with async callbacks.
+     *
+     * Runs all sync steps first (via `make()`), then awaits async callbacks
+     * and appends their results to the builder. The sync `make()` method
+     * remains unchanged (zero breaking changes).
+     *
+     * @param data - Raw data from the handler (object or array)
+     * @param ctx - Optional request context
+     * @param selectFields - Optional top-level field names for context window optimization
+     * @returns A Promise resolving to a {@link ResponseBuilder}
+     *
+     * @example
+     * ```typescript
+     * const presenter = createPresenter('Invoice')
+     *     .schema(invoiceSchema)
+     *     .asyncUiBlocks(async (inv, ctx) => {
+     *         const history = await ctx.db.payments.history(inv.id);
+     *         return [ui.echarts(buildTimeline(history))];
+     *     });
+     *
+     * // In handler:
+     * const builder = await presenter.makeAsync(data, ctx);
+     * return builder.build();
+     * ```
+     */
+    async makeAsync(data: T | T[], ctx?: unknown, selectFields?: string[]): Promise<ResponseBuilder> {
+        // Step 1: Run all sync steps
+        const builder = this.make(data, ctx, selectFields);
+
+        // Step 2: Async enrichment — append after sync blocks
+        const isArray = Array.isArray(data);
+
+        // Re-validate to get the validated data for async callbacks
+        // (reuse validation result from make() would be ideal, but make() doesn't expose it)
+        const validated = this._validate(data, isArray);
+
+        // Async UI blocks
+        if (isArray && this._asyncCollectionUiBlocks) {
+            const blocks = await this._asyncCollectionUiBlocks(validated as T[], ctx);
+            const filtered = blocks.filter(Boolean) as UiBlock[];
+            if (filtered.length > 0) builder.uiBlocks(filtered);
+        } else if (!isArray && this._asyncItemUiBlocks) {
+            const blocks = await this._asyncItemUiBlocks(validated as T, ctx);
+            const filtered = blocks.filter(Boolean) as UiBlock[];
+            if (filtered.length > 0) builder.uiBlocks(filtered);
+        }
+
+        // Async rules
+        if (this._asyncRules) {
+            const singleData = isArray ? (validated as T[])[0] : validated as T;
+            if (singleData !== undefined) {
+                const rules = await this._asyncRules(singleData, ctx);
+                const filtered = rules.filter((r): r is string => r !== null);
+                if (filtered.length > 0) builder.systemRules(filtered);
+            }
+        }
+
+        // Async suggestions
+        if (this._asyncSuggestActions) {
+            const singleData = isArray ? (validated as T[])[0] : validated as T;
+            if (singleData !== undefined) {
+                const suggestions = await this._asyncSuggestActions(singleData, ctx);
+                const filtered = suggestions.filter((s): s is ActionSuggestion => s !== null);
+                if (filtered.length > 0) builder.systemHint(filtered);
+            }
+        }
 
         return builder;
     }

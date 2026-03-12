@@ -10,13 +10,13 @@ export type { ActionSuggestion } from './ResponseBuilder.js';
 
 // ── UI Helpers ───────────────────────────────────────────
 export { ui } from './ui.js';
-export type { UiBlock } from './ui.js';
+export type { UiBlock, UiBlockMeta } from './ui.js';
 
 // ── Presenter ────────────────────────────────────────────
 export { Presenter, createPresenter, isPresenter } from './Presenter.js';
 
 // ── Declarative Presenter ────────────────────────────────
-export { definePresenter } from './definePresenter.js';
+export { definePresenter, extendPresenter } from './definePresenter.js';
 export type { PresenterConfig, AgentLimitDef, EmbedDef } from './definePresenter.js';
 
 // ── Zod Description Extraction ───────────────────────────

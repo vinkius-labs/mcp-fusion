@@ -179,6 +179,31 @@ export interface PresenterConfig<T> {
         readonly paths: string[];
         readonly censor?: string | ((value: unknown) => string);
     };
+
+    // ── Async Callbacks (consumed by makeAsync) ──────────
+
+    /**
+     * Async UI blocks for a **single data item**.
+     *
+     * Used when UI generation requires I/O (database, API, etc.).
+     * Ignored by sync `make()` — only consumed by `makeAsync()`.
+     */
+    readonly asyncUi?: (item: T, ctx?: unknown) => Promise<(UiBlock | null)[]>;
+
+    /**
+     * Async UI blocks for a **collection** of items.
+     */
+    readonly asyncCollectionUi?: (items: T[], ctx?: unknown) => Promise<(UiBlock | null)[]>;
+
+    /**
+     * Async system rules generation.
+     */
+    readonly asyncRules?: (data: T, ctx?: unknown) => Promise<(string | null)[]>;
+
+    /**
+     * Async action suggestions generation.
+     */
+    readonly asyncSuggestActions?: (data: T, ctx?: unknown) => Promise<(ActionSuggestion | null)[]>;
 }
 
 // ── Factory ──────────────────────────────────────────────
@@ -310,5 +335,191 @@ export function definePresenter(config: PresenterConfig<unknown>): Presenter<unk
         presenter.collectionRules(config.collectionRules);
     }
 
+    // Async callbacks
+    if (config.asyncUi) {
+        presenter.asyncUiBlocks(config.asyncUi as (item: unknown, ctx?: unknown) => Promise<(UiBlock | null)[]>);
+    }
+    if (config.asyncCollectionUi) {
+        presenter.asyncCollectionUiBlocks(config.asyncCollectionUi as (items: unknown[], ctx?: unknown) => Promise<(UiBlock | null)[]>);
+    }
+    if (config.asyncRules) {
+        presenter.asyncRules(config.asyncRules as (data: unknown, ctx?: unknown) => Promise<(string | null)[]>);
+    }
+    if (config.asyncSuggestActions) {
+        presenter.asyncSuggestActions(config.asyncSuggestActions as (data: unknown, ctx?: unknown) => Promise<(ActionSuggestion | null)[]>);
+    }
+
     return presenter;
+}
+
+// ── Composition ──────────────────────────────────────────
+
+/**
+ * Merge strategy for `extendPresenter()`:
+ *
+ * | Field                 | Strategy                                 |
+ * |---|---|
+ * | `name`                | Override wins (required)                 |
+ * | `schema`              | Override wins (required)                 |
+ * | `rules`               | Merge: base static + override. Chain if both dynamic |
+ * | `ui` / `collectionUi` | Override wins (if defined)               |
+ * | `agentLimit`          | Override wins (if defined)               |
+ * | `suggestActions`      | Override wins (if defined)               |
+ * | `collectionSuggestions` | Override wins (if defined)             |
+ * | `embeds`              | Merge: `[...base, ...override]`          |
+ * | `redactPII`           | Merge paths: `[...base, ...override]`    |
+ * | `collectionRules`     | Override wins (if defined)               |
+ * | `autoRules`           | Override wins (if defined)               |
+ */
+
+/**
+ * Create a Presenter by extending a base config with overrides.
+ *
+ * This is the Presenter composition pattern — reuse rules, redaction,
+ * embeds, and other config from a shared base without repetition.
+ *
+ * @typeParam TSchema - Zod schema type (inferred from overrides)
+ * @param base - Base Presenter config to inherit from
+ * @param overrides - Override config (name and schema required)
+ * @returns A fully-configured {@link Presenter} with merged config
+ *
+ * @example
+ * ```typescript
+ * const BaseFinancial = {
+ *   rules: ['CRITICAL: amounts in CENTS. Divide by 100.'],
+ *   redactPII: { paths: ['*.ssn'] },
+ * };
+ *
+ * const InvoicePresenter = extendPresenter(BaseFinancial, {
+ *   name: 'Invoice',
+ *   schema: invoiceSchema,
+ *   ui: (inv) => [ui.echarts(...)],
+ * });
+ * // → rules from BaseFinancial + schema/ui from overrides
+ * ```
+ */
+export function extendPresenter<TSchema extends ZodType<any, any, any>>(
+    base: Partial<PresenterConfig<any>>,
+    overrides: Partial<PresenterConfig<TSchema['_output']>> & { schema: TSchema; name: string },
+): Presenter<TSchema['_output']>;
+
+/**
+ * Extend without a schema (the override must still provide `name`).
+ */
+export function extendPresenter(
+    base: Partial<PresenterConfig<any>>,
+    overrides: Partial<PresenterConfig<unknown>> & { name: string; schema?: undefined },
+): Presenter<unknown>;
+
+/**
+ * Implementation
+ * @internal
+ */
+export function extendPresenter(
+    base: Partial<PresenterConfig<unknown>>,
+    overrides: Partial<PresenterConfig<unknown>> & { name: string },
+): Presenter<unknown> {
+    const merged: Record<string, unknown> = {
+        // Name and schema: override always wins
+        name: overrides.name,
+
+        // Auto-rules: override wins when explicitly set
+        autoRules: overrides.autoRules ?? base.autoRules,
+
+        // Rules: merge strategy
+        rules: _mergeRules(base.rules, overrides.rules),
+
+        // UI: override wins if defined
+        ui: overrides.ui ?? base.ui,
+        collectionUi: overrides.collectionUi ?? base.collectionUi,
+
+        // Agent limit: override wins if defined
+        agentLimit: overrides.agentLimit ?? base.agentLimit,
+
+        // Suggestions: override wins if defined
+        suggestActions: overrides.suggestActions ?? base.suggestActions,
+        collectionSuggestions: overrides.collectionSuggestions ?? base.collectionSuggestions,
+
+        // Collection rules: override wins if defined
+        collectionRules: overrides.collectionRules ?? base.collectionRules,
+
+        // Embeds: merge (additive)
+        embeds: [
+            ...(base.embeds ?? []),
+            ...(overrides.embeds ?? []),
+        ],
+
+        // Redaction: merge paths
+        redactPII: _mergeRedactPII(base.redactPII, overrides.redactPII),
+
+        // Async callbacks: override wins if defined
+        asyncUi: overrides.asyncUi ?? base.asyncUi,
+        asyncCollectionUi: overrides.asyncCollectionUi ?? base.asyncCollectionUi,
+        asyncRules: overrides.asyncRules ?? base.asyncRules,
+        asyncSuggestActions: overrides.asyncSuggestActions ?? base.asyncSuggestActions,
+    };
+
+    // Schema: override wins, set only if defined (exactOptionalPropertyTypes)
+    const schema = overrides.schema ?? base.schema;
+    if (schema) merged['schema'] = schema;
+
+    // Remove undefined values to satisfy exactOptionalPropertyTypes
+    for (const key of Object.keys(merged)) {
+        if (merged[key] === undefined) delete merged[key];
+    }
+
+    return definePresenter(merged as unknown as PresenterConfig<unknown> & { schema: any });
+}
+
+/**
+ * Merge two rules configs: static arrays are concatenated, dynamic functions are chained.
+ * @internal
+ */
+function _mergeRules(
+    base?: PresenterConfig<unknown>['rules'],
+    override?: PresenterConfig<unknown>['rules'],
+): PresenterConfig<unknown>['rules'] {
+    if (!base) return override;
+    if (!override) return base;
+
+    const baseIsStatic = typeof base !== 'function';
+    const overrideIsStatic = typeof override !== 'function';
+
+    // Both static: concatenate
+    if (baseIsStatic && overrideIsStatic) {
+        return [...(base as readonly string[]), ...(override as readonly string[])];
+    }
+
+    // Mix or both dynamic: chain
+    const baseFn = baseIsStatic
+        ? () => [...(base as readonly string[])]
+        : base as (data: unknown, ctx?: unknown) => (string | null)[];
+    const overrideFn = overrideIsStatic
+        ? () => [...(override as readonly string[])]
+        : override as (data: unknown, ctx?: unknown) => (string | null)[];
+
+    return (data: unknown, ctx?: unknown) => [
+        ...baseFn(data, ctx),
+        ...overrideFn(data, ctx),
+    ];
+}
+
+/**
+ * Merge two redactPII configurations by concatenating paths.
+ * The override's censor function takes priority.
+ * @internal
+ */
+function _mergeRedactPII(
+    base?: PresenterConfig<unknown>['redactPII'],
+    override?: PresenterConfig<unknown>['redactPII'],
+): PresenterConfig<unknown>['redactPII'] {
+    if (!base) return override;
+    if (!override) return base;
+
+    const result: { paths: string[]; censor?: string | ((value: unknown) => string) } = {
+        paths: [...base.paths, ...override.paths],
+    };
+    const censor = override.censor ?? base.censor;
+    if (censor !== undefined) result.censor = censor;
+    return result;
 }

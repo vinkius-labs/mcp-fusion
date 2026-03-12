@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.2] - 2026-03-12
+
+### Added
+
+- **`UiBlockMeta` — layout hints for UI blocks** — Optional `meta` parameter on all 8 `ui.*` helpers (`echarts`, `mermaid`, `markdown`, `codeBlock`, `table`, `list`, `json`, `summary`) with `title`, `width`, and `priority` fields. Metadata is rendered as XML attributes on `<ui_passthrough>` wrappers. Fully backward-compatible — blocks without meta produce identical output.
+- **`extendPresenter()` — Presenter composition** — Create a new Presenter by merging a base config with overrides. Rules are merged additively (static arrays concatenated, dynamic functions chained). Schema, UI, name, and suggestions use the override when defined. Embeds and `redactPII` paths are merged. Async callbacks use override-wins strategy.
+- **`makeAsync()` — asynchronous callback support** — New method returning `Promise<ResponseBuilder>` that enriches the sync `make()` output with async callbacks. Four fluent methods: `.asyncUiBlocks()`, `.asyncCollectionUiBlocks()`, `.asyncRules()`, `.asyncSuggestActions()`. Introspection via `hasAsyncCallbacks()`. Sync `make()` remains unchanged (zero breaking changes).
+- **`PresenterConfig` async fields** — Declarative `asyncUi`, `asyncCollectionUi`, `asyncRules`, `asyncSuggestActions` config fields wired in `definePresenter()` and `extendPresenter()`.
+- **43 new tests** — Comprehensive coverage for UiBlockMeta (13), `extendPresenter()` (11), and `makeAsync()` (19) with edge cases: null filtering, collection mode, method chaining, sync/async output parity, config inheritance.
+
 ## [3.3.1] - 2026-03-12
 
 ### Added

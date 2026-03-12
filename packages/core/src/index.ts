@@ -122,12 +122,12 @@ export {
     ui, t, suggest,
     Presenter, createPresenter, isPresenter,
     PresenterValidationError,
-    definePresenter,
+    definePresenter, extendPresenter,
     extractZodDescriptions,
     compileRedactor, initRedactEngine,
 } from './presenter/index.js';
 /** @category Presenter */
-export type { UiBlock, ActionSuggestion, PresenterConfig, AgentLimitDef, EmbedDef, RedactConfig, RedactFn } from './presenter/index.js';
+export type { UiBlock, UiBlockMeta, ActionSuggestion, PresenterConfig, AgentLimitDef, EmbedDef, RedactConfig, RedactFn } from './presenter/index.js';
 
 // ── Prompt Engine ────────────────────────────────────────
 /** @category Prompt */
