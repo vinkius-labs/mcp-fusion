@@ -6,12 +6,18 @@
  *   2. Attaches the tool registry with telemetry
  *   3. Builds the topology for Inspector TUI auto-discovery
  *   4. Starts the Telemetry Bus (IPC)
- *   5. Connects the stdio transport
+ *   5. Connects the transport (stdio or Streamable HTTP)
+ *
+ * Supports both `stdio` and `http` transports:
+ * - `stdio` (default): connects via stdin/stdout
+ * - `http`: starts an HTTP server with session management
  *
  * @module
  */
+import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { attachToServer, type AttachOptions, _missingContextProxy } from './ServerAttachment.js';
 import { createTelemetryBus, type TelemetryBusInstance } from '../observability/TelemetryBus.js';
 import type { PromptRegistry } from '../prompt/PromptRegistry.js';
@@ -20,6 +26,9 @@ import type { ProgressSink } from '../core/execution/ProgressHelper.js';
 // ============================================================================
 // Types
 // ============================================================================
+
+/** Transport layer for the server. */
+export type ServerTransport = 'stdio' | 'http';
 
 /** Options for `startServer`. */
 export interface StartServerOptions<TContext> {
@@ -40,6 +49,20 @@ export interface StartServerOptions<TContext> {
 
     /** Enable Inspector TUI telemetry (default: true). */
     readonly telemetry?: boolean;
+
+    /**
+     * Transport layer: `'stdio'` (default) or `'http'` (Streamable HTTP).
+     *
+     * - `stdio` — connects via stdin/stdout (for Cursor, Claude Desktop)
+     * - `http`  — starts an HTTP server with session management on `/mcp`
+     */
+    readonly transport?: ServerTransport;
+
+    /**
+     * Port for the HTTP server (only used when `transport: 'http'`).
+     * @default 3001
+     */
+    readonly port?: number;
 
     /** Extra attach options (debug, tracing, zeroTrust, etc.). */
     readonly attach?: Omit<AttachOptions<TContext>, 'contextFactory' | 'prompts' | 'telemetry'>;
@@ -68,6 +91,8 @@ export interface StartServerResult {
     readonly server: InstanceType<typeof Server> | null;
     /** The Telemetry Bus (if enabled). */
     readonly bus?: TelemetryBusInstance;
+    /** The HTTP server instance (only present when `transport: 'http'`). */
+    readonly httpServer?: HttpServer;
     /** Gracefully shut down everything. */
     readonly close: () => Promise<void>;
 }
@@ -106,6 +131,8 @@ export async function startServer<TContext>(
         prompts,
         contextFactory,
         telemetry = true,
+        transport = 'stdio',
+        port = 3001,
         attach = {},
     } = options;
 
@@ -265,9 +292,90 @@ export async function startServer<TContext>(
         ...(bus ? { telemetry: bus.emit } : {}),
     } as AttachOptions<TContext>);
 
-    // 4. Connect Stdio Transport
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
+    // 4. Connect Transport
+    if (transport === 'http') {
+        // ── Streamable HTTP Transport ────────────────────────
+        const sessions = new Map<string, StreamableHTTPServerTransport>();
+
+        const httpServer = createHttpServer(async (req, res) => {
+            try {
+                const url = new URL(req.url ?? '/', `http://localhost:${port}`);
+
+                if (url.pathname !== '/mcp') {
+                    res.writeHead(404).end();
+                    return;
+                }
+
+                if (req.method === 'POST') {
+                    const chunks: Buffer[] = [];
+                    for await (const chunk of req) chunks.push(chunk as Buffer);
+                    const body = JSON.parse(Buffer.concat(chunks).toString());
+
+                    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+                    if (sessionId && sessions.has(sessionId)) {
+                        const t = sessions.get(sessionId)!;
+                        await t.handleRequest(req, res, body);
+                        return;
+                    }
+
+                    const t = new StreamableHTTPServerTransport({
+                        sessionIdGenerator: () => crypto.randomUUID(),
+                        onsessioninitialized: (id) => {
+                            sessions.set(id, t);
+                        },
+                    });
+                    t.onclose = () => {
+                        const id = [...sessions.entries()].find(([, s]) => s === t)?.[0];
+                        if (id) sessions.delete(id);
+                    };
+                    await server.connect(t as unknown as import('@modelcontextprotocol/sdk/shared/transport.js').Transport);
+                    await t.handleRequest(req, res, body);
+                } else if (req.method === 'GET') {
+                    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+                    if (sessionId && sessions.has(sessionId)) {
+                        const t = sessions.get(sessionId)!;
+                        await t.handleRequest(req, res);
+                    } else {
+                        res.writeHead(400).end('Missing or invalid session');
+                    }
+                } else if (req.method === 'DELETE') {
+                    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+                    if (sessionId && sessions.has(sessionId)) {
+                        const t = sessions.get(sessionId)!;
+                        await t.handleRequest(req, res);
+                    } else {
+                        res.writeHead(400).end('Missing or invalid session');
+                    }
+                } else {
+                    res.writeHead(405).end();
+                }
+            } catch (err) {
+                console.error('[Vurb] Unhandled error in HTTP handler:', err);
+                if (!res.headersSent) res.writeHead(500).end();
+            }
+        });
+
+        httpServer.listen(port, () => {
+            process.stderr.write(`⚡ ${name} on http://localhost:${port}/mcp\n`);
+        });
+
+        async function close(): Promise<void> {
+            if (bus) await bus.close();
+            for (const t of sessions.values()) { try { await t.close(); } catch { /* best effort */ } }
+            sessions.clear();
+            await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+            await server.close();
+        }
+
+        const result: StartServerResult = { server, httpServer, close };
+        if (bus) (result as { bus?: TelemetryBusInstance }).bus = bus;
+        return result;
+    }
+
+    // ── Stdio Transport (default) ────────────────────────────
+    const stdioTransport = new StdioServerTransport();
+    await server.connect(stdioTransport);
     process.stderr.write(`⚡ ${name} running on stdio\n`);
 
     // 5. Close helper

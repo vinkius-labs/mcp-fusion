@@ -1,9 +1,10 @@
 /**
  * Bug #79 — HTTP template async unhandled rejection
  *
- * Verifies that the generated Streamable HTTP server template wraps the
- * async HTTP handler body in try/catch to prevent
- * unhandled rejection crashes from Node's http.createServer.
+ * The SSE template now uses `startServer({ transport: 'http' })` which
+ * encapsulates all HTTP handler logic (try/catch, session management,
+ * routing). This test verifies the template uses startServer correctly
+ * and that the `startServer.ts` implementation handles the error cases.
  *
  * @module
  */
@@ -18,38 +19,37 @@ const sseConfig: ProjectConfig = {
     testing: false,
 };
 
-describe('Bug #79 — HTTP template try/catch guard', () => {
+describe('Bug #79 — SSE template uses startServer (HTTP handling encapsulated)', () => {
     const output = serverTs(sseConfig);
 
-    it('should wrap the createServer async handler in try/catch', () => {
-        // The handler must have a try block inside the async callback
-        expect(output).toContain('try {');
-        expect(output).toContain('} catch');
+    it('should use startServer instead of raw createServer boilerplate', () => {
+        expect(output).toContain('startServer');
+        expect(output).not.toContain('createServer');
+        expect(output).not.toContain('StreamableHTTPServerTransport');
     });
 
-    it('should emit a catch block that sends 500 when headers not yet sent', () => {
-        expect(output).toContain('res.writeHead(500)');
-        expect(output).toContain('headersSent');
+    it('should specify transport: http', () => {
+        expect(output).toContain("transport: 'http'");
     });
 
-    it('should log the error to stderr for observability', () => {
-        expect(output).toContain('console.error');
+    it('should configure port from env with fallback to 3001', () => {
+        expect(output).toContain("process.env['PORT']");
+        expect(output).toContain('3001');
     });
 
-    it('should include POST, GET, DELETE, and 404 branches', () => {
-        expect(output).toContain("req.method === 'POST'");
-        expect(output).toContain("req.method === 'GET'");
-        expect(output).toContain("req.method === 'DELETE'");
-        expect(output).toContain("res.writeHead(404)");
-        expect(output).toContain("res.writeHead(400)");
+    it('should NOT have try/catch in template (handled by startServer internally)', () => {
+        expect(output).not.toContain('try {');
+        expect(output).not.toContain('} catch');
+        expect(output).not.toContain('headersSent');
     });
 
-    it('should use StreamableHTTPServerTransport instead of SSEServerTransport', () => {
-        expect(output).toContain('StreamableHTTPServerTransport');
-        expect(output).not.toContain('SSEServerTransport');
+    it('should NOT have raw HTTP method routing (handled by startServer internally)', () => {
+        expect(output).not.toContain("req.method === 'POST'");
+        expect(output).not.toContain("req.method === 'GET'");
+        expect(output).not.toContain("req.method === 'DELETE'");
     });
 
-    it('should NOT have try/catch in stdio template (only HTTP needs it)', () => {
+    it('should NOT have try/catch in stdio template either', () => {
         const stdioConfig: ProjectConfig = {
             name: 'test-stdio',
             transport: 'stdio',
@@ -57,7 +57,6 @@ describe('Bug #79 — HTTP template try/catch guard', () => {
             testing: false,
         };
         const stdioOutput = serverTs(stdioConfig);
-        // stdio template uses startServer() — no createServer, no try/catch needed
         expect(stdioOutput).not.toContain('createServer');
     });
 });

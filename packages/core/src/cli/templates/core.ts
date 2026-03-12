@@ -89,7 +89,7 @@ await startServer({
 `;
     }
 
-    // Streamable HTTP transport — manual setup required (startServer is stdio-only)
+    // Streamable HTTP transport — startServer handles all HTTP plumbing
     return `/**
  * Server Bootstrap — Vurb with Streamable HTTP Transport
  *
@@ -97,10 +97,7 @@ await startServer({
  * Drop a file, it becomes a tool.
  */
 import { fileURLToPath } from 'node:url';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createServer } from 'node:http';
-import { autoDiscover, PromptRegistry } from '@vurb/core';
+import { autoDiscover, PromptRegistry, startServer } from '@vurb/core';
 import { createContext } from './context.js';
 import { f } from './vurb.js';
 import { GreetPrompt } from './prompts/greet.js';
@@ -113,84 +110,14 @@ const prompts = new PromptRegistry();
 await autoDiscover(registry, fileURLToPath(new URL('./tools', import.meta.url)));
 prompts.register(GreetPrompt);
 
-// ── Server ───────────────────────────────────────────────
-const server = new McpServer(
-    { name: '${config.name}', version: '0.1.0' },
-);
-
-registry.attachToServer(server, {
-    contextFactory: () => createContext(),
+// ── Start ────────────────────────────────────────────────
+await startServer({
+    name: '${config.name}',
+    registry,
     prompts,
-});
-
-// ── Transport ────────────────────────────────────────────
-const PORT = Number(process.env['PORT'] ?? 3001);
-const sessions = new Map<string, StreamableHTTPServerTransport>();
-
-const httpServer = createServer(async (req, res) => {
-    try {
-        const url = new URL(req.url ?? '/', \`http://localhost:\${PORT}\`);
-
-        if (url.pathname !== '/mcp') {
-            res.writeHead(404).end();
-            return;
-        }
-
-        if (req.method === 'POST') {
-            // Parse JSON body
-            const chunks: Buffer[] = [];
-            for await (const chunk of req) chunks.push(chunk as Buffer);
-            const body = JSON.parse(Buffer.concat(chunks).toString());
-
-            const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-            // Existing session — route to its transport
-            if (sessionId && sessions.has(sessionId)) {
-                const transport = sessions.get(sessionId)!;
-                await transport.handleRequest(req, res, body);
-                return;
-            }
-
-            // New session — create transport
-            const transport = new StreamableHTTPServerTransport({
-                sessionIdGenerator: () => crypto.randomUUID(),
-                onsessioninitialized: (id) => {
-                    sessions.set(id, transport);
-                },
-            });
-            transport.onclose = () => {
-                const id = [...sessions.entries()].find(([, t]) => t === transport)?.[0];
-                if (id) sessions.delete(id);
-            };
-            await server.connect(transport);
-            await transport.handleRequest(req, res, body);
-        } else if (req.method === 'GET') {
-            const sessionId = req.headers['mcp-session-id'] as string | undefined;
-            if (sessionId && sessions.has(sessionId)) {
-                const transport = sessions.get(sessionId)!;
-                await transport.handleRequest(req, res);
-            } else {
-                res.writeHead(400).end('Missing or invalid session');
-            }
-        } else if (req.method === 'DELETE') {
-            const sessionId = req.headers['mcp-session-id'] as string | undefined;
-            if (sessionId && sessions.has(sessionId)) {
-                const transport = sessions.get(sessionId)!;
-                await transport.handleRequest(req, res);
-            } else {
-                res.writeHead(400).end('Missing or invalid session');
-            }
-        } else {
-            res.writeHead(405).end();
-        }
-    } catch (err) {
-        console.error('[Vurb] Unhandled error in HTTP handler:', err);
-        if (!res.headersSent) res.writeHead(500).end();
-    }
-});
-
-httpServer.listen(PORT, () => {
-    console.error(\`⚡ Vurb server on http://localhost:\${PORT}/mcp\`);
+    contextFactory: () => createContext(),
+    transport: 'http',
+    port: Number(process.env['PORT'] ?? 3001),
 });
 `;
 }

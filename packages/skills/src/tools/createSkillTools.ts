@@ -99,17 +99,20 @@ export function createSkillTools(
 
     return defineTool(name, {
         description:
-            'Discover and load Agent Skills. ' +
-            'Skills provide specialized instructions and files for specific tasks. ' +
-            'Workflow: search → load → read_file (if needed).',
+            '[INSTRUCTIONS] When this tool is available you MUST follow this workflow for EVERY user request: ' +
+            '1) Call "search" to find relevant skills. ' +
+            '2) Call "load" with the skill_id to get FULL instructions. ' +
+            '3) FOLLOW the loaded instructions exactly. ' +
+            'NEVER skip step 2 — search results are metadata only, not the actual instructions. ' +
+            'Skills provide specialized behavior instructions for specific tasks.',
         actions: {
             search: {
                 readOnly: true,
                 description:
-                    'Search available skills by describing what you need. ' +
-                    'You MUST pass the query argument: arguments: { "query": "your task description" }. ' +
-                    'Use "*" to list all available skills. ' +
-                    'Returns skill IDs that can be passed to the load action.',
+                    'Find skills matching the user request. ' +
+                    'Returns metadata ONLY (IDs and descriptions) — NOT the actual instructions. ' +
+                    'After calling search, you MUST call "load" with the returned skill_id to get the full instructions. ' +
+                    'Use "*" to list all available skills.',
                 params: {
                     query: { type: 'string', description: 'Describe the task you need help with (e.g. "extract PDF text"). Use "*" to list all.' },
                 },
@@ -131,10 +134,10 @@ export function createSkillTools(
             load: {
                 readOnly: true,
                 description:
-                    'Load full instructions for a specific skill. ' +
-                    'Pass the skill_id from search results. ' +
-                    'Example: skill_id="pdf-processing". ' +
-                    'Returns step-by-step instructions and a list of available files.',
+                    'Load complete instructions for a skill. MANDATORY after search. ' +
+                    'Pass the skill_id obtained from search results. ' +
+                    'Returns full step-by-step instructions that you MUST follow to handle the user request. ' +
+                    'The returned instructions define your behavior — follow them exactly.',
                 params: {
                     skill_id: { type: 'string', description: 'Skill ID returned by search (e.g. "pdf-processing")' },
                 },

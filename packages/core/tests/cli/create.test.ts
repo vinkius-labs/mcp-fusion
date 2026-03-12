@@ -518,10 +518,11 @@ describe('Template output — source files', () => {
             expect(content).not.toContain('StreamableHTTPServerTransport');
         });
 
-        it('uses StreamableHTTPServerTransport for sse', () => {
+        it('uses startServer with transport http for sse', () => {
             const content = tpl.serverTs(sseConfig);
-            expect(content).toContain('StreamableHTTPServerTransport');
-            expect(content).not.toContain('startServer');
+            expect(content).toContain('startServer');
+            expect(content).toContain("transport: 'http'");
+            expect(content).not.toContain('StreamableHTTPServerTransport');
         });
 
         it('uses autoDiscover', () => {
@@ -981,12 +982,13 @@ describe('scaffold — file tree generation', () => {
         expect(server).not.toContain('StreamableHTTPServerTransport');
     });
 
-    it('server.ts uses StreamableHTTPServerTransport for sse', () => {
+    it('server.ts uses startServer with transport http for sse', () => {
         const projectDir = join(tmpDir, 'sse-srv');
         scaffold(projectDir, { name: 'sse-srv', transport: 'sse', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
-        expect(server).toContain('StreamableHTTPServerTransport');
-        expect(server).not.toContain('startServer');
+        expect(server).toContain('startServer');
+        expect(server).toContain("transport: 'http'");
+        expect(server).not.toContain('StreamableHTTPServerTransport');
     });
 
     // ── package.json on disk ─────────────────────────────────
@@ -1395,12 +1397,14 @@ describe('Scaffold — cross-contamination guards', () => {
         expect(server).not.toContain('createServer');
     });
 
-    it('sse server does NOT import StdioServerTransport in on-disk content', () => {
+    it('sse server uses startServer and does NOT import StdioServerTransport in on-disk content', () => {
         const projectDir = join(tmpDir, 'sse-guard');
         scaffold(projectDir, { name: 'sse-guard', transport: 'sse', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
         expect(server).not.toContain('StdioServerTransport');
-        expect(server).toContain('createServer');
+        expect(server).not.toContain('createServer');
+        expect(server).toContain('startServer');
+        expect(server).toContain("transport: 'http'");
     });
 
     it('package.json deps are mutually exclusive across vectors', () => {

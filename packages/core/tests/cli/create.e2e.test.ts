@@ -183,11 +183,12 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
         expect(existsSync(join(projectDir, 'vitest.config.ts'))).toBe(false);
         expect(existsSync(join(projectDir, 'tests', 'setup.ts'))).toBe(false);
 
-        // Streamable HTTP transport in server.ts
+        // Streamable HTTP transport via startServer in server.ts
         const server = readProjectFile(projectDir, 'src/server.ts');
-        expect(server).toContain('StreamableHTTPServerTransport');
+        expect(server).toContain('startServer');
+        expect(server).toContain("transport: 'http'");
         expect(server).not.toContain('StdioServerTransport');
-        expect(server).toContain('createServer');
+        expect(server).not.toContain('StreamableHTTPServerTransport');
 
         // Database deps in package.json
         const pkg = JSON.parse(readProjectFile(projectDir, 'package.json'));
@@ -766,8 +767,9 @@ describe('E2E: Config matrix — all 16 combinations', () => {
                         expect(server).toContain('startServer');
                         expect(server).not.toContain('StreamableHTTPServerTransport');
                     } else {
-                        expect(server).toContain('StreamableHTTPServerTransport');
-                        expect(server).not.toContain('startServer');
+                        expect(server).toContain('startServer');
+                        expect(server).toContain("transport: 'http'");
+                        expect(server).not.toContain('StreamableHTTPServerTransport');
                     }
 
                     // 5. Testing files
