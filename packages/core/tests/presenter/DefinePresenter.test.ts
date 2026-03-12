@@ -127,4 +127,266 @@ describe('definePresenter', () => {
         const result = presenter.make({ anything: true }).build();
         expect(result.content.length).toBeGreaterThan(0);
     });
+
+    describe('collectionSuggestions — declarative config', () => {
+        it('should wire collectionSuggestions into the Presenter', () => {
+            const presenter = definePresenter({
+                name: 'Order',
+                schema: z.object({ id: z.string(), status: z.string() }),
+                collectionSuggestions: (orders) => [
+                    orders.some(o => o.status === 'pending')
+                        ? { tool: 'orders.batch_approve', reason: 'Approve pending orders' }
+                        : null,
+                ],
+            });
+
+            const result = presenter.make([
+                { id: '1', status: 'paid' },
+                { id: '2', status: 'pending' },
+            ]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('orders.batch_approve');
+        });
+
+        it('should not fire collectionSuggestions for single items', () => {
+            const presenter = definePresenter({
+                name: 'Order',
+                schema: z.object({ id: z.string(), status: z.string() }),
+                collectionSuggestions: () => [
+                    { tool: 'batch_only', reason: 'Should not appear' },
+                ],
+            });
+
+            const result = presenter.make({ id: '1', status: 'paid' }).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).not.toContain('batch_only');
+        });
+
+        it('should prefer collectionSuggestions over suggestActions for arrays', () => {
+            const presenter = definePresenter({
+                name: 'Order',
+                schema: z.object({ id: z.string(), status: z.string() }),
+                suggestActions: () => [
+                    { tool: 'item_level', reason: 'per-item' },
+                ],
+                collectionSuggestions: (orders) => [
+                    { tool: 'collection_level', reason: `Batch of ${orders.length}` },
+                ],
+            });
+
+            const result = presenter.make([
+                { id: '1', status: 'a' },
+                { id: '2', status: 'b' },
+            ]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('collection_level');
+            expect(text).not.toContain('item_level');
+        });
+    });
+
+    describe('collectionRules — declarative config', () => {
+        it('should wire static collectionRules into the Presenter', () => {
+            const presenter = definePresenter({
+                name: 'Task',
+                schema: z.object({ title: z.string(), done: z.boolean() }),
+                collectionRules: ['Show a progress bar at the top.'],
+            });
+
+            const result = presenter.make([
+                { title: 'A', done: true },
+                { title: 'B', done: false },
+            ]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Show a progress bar at the top');
+        });
+
+        it('should wire dynamic collectionRules that receive full array', () => {
+            const presenter = definePresenter({
+                name: 'Task',
+                schema: z.object({ title: z.string(), done: z.boolean() }),
+                collectionRules: (tasks) => [
+                    `Progress: ${tasks.filter(t => t.done).length}/${tasks.length} done.`,
+                ],
+            });
+
+            const result = presenter.make([
+                { title: 'A', done: true },
+                { title: 'B', done: false },
+                { title: 'C', done: true },
+            ]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Progress: 2/3 done');
+        });
+
+        it('should not inject collectionRules for single items', () => {
+            const presenter = definePresenter({
+                name: 'Task',
+                schema: z.object({ title: z.string() }),
+                collectionRules: ['COLLECTION ONLY RULE'],
+            });
+
+            const result = presenter.make({ title: 'Solo' }).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).not.toContain('COLLECTION ONLY RULE');
+        });
+
+        it('should merge per-item rules, Zod descriptions, and collectionRules', () => {
+            const presenter = definePresenter({
+                name: 'Invoice',
+                schema: z.object({
+                    amount: z.number().describe('CRITICAL: in CENTS'),
+                }),
+                rules: ['Format currency with $ prefix.'],
+                collectionRules: ['Add a total row at the bottom.'],
+            });
+
+            const result = presenter.make([
+                { amount: 100 },
+                { amount: 200 },
+            ]).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            // Zod description auto-rule
+            expect(text).toContain('CRITICAL: in CENTS');
+            // Per-item static rule
+            expect(text).toContain('Format currency with $ prefix');
+            // Collection rule
+            expect(text).toContain('Add a total row at the bottom');
+        });
+    });
+
+    describe('edge cases — robustness', () => {
+        it('should handle empty array with collectionSuggestions gracefully', () => {
+            const presenter = definePresenter({
+                name: 'Empty',
+                schema: z.object({ id: z.string() }),
+                collectionSuggestions: () => [
+                    { tool: 'should_not_appear', reason: 'Empty array' },
+                ],
+            });
+
+            const result = presenter.make([]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).not.toContain('should_not_appear');
+        });
+
+        it('should handle empty array with collectionRules gracefully', () => {
+            const presenter = definePresenter({
+                name: 'Empty',
+                schema: z.object({ id: z.string() }),
+                collectionRules: (items) => [
+                    `Count: ${items.length}`,
+                ],
+            });
+
+            const result = presenter.make([]).build();
+            // Empty array — collectionRules should still fire (isArray is true)
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Count: 0');
+        });
+
+        it('should forward context to collectionSuggestions', () => {
+            const presenter = definePresenter({
+                name: 'Contextual',
+                schema: z.object({ id: z.string() }),
+                collectionSuggestions: (items, ctx) => [
+                    (ctx as { admin?: boolean })?.admin
+                        ? { tool: 'admin.bulk_delete', reason: 'Admin action' }
+                        : null,
+                ],
+            });
+
+            const result = presenter.make(
+                [{ id: '1' }, { id: '2' }],
+                { admin: true },
+            ).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('admin.bulk_delete');
+
+            // Without admin context — no suggestion
+            const presenter2 = definePresenter({
+                name: 'Contextual2',
+                schema: z.object({ id: z.string() }),
+                collectionSuggestions: (_items, ctx) => [
+                    (ctx as { admin?: boolean })?.admin
+                        ? { tool: 'admin.bulk_delete', reason: 'Admin action' }
+                        : null,
+                ],
+            });
+            const result2 = presenter2.make(
+                [{ id: '1' }],
+                { admin: false },
+            ).build();
+            const text2 = result2.content.map(c => c.text).join('\n');
+            expect(text2).not.toContain('admin.bulk_delete');
+        });
+
+        it('should forward context to collectionRules', () => {
+            const presenter = definePresenter({
+                name: 'Contextual',
+                schema: z.object({ id: z.string() }),
+                collectionRules: (items, ctx) => [
+                    (ctx as { locale?: string })?.locale === 'pt-BR'
+                        ? 'Formate datas em DD/MM/YYYY.'
+                        : 'Format dates as MM/DD/YYYY.',
+                ],
+            });
+
+            const result = presenter.make(
+                [{ id: '1' }],
+                { locale: 'pt-BR' },
+            ).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('DD/MM/YYYY');
+        });
+
+        it('should combine agentLimit + collectionRules + collectionSuggestions', () => {
+            const presenter = definePresenter({
+                name: 'Combined',
+                schema: z.object({ id: z.number() }),
+                agentLimit: {
+                    max: 2,
+                    onTruncate: (n) => ({ type: 'summary', content: `⚠️ ${n} hidden` }),
+                },
+                collectionRules: (items) => [
+                    `Showing ${items.length} items.`,
+                ],
+                collectionSuggestions: (items) => [
+                    items.length >= 2
+                        ? { tool: 'data.paginate', reason: 'Load more results' }
+                        : null,
+                ],
+            });
+
+            const items = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+            const result = presenter.make(items).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            // agentLimit truncates to 2, so 3 hidden
+            expect(text).toContain('3 hidden');
+            // collectionRules sees the truncated array (2 items)
+            expect(text).toContain('Showing 2 items');
+            // collectionSuggestions sees the truncated array
+            expect(text).toContain('data.paginate');
+        });
+
+        it('should handle single-item array (length 1) with collection features', () => {
+            const presenter = definePresenter({
+                name: 'SingleArray',
+                schema: z.object({ status: z.string() }),
+                collectionRules: (items) => [
+                    `Found ${items.length} item(s).`,
+                ],
+                collectionSuggestions: (items) => [
+                    { tool: 'batch_op', reason: `Batch of ${items.length}` },
+                ],
+            });
+
+            const result = presenter.make([{ status: 'active' }]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Found 1 item(s)');
+            expect(text).toContain('Batch of 1');
+        });
+    });
 });
+

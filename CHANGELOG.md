@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2026-03-12
+
+### Added
+
+- **`collectionSuggestActions()` / `collectionSuggest()`** — HATEOAS-style action suggestions at the collection level. Callback receives the full `T[]` array, enabling aggregate suggestions (batch operations, bulk approvals). When both per-item and collection suggestions are configured, `collectionSuggestActions` takes priority for arrays.
+- **`collectionRules()`** — collection-level system rules evaluated with the entire validated array. Supports static `string[]` or dynamic `(items[], ctx?) => (string | null)[]`. Merged additively with per-item rules.
+- **`definePresenter()` config fields** — `collectionSuggestions` and `collectionRules` for the declarative API, wired to the corresponding fluent methods.
+- **25 new tests** — edge cases: empty arrays, context forwarding, agentLimit combo, single-item arrays, priority over per-item callbacks, deduplication of embed rules across collection items.
+
+### Fixed
+
+- **`_attachSuggestions()` evaluated only the first array item** — `suggestActions()` on collections now correctly falls back to the first item only when `collectionSuggestActions` is not configured.
+- **`_attachRules()` dynamic rules evaluated only the first array item** — per-item dynamic rules behavior is preserved; new `collectionRules` provides aggregate-level rules.
+- **`_processEmbeds()` processed only the first array item** — child Presenter embeds now iterate all items in a collection. Rules are deduplicated via `Set<string>`, UI blocks emitted only for the first item to prevent context window explosion.
+
+
 ## [3.1.31] - 2026-03-06
 
 ### Fixed

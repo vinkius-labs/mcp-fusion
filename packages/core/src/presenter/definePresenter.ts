@@ -120,6 +120,33 @@ export interface PresenterConfig<T> {
     readonly embeds?: readonly EmbedDef[];
 
     /**
+     * HATEOAS-style suggestions for **collections** (arrays).
+     *
+     * Unlike `suggestActions`, this callback receives the **entire array**
+     * of validated items, enabling aggregate-level suggestions like batch
+     * operations, bulk approvals, or summary insights.
+     *
+     * Return `null` for conditional suggestions (filtered automatically).
+     *
+     * When both `suggestActions` and `collectionSuggestions` are set,
+     * only `collectionSuggestions` is used for arrays.
+     */
+    readonly collectionSuggestions?: (items: T[], ctx?: unknown) => (ActionSuggestion | null)[];
+
+    /**
+     * Collection-level system rules evaluated with the **entire array**.
+     *
+     * Use for aggregate context (totals, counts, mixed-status warnings)
+     * that cannot be derived from a single item.
+     *
+     * Both per-item `rules` and `collectionRules` are merged in the response.
+     *
+     * - **Static**: `string[]` — always injected for collections
+     * - **Dynamic**: `(items[], ctx?) => (string | null)[]` — context-aware
+     */
+    readonly collectionRules?: readonly string[] | ((items: T[], ctx?: unknown) => (string | null)[]);
+
+    /**
      * Automatically extract `.describe()` annotations from the Zod schema
      * and merge them with `rules` as system rules.
      *
@@ -273,6 +300,14 @@ export function definePresenter(config: PresenterConfig<unknown>): Presenter<unk
 
     if (config.redactPII) {
         presenter.redactPII(config.redactPII.paths, config.redactPII.censor);
+    }
+
+    if (config.collectionSuggestions) {
+        presenter.collectionSuggestActions(config.collectionSuggestions);
+    }
+
+    if (config.collectionRules) {
+        presenter.collectionRules(config.collectionRules);
     }
 
     return presenter;

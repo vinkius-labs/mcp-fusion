@@ -212,4 +212,207 @@ describe('Presenter', () => {
             expect(result.content[1].text).toContain('Always be polite');
         });
     });
+
+    describe('.collectionSuggestActions() — collection-level suggestions', () => {
+        it('should aggregate suggestions from all items in the collection', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .collectionSuggestActions((invoices) => [
+                    invoices.some(i => i.status === 'pending')
+                        ? { tool: 'billing.batch_pay', reason: 'Batch payment available' }
+                        : null,
+                    invoices.length > 1
+                        ? { tool: 'billing.export', reason: 'Export all invoices' }
+                        : null,
+                ]);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 45000, status: 'paid' as const },
+                { id: 'INV-2', amount_cents: 12000, status: 'pending' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            expect(text).toContain('billing.batch_pay');
+            expect(text).toContain('billing.export');
+        });
+
+        it('should filter null suggestions', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .collectionSuggestActions((invoices) => [
+                    invoices.some(i => i.status === 'pending')
+                        ? { tool: 'billing.batch_pay', reason: 'Pay all' }
+                        : null,
+                ]);
+
+            // All paid — no suggestions
+            const data = [
+                { id: 'INV-1', amount_cents: 45000, status: 'paid' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).not.toContain('action_suggestions');
+        });
+
+        it('should prefer collectionSuggestActions over suggestActions for arrays', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .suggestActions(() => [
+                    { tool: 'per_item_tool', reason: 'Should not appear' },
+                ])
+                .collectionSuggestActions((invoices) => [
+                    { tool: 'batch_tool', reason: `Processing ${invoices.length} items` },
+                ]);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 100, status: 'paid' as const },
+                { id: 'INV-2', amount_cents: 200, status: 'pending' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            expect(text).toContain('batch_tool');
+            expect(text).not.toContain('per_item_tool');
+        });
+
+        it('should still use suggestActions for single items', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .suggestActions((inv) => [
+                    { tool: 'item_tool', reason: `Status: ${inv.status}` },
+                ])
+                .collectionSuggestActions(() => [
+                    { tool: 'batch_tool', reason: 'Should not appear for single' },
+                ]);
+
+            const result = presenter.make({ id: 'INV-1', amount_cents: 100, status: 'paid' }).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            expect(text).toContain('item_tool');
+            expect(text).not.toContain('batch_tool');
+        });
+
+        it('should work with fluent alias .collectionSuggest()', () => {
+            const presenter = createPresenter('Invoice')
+                .collectionSuggest((items) => [
+                    { tool: 'alias_test', reason: `${items.length} items` },
+                ]);
+
+            const result = presenter.make([{ id: 'INV-1' }, { id: 'INV-2' }]).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('alias_test');
+        });
+    });
+
+    describe('.collectionRules() — collection-level system rules', () => {
+        it('should inject static collection rules for arrays', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .collectionRules(['Display a total row at the bottom.']);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 45000, status: 'paid' as const },
+                { id: 'INV-2', amount_cents: 12000, status: 'pending' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Display a total row at the bottom');
+        });
+
+        it('should not inject collection rules for single items', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .collectionRules(['This should NOT appear for single items.']);
+
+            const result = presenter.make({ id: 'INV-1', amount_cents: 100, status: 'paid' }).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).not.toContain('This should NOT appear');
+        });
+
+        it('should support dynamic collection rules with full array', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .collectionRules((invoices) => [
+                    `Total: ${invoices.length} invoices.`,
+                    invoices.some(i => i.status === 'pending')
+                        ? '⚠️ Some invoices are still pending.'
+                        : null,
+                ]);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 100, status: 'paid' as const },
+                { id: 'INV-2', amount_cents: 200, status: 'pending' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('Total: 2 invoices');
+            expect(text).toContain('Some invoices are still pending');
+        });
+
+        it('should merge per-item rules AND collection rules', () => {
+            const presenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .systemRules(['CRITICAL: amounts in CENTS.'])
+                .collectionRules(['Show a summary after the table.']);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 100, status: 'paid' as const },
+            ];
+
+            const result = presenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+            expect(text).toContain('amounts in CENTS');
+            expect(text).toContain('Show a summary after the table');
+        });
+    });
+
+    describe('embed in collections — processes all array items', () => {
+        it('should process embeds for all items in a collection', () => {
+            const clientPresenter = createPresenter('Client')
+                .systemRules(['Show client name in bold.']);
+
+            const invoicePresenter = createPresenter('Invoice')
+                .schema(invoiceSchema)
+                .embed('client', clientPresenter);
+
+            const data = [
+                { id: 'INV-1', amount_cents: 100, status: 'paid' as const, client: { name: 'Alice' } },
+                { id: 'INV-2', amount_cents: 200, status: 'pending' as const, client: { name: 'Bob' } },
+            ];
+
+            const result = invoicePresenter.make(data).build();
+            const text = result.content.map(c => c.text).join('\n');
+
+            // The child rules should appear (deduplicated)
+            expect(text).toContain('Show client name in bold');
+        });
+
+        it('should deduplicate static rules from embeds across array items', () => {
+            const clientPresenter = createPresenter('Client')
+                .systemRules(['Format: bold client names.', 'Use 📋 for client sections.']);
+
+            const invoicePresenter = createPresenter('Invoice')
+                .embed('client', clientPresenter);
+
+            const data = [
+                { id: 'INV-1', client: { name: 'Alice' } },
+                { id: 'INV-2', client: { name: 'Bob' } },
+                { id: 'INV-3', client: { name: 'Charlie' } },
+            ];
+
+            const result = invoicePresenter.make(data).build();
+
+            // Count how many blocks contain the rule text — should be exactly 1
+            const ruleBlocks = result.content.filter(c =>
+                c.text.includes('Format: bold client names'),
+            );
+            expect(ruleBlocks.length).toBe(1);
+        });
+    });
 });

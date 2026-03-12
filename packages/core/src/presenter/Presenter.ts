@@ -116,6 +116,12 @@ type CollectionUiBlocksFn<T> = (items: T[], ctx?: unknown) => (UiBlock | null)[]
 /** Suggest actions callback — with optional context */
 type SuggestActionsFn<T> = (data: T, ctx?: unknown) => ActionSuggestion[];
 
+/** Collection-level suggest actions callback — receives full array */
+type CollectionSuggestActionsFn<T> = (items: T[], ctx?: unknown) => (ActionSuggestion | null)[];
+
+/** Collection-level rules callback — receives full array */
+type CollectionRulesFn<T> = readonly string[] | ((items: T[], ctx?: unknown) => (string | null)[]);
+
 // ── Presenter ────────────────────────────────────────────
 
 /**
@@ -145,9 +151,11 @@ export class Presenter<T> {
     private _itemUiBlocks?: ItemUiBlocksFn<T>;
     private _collectionUiBlocks?: CollectionUiBlocksFn<T>;
     private _suggestActions?: SuggestActionsFn<T>;
+    private _collectionSuggestActions?: CollectionSuggestActionsFn<T>;
     private _agentLimit?: AgentLimitConfig;
     private _embeds: EmbedEntry[] = [];
     private _sealed = false;
+    private _collectionRules: CollectionRulesFn<T> = [];
     private _compiledStringify: StringifyFn | undefined;
     private _compiledRedactor: RedactFn | undefined;
     private _redactConfig: RedactConfig | undefined;
@@ -380,6 +388,37 @@ export class Presenter<T> {
         return this;
     }
 
+    /**
+     * Define HATEOAS-style action suggestions for **collections**.
+     *
+     * Unlike `.suggestActions()`, this callback receives the **entire array**
+     * of validated items, enabling aggregate-level suggestions like batch
+     * operations, bulk approvals, or summary insights.
+     *
+     * When both `.suggestActions()` and `.collectionSuggestActions()` are set,
+     * only collectionSuggestActions is used for arrays.
+     *
+     * @param fn - `(items[], ctx?) => (ActionSuggestion | null)[]`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * .collectionSuggestActions((invoices) => [
+     *     invoices.some(i => i.status === 'overdue')
+     *         ? { tool: 'billing.batch_remind', reason: 'Send batch reminders' }
+     *         : null,
+     *     invoices.length > 100
+     *         ? { tool: 'billing.export', reason: 'Export results for offline review' }
+     *         : null,
+     * ])
+     * ```
+     */
+    collectionSuggestActions(fn: CollectionSuggestActionsFn<T>): this {
+        this._assertNotSealed();
+        this._collectionSuggestActions = fn;
+        return this;
+    }
+
     // ── Fluent Aliases ───────────────────────────────────
 
     /**
@@ -408,6 +447,16 @@ export class Presenter<T> {
     }
 
     /**
+     * Alias for `.collectionSuggestActions()` — fluent shorthand.
+     *
+     * @param fn - `(items[], ctx?) => (ActionSuggestion | null)[]`
+     * @returns `this` for chaining
+     */
+    collectionSuggest(fn: CollectionSuggestActionsFn<T>): this {
+        return this.collectionSuggestActions(fn);
+    }
+
+    /**
      * Alias for `.systemRules()` — fluent shorthand.
      *
      * @param rules - Static rules array or dynamic `(data, ctx?) => (string | null)[]`
@@ -423,6 +472,34 @@ export class Presenter<T> {
      */
     rules(rules: readonly string[] | ((data: T, ctx?: unknown) => (string | null)[])): this {
         return this.systemRules(rules);
+    }
+
+    /**
+     * Set collection-level system rules.
+     *
+     * Unlike `.systemRules()`, these rules are evaluated with the **entire
+     * array** of validated items. Use for aggregate context (totals, counts,
+     * mixed-status warnings) that cannot be derived from a single item.
+     *
+     * Both per-item and collection rules are merged in the response.
+     *
+     * @param rules - Static rules array, or dynamic `(items[], ctx?) => (string | null)[]`
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * .collectionRules((invoices, ctx) => [
+     *     `Total: ${invoices.length} invoices found.`,
+     *     invoices.some(i => i.status === 'overdue')
+     *         ? '⚠️ Some invoices are OVERDUE. Highlight them.'
+     *         : null,
+     * ])
+     * ```
+     */
+    collectionRules(rules: CollectionRulesFn<T>): this {
+        this._assertNotSealed();
+        this._collectionRules = rules;
+        return this;
     }
 
     /**
@@ -828,11 +905,14 @@ export class Presenter<T> {
      * Resolve and attach domain rules to the response builder.
      * Supports both static arrays and dynamic context-aware functions.
      * Filters `null` rules automatically.
+     *
+     * For collections: also evaluates `collectionRules` (if defined) and
+     * merges them after per-item rules.
      * @internal
      */
     private _attachRules(builder: ResponseBuilder, data: T | T[], isArray: boolean, ctx?: unknown): void {
+        // Per-item rules (existing behavior)
         if (typeof this._rules === 'function') {
-            // Dynamic rules — resolve with data and context
             const singleData = isArray ? (data as T[])[0] : data as T;
             if (singleData !== undefined) {
                 const resolved = this._rules(singleData, ctx)
@@ -840,20 +920,52 @@ export class Presenter<T> {
                 if (resolved.length > 0) builder.systemRules(resolved);
             }
         } else if (this._rules.length > 0) {
-            // Static rules — pass directly
             builder.systemRules(this._rules);
         }
+
+        // Collection-level rules (additive — appended after per-item rules)
+        if (isArray && this._hasCollectionRules()) {
+            const items = data as T[];
+            if (typeof this._collectionRules === 'function') {
+                const resolved = this._collectionRules(items, ctx)
+                    .filter((r): r is string => r !== null);
+                if (resolved.length > 0) builder.systemRules(resolved);
+            } else if (this._collectionRules.length > 0) {
+                builder.systemRules(this._collectionRules);
+            }
+        }
+    }
+
+    /** @internal Check if collection rules are configured */
+    private _hasCollectionRules(): boolean {
+        return typeof this._collectionRules === 'function'
+            || this._collectionRules.length > 0;
     }
 
     /**
      * Evaluate and attach action suggestions to the response.
      * Generates a `[SYSTEM HINT]` block with recommended next tools.
+     *
+     * For collections: uses `collectionSuggestActions` if defined (receives
+     * the full array), otherwise falls back to per-item evaluation on the
+     * first item for backwards compatibility.
      * @internal
      */
     private _attachSuggestions(builder: ResponseBuilder, data: T | T[], isArray: boolean, ctx?: unknown): void {
-        if (!this._suggestActions) return;
+        // Collection-level suggestions (preferred for arrays)
+        if (isArray && this._collectionSuggestActions) {
+            const items = data as T[];
+            if (items.length === 0) return;
+            const suggestions = this._collectionSuggestActions(items, ctx)
+                .filter((s): s is ActionSuggestion => s !== null);
+            if (suggestions.length > 0) {
+                builder.systemHint(suggestions);
+            }
+            return;
+        }
 
-        // For collections, evaluate suggestions on the first item (or skip)
+        // Per-item fallback (single item or first item of array)
+        if (!this._suggestActions) return;
         const singleData = isArray ? (data as T[])[0] : data as T;
         if (singleData === undefined) return;
 
@@ -866,26 +978,49 @@ export class Presenter<T> {
     /**
      * Process embedded child Presenters for nested relational data.
      * Merges child UI blocks and rules into the parent builder.
+     *
+     * For collections: iterates all array items. Rules are deduplicated
+     * via a Set to avoid repetition. UI blocks are emitted only for the
+     * first item to prevent context window explosion.
      * @internal
      */
     private _processEmbeds(builder: ResponseBuilder, data: T | T[], isArray: boolean, ctx?: unknown): void {
         if (this._embeds.length === 0) return;
 
-        const singleData = isArray ? (data as T[])[0] : data as T;
-        if (singleData === undefined || typeof singleData !== 'object') return;
+        const items = isArray
+            ? (data as T[]).filter((item): item is T => item !== undefined && typeof item === 'object')
+            : [data as T].filter((item): item is T => item !== undefined && typeof item === 'object');
 
-        for (const embed of this._embeds) {
-            const nestedData = (singleData as Record<string, unknown>)[embed.key];
-            if (nestedData === undefined || nestedData === null) continue;
+        if (items.length === 0) return;
 
-            // Run the child Presenter and extract its blocks
-            const childBuilder = embed.presenter.make(nestedData, ctx);
-            const childResponse = childBuilder.build();
+        // Track which rule blocks we've already emitted (dedup for arrays)
+        const emittedRules = new Set<string>();
 
-            // Skip the first block (data) — parent already has it
-            // Merge remaining blocks (UI, rules, hints) into the parent
-            for (let i = 1; i < childResponse.content.length; i++) {
-                builder.rawBlock(childResponse.content[i]!.text);
+        for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
+            const item = items[itemIdx]!;
+
+            for (const embed of this._embeds) {
+                const nestedData = (item as Record<string, unknown>)[embed.key];
+                if (nestedData === undefined || nestedData === null) continue;
+
+                const childBuilder = embed.presenter.make(nestedData, ctx);
+                const childResponse = childBuilder.build();
+
+                // Skip the first block (data) — parent already has it
+                for (let i = 1; i < childResponse.content.length; i++) {
+                    const blockText = childResponse.content[i]!.text;
+
+                    // For arrays: deduplicate rule/hint blocks, emit UI only for first item
+                    if (isArray && itemIdx > 0) {
+                        // Skip duplicate rule blocks (same text already emitted)
+                        if (emittedRules.has(blockText)) continue;
+                        // Skip UI blocks after the first item to avoid context explosion
+                        if (blockText.includes('<ui_passthrough')) continue;
+                    }
+
+                    emittedRules.add(blockText);
+                    builder.rawBlock(blockText);
+                }
             }
         }
     }
