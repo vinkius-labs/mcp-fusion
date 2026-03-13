@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.4] - 2026-03-13
+
+### Added
+
+- **Security Layer — 5 composable middleware modules** for production AI security:
+  - **`InputFirewall`** — LLM-as-Judge ingress scanner. Evaluates tool arguments for SQL injection, prompt injection, command injection, and path traversal before handler execution. Configurable judge model, severity thresholds, and bypass allowlists.
+  - **`PromptFirewall`** — Evaluates system rules against a judge LLM before they reach the agent. Detects rule conflicts, data exfiltration attempts, and prompt override patterns. Rejects or sanitizes suspect rules.
+  - **`AuditTrail`** — SOC2/GDPR-compliant invocation logger. Records identity, tool name, action, SHA-256 args hash, status, duration, and timestamps. Pluggable sink (console, file, external SIEM). Configurable `extractIdentity` for JWT/session resolution.
+  - **`RateLimiter`** — Token-bucket rate limiting per identity. Configurable `maxRequests`, `windowMs`, and `keyExtractor`. Returns structured `toolError('RATE_LIMITED')` with `retryAfter` and upgrade hints.
+  - **`JudgeChain`** — Multi-model consensus evaluation. Fans out to N judge LLMs, aggregates verdicts (unanimous, majority, weighted), and produces a final allow/deny decision with confidence score.
+- **Resource Subscriptions** — `ResourceBuilder`, `ResourceRegistry`, and `SubscriptionManager` for MCP resource subscriptions with `notifications/resources/updated` emission. Fluent builder API: `.uri()`, `.name()`, `.mimeType()`, `.subscribe()`, `.unsubscribe()`, `.notify()`.
+- **Blog engine** — VitePress-integrated blog with tag filtering, author links, and SEO:
+  - `BlogIndex.vue` — Blog listing page with hero section, tag-based filtering, article cards
+  - `BlogPostHeader.vue` — Clickable tags linking to filtered views, author GitHub link
+  - `posts.data.mts` — Frontmatter data loader with `authorUrl` support
+  - 3 blog posts: *Introducing Vurb.ts*, *MVA Pattern Deep Dive*, *Anatomy of an AI Platform Breach*
+- **Security analysis article** — *"Anatomy of an AI Platform Breach: How Vurb.ts Would Have Defended Every Attack Vector"*: 9 vulnerability vectors mapped to Vurb.ts defenses with real code examples, Executive Summary for CISOs, Compliance Mapping table (SOC2/GDPR/ISO 27001, 14 controls), Recommended Security Posture playbook (4 priorities with effort estimates)
+- **Security Layer documentation** — 6 new doc pages: overview, InputFirewall, PromptFirewall, AuditTrail, RateLimiter, JudgeChain
+- **Resource Subscriptions documentation** — Dedicated doc page with Fluent API examples
+
+### Changed
+
+- **Vurb.ts rebrand** — All references to "MCP Fusion" updated to "Vurb.ts" across `config.mts` (title, meta tags, JSON-LD, codeRepository), `seo.ts`, blog posts, and README links
+- **Header** — Logo-only navbar using S3-hosted Vurb.ts wordmark PNG (48px), subtitle removed, `siteTitle: false`
+- **GitHub links** — All repository URLs updated from `vinkius-labs/mcp-fusion` to `vinkius-labs/vurb.ts`
+
 ## [3.3.3] - 2026-03-12
 
 ### Added

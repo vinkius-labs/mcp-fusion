@@ -2097,3 +2097,137 @@ Peer dependency: `Vurb.ts` ≥ 3.0.0.
 - `Resource` — uri, size, mimeType, annotations
 - `Prompt` — promptArguments
 - `PromptArgument` — required: boolean
+
+## Security Layer — Composable Middleware
+
+Five production-grade security middleware modules that compose via the standard `.use()` pipeline. Each module is independent — use one or all, configure per-tool or globally.
+
+### InputFirewall — LLM-as-Judge Ingress Scanner
+
+Evaluates tool arguments for injection attacks before handler execution. Uses an LLM judge model to detect SQL injection, prompt injection, command injection, and path traversal.
+
+```typescript
+import { inputFirewall } from '@vurb/core';
+
+const firewall = inputFirewall({
+  judge: openai('gpt-4o-mini'),
+  severity: 'block',              // 'block' | 'warn' | 'log'
+  allowlist: ['system.health'],   // bypass for safe tools
+});
+
+const tool = f.query('db.search')
+  .use(firewall)
+  .withString('query', 'Search query')
+  .handle(async (input, ctx) => ctx.db.search(input.query));
+```
+
+Verdicts: `safe`, `suspicious`, `malicious`. Malicious inputs return `toolError('INPUT_BLOCKED')` with self-healing hints.
+
+### PromptFirewall — System Rule Evaluator
+
+Evaluates Presenter system rules before they reach the agent. Detects rule conflicts, data exfiltration instructions, and prompt override patterns.
+
+```typescript
+import { promptFirewall } from '@vurb/core';
+
+const pfw = promptFirewall({
+  judge: openai('gpt-4o-mini'),
+  policies: ['no-exfiltration', 'no-override', 'no-conflict'],
+});
+
+const tool = f.query('reports.generate')
+  .use(pfw)
+  .returns(ReportPresenter)
+  .handle(async (input, ctx) => ctx.db.reports.get(input.id));
+```
+
+### AuditTrail — SOC2/GDPR Invocation Logger
+
+Records every tool invocation with identity, args hash, status, and duration. Pluggable sink for external SIEM integration.
+
+```typescript
+import { auditTrail } from '@vurb/core';
+
+const audit = auditTrail({
+  sink: (event) => siem.ingest(event),
+  extractIdentity: (ctx) => ({ userId: ctx.auth.userId, ip: ctx.ip }),
+  hashAlgorithm: 'sha256',
+});
+
+const tool = f.mutation('billing.refund')
+  .use(audit)
+  .handle(async (input, ctx) => ctx.stripe.refund(input.chargeId));
+```
+
+Event fields: `identity`, `tool`, `action`, `argsHash` (SHA-256), `status` (`success`|`error`), `durationMs`, `timestamp`.
+
+### RateLimiter — Token-Bucket Per Identity
+
+```typescript
+import { rateLimit } from '@vurb/core';
+
+const limiter = rateLimit({
+  maxRequests: 100,
+  windowMs: 60_000,
+  keyExtractor: (ctx) => ctx.auth.userId,
+});
+
+const tool = f.query('search.execute')
+  .use(limiter)
+  .handle(async (input, ctx) => ctx.search(input.query));
+```
+
+Returns `toolError('RATE_LIMITED')` with `retryAfter` seconds and upgrade URL.
+
+### JudgeChain — Multi-Model Consensus
+
+Fans out to N judge LLMs, aggregates verdicts, and produces a final allow/deny decision.
+
+```typescript
+import { judgeChain } from '@vurb/core';
+
+const consensus = judgeChain({
+  judges: [openai('gpt-4o-mini'), anthropic('claude-3-haiku')],
+  strategy: 'majority',         // 'unanimous' | 'majority' | 'weighted'
+  threshold: 0.7,
+});
+```
+
+Strategies: `unanimous` (all must agree), `majority` (>50% agree), `weighted` (confidence-weighted average against threshold).
+
+### Security Middleware Composition
+
+```typescript
+// Minimum viable secure tool — 3 middleware lines
+const tool = f.query('operations.list')
+  .use(requireJwt(verifier))
+  .use(auditTrail({ sink: telemetrySink, extractIdentity: (ctx) => ({ userId: ctx.auth.userId }) }))
+  .use(inputFirewall({ judge: openai('gpt-4o-mini') }))
+  .handle(async (input, ctx) => ctx.db.operations.findMany());
+```
+
+## Resource Subscriptions
+
+Fluent builder for MCP resources with push-based subscriptions. Clients subscribe to resource URIs and receive `notifications/resources/updated` when data changes.
+
+```typescript
+import { ResourceBuilder, ResourceRegistry, SubscriptionManager } from '@vurb/core';
+
+const subscriptions = new SubscriptionManager();
+
+const configResource = new ResourceBuilder()
+  .uri('config://app/settings')
+  .name('Application Settings')
+  .mimeType('application/json')
+  .handler(async () => JSON.stringify(await db.settings.get()))
+  .build();
+
+const registry = new ResourceRegistry();
+registry.register(configResource);
+
+// When settings change, notify subscribers
+await subscriptions.notify('config://app/settings');
+// → Emits: notifications/resources/updated { uri: 'config://app/settings' }
+```
+
+`SubscriptionManager` tracks client subscriptions per URI. `ResourceRegistry` handles `resources/list`, `resources/read`, `resources/subscribe`, and `resources/unsubscribe`. Integrates with `ServerAttachment` for automatic MCP protocol handling.
