@@ -849,6 +849,144 @@ html.dark .VPFeature:hover {
   letter-spacing: -0.02em;
 }
 
+/* ═══ Equation Section — MCP + MVA = Vurb.ts ═══ */
+.ms-equation-section {
+  max-width: 72rem;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+}
+
+.ms-equation-header {
+  padding: 80px 60px 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ms-equation-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+}
+
+.ms-equation-block {
+  padding: 48px 40px;
+}
+
+.ms-equation-operator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.15);
+  padding: 0 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ms-equation-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--vp-font-family-mono);
+  color: rgba(34, 211, 238, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  padding: 4px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 3px;
+  margin-bottom: 20px;
+}
+
+.ms-equation-badge--arch {
+  color: rgba(168, 85, 247, 0.8);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.ms-equation-title {
+  font-size: 56px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.ms-equation-full {
+  font-size: 13px;
+  font-family: var(--vp-font-family-mono);
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
+  margin-bottom: 20px;
+}
+
+.ms-equation-desc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ms-equation-desc strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.ms-equation-result {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%);
+}
+
+.ms-equation-equals {
+  font-size: 32px;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.ms-equation-product {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.ms-equation-tagline {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 300;
+}
+
+@media (max-width: 960px) {
+  .ms-equation-grid {
+    grid-template-columns: 1fr;
+  }
+  .ms-equation-operator {
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    font-size: 36px;
+  }
+  .ms-equation-block {
+    padding: 32px 24px;
+  }
+  .ms-equation-header {
+    padding: 40px 24px 24px;
+  }
+  .ms-equation-title {
+    font-size: 40px;
+  }
+  .ms-equation-result {
+    flex-wrap: wrap;
+    padding: 20px 24px;
+  }
+}
+
 /* ═══ Grid Section — 3-column Card Grid (LandingLayers pattern) ═══ */
 .ms-grid-section {
   max-width: 72rem;

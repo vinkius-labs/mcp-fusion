@@ -50,6 +50,34 @@ hero:
 </div>
 </div>
 
+<!-- ═══ MCP + MVA Distinction — Protocol + Architecture ═══ -->
+<div class="ms-equation-section">
+<div class="ms-equation-header">
+<span class="ms-label">UNDERSTAND THE DIFFERENCE</span>
+<h2 class="ms-headline">MCP is the protocol. MVA is the architecture.<br/>Together, they are Vurb.ts.</h2>
+</div>
+<div class="ms-equation-grid">
+<div class="ms-equation-block">
+<span class="ms-equation-badge">PROTOCOL</span>
+<h3 class="ms-equation-title">MCP</h3>
+<p class="ms-equation-full">Model Context Protocol</p>
+<p class="ms-equation-desc">The open standard that defines <strong>how AI agents communicate</strong> with external tools. It specifies the transport layer, message format, and tool discovery. MCP is the wire — it doesn't tell you how to build what's on the other end.</p>
+</div>
+<div class="ms-equation-operator">+</div>
+<div class="ms-equation-block">
+<span class="ms-equation-badge ms-equation-badge--arch">ARCHITECTURE</span>
+<h3 class="ms-equation-title">MVA</h3>
+<p class="ms-equation-full">Model — View — Agent</p>
+<p class="ms-equation-desc">The architectural pattern that defines <strong>how to structure what agents receive</strong>. The Model owns your data. The View (Presenter) shapes structured perception with domain rules and affordances. The Agent declares safe, typed actions.</p>
+</div>
+</div>
+<div class="ms-equation-result">
+<span class="ms-equation-equals">=</span>
+<span class="ms-equation-product">Vurb.ts</span>
+<span class="ms-equation-tagline">The definitive TypeScript framework for production MCP servers.</span>
+</div>
+</div>
+
 <!-- ═══ Section 1: WHY MVA — Card Grid (LandingLayers pattern) ═══ -->
 <div class="ms-grid-section">
 <div class="ms-grid-header">
