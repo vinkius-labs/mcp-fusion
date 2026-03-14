@@ -278,6 +278,159 @@ export class FluentToolBuilder<
         return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, boolean>>, TCtx>;
     }
 
+    // ── Bulk Parameter Declaration ────────────────────────
+    //
+    // Batch variants accept a Record<string, string> where
+    // keys are parameter names and values are descriptions.
+    //
+    // Before:
+    //   .withOptionalString('title', 'Filter by title')
+    //   .withOptionalString('status', 'Status filter')
+    //
+    // After:
+    //   .withOptionalStrings({ title: 'Filter by title', status: 'Status filter' })
+
+    /**
+     * Add multiple required string parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.get')
+     *     .withStrings({
+     *         company_slug: 'Workspace identifier',
+     *         project_slug: 'Project identifier',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.company_slug: string ✅
+     * // input.project_slug: string ✅
+     * ```
+     */
+    withStrings<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: string }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            this._addParam(name, description ? z.string().describe(description) : z.string());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: string }, TCtx>;
+    }
+
+    /**
+     * Add multiple optional string parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withOptionalStrings({
+     *         title:    'Filter by title (partial match)',
+     *         workflow: 'Column name (e.g. "In Progress")',
+     *         labels:   'Comma-separated label names',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.title?: string | undefined ✅
+     * ```
+     */
+    withOptionalStrings<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: string | undefined }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            const base = description ? z.string().describe(description) : z.string();
+            this._addParam(name, base.optional());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: string | undefined }, TCtx>;
+    }
+
+    /**
+     * Add multiple required number parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     */
+    withNumbers<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: number }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            this._addParam(name, description ? z.number().describe(description) : z.number());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: number }, TCtx>;
+    }
+
+    /**
+     * Add multiple optional number parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withOptionalNumbers({
+     *         per_page:  'Results per page (default: 50)',
+     *         offset:    'Pagination offset',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.per_page?: number | undefined ✅
+     * ```
+     */
+    withOptionalNumbers<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: number | undefined }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            const base = description ? z.number().describe(description) : z.number();
+            this._addParam(name, base.optional());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: number | undefined }, TCtx>;
+    }
+
+    /**
+     * Add multiple required boolean parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     */
+    withBooleans<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: boolean }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            this._addParam(name, description ? z.boolean().describe(description) : z.boolean());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: boolean }, TCtx>;
+    }
+
+    /**
+     * Add multiple optional boolean parameters in bulk.
+     *
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withOptionalBooleans({
+     *         is_blocker:  'Only blockers',
+     *         is_bug:      'Only bugs',
+     *         unassigned:  'Only unassigned tasks',
+     *         is_archived: 'Include archived tasks',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.is_blocker?: boolean | undefined ✅
+     * ```
+     */
+    withOptionalBooleans<R extends Record<string, string>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: boolean | undefined }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            const base = description ? z.boolean().describe(description) : z.boolean();
+            this._addParam(name, base.optional());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: boolean | undefined }, TCtx>;
+    }
+
     /**
      * Add a required enum parameter.
      *
@@ -365,6 +518,125 @@ export class FluentToolBuilder<
         const schema = z.array(resolveArrayItemType(itemType));
         this._addParam(name, description ? schema.describe(description).optional() : schema.optional());
         return this as unknown as FluentToolBuilder<TContext, TInput & Partial<Record<K, (I extends 'string' ? string : I extends 'number' ? number : boolean)[]>>, TCtx>;
+    }
+
+    // ── Bulk Enum & Array Declaration ─────────────────────
+
+    /**
+     * Add multiple required enum parameters in bulk.
+     *
+     * Each entry is `paramName: [allowedValues, description?]`.
+     *
+     * @param fields - Record of `{ paramName: [values, description?] }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withEnums({
+     *         status:   [['open', 'closed', 'archived'], 'Task status'],
+     *         priority: [['low', 'medium', 'high'], 'Priority level'],
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.status: 'open' | 'closed' | 'archived' ✅
+     * ```
+     */
+    withEnums<R extends Record<string, readonly [readonly [string, ...string[]], string?]>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: R[K][0][number] }, TCtx> {
+        for (const [name, [values, description]] of Object.entries(fields)) {
+            const schema = z.enum(values as [string, ...string[]]);
+            this._addParam(name, description ? schema.describe(description) : schema);
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: R[K][0][number] }, TCtx>;
+    }
+
+    /**
+     * Add multiple optional enum parameters in bulk.
+     *
+     * Each entry is `paramName: [allowedValues, description?]`.
+     *
+     * @param fields - Record of `{ paramName: [values, description?] }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withOptionalEnums({
+     *         status:   [['open', 'closed'], 'Filter by status'],
+     *         priority: [['low', 'medium', 'high'], 'Filter by priority'],
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.status?: 'open' | 'closed' | undefined ✅
+     * ```
+     */
+    withOptionalEnums<R extends Record<string, readonly [readonly [string, ...string[]], string?]>>(
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: R[K][0][number] | undefined }, TCtx> {
+        for (const [name, [values, description]] of Object.entries(fields)) {
+            const schema = z.enum(values as [string, ...string[]]);
+            this._addParam(name, description ? schema.describe(description).optional() : schema.optional());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: R[K][0][number] | undefined }, TCtx>;
+    }
+
+    /**
+     * Add multiple required array parameters in bulk, sharing the same item type.
+     *
+     * @param itemType - Type of array items (`'string'`, `'number'`, `'boolean'`)
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.mutation('tasks.update')
+     *     .withArrays('string', {
+     *         tags:   'Tags to apply',
+     *         labels: 'Category labels',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.tags: string[] ✅
+     * // input.labels: string[] ✅
+     * ```
+     */
+    withArrays<I extends 'string' | 'number' | 'boolean', R extends Record<string, string>>(
+        itemType: I,
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: (I extends 'string' ? string : I extends 'number' ? number : boolean)[] }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            const schema = z.array(resolveArrayItemType(itemType));
+            this._addParam(name, description ? schema.describe(description) : schema);
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]: (I extends 'string' ? string : I extends 'number' ? number : boolean)[] }, TCtx>;
+    }
+
+    /**
+     * Add multiple optional array parameters in bulk, sharing the same item type.
+     *
+     * @param itemType - Type of array items (`'string'`, `'number'`, `'boolean'`)
+     * @param fields - Record of `{ paramName: 'description' }`
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * f.query('tasks.filter')
+     *     .withOptionalArrays('string', {
+     *         tags:   'Filter by tags',
+     *         labels: 'Filter by labels',
+     *     })
+     *     .handle(async (input) => { ... });
+     * // input.tags?: string[] | undefined ✅
+     * ```
+     */
+    withOptionalArrays<I extends 'string' | 'number' | 'boolean', R extends Record<string, string>>(
+        itemType: I,
+        fields: R,
+    ): FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: (I extends 'string' ? string : I extends 'number' ? number : boolean)[] | undefined }, TCtx> {
+        for (const [name, description] of Object.entries(fields)) {
+            const schema = z.array(resolveArrayItemType(itemType));
+            this._addParam(name, description ? schema.describe(description).optional() : schema.optional());
+        }
+        return this as unknown as FluentToolBuilder<TContext, TInput & { [K in keyof R & string]?: (I extends 'string' ? string : I extends 'number' ? number : boolean)[] | undefined }, TCtx>;
     }
 
     // ── Middleware ────────────────────────────────────────

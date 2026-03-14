@@ -213,6 +213,61 @@ Each `with*()` call narrows the TypeScript generic `TInput` — the IDE provides
 | `.withArray(name, itemType, desc?)` | `Record<K, T[]>` |
 | `.withOptionalArray(name, itemType, desc?)` | `Partial<Record<K, T[]>>` |
 
+### FluentToolBuilder — Bulk with*() Methods
+
+When a tool has many parameters of the same type, use the **plural** bulk variants to reduce verbosity.
+Each accepts a `Record<string, string>` where keys are parameter names and values are descriptions:
+
+| Bulk Method | Equivalent Singular |
+|---|---|
+| `.withStrings({ k: desc, ... })` | Multiple `.withString(k, desc)` calls |
+| `.withOptionalStrings({ k: desc, ... })` | Multiple `.withOptionalString(k, desc)` calls |
+| `.withNumbers({ k: desc, ... })` | Multiple `.withNumber(k, desc)` calls |
+| `.withOptionalNumbers({ k: desc, ... })` | Multiple `.withOptionalNumber(k, desc)` calls |
+| `.withBooleans({ k: desc, ... })` | Multiple `.withBoolean(k, desc)` calls |
+| `.withOptionalBooleans({ k: desc, ... })` | Multiple `.withOptionalBoolean(k, desc)` calls |
+| `.withEnums({ k: [values, desc?], ... })` | Multiple `.withEnum(k, values, desc)` calls |
+| `.withOptionalEnums({ k: [values, desc?], ... })` | Multiple `.withOptionalEnum(k, values, desc)` calls |
+| `.withArrays(itemType, { k: desc, ... })` | Multiple `.withArray(k, itemType, desc)` calls |
+| `.withOptionalArrays(itemType, { k: desc, ... })` | Multiple `.withOptionalArray(k, itemType, desc)` calls |
+
+```typescript
+// BEFORE — 21 lines of repetitive chaining:
+f.query('tasks.filter')
+    .withString('company_slug', 'Workspace identifier')
+    .withString('project_slug', 'Project identifier')
+    .withOptionalString('title', 'Filter by title')
+    .withOptionalString('workflow', 'Column name')
+    .withOptionalString('labels', 'Comma-separated labels')
+    .withOptionalBoolean('is_blocker', 'Only blockers')
+    .withOptionalBoolean('is_bug', 'Only bugs')
+    .withOptionalNumber('per_page', 'Results per page')
+
+// AFTER — bulk methods, zero repetition:
+f.query('tasks.filter')
+    .withStrings({
+        company_slug: 'Workspace identifier',
+        project_slug: 'Project identifier',
+    })
+    .withOptionalStrings({
+        title:    'Filter by title',
+        workflow: 'Column name',
+        labels:   'Comma-separated labels',
+    })
+    .withOptionalBooleans({
+        is_blocker: 'Only blockers',
+        is_bug:     'Only bugs',
+    })
+    .withOptionalNumbers({
+        per_page: 'Results per page',
+    })
+    .withOptionalEnums({
+        priority: [['low', 'medium', 'high', 'critical'], 'Priority level'],
+    })
+```
+
+All bulk methods preserve full TypeScript type-chaining — `input` is correctly typed inside `.handle()`.
+
 ### FluentToolBuilder — Configuration Methods
 
 | Method | What It Does |

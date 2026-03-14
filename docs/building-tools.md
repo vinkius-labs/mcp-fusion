@@ -136,8 +136,59 @@ const semanticSearch = f.query('search.semantic')
 | `.withArray(name, type, desc)` | ✅ | `T[]` |
 | `.withOptionalArray(name, type, desc)` | ❌ | `T[] \| undefined` |
 
-> [!NOTE]
-> Types accumulate as you chain calls. Each `.with*()` extends the generic `TInput`, so the final `.handle()` function has 100% accurate autocomplete with zero manual annotations.
+### Bulk Parameter Declaration <Badge type="tip" text="v3.5.0" />
+
+When a tool has many parameters of the same type, use the **plural** bulk variants. Each accepts a `Record<string, string>` where keys are parameter names and values are descriptions — zero repetition:
+
+```typescript
+const filterTasks = f.query('tasks.filter')
+  .describe('Filter tasks with multiple criteria')
+  .withStrings({
+    company_slug: 'Workspace identifier',
+    project_slug: 'Project identifier',
+  })
+  .withOptionalStrings({
+    title:    'Filter by title (partial match)',
+    workflow: 'Column name (e.g. "In Progress")',
+    labels:   'Comma-separated label names',
+    type:     'Task type (e.g. "Bug", "Feature")',
+  })
+  .withOptionalBooleans({
+    is_blocker: 'Only blockers',
+    is_bug:     'Only bugs',
+    unassigned: 'Only unassigned tasks',
+  })
+  .withOptionalNumbers({
+    per_page: 'Results per page (default: 50)',
+  })
+  .withOptionalEnums({
+    priority: [['low', 'medium', 'high', 'critical'], 'Priority level'],
+  })
+  .handle(async (input, ctx) => {
+    // All fields are fully typed ✅
+    // input.company_slug: string
+    // input.title?: string | undefined
+    // input.is_blocker?: boolean | undefined
+    // input.per_page?: number | undefined
+    // input.priority?: 'low' | 'medium' | 'high' | 'critical' | undefined
+  });
+```
+
+| Bulk Method | Singular Equivalent |
+|---|---|
+| `.withStrings({ ... })` | Multiple `.withString()` |
+| `.withOptionalStrings({ ... })` | Multiple `.withOptionalString()` |
+| `.withNumbers({ ... })` | Multiple `.withNumber()` |
+| `.withOptionalNumbers({ ... })` | Multiple `.withOptionalNumber()` |
+| `.withBooleans({ ... })` | Multiple `.withBoolean()` |
+| `.withOptionalBooleans({ ... })` | Multiple `.withOptionalBoolean()` |
+| `.withEnums({ k: [values, desc?] })` | Multiple `.withEnum()` |
+| `.withOptionalEnums({ k: [values, desc?] })` | Multiple `.withOptionalEnum()` |
+| `.withArrays(itemType, { ... })` | Multiple `.withArray()` |
+| `.withOptionalArrays(itemType, { ... })` | Multiple `.withOptionalArray()` |
+
+> [!TIP]
+> Mix singular and bulk methods freely. Use singular for one-off required fields and bulk for groups of optional filters.
 
 ## AI Instructions {#instructions}
 

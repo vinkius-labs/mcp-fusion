@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2026-03-14
+
+### Added
+
+- **Bulk Parameter Declaration — 10 new `with*()` methods** for reduced verbosity when tools have many parameters of the same type:
+  - `.withStrings({ name: 'description', ... })` — multiple required strings in one call
+  - `.withOptionalStrings({ name: 'description', ... })` — multiple optional strings
+  - `.withNumbers({ ... })` / `.withOptionalNumbers({ ... })` — bulk number parameters
+  - `.withBooleans({ ... })` / `.withOptionalBooleans({ ... })` — bulk boolean parameters
+  - `.withEnums({ name: [values, description?], ... })` / `.withOptionalEnums({ ... })` — bulk enum parameters with per-field allowed values
+  - `.withArrays(itemType, { name: 'description', ... })` / `.withOptionalArrays(itemType, { ... })` — bulk array parameters sharing the same item type
+  - All bulk methods preserve full TypeScript type-chaining — `input` is correctly typed inside `.handle()`
+  - Duplicate parameter detection via `_addParam()` works identically to singular methods
+
+### Documentation
+
+- **`llms.txt`** — Bulk with*() Methods section with reference table, before/after example, and API signatures
+- **`building-tools.md`** — Bulk Parameter Declaration subsection in Parameter Declaration with usage examples and comparison
+
 ## [3.3.4] - 2026-03-13
 
 ### Added
