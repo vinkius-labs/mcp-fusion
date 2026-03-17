@@ -164,7 +164,8 @@ async function loadXState(): Promise<typeof import('xstate') | null> {
         xstateModule = await import('xstate');
         return xstateModule;
     } catch {
-        return null; // allow retry on next call
+        /* xstate not installed — allow retry on next call */
+        return null;
     }
 }
 
@@ -284,6 +285,7 @@ export class StateMachineGate {
             this._initialized = true;
             return true;
         } catch {
+            /* XState machine creation failed — degrade to manual transitions */
             this._initialized = true;
             return false;
         }

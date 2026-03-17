@@ -223,6 +223,7 @@ export async function materializeContract<TContext>(
             entitlements = { filesystem: false, network: false, subprocess: false, crypto: false, codeEvaluation: false, raw: [] };
         }
     } catch {
+        /* static analysis unavailable — default to no entitlements */
         entitlements = { filesystem: false, network: false, subprocess: false, crypto: false, codeEvaluation: false, raw: [] };
     }
 

@@ -502,6 +502,7 @@ export function parseLockfile(content: string): CapabilityLockfile | null {
         if (!caps['tools'] || typeof caps['tools'] !== 'object') return null;
         return parsed as unknown as CapabilityLockfile;
     } catch {
+        /* malformed JSON or unexpected structure — treat as missing */
         return null;
     }
 }
@@ -538,6 +539,7 @@ export async function readLockfile(
         const content = await readFile(filePath, 'utf-8');
         return parseLockfile(content);
     } catch {
+        /* file not found or unreadable — treat as no lockfile */
         return null;
     }
 }

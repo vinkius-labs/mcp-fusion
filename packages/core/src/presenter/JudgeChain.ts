@@ -21,6 +21,7 @@ import type { SemanticProbeAdapter } from '../introspection/SemanticProbe.js';
 // ── Re-export ────────────────────────────────────────────
 
 export type { SemanticProbeAdapter };
+import { toErrorMessage } from '../core/ErrorUtils.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -204,7 +205,7 @@ async function executeAdapter(
         return {
             adapterName: adapter.name,
             passed: false,
-            rawResponse: `ERROR: ${err instanceof Error ? err.message : String(err)}`,
+            rawResponse: `ERROR: ${toErrorMessage(err)}`,
             durationMs: Date.now() - start,
         };
     }

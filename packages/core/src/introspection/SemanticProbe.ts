@@ -309,6 +309,7 @@ export function parseJudgeResponse(
             evaluatedAt: new Date().toISOString(),
         };
     } catch {
+        /* JSON parse failed — degrade to conservative fallback result */
         return fallbackResult(probe, rawResponse, config);
     }
 }

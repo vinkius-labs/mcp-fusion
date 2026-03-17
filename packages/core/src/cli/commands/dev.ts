@@ -9,6 +9,7 @@ import { ansi } from '../constants.js';
 import { resolveRegistry } from '../registry.js';
 import { inferServerEntry, inferWatchDir } from '../utils.js';
 import { createDevServer } from '../../server/DevServer.js';
+import { toErrorMessage } from '../../core/ErrorUtils.js';
 
 /** @internal exported for testing */
 export async function commandDev(args: CliArgs, reporter?: ProgressReporter): Promise<void> {
@@ -54,7 +55,7 @@ export async function commandDev(args: CliArgs, reporter?: ProgressReporter): Pr
             try {
                 resolved = await resolveRegistry(serverEntry);
             } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
+                const message = toErrorMessage(err);
                 throw new Error(`Failed to reload: ${message}`);
             }
 

@@ -31,7 +31,8 @@
  * @internal
  */
 
-// ── Types ────────────────────────────────────────────────
+import { toErrorMessage } from '../core/ErrorUtils.js';
+
 
 /**
  * Configuration for PII redaction.
@@ -171,7 +172,7 @@ export function compileRedactor(config: RedactConfig): RedactFn | undefined {
                 // Bug #9 fix: never return unredacted data — throw explicitly.
                 // The caller must handle the error rather than silently leaking PII.
                 throw new Error(
-                    `[Vurb] PII redaction failed: ${err instanceof Error ? err.message : String(err)}. ` +
+                    `[Vurb] PII redaction failed: ${toErrorMessage(err)}. ` +
                     'Data withheld to prevent PII leak.',
                 );
             }

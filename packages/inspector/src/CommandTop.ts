@@ -504,8 +504,8 @@ function renderTopology(
     return output;
 }
 
-/** Prompt Topology tab (Feature #5) */
-function renderPromptTab(
+/** Prompt Topology tab (Feature #5 — reserved for future release) */
+function _renderPromptTab(
     _screen: ScreenManager,
     startRow: number, startCol: number,
     width: number, height: number,

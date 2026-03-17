@@ -47,6 +47,7 @@
 
 import { validateSandboxCode } from './SandboxGuard.js';
 import { type SandboxExecEvent, type TelemetrySink } from '../observability/TelemetryEvent.js';
+import { toErrorMessage } from '../core/ErrorUtils.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -495,7 +496,7 @@ export class SandboxEngine {
      * @internal
      */
     private _classifyError(err: unknown): SandboxResult<never> {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = toErrorMessage(err);
 
         // Timeout: isolated-vm throws a specific error
         if (message.includes('Script execution timed out')) {

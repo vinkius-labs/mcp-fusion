@@ -42,7 +42,7 @@ async function getCrypto(): Promise<Crypto> {
             _resolvedCrypto = nodeCrypto as Crypto;
             return _resolvedCrypto;
         }
-    } catch { /* not in Node */ }
+    } catch { /* not in Node — fallback to globalThis.crypto check above */ }
 
     throw new Error(
         'CursorCodec requires the Web Crypto API. ' +
@@ -118,6 +118,7 @@ export class CursorCodec {
             const crypto = await getCrypto();
             this._hmacKey = await crypto.subtle.importKey(
                 'raw',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any — BufferSource compat across Node/browser
                 secret as any,
                 { name: 'HMAC', hash: 'SHA-256' },
                 false,
@@ -133,6 +134,7 @@ export class CursorCodec {
             const crypto = await getCrypto();
             this._aesKey = await crypto.subtle.importKey(
                 'raw',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any — BufferSource compat across Node/browser
                 secret as any,
                 'AES-GCM',
                 false,
@@ -154,6 +156,7 @@ export class CursorCodec {
             const crypto = await getCrypto();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any — Web Crypto BufferSource variance
             const encryptedBuf = await crypto.subtle.encrypt(
                 { name: 'AES-GCM', iv: iv as any },
                 aesKey,
@@ -166,6 +169,7 @@ export class CursorCodec {
             // Signed HMAC
             const hmacKey = await this.getHmacKey();
             const cryptoApi = await getCrypto();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any — Web Crypto BufferSource variance
             const signatureBuf = await cryptoApi.subtle.sign(
                 'HMAC',
                 hmacKey,
@@ -194,6 +198,7 @@ export class CursorCodec {
                 
                 const aesKey = await this.getAesKey();
                 const cryptoApi = await getCrypto();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any — Web Crypto BufferSource variance
                 const decryptedBuf = await cryptoApi.subtle.decrypt(
                     { name: 'AES-GCM', iv: iv as any },
                     aesKey,
@@ -217,6 +222,7 @@ export class CursorCodec {
                 
                 const cryptoApi2 = await getCrypto();
                 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any — Web Crypto BufferSource variance
                 const isValid = await cryptoApi2.subtle.verify(
                     'HMAC',
                     hmacKey,

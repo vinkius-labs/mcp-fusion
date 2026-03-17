@@ -134,7 +134,8 @@ export function toStandardValidator<T>(
             // Guard: async validators return a Promise, which would silently
             // produce { success: false, issues: undefined } because
             // 'value' in Promise is false. Detect and throw early. (Bug #9 fix)
-            if (result != null && typeof (result as any).then === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any — narrowed to {then?:unknown} for thenable duck-type detection
+            if (result != null && typeof (result as { then?: unknown }).then === 'function') {
                 throw new Error(
                     `[Vurb] Schema validator "${spec.vendor}" returned a Promise. ` +
                     'Async validators are not supported — use a synchronous schema. ' +

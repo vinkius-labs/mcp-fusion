@@ -564,6 +564,7 @@ function buildFluentProxy(
     execute: (action: string, args: Record<string, unknown>) => Promise<ToolResponse>,
     segments: string[] = [],
 ): unknown {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any — Proxy requires callable target for apply trap
     return new Proxy(function () {} as any, {
         get(_target: unknown, prop: string | symbol): unknown {
             if (typeof prop === 'symbol') {

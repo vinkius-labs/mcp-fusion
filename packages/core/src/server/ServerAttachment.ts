@@ -511,6 +511,45 @@ export const _missingContextProxy: unknown = new Proxy(Object.freeze({}), {
     },
 });
 
+// ── FSM Session Helpers ──────────────────────────────────
+
+/**
+ * Resolve the session ID from the MCP extra argument,
+ * falling back to the handler context's stable ID for
+ * session-less transports (e.g. stdio).
+ *
+ * Extracted to eliminate 4× repetition of the same expression.
+ */
+function resolveSessionId<TContext>(extra: unknown, hCtx: HandlerContext<TContext>): string {
+    return extractSessionId(extra) ?? hCtx.fallbackSessionId;
+}
+
+/**
+ * Clone the FSM and restore the session-specific snapshot.
+ *
+ * Shared by both `tools/list` and `tools/call` handlers.
+ * Eliminates the duplicated clone+restore logic (Bug #3 + Bug #77).
+ */
+async function cloneAndRestoreFsm<TContext>(
+    hCtx: HandlerContext<TContext>,
+    extra: unknown,
+): Promise<HandlerContext<TContext>['fsm']> {
+    let fsm = hCtx.fsm;
+    if (!fsm) return undefined;
+
+    fsm = fsm.clone();
+    const sessionId = resolveSessionId(extra, hCtx);
+
+    if (hCtx.fsmStore) {
+        const snap = await hCtx.fsmStore.load(sessionId);
+        if (snap) fsm.restore(snap);
+    } else {
+        const snap = hCtx.fsmMemorySnapshots?.get(sessionId);
+        if (snap) fsm.restore(snap);
+    }
+    return fsm;
+}
+
 // ── Handler Factories ────────────────────────────────────
 
 /**
@@ -522,21 +561,7 @@ export const _missingContextProxy: unknown = new Proxy(Object.freeze({}), {
 function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
     return async (_request: unknown, extra: unknown) => {
         // Per-request FSM clone for serverless isolation (Bug #3 + Bug #77 fix).
-        // Always clone the FSM so concurrent requests never share mutable state.
-        let fsm = hCtx.fsm;
-        if (fsm) {
-            fsm = fsm.clone();
-            if (hCtx.fsmStore) {
-                const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
-                const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) fsm.restore(snap);
-            } else {
-                // In-memory fallback: restore from session-scoped snapshot
-                const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
-                const snap = hCtx.fsmMemorySnapshots?.get(sessionId);
-                if (snap) fsm.restore(snap);
-            }
-        }
+        const fsm = await cloneAndRestoreFsm(hCtx, extra);
 
         let tools: McpTool[];
 
@@ -588,22 +613,11 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         const flatRoute = exposition?.routingMap.get(name);
         const toolGroup = flatRoute ? flatRoute.builder.getName() : name;
         const action = flatRoute ? flatRoute.actionKey : name;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any — TelemetrySink accepts extensible event shapes
         emit?.({ type: 'route', tool: toolGroup, action, args, timestamp: Date.now() } as any);
 
         // Per-request FSM clone for serverless isolation (Bug #3 + Bug #77 fix).
-        let fsm = hCtx.fsm;
-        if (fsm) {
-            fsm = fsm.clone();
-            if (hCtx.fsmStore) {
-                const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
-                const snap = await hCtx.fsmStore.load(sessionId);
-                if (snap) fsm.restore(snap);
-            } else {
-                const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
-                const snap = hCtx.fsmMemorySnapshots?.get(sessionId);
-                if (snap) fsm.restore(snap);
-            }
-        }
+        let fsm = await cloneAndRestoreFsm(hCtx, extra);
 
         // Bug #107 fix: enforce FSM gate on tools/call — not just tools/list.
         // Without this, a client that knows a tool's name can bypass the gate.
@@ -638,6 +652,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             result = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, result) : result;
         }
         } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any — TelemetrySink accepts extensible event shapes
             emit?.({ type: 'error', tool: toolGroup, action, error: String(err), timestamp: Date.now() } as any);
             throw err;
         }
@@ -654,6 +669,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         }
 
         // ── Telemetry: execute event ─────────────────────────
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any — TelemetrySink accepts extensible event shapes
         emit?.({
             type: 'execute', tool: toolGroup, action,
             durationMs: Date.now() - t0,
@@ -670,7 +686,8 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                 if (transition.changed) {
                     // Emit fsm.transition telemetry event
                     if (hCtx.telemetry) {
-                        hCtx.telemetry({
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any — TelemetrySink accepts extensible event shapes
+                    hCtx.telemetry({
                             type: 'fsm.transition',
                             tool: name,
                             action: transitionEvent,
@@ -681,12 +698,11 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                     }
                     // Persist new state to external store (serverless/edge)
                     // Use fallback session ID for transports without sessions (e.g., stdio) (Bug #44 fix)
+                    const sessionId = resolveSessionId(extra, hCtx);
                     if (hCtx.fsmStore) {
-                        const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
                         await hCtx.fsmStore.save(sessionId, fsm.snapshot());
                     } else if (hCtx.fsmMemorySnapshots) {
                         // Bug #77 fix: persist to in-memory session map
-                        const sessionId = extractSessionId(extra) ?? hCtx.fallbackSessionId;
                         hCtx.fsmMemorySnapshots.set(sessionId, fsm.snapshot());
                     }
                     // Notify client to re-fetch tools/list

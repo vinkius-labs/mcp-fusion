@@ -44,6 +44,7 @@
  */
 import { watch, type FSWatcher } from 'node:fs';
 import { resolve, join, relative } from 'node:path';
+import { toErrorMessage } from '../core/ErrorUtils.js';
 import { pathToFileURL } from 'node:url';
 
 // ── Types ────────────────────────────────────────────────
@@ -218,6 +219,7 @@ function invalidateCjsTree(entryPath: string): void {
         // Find all cached modules that imported `current`
         for (const [key, mod] of Object.entries(require.cache)) {
             if (!mod) continue;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any — require.cache module type lacks .children in @types/node
             const children: Array<{ id: string }> = (mod as any).children ?? [];
             if (children.some(c => c.id === current)) {
                 queue.push(key);
@@ -326,7 +328,7 @@ export function createDevServer(config: DevServerConfig): DevServer {
         try {
             await setup(ctxWithDuck);
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
+            const message = toErrorMessage(err);
             // eslint-disable-next-line no-console
             console.error(`[vurb dev] Reload failed: ${message}`);
             return;
@@ -413,7 +415,7 @@ export function createDevServer(config: DevServerConfig): DevServer {
 
             watcher.on('error', (err) => {
                 // eslint-disable-next-line no-console
-                console.error(`[vurb dev] Watcher error: ${err instanceof Error ? err.message : String(err)}`);
+                console.error(`[vurb dev] Watcher error: ${toErrorMessage(err)}`);
             });
 
             // eslint-disable-next-line no-console

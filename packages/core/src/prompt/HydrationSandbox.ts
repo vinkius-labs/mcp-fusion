@@ -35,6 +35,7 @@
  */
 
 import { type PromptResult } from './types.js';
+import { toErrorMessage } from '../core/ErrorUtils.js';
 
 // ── Alert Formatters ─────────────────────────────────────
 
@@ -133,7 +134,7 @@ export async function runWithHydrationDeadline(
 
     // Handler promise: wraps fn() to catch errors → ERROR alert
     const handlerPromise = fn().catch((err): PromptResult => {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = toErrorMessage(err);
         return alertAsPromptResult('ERROR', deadlineMs, message);
     });
 

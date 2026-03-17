@@ -46,6 +46,7 @@
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { error, toolError } from '../response.js';
+import { toErrorMessage } from '../ErrorUtils.js';
 import {
     type ToolResponse,
     type ToolBuilder,
@@ -58,7 +59,7 @@ import {
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';
 import { type TelemetrySink } from '../../observability/TelemetryEvent.js';
 import { type MiddlewareDefinition, resolveMiddleware } from '../middleware/ContextDerivation.js';
-import { type VurbTracer, SpanStatusCode } from '../../observability/Tracing.js';
+import { type VurbTracer } from '../../observability/Tracing.js';
 import { getActionRequiredFields } from '../schema/SchemaUtils.js';
 import {
     parseDiscriminator, resolveAction, validateArgs, runChain,
@@ -70,7 +71,8 @@ import { ConcurrencyGuard, type ConcurrencyConfig } from '../execution/Concurren
 import { applyEgressGuard } from '../execution/EgressGuard.js';
 import { type SandboxConfig } from '../../sandbox/SandboxEngine.js';
 import { MutationSerializer } from '../execution/MutationSerializer.js';
-import { computeResponseSize, mergeHooks, type PipelineHooks } from '../execution/PipelineHooks.js';
+import { mergeHooks, type PipelineHooks } from '../execution/PipelineHooks.js';
+import { buildDebugHooks, buildTracedHooks, buildTelemetryHooks, type HookContext } from './ObservabilityHooks.js';
 import { compileToolDefinition } from './ToolDefinitionCompiler.js';
 import {
     ActionGroupBuilder,
@@ -1043,7 +1045,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
                 return await this._executePipeline(execCtx, ctx, args, progressSink, hooks, signal);
             } catch (err) {
                 // System failure caught here — hooks already recorded it on the span
-                const message = err instanceof Error ? err.message : String(err);
+                const message = toErrorMessage(err);
                 const response = error(`[${this._name}] ${message}`);
                 hooks.wrapResponse!(response); // finalize span
                 return response;
@@ -1145,7 +1147,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             hooks?.onExecuteError?.(actionName, err);
             if (hooks?.rethrow) throw err;
             // Convert MutationSerializer abort (or unexpected throws) to error response
-            const message = err instanceof Error ? err.message : String(err);
+            const message = toErrorMessage(err);
             const response = error(`[${execCtx.toolName}/${actionName}] ${message}`);
             return hooks?.wrapResponse?.(response) ?? response;
         }
@@ -1155,38 +1157,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * Build debug hooks: lightweight event emission.
      */
     private _buildDebugHooks(): PipelineHooks {
-        const debug = this._debug!;
-        const toolName = this._name;
-        const startTime = performance.now();
-
-        return {
-            onRouteError: () => {
-                debug({ type: 'error', tool: toolName, action: '?', error: 'Missing discriminator', step: 'route', timestamp: Date.now() });
-            },
-            onRouteOk: (action) => {
-                debug({ type: 'route', tool: toolName, action, timestamp: Date.now() });
-            },
-            onResolveError: (action) => {
-                debug({ type: 'error', tool: toolName, action, error: `Unknown action "${action}"`, step: 'route', timestamp: Date.now() });
-            },
-            onValidateError: (action, durationMs) => {
-                debug({ type: 'validate', tool: toolName, action, valid: false, error: 'Validation failed', durationMs, timestamp: Date.now() });
-            },
-            onValidateOk: (action, durationMs) => {
-                debug({ type: 'validate', tool: toolName, action, valid: true, durationMs, timestamp: Date.now() });
-            },
-            onMiddleware: (action, chainLength) => {
-                debug({ type: 'middleware', tool: toolName, action, chainLength, timestamp: Date.now() });
-            },
-            onExecuteOk: (action, response) => {
-                const isErr = response.isError === true;
-                debug({ type: 'execute', tool: toolName, action, durationMs: performance.now() - startTime, isError: isErr, timestamp: Date.now() });
-            },
-            onExecuteError: (action, err) => {
-                const message = err instanceof Error ? err.message : String(err);
-                debug({ type: 'error', tool: toolName, action, error: message, step: 'execute', timestamp: Date.now() });
-            },
-        };
+        return buildDebugHooks(this._debug!, this._hookContext());
     }
 
     /**
@@ -1197,76 +1168,7 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * AI errors → UNSET, system errors → ERROR.
      */
     private _buildTracedHooks(): PipelineHooks {
-        const tracer = this._tracer!;
-        const startAttrs: Record<string, string | number | boolean | ReadonlyArray<string>> = {
-            'mcp.system': 'vurb',
-            'mcp.tool': this._name,
-        };
-        if (this._tags.length > 0) startAttrs['mcp.tags'] = this._tags;
-        if (this._description) startAttrs['mcp.description'] = this._description;
-
-        const span = tracer.startSpan(`mcp.tool.${this._name}`, { attributes: startAttrs });
-        const startTime = performance.now();
-        let statusCode: number = SpanStatusCode.UNSET;
-        let statusMessage: string | undefined;
-
-        const finalizeSpan = (response?: ToolResponse) => {
-            span.setAttribute('mcp.durationMs', performance.now() - startTime);
-            if (response) {
-                span.setAttribute('mcp.response_size', computeResponseSize(response));
-            }
-            span.setStatus(
-                statusMessage !== undefined
-                    ? { code: statusCode, message: statusMessage }
-                    : { code: statusCode },
-            );
-            span.end();
-        };
-
-        return {
-            rethrow: true,
-            onRouteError: () => {
-                span.setAttribute('mcp.error_type', 'missing_discriminator');
-                span.setAttribute('mcp.isError', true);
-            },
-            onRouteOk: (action) => {
-                span.setAttribute('mcp.action', action);
-                span.addEvent?.('mcp.route');
-            },
-            onResolveError: () => {
-                span.setAttribute('mcp.error_type', 'unknown_action');
-                span.setAttribute('mcp.isError', true);
-            },
-            onValidateError: (_action, durationMs) => {
-                span.setAttribute('mcp.error_type', 'validation_failed');
-                span.setAttribute('mcp.isError', true);
-                span.addEvent?.('mcp.validate', { 'mcp.valid': false, 'mcp.durationMs': durationMs });
-            },
-            onValidateOk: (_action, durationMs) => {
-                span.addEvent?.('mcp.validate', { 'mcp.valid': true, 'mcp.durationMs': durationMs });
-            },
-            onMiddleware: (_action, chainLength) => {
-                span.addEvent?.('mcp.middleware', { 'mcp.chainLength': chainLength });
-            },
-            onExecuteOk: (_action, response) => {
-                const isErr = response.isError === true;
-                statusCode = isErr ? SpanStatusCode.UNSET : SpanStatusCode.OK;
-                if (isErr) span.setAttribute('mcp.error_type', 'handler_returned_error');
-                span.setAttribute('mcp.isError', isErr);
-            },
-            onExecuteError: (_action, err) => {
-                const message = err instanceof Error ? err.message : String(err);
-                span.recordException(err instanceof Error ? err : message);
-                span.setAttribute('mcp.error_type', 'system_error');
-                span.setAttribute('mcp.isError', true);
-                statusCode = SpanStatusCode.ERROR;
-                statusMessage = message;
-            },
-            wrapResponse: (response) => {
-                finalizeSpan(response);
-                return response;
-            },
-        };
+        return buildTracedHooks(this._tracer!, this._hookContext());
     }
 
     /**
@@ -1276,46 +1178,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
      * to the IPC sink so that `vurb inspect` shows real pipeline data.
      */
     private _buildTelemetryHooks(): PipelineHooks {
-        const emit = this._telemetry!;
-        const toolName = this._name;
-        const startTime = performance.now();
+        return buildTelemetryHooks(this._telemetry!, this._hookContext());
+    }
 
-        return {
-            onValidateError: (action, durationMs) => {
-                emit({ type: 'validate', tool: toolName, action, valid: false, error: 'Validation failed', durationMs, timestamp: Date.now() } as any);
-            },
-            onValidateOk: (action, durationMs) => {
-                emit({ type: 'validate', tool: toolName, action, valid: true, durationMs, timestamp: Date.now() } as any);
-            },
-            onMiddleware: (action, chainLength) => {
-                emit({ type: 'middleware', tool: toolName, action, chainLength, timestamp: Date.now() } as any);
-            },
-            onExecuteOk: (action, response) => {
-                const isErr = response.isError === true;
-
-                // Extract recovery data from error responses
-                let recovery: string | undefined;
-                let recoveryActions: string[] | undefined;
-                if (isErr && response.content.length > 0) {
-                    const text = response.content[0]!.text;
-                    recovery = extractXmlTag(text, 'recovery');
-                    recoveryActions = extractXmlActions(text);
-                }
-
-                emit({
-                    type: 'execute', tool: toolName, action,
-                    durationMs: performance.now() - startTime,
-                    isError: isErr,
-                    ...(recovery ? { recovery } : {}),
-                    ...(recoveryActions && recoveryActions.length > 0 ? { recoveryActions } : {}),
-                    timestamp: Date.now(),
-                } as any);
-            },
-            onExecuteError: (action, err) => {
-                const message = err instanceof Error ? err.message : String(err);
-                emit({ type: 'error', tool: toolName, action, error: message, step: 'execute', timestamp: Date.now() } as any);
-            },
-        };
+    /** @internal Build the HookContext from builder state. */
+    private _hookContext(): HookContext {
+        return { name: this._name, tags: this._tags, description: this._description };
     }
 
     // ── Introspection ───────────────────────────────────
@@ -1508,38 +1376,4 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             );
         }
     }
-}
-
-// ── XML Extraction Helpers (Telemetry) ───────────────────
-
-/**
- * Extract content from a simple XML tag.
- * @example extractXmlTag('<recovery>Fix X</recovery>', 'recovery') → 'Fix X'
- * @internal
- */
-function extractXmlTag(text: string, tag: string): string | undefined {
-    const re = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
-    const m = re.exec(text);
-    return m?.[1]?.trim() || undefined;
-}
-
-/**
- * Extract `<action>` elements from `<available_actions>` block.
- * @internal
- */
-function extractXmlActions(text: string): string[] | undefined {
-    const block = extractXmlTag(text, 'available_actions');
-    if (!block) return undefined;
-    const actions: string[] = [];
-    const re = /<action>(.*?)<\/action>/gs;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(block)) !== null) {
-        const v = m[1]?.trim();
-        if (v) actions.push(v);
-    }
-    // If no individual <action> tags, the content might be a comma/space list
-    if (actions.length === 0 && block.trim().length > 0) {
-        actions.push(...block.split(/[,\s]+/).filter(Boolean));
-    }
-    return actions.length > 0 ? actions : undefined;
 }

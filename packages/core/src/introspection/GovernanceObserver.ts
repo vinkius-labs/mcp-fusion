@@ -16,15 +16,9 @@
  * @module
  */
 import type { DebugObserverFn, GovernanceOperation } from '../observability/DebugObserver.js';
-import type { VurbTracer, VurbAttributeValue } from '../observability/Tracing.js';
+import type { VurbTracer } from '../observability/Tracing.js';
 import { SpanStatusCode } from '../observability/Tracing.js';
-import type { ToolContract } from './ToolContract.js';
-import type { CapabilityLockfile, LockfileCheckResult, GenerateLockfileOptions } from './CapabilityLockfile.js';
-import type { ServerDigest } from './BehaviorDigest.js';
-import type { AttestationResult } from './CryptoAttestation.js';
-import type { EntitlementReport } from './EntitlementScanner.js';
-import type { StaticTokenProfile } from './TokenEconomics.js';
-import type { ContractDiffResult } from './ContractDiff.js';
+import { toErrorMessage } from '../core/ErrorUtils.js';
 
 // ============================================================================
 // Configuration
@@ -109,18 +103,77 @@ export interface GovernanceObserver {
 export function createGovernanceObserver(config: GovernanceObserverConfig): GovernanceObserver {
     const { debug, tracer } = config;
 
+    /**
+     * Shared span + event logic for both sync and async paths.
+     * Eliminates duplication between observe() and observeAsync().
+     * @internal
+     */
+    function finalize<T>(
+        operation: GovernanceOperation,
+        label: string,
+        start: number,
+        span: ReturnType<NonNullable<typeof tracer>['startSpan']> | undefined,
+        resultOrError: { ok: true; value: T } | { ok: false; error: unknown },
+    ): T {
+        const durationMs = Date.now() - start;
+
+        if (resultOrError.ok) {
+            span?.setAttribute('mcp.governance.outcome', 'success');
+            span?.setAttribute('mcp.durationMs', durationMs);
+            span?.setStatus({ code: SpanStatusCode.OK });
+
+            debug?.({
+                type: 'governance',
+                operation,
+                label,
+                outcome: 'success',
+                durationMs,
+                timestamp: Date.now(),
+            });
+
+            span?.end();
+            return resultOrError.value;
+        }
+
+        const message = toErrorMessage(resultOrError.error);
+
+        span?.setAttribute('mcp.governance.outcome', 'failure');
+        span?.setAttribute('mcp.durationMs', durationMs);
+        span?.setStatus({ code: SpanStatusCode.ERROR, message });
+        span?.recordException(
+            resultOrError.error instanceof Error ? resultOrError.error : new Error(message),
+        );
+
+        debug?.({
+            type: 'governance',
+            operation,
+            label,
+            outcome: 'failure',
+            detail: message,
+            durationMs,
+            timestamp: Date.now(),
+        });
+
+        span?.end();
+        throw resultOrError.error;
+    }
+
+    function startSpan(operation: GovernanceOperation, label: string) {
+        return tracer?.startSpan(`mcp.governance.${operation}`, {
+            attributes: {
+                'mcp.governance.operation': operation,
+                'mcp.governance.label': label,
+            },
+        });
+    }
+
     function observe<T>(
         operation: GovernanceOperation,
         label: string,
         fn: () => T,
     ): T {
         const start = Date.now();
-        const span = tracer?.startSpan(`mcp.governance.${operation}`, {
-            attributes: {
-                'mcp.governance.operation': operation,
-                'mcp.governance.label': label,
-            },
-        });
+        const span = startSpan(operation, label);
 
         try {
             const result = fn();
@@ -132,44 +185,9 @@ export function createGovernanceObserver(config: GovernanceObserverConfig): Gove
                 );
             }
 
-            const durationMs = Date.now() - start;
-
-            span?.setAttribute('mcp.governance.outcome', 'success');
-            span?.setAttribute('mcp.durationMs', durationMs);
-            span?.setStatus({ code: SpanStatusCode.OK });
-
-            debug?.({
-                type: 'governance',
-                operation,
-                label,
-                outcome: 'success',
-                durationMs,
-                timestamp: Date.now(),
-            });
-
-            return result;
+            return finalize(operation, label, start, span, { ok: true, value: result });
         } catch (err) {
-            const durationMs = Date.now() - start;
-            const message = err instanceof Error ? err.message : String(err);
-
-            span?.setAttribute('mcp.governance.outcome', 'failure');
-            span?.setAttribute('mcp.durationMs', durationMs);
-            span?.setStatus({ code: SpanStatusCode.ERROR, message });
-            span?.recordException(err instanceof Error ? err : new Error(message));
-
-            debug?.({
-                type: 'governance',
-                operation,
-                label,
-                outcome: 'failure',
-                detail: message,
-                durationMs,
-                timestamp: Date.now(),
-            });
-
-            throw err;
-        } finally {
-            span?.end();
+            return finalize(operation, label, start, span, { ok: false, error: err });
         }
     }
 
@@ -179,53 +197,13 @@ export function createGovernanceObserver(config: GovernanceObserverConfig): Gove
         fn: () => Promise<T>,
     ): Promise<T> {
         const start = Date.now();
-        const span = tracer?.startSpan(`mcp.governance.${operation}`, {
-            attributes: {
-                'mcp.governance.operation': operation,
-                'mcp.governance.label': label,
-            },
-        });
+        const span = startSpan(operation, label);
 
         try {
             const result = await fn();
-            const durationMs = Date.now() - start;
-
-            span?.setAttribute('mcp.governance.outcome', 'success');
-            span?.setAttribute('mcp.durationMs', durationMs);
-            span?.setStatus({ code: SpanStatusCode.OK });
-
-            debug?.({
-                type: 'governance',
-                operation,
-                label,
-                outcome: 'success',
-                durationMs,
-                timestamp: Date.now(),
-            });
-
-            return result;
+            return finalize(operation, label, start, span, { ok: true, value: result });
         } catch (err) {
-            const durationMs = Date.now() - start;
-            const message = err instanceof Error ? err.message : String(err);
-
-            span?.setAttribute('mcp.governance.outcome', 'failure');
-            span?.setAttribute('mcp.durationMs', durationMs);
-            span?.setStatus({ code: SpanStatusCode.ERROR, message });
-            span?.recordException(err instanceof Error ? err : new Error(message));
-
-            debug?.({
-                type: 'governance',
-                operation,
-                label,
-                outcome: 'failure',
-                detail: message,
-                durationMs,
-                timestamp: Date.now(),
-            });
-
-            throw err;
-        } finally {
-            span?.end();
+            return finalize(operation, label, start, span, { ok: false, error: err });
         }
     }
 

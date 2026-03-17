@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.6] - 2026-03-17
+
+### Added
+
+- **`ErrorUtils.toErrorMessage()` utility** — Centralized error message extraction from unknown `catch` values, replacing 15 scattered `err instanceof Error ? err.message : String(err)` instances across 10 files. Supports `Error` objects, plain strings, objects with `.message`, and arbitrary values.
+- **`ObservabilityHooks.ts` module** — Extracted `_buildDebugHooks`, `_buildTracedHooks`, `_buildTelemetryHooks` factory functions and `extractXmlTag`/`extractXmlActions` helpers from `GroupedToolBuilder.ts` into a dedicated observability module. Reduces `GroupedToolBuilder.ts` from 1552 to 1283 lines and improves Single Responsibility Principle adherence.
+
+### Changed
+
+- **`GovernanceObserver` deduplication** — Extracted shared span/event emission logic from `observe()` and `observeAsync()` into a `finalize()` helper and a `startSpan()` helper, eliminating ~60 lines of duplicated code between the two methods.
+- **`ServerAttachment` helper extraction** — Extracted FSM clone/restore logic into `cloneAndRestoreFsm()` and session ID resolution into `resolveSessionId()`, reducing file size from 1425 to 1312 lines.
+- **Unused imports cleanup** — Removed 8 unused type imports from `GovernanceObserver.ts` (`VurbAttributeValue`, `ToolContract`, `CapabilityLockfile`, `LockfileCheckResult`, `GenerateLockfileOptions`, `ServerDigest`, `AttestationResult`, `EntitlementReport`, `StaticTokenProfile`, `ContractDiffResult`).
+- **`eslint-disable` annotations** — All remaining `as any` casts now carry inline rationale comments explaining the type-safety boundary.
+- **Empty catch blocks** — All empty `catch {}` blocks now include descriptive comments explaining why the error is intentionally swallowed.
+
+### Refactored Files
+
+| File | Change |
+|------|--------|
+| `GroupedToolBuilder.ts` | −270 lines (observability hooks → `ObservabilityHooks.ts`) |
+| `GovernanceObserver.ts` | −40 lines (dedup `observe`/`observeAsync`, unused imports) |
+| `ServerAttachment.ts` | −113 lines (FSM helpers extracted) |
+| `ExecutionPipeline.ts` | `toErrorMessage` integration |
+| `DevServer.ts` | `toErrorMessage` integration |
+| `SandboxEngine.ts` | `toErrorMessage` integration |
+| `HydrationSandbox.ts` | `toErrorMessage` integration |
+| `RedactEngine.ts` | `toErrorMessage` integration |
+| `JudgeChain.ts` | `toErrorMessage` integration |
+| `dev.ts` (CLI) | `toErrorMessage` integration |
+
 ## [3.6.5] - 2026-03-17
 
 ### Fixed

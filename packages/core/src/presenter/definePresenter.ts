@@ -287,6 +287,7 @@ export function definePresenter(config: PresenterConfig<unknown>): Presenter<unk
     let resolvedSchema: ZodType | undefined;
     if (config.schema) {
         // Support passing a Model object directly (duck-type detection)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any — duck-type detection for Model vs raw ZodType
         const schemaVal = config.schema as any;
         if (schemaVal && typeof schemaVal === 'object' && 'fields' in schemaVal && 'schema' in schemaVal) {
             resolvedSchema = schemaVal.schema;
