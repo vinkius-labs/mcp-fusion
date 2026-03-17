@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.2] - 2026-03-17
+
+### Security
+
+- **HTTP body size limit — DoS/OOM prevention (Bug #149)** — The HTTP transport handler now enforces a configurable `maxBodyBytes` limit (default: 4MB). Requests exceeding the limit are rejected with HTTP 413 via dual-layer protection: Content-Length pre-flight check and streaming byte counter with `req.destroy()`. Prevents attackers from sending multi-GB payloads that crash the server with Out-of-Memory.
+- **Prompt injection via markdown code fence escape (Bug #150)** — `buildInputFirewallPrompt()` and `buildFirewallPrompt()` now sanitize backticks in user-controlled data to `\u0060` before embedding in markdown code fences. Previously, arguments or rules containing triple backticks could escape the code block and inject arbitrary instructions into the LLM judge prompt, forcing it to return `{"safe": true}` and bypassing the security firewall entirely.
+- **Greedy JSON extraction replaced (Bug #150)** — `parseJudgePass()` and `extractDetailedRejections()` now use a new `extractLastJson()` function that scans backward from the last `}` with brace-depth counting, replacing the greedy regex `/\{[\s\S]*\}/` which captured from the FIRST `{` to the LAST `}` including non-JSON prose between them.
+
+### Added
+
+- `maxBodyBytes` option in `StartServerOptions` for configurable HTTP body size limit
+- `extractLastJson()` utility for robust JSON extraction from LLM responses (internal)
+
+### Test Suite
+
+- 198 new adversarial security tests across 6 test files:
+  - `HttpBodyLimit-bug149.test.ts` — 6 regression tests for body size limit
+  - `PromptInjectionFence-bug150.test.ts` — 11 regression tests for fence escape + JSON extraction
+  - `extractLastJson-adversarial.test.ts` — 50 tests: multi-object ambiguity, nesting stress, braces inside strings, attack vectors, realistic LLM responses, performance
+  - `InputFirewall-adversarial.test.ts` — 50 tests: backtick injection, fence escape patterns, key name injection, unicode bypasses, nested data, compound attacks
+  - `PromptFirewall-adversarial.test.ts` — 47 tests: fence escapes in rules, distributed attacks, unicode bypasses, markdown injection, compound payloads
+  - `HttpBodyLimit-adversarial.test.ts` — 34 tests: Content-Length manipulation, streaming guard, boundary conditions, multi-byte chars, MCP payloads, trickle attacks
+
 ## [3.6.0] - 2026-03-16
 
 ### Added

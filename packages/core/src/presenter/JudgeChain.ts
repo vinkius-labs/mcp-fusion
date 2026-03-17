@@ -352,9 +352,11 @@ async function executeConsensus(
  */
 function parseJudgePass(raw: string): boolean {
     try {
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]) as {
+        // Bug #150 fix: use extractLastJson instead of greedy regex
+        // to avoid capturing non-JSON text between multiple braces.
+        const jsonStr = extractLastJson(raw);
+        if (jsonStr) {
+            const parsed = JSON.parse(jsonStr) as {
                 safe?: boolean;
                 passed?: boolean;
                 allowed?: boolean;
@@ -376,4 +378,37 @@ function parseJudgePass(raw: string): boolean {
 
     // Unparseable → treated as error (passthrough depends on failOpen)
     return false;
+}
+
+/**
+ * Extract the last valid JSON object from a string.
+ *
+ * Scans from the end to find the last `}`, then walks backward
+ * counting braces to find the matching `{`. This avoids the greedy
+ * regex problem where `/\{[\s\S]*\}/` captures from the FIRST `{`
+ * to the LAST `}`, including non-JSON prose between them.
+ *
+ * Exported for reuse by PromptFirewall's `extractDetailedRejections`.
+ *
+ * @internal
+ */
+export function extractLastJson(raw: string): string | null {
+    const lastClose = raw.lastIndexOf('}');
+    if (lastClose === -1) return null;
+
+    let depth = 0;
+    for (let i = lastClose; i >= 0; i--) {
+        if (raw[i] === '}') depth++;
+        else if (raw[i] === '{') depth--;
+        if (depth === 0) {
+            const candidate = raw.slice(i, lastClose + 1);
+            try {
+                JSON.parse(candidate);
+                return candidate;
+            } catch {
+                return null;
+            }
+        }
+    }
+    return null;
 }

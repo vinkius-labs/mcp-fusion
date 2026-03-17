@@ -64,6 +64,14 @@ export interface StartServerOptions<TContext> {
      */
     readonly port?: number;
 
+    /**
+     * Maximum request body size in bytes for the HTTP transport.
+     * Requests exceeding this limit are rejected with HTTP 413.
+     *
+     * @default 4_194_304 (4MB)
+     */
+    readonly maxBodyBytes?: number;
+
     /** Extra attach options (debug, tracing, zeroTrust, etc.). */
     readonly attach?: Omit<AttachOptions<TContext>, 'contextFactory' | 'prompts' | 'telemetry'>;
 }
@@ -307,8 +315,24 @@ export async function startServer<TContext>(
                 }
 
                 if (req.method === 'POST') {
+                    // Bug #149 fix: enforce body size limit to prevent DoS/OOM.
+                    const maxBytes = options.maxBodyBytes ?? 4_194_304; // 4MB
+                    const declaredLength = parseInt(req.headers['content-length'] ?? '', 10);
+                    if (declaredLength > maxBytes) {
+                        res.writeHead(413).end('Payload too large');
+                        return;
+                    }
                     const chunks: Buffer[] = [];
-                    for await (const chunk of req) chunks.push(chunk as Buffer);
+                    let receivedBytes = 0;
+                    for await (const chunk of req) {
+                        receivedBytes += (chunk as Buffer).byteLength;
+                        if (receivedBytes > maxBytes) {
+                            req.destroy();
+                            res.writeHead(413).end('Payload too large');
+                            return;
+                        }
+                        chunks.push(chunk as Buffer);
+                    }
                     const body = JSON.parse(Buffer.concat(chunks).toString());
 
                     const sessionId = req.headers['mcp-session-id'] as string | undefined;

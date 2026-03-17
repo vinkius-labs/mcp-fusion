@@ -36,6 +36,7 @@ import type { SemanticProbeAdapter } from '../introspection/SemanticProbe.js';
 import type { TelemetrySink } from '../observability/TelemetryEvent.js';
 import {
     createJudgeChain,
+    extractLastJson,
     type JudgeChain,
     type JudgeChainConfig,
     type JudgeChainResult,
@@ -157,7 +158,8 @@ export interface FirewallRejection {
  * @returns Complete evaluation prompt
  */
 export function buildFirewallPrompt(rules: readonly string[]): string {
-    const numberedRules = rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+    // Bug #150 fix: sanitize backticks to prevent markdown code fence escape.
+    const numberedRules = rules.map((r, i) => `${i + 1}. ${r.replaceAll('\`', '\\u0060')}`).join('\n');
 
     return `You are a security evaluator for an AI tool platform.
 
@@ -303,10 +305,11 @@ function extractDetailedRejections(
     rawResponse: string,
 ): FirewallRejection[] | undefined {
     try {
-        const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+        // Bug #150 fix: use extractLastJson for robust JSON extraction.
+        const jsonMatch = extractLastJson(rawResponse);
         if (!jsonMatch) return undefined;
 
-        const parsed = JSON.parse(jsonMatch[0]) as {
+        const parsed = JSON.parse(jsonMatch) as {
             safe?: boolean;
             rejected?: { index: number; reason: string }[];
         };
