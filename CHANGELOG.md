@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.6] - 2026-03-19
+
+### Fixed
+
+- **Introspection action expansion** — `vurb deploy` now lists individual actions for grouped tools in both the CLI output and dashboard sync payload. A grouped namespace like `compliance` with actions `obligations`, `timeline`, `generate_report` now correctly reports 3 entries (`compliance.obligations`, `compliance.timeline`, `compliance.generate_report`) instead of a single `compliance`. Flat tools (single action) remain unchanged.
+- **Deploy success line styling** — Simplified the success banner to clean white text with only the elapsed time highlighted in green.
+
 ## [3.7.5] - 2026-03-19
 
 ### Fixed

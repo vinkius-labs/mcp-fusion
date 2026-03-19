@@ -382,12 +382,30 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
 
         manifest = lockfile as unknown as Record<string, unknown>;
 
-        // Extract tool names + descriptions for CLI display
-        const lockTools = (lockfile.capabilities as { tools: Record<string, { surface: { description: string | null } }> }).tools;
-        toolNames = Object.entries(lockTools).map(([name, tool]) => ({
-            name,
-            description: tool.surface.description ?? '',
-        }));
+        // Extract tool names + descriptions for CLI display and dashboard sync.
+        // Grouped tools (multiple actions) are expanded into individual entries
+        // (e.g. compliance → compliance.obligations, compliance.timeline, ...).
+        // Flat tools (single action) keep their tool-level name.
+        const lockTools = (lockfile.capabilities as { tools: Record<string, { surface: { description: string | null; actions: Record<string, { description: string | null }> } }> }).tools;
+        toolNames = [];
+        for (const [namespace, tool] of Object.entries(lockTools)) {
+            const actionEntries = Object.entries(tool.surface.actions);
+            if (actionEntries.length <= 1) {
+                // Flat tool — single action or no actions: use namespace name
+                toolNames.push({
+                    name: namespace,
+                    description: tool.surface.description ?? '',
+                });
+            } else {
+                // Grouped tool — expand each action as namespace.action
+                for (const [actionKey, action] of actionEntries) {
+                    toolNames.push({
+                        name: `${namespace}.${actionKey}`,
+                        description: action.description ?? tool.surface.description ?? '',
+                    });
+                }
+            }
+        }
 
         progress.done('introspect', 'Introspecting tools', `${toolNames.length} tool${toolNames.length !== 1 ? 's' : ''}`);
     } catch (err) {
@@ -491,7 +509,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
 
     w('\n');
-    w(`  ${magenta('Vinkius Edge')}  ${ansi.dim('·')}  ${ansi.bold(data.server_name)} ${ansi.dim('is ready in just')} ${ansi.green(elapsed + 's')}\n`);
+    w(`  ${white('Vinkius Edge  ·  ' + data.server_name + ' is ready in just')} ${ansi.green(elapsed + 's')}\n`);
     w(`  ${ansi.dim('━'.repeat(56))}\n`);
     w('\n');
 
