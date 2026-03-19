@@ -679,13 +679,23 @@ describe('E2E: Full stack scenario', () => {
 // ============================================================================
 
 describe('E2E: Registry error boundaries', () => {
-    it('should reject duplicate tool registration', () => {
+    it('should merge same-name builders with different actions', () => {
         const registry = new ToolRegistry();
         const t = defineTool('dup', { actions: { x: { handler: async () => success('ok') } } });
         registry.register(t);
 
         const t2 = defineTool('dup', { actions: { y: { handler: async () => success('ok') } } });
-        expect(() => registry.register(t2)).toThrow('already registered');
+        registry.register(t2);
+        expect(registry.size).toBe(1);
+    });
+
+    it('should throw on duplicate action key during merge', () => {
+        const registry = new ToolRegistry();
+        const t = defineTool('dup2', { actions: { x: { handler: async () => success('ok') } } });
+        registry.register(t);
+
+        const t2 = defineTool('dup2', { actions: { x: { handler: async () => success('ok') } } });
+        expect(() => registry.register(t2)).toThrow(/Duplicate action/i);
     });
 
     it('should handle handler returning undefined (invalid at runtime)', async () => {

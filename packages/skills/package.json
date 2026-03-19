@@ -1,6 +1,6 @@
 {
   "name": "@vurb/skills",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "Agent Skills distribution via MCP. Progressive disclosure (search → load → read) for teaching AI agents domain-specific procedures through the SKILL.md standard.",
   "type": "module",
   "main": "dist/index.js",

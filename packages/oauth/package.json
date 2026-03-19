@@ -1,6 +1,6 @@
 {
   "name": "@vurb/oauth",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "OAuth 2.0 Device Authorization Grant (RFC 8628) for MCP servers built with vurb. Provides secure token storage, device flow authentication, and middleware integration.",
   "type": "module",
   "main": "dist/index.js",

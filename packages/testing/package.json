@@ -1,6 +1,6 @@
 {
   "name": "@vurb/testing",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "In-memory MVA lifecycle emulator for Vurb. Runs the full pipeline (Zod Input → Middlewares → Handler → Egress Firewall) without network transport. Returns structured MvaTestResult objects — zero coupling to Jest/Vitest.",
   "type": "module",
   "main": "dist/index.js",

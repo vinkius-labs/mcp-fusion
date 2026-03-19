@@ -1,6 +1,6 @@
 {
   "name": "@vurb/inspector",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "Vurb Inspector — Real-time interactive terminal dashboard for Vurb servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
   "type": "module",
   "main": "dist/index.js",

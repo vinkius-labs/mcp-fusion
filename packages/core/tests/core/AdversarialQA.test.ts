@@ -788,7 +788,7 @@ describe('QA: Custom Discriminator', () => {
 // ============================================================================
 
 describe('QA: ToolRegistry Contract', () => {
-    it('should throw on duplicate registration', () => {
+    it('should merge same-name builders with different actions', () => {
         const registry = new ToolRegistry();
         const b1 = new GroupedToolBuilder('dupe')
             .action({ name: 'a', handler: async () => success('ok') });
@@ -796,7 +796,19 @@ describe('QA: ToolRegistry Contract', () => {
             .action({ name: 'b', handler: async () => success('ok') });
 
         registry.register(b1);
-        expect(() => registry.register(b2)).toThrow(/already registered/i);
+        registry.register(b2);
+        expect(registry.size).toBe(1);
+    });
+
+    it('should throw on duplicate action keys during merge', () => {
+        const registry = new ToolRegistry();
+        const b1 = new GroupedToolBuilder('dupe')
+            .action({ name: 'a', handler: async () => success('ok') });
+        const b2 = new GroupedToolBuilder('dupe')
+            .action({ name: 'a', handler: async () => success('ok') });
+
+        registry.register(b1);
+        expect(() => registry.register(b2)).toThrow(/Duplicate action/i);
     });
 
     it('should route to correct tool in multi-tool registry', async () => {

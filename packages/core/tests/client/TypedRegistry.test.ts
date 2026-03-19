@@ -72,14 +72,26 @@ describe('createTypedRegistry()', () => {
         expect(result.content[0].text).toBe('project-list');
     });
 
-    it('should throw on duplicate tool names (via inner registry)', () => {
+    it('should merge same-name builders with different actions', () => {
         const tool1 = createTool<TestContext>('projects')
             .action({ name: 'list', handler: async () => success('ok') });
         const tool2 = createTool<TestContext>('projects')
             .action({ name: 'create', handler: async () => success('ok') });
 
+        const reg = createTypedRegistry<TestContext>()(tool1, tool2);
+        expect(reg.registry.size).toBe(1);
+        expect(reg.registry.getAllTools()[0].inputSchema.properties!['action'])
+            .toHaveProperty('enum');
+    });
+
+    it('should throw on duplicate action keys during merge (via inner registry)', () => {
+        const tool1 = createTool<TestContext>('projects')
+            .action({ name: 'list', handler: async () => success('ok') });
+        const tool2 = createTool<TestContext>('projects')
+            .action({ name: 'list', handler: async () => success('ok') });
+
         expect(() => createTypedRegistry<TestContext>()(tool1, tool2))
-            .toThrow(/already registered/i);
+            .toThrow(/Duplicate action/i);
     });
 
     it('should work with empty builder list', () => {

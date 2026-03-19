@@ -219,11 +219,19 @@ describe('createTypedRegistry — runtime', () => {
         expect(result.content[0].text).toBe('hello world');
     });
 
-    it('should throw on duplicate tool registration', () => {
+    it('should merge same-name builders with different actions', () => {
         const t1 = createTool<AppContext>('dup').action({ name: 'a', handler: async () => success('ok') });
         const t2 = createTool<AppContext>('dup').action({ name: 'b', handler: async () => success('ok') });
 
-        expect(() => createTypedRegistry<AppContext>()(t1, t2)).toThrow(/already registered/i);
+        const reg = createTypedRegistry<AppContext>()(t1, t2);
+        expect(reg.registry.size).toBe(1);
+    });
+
+    it('should throw on duplicate action keys during merge', () => {
+        const t1 = createTool<AppContext>('dup').action({ name: 'a', handler: async () => success('ok') });
+        const t2 = createTool<AppContext>('dup').action({ name: 'a', handler: async () => success('ok') });
+
+        expect(() => createTypedRegistry<AppContext>()(t1, t2)).toThrow(/Duplicate action/i);
     });
 
     it('should support size, has, and clear on inner registry', () => {

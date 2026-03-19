@@ -1,6 +1,6 @@
 {
   "name": "@vurb/api-key",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "API key validation middleware for MCP servers built with vurb. Timing-safe comparison, SHA-256 hashing, async validators, and self-healing error responses.",
   "type": "module",
   "main": "dist/index.js",

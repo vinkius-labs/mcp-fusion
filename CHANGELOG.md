@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.3] - 2026-03-19
+
+### Fixed
+
+- **Test assertions for namespace merge** — Updated 5 test files (`TypedRegistry`, `AdversarialQA`, `EndToEnd`, `LargeScaleScenarios`, `TypeSafety`) to align with the namespace merge behavior introduced in v3.7.1. Tests that expected `already registered` errors for same-name builders with different actions now correctly verify that merge succeeds, while duplicate action keys within the same namespace still throw `Duplicate action`.
+
 ## [3.7.2] - 2026-03-19
 
 ### Fixed

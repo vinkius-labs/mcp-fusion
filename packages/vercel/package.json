@@ -1,6 +1,6 @@
 {
   "name": "@vurb/vercel",
-  "version": "3.7.2",
+  "version": "3.7.3",
   "description": "Vercel adapter for Vurb. Deploy your MCP server as a Next.js App Router route handler or standalone Vercel Function — Edge Runtime or Node.js, stateless JSON-RPC, zero config.",
   "type": "module",
   "main": "dist/index.js",

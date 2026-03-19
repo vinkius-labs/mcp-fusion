@@ -187,9 +187,9 @@ describe('Large-Scale Scenarios — Mass Endpoint Registration', () => {
         }
     });
 
-    it('should reject duplicate tool registrations', () => {
+    it('should reject duplicate action keys on re-registration', () => {
         const duplicate = buildEntityTool('project_management', 'tasks', ['pm']);
-        expect(() => registry.register(duplicate)).toThrow('already registered');
+        expect(() => registry.register(duplicate)).toThrow(/Duplicate action/i);
     });
 });
 
