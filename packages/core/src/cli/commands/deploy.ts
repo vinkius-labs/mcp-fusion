@@ -326,28 +326,28 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         g.__vurb_introspect_resolve = resolveIntrospect;
         process.env['VURB_INTROSPECT'] = '1';
 
-        // Register tsx loader for .ts imports
-        if (absEntry.endsWith('.ts')) {
-            try {
-                const { createRequire } = await import('node:module');
-                const { pathToFileURL } = await import('node:url');
-                const userRequire = createRequire(absEntry);
-                const tsxApiPath = userRequire.resolve('tsx/esm/api');
-                const { register } = await import(pathToFileURL(tsxApiPath).href) as { register: () => void };
-                register();
-            } catch { /* tsx not available — fall through */ }
-        }
-
-        // Dynamic import triggers module evaluation → main() → startServer()
-        // startServer returns immediately in introspect mode
+        // Write the already-compiled esbuild bundle to a temp file and import
+        // it directly. This is pure JS — no tsx loader, no TypeScript compilation,
+        // no module resolution overhead. Near-instant evaluation.
+        const { tmpdir } = await import('node:os');
+        const { join } = await import('node:path');
+        const { writeFileSync, unlinkSync } = await import('node:fs');
         const { pathToFileURL } = await import('node:url');
-        await import(pathToFileURL(absEntry).href);
+
+        const tmpBundle = join(tmpdir(), `vurb-introspect-${Date.now()}.mjs`);
+        writeFileSync(tmpBundle, rawCode, 'utf-8');
+
+        try {
+            await import(pathToFileURL(tmpBundle).href);
+        } finally {
+            try { unlinkSync(tmpBundle); } catch { /* ignore cleanup errors */ }
+        }
 
         // Wait for startServer to fire (it resolves via globalThis)
         const result = await Promise.race([
             introspectReady,
             new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('startServer() was not called within 10s')), 10_000),
+                setTimeout(() => reject(new Error('startServer() was not called within 5s')), 5_000),
             ),
         ]);
 

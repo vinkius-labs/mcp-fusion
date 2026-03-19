@@ -1197,6 +1197,33 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     /** Get all registered action keys (e.g. `["list", "create"]` or `["users.list", "users.ban"]`). */
     getActionNames(): string[] { return this._actions.map(a => a.key); }
 
+    /**
+     * Merge actions from another builder with the same name.
+     *
+     * Used by `ToolRegistry.register()` when multiple files export
+     * separate `f.query('namespace.action')` builders under the same
+     * namespace. The incoming actions are absorbed into this builder,
+     * preserving all existing configuration.
+     *
+     * @param actions - Actions to absorb from the other builder
+     * @throws If any incoming action key already exists in this builder
+     * @internal
+     */
+    mergeActions(actions: readonly InternalAction<TContext>[]): void {
+        // Unfreeze _actions if previously frozen by buildToolDefinition()
+        if (Object.isFrozen(this._actions)) {
+            this._actions = [...this._actions];
+        }
+        for (const action of actions) {
+            if (this._actions.some(a => a.key === action.key)) {
+                throw new Error(
+                    `Duplicate action "${action.key}" on builder "${this._name}" during merge.`,
+                );
+            }
+            this._actions.push(action);
+        }
+    }
+
     // ── AST Reflection (Exposition Compiler) ─────────────
 
     /** Get the discriminator field name (e.g. `"action"`). Used by the Exposition Compiler. */

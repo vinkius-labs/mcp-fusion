@@ -29,14 +29,29 @@ describe('ToolRegistry', () => {
         expect(registry.getAllTools()[0].name).toBe('task');
     });
 
-    it('should throw on duplicate registration', () => {
+    it('should throw on duplicate action during merge', () => {
         const b1 = new GroupedToolBuilder('task')
             .action({ name: 'list', handler: dummyHandler });
         const b2 = new GroupedToolBuilder('task')
             .action({ name: 'list', handler: dummyHandler });
 
         registry.register(b1);
-        expect(() => registry.register(b2)).toThrow('already registered');
+        expect(() => registry.register(b2)).toThrow('Duplicate action');
+    });
+
+    it('should merge actions from same-name builders', () => {
+        const b1 = new GroupedToolBuilder('task')
+            .action({ name: 'list', handler: dummyHandler });
+        const b2 = new GroupedToolBuilder('task')
+            .action({ name: 'create', handler: dummyHandler });
+
+        registry.register(b1);
+        registry.register(b2);
+
+        expect(registry.size).toBe(1);
+        const tools = registry.getAllTools();
+        expect(tools).toHaveLength(1);
+        expect(tools[0].name).toBe('task');
     });
 
     it('should route call to correct builder', async () => {

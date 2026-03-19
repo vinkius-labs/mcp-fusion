@@ -100,7 +100,19 @@ export class ToolRegistry<TContext = void> {
      */
     register(builder: ToolBuilder<TContext>): void {
         const name = builder.getName();
-        if (this._builders.has(name)) {
+        const existing = this._builders.get(name);
+        if (existing) {
+            // Same namespace — merge actions from the incoming builder
+            // into the existing one (e.g. multiple f.query('compliance.xxx') files).
+            if (typeof (existing as any).mergeActions === 'function' &&
+                typeof (builder as any).getActions === 'function') {
+                (existing as any).mergeActions((builder as any).getActions());
+                // Rebuild the tool definition to include the new actions
+                (existing as any)._cachedTool = null;
+                (existing as any)._frozen = false;
+                existing.buildToolDefinition();
+                return;
+            }
             throw new Error(`Tool "${name}" is already registered.`);
         }
         builder.buildToolDefinition();

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2026-03-19
+
+### Fixed
+
+- **ToolRegistry namespace merge** — `registry.register()` now merges actions from builders that share the same namespace (e.g. `f.query('compliance.obligations')` and `f.query('compliance.timeline')` in separate files). Previously threw `Tool "compliance" is already registered`. Duplicate action keys within the same namespace still throw.
+- **Test assertions for `target` field** — Updated `create.test.ts` and `create.e2e.test.ts` assertions to include the `target: 'node'` property returned by `collectConfig`.
+
 ## [3.7.0] - 2026-03-19
 
 ### Added

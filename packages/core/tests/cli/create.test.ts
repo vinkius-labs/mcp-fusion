@@ -69,6 +69,7 @@ function baseCliArgs(): CliArgs {
         projectName: undefined,
         transport: undefined,
         vector: undefined,
+        target: undefined,
         testing: undefined,
         yes: false,
     };
@@ -247,6 +248,7 @@ describe('collectConfig — fast-path (--yes)', () => {
             transport: 'stdio',
             vector: 'vanilla',
             testing: true,
+            target: 'node',
         });
     });
 
@@ -271,6 +273,7 @@ describe('collectConfig — fast-path (--yes)', () => {
             transport: 'sse',
             vector: 'prisma',
             testing: false,
+            target: 'node',
         });
     });
 
@@ -1200,6 +1203,7 @@ describe('collectConfig — error paths & boundary conditions', () => {
             transport: 'stdio',
             vector: 'vanilla',
             testing: true,
+            target: 'node',
         });
     });
 });
@@ -2167,6 +2171,7 @@ describe('collectConfig — interactive path with pre-filled args', () => {
             projectName: 'wizard-test',
             transport: 'sse',
             vector: 'prisma',
+            target: 'node',
             testing: true,
             yes: false,
         };

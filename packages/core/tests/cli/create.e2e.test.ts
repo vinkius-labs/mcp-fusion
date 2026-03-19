@@ -161,6 +161,7 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
             transport: 'sse',
             vector: 'prisma',
             testing: false,
+            target: 'node',
         });
     });
 

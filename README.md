@@ -20,6 +20,50 @@ Type-safe tools, structured AI perception, and built-in security. Deploy once �
 
 ---
 
+## Table of Contents
+
+- [Zero Learning Curve — Ship a SKILL.md, Not a Tutorial](#zero-learning-curve--ship-a-skillmd-not-a-tutorial)
+- [Get Started in 5 Seconds](#get-started-in-5-seconds)
+  - [Deploy Targets](#deploy-targets)
+- [Why Vurb.ts Exists](#why-vurb-ts-exists)
+- [The MVA Solution](#the-mva-solution)
+- [Before vs. After](#before-vs-after)
+- [Architecture](#architecture)
+  - [Egress Firewall — Schema as Security Boundary](#egress-firewall--schema-as-security-boundary)
+  - [DLP Compliance Engine — PII Redaction](#dlp-compliance-engine--pii-redaction)
+  - [8 Anti-Hallucination Mechanisms](#8-anti-hallucination-mechanisms)
+  - [FSM State Gate — Temporal Anti-Hallucination](#fsm-state-gate--temporal-anti-hallucination)
+  - [Zero-Trust Sandbox — Computation Delegation](#zero-trust-sandbox--computation-delegation)
+  - [State Sync — Temporal Awareness for Agents](#state-sync--temporal-awareness-for-agents)
+  - [Prompt Engine — Server-Side Templates](#prompt-engine--server-side-templates)
+  - [Agent Skills — Progressive Instruction Distribution](#agent-skills--progressive-instruction-distribution)
+  - [Fluent API — Semantic Verbs & Chainable Builders](#fluent-api--semantic-verbs--chainable-builders)
+  - [Middleware — Pre-Compiled, Zero-Allocation](#middleware--pre-compiled-zero-allocation)
+  - [Fluent Router — Grouped Tooling](#fluent-router--grouped-tooling)
+  - [tRPC-Style Client — Compile-Time Route Validation](#trpc-style-client--compile-time-route-validation)
+  - [Self-Healing Errors](#self-healing-errors)
+  - [Capability Governance — Cryptographic Surface Integrity](#capability-governance--cryptographic-surface-integrity)
+- [Code Generators](#code-generators)
+  - [OpenAPI → MCP in One Command](#openapi--mcp-in-one-command)
+  - [Prisma → MCP with Field-Level Security](#prisma--mcp-with-field-level-security)
+  - [n8n Workflows → MCP Tools](#n8n-workflows--mcp-tools)
+- [Inspector — Real-Time Dashboard](#inspector--real-time-dashboard)
+- [Testing — Full Pipeline in RAM](#testing--full-pipeline-in-ram)
+- [Deploy Anywhere](#deploy-anywhere)
+  - [Vinkius Edge](#vinkius-edge)
+  - [Vercel Functions](#vercel-functions)
+  - [Cloudflare Workers](#cloudflare-workers)
+- [Ecosystem](#ecosystem)
+  - [Adapters](#adapters)
+  - [Generators & Connectors](#generators--connectors)
+  - [Security & Auth](#security--auth)
+  - [Developer Experience](#developer-experience)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Zero Learning Curve — Ship a SKILL.md, Not a Tutorial
 
 Every framework you've adopted followed the same loop: read the docs, study the conventions, hit an edge case, search GitHub issues, re-read the docs. Weeks before your first production PR. Your AI coding agent does the same — it hallucinates Express patterns into your Hono project because it has no formal contract to work from.
@@ -80,7 +124,7 @@ That's it. A production-ready MCP server with file-based routing, Presenters, mi
 
 ```
   Project name?  › my-server
-  Transport?     › stdio
+  Transport?     › http
   Vector?        › vanilla
 
   ● Scaffolding project — 14 files (6ms)
@@ -98,9 +142,32 @@ Choose a vector to scaffold exactly the project you need:
 | `openapi` | OpenAPI 3.x / Swagger 2.0 → full MVA tool generation |
 | `oauth` | RFC 8628 Device Flow authentication |
 
+### Deploy Targets
+
+Choose where your server runs with `--target`:
+
+| Target | Runtime | Deploy with |
+|---|---|---|
+| `node` (default) | Node.js — Streamable HTTP | [`vurb deploy`](#vinkius-edge) |
+| `vercel` | Next.js App Router — Vercel Functions | [`vercel deploy`](#vercel-functions) |
+| `cloudflare` | Cloudflare Workers — V8 isolates | [`wrangler deploy`](#cloudflare-workers) |
+
+```bash
+# Node.js (default) — Streamable HTTP, deploy to Vinkius Edge
+vurb create my-server --yes
+
+# Vercel Functions — Next.js App Router + @vurb/vercel adapter
+vurb create my-server --target vercel --yes
+
+# Cloudflare Workers — wrangler + @vurb/cloudflare adapter
+vurb create my-server --target cloudflare --yes
+```
+
+Each target scaffolds the correct project structure, adapter imports, config files (`next.config.ts`, `wrangler.toml`), and deploy instructions. Same Fluent API, same Presenters, same middleware — only the transport layer changes.
+
 ```bash
 # Database-driven server with Presenter egress firewall
-vurb create my-api --vector prisma --transport sse --yes
+vurb create my-api --vector prisma --transport http --yes
 
 # Bridge your n8n workflows to any MCP client
 vurb create ops-bridge --vector n8n --yes
@@ -651,23 +718,115 @@ Assert every MVA layer: `result.data` (egress firewall), `result.systemRules` (J
 
 ## Deploy Anywhere
 
-Every tool is transport-agnostic. Same code on Stdio, SSE, and serverless:
+Same tools, same Presenters, same middleware — **zero code changes between platforms**. Write once, deploy to any edge. The transport layer is the only thing that changes — your business logic, schemas, PII redaction, FSM gates, and HATEOAS suggestions are identical across all three targets.
+
+### Vinkius Edge
+
+**Zero-config managed deployment.** One command. No Dockerfile, no infra config, no CI pipeline. `vurb deploy` bundles your entire server into a **Fat Bundle** — a fully self-contained IIFE (esbuild, platform `browser`, target `es2022`, tree-shaking + minification) — compresses it with gzip, computes a SHA-256 integrity hash, and uploads to Vinkius Edge.
+
+```bash
+vurb deploy
+```
+
+```
+  ● Bundle        172.3KB → 48.1KB gzip, 72% smaller
+  ● Introspect    4 tools, 2 prompts, manifest signed
+  ● Upload        Deploying to Edge
+
+  Vinkius Edge  ·  my-server is ready in just 2.1s
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  MCP Server Stateful
+  https://mcp.vinkius.com/s/my-server
+
+  TOOLS  4 tools ready
+
+    ● billing.get_invoice   Get an invoice by ID
+    ● billing.pay           Process payment
+    ● users.list            List all users
+    ● system.health         Health check
+
+  ↻ 48.1KB gzip  ·  ✓ manifest signed  ·  SHA-256: f6e5d4...
+```
+
+**What happens under the hood:**
+
+1. **Edge Stub Plugin** — a custom esbuild plugin intercepts every Node.js built-in import (`fs`, `path`, `crypto`, `node:fs/promises`, etc.) and redirects them to `edge-stub.ts`. Two tiers: **Structural stubs** (`EventEmitter`, `Readable`, `Writable`, `Server`, `Socket`) satisfy the AST so the MCP SDK compiles — never called at runtime. **Crash stubs** (`readFileSync`, `exec`, `spawn`, `createHash`) fail-fast with `[Vinkius Edge] "<api>" is blocked in the Serverless Sandbox.`
+
+2. **Bundle Sanitizer** — static analysis transforms dangerous patterns without changing JS semantics: `eval(` → `(0,eval)(`, `new Function(` → `new(0,Function)(`, `__proto__` → `["__proto__"]`, prototype pollution vectors neutralized.
+
+3. **Introspection** — sets `VURB_INTROSPECT=1`, imports your entrypoint, runs `compileContracts()` + `generateLockfile()` to produce a **cryptographic capability manifest**. Tool names, descriptions, and behavioral fingerprints are extracted. The lockfile ships with the bundle for runtime attestation.
+
+4. **Upload** — base64-encoded gzip payload with SHA-256 hash, 60s timeout, server ID validation (`^[a-zA-Z0-9_-]+$` — path traversal blocked). Status-specific error handling: 401 (token revoked), 403 (wrong server), 404 (server not found), 422 (invalid payload).
+
+**Warnings:** The CLI detects and warns about edge-incompatible patterns before bundling — `autoDiscover()` (requires `fs.readdir`), `SandboxEngine` (requires `child_process`), `Inspector` (requires Node.js IPC), `fast-redact` (uses `Function` constructor).
 
 ### Vercel Functions
 
-```typescript
-import { vercelAdapter } from '@vurb/vercel';
-export const POST = vercelAdapter({ registry, contextFactory });
-export const runtime = 'edge'; // global edge distribution
+**Next.js App Router + `@vurb/vercel` adapter.** Scaffold a complete Vercel project or wire up the adapter manually in any existing Next.js app. Two commands — scaffolded project to global edge:
+
+```bash
+vurb create my-server --target vercel
+cd my-server && vercel deploy
 ```
+
+Same MVA structure — `models/`, `presenters/`, `tools/`, `registry.ts` — under `src/mcp/`. The only Vercel-specific file is the route handler:
+
+```typescript
+// app/api/mcp/route.ts
+import { vercelAdapter } from '@vurb/vercel';
+import { registry, contextFactory } from '@/mcp/vurb';
+
+export const POST = vercelAdapter({ registry, contextFactory });
+```
+
+**How the adapter works:**
+
+- **Cold start (once):** `ToolRegistry` compiles at module top-level scope — Zod reflection, Presenter compilation, schema generation. Zero CPU on warm requests.
+- **Warm request (per invocation):** Ephemeral `McpServer` + `WebStandardStreamableHTTPServerTransport` per request. Stateless JSON-RPC only (`enableJsonResponse: true`) — no SSE, no sessions, no streaming. Pure request/response.
+- **Context factory** receives the raw `Request` object — extract headers, auth tokens, tenant ID. Errors return JSON-RPC `-32603`.
+- **Cleanup:** `await server.close()` in `finally` block — no resource leaks.
+- **Method enforcement:** Non-POST returns JSON-RPC `-32600` with `405 Allow: POST`.
+
+Works with both **Edge Runtime** (V8 isolate, global distribution) and **Node.js Runtime** (full Node.js API access). Add `export const runtime = 'edge'` for Edge. Explicit imports in the registry — no `autoDiscover()` (Vercel needs static analysis for tree-shaking).
 
 ### Cloudflare Workers
 
-```typescript
-import { cloudflareWorkersAdapter } from '@vurb/cloudflare';
-export default cloudflareWorkersAdapter({ registry, contextFactory });
-// D1 for edge-native SQL, KV for sub-ms reads, waitUntil for telemetry
+**Workers + `@vurb/cloudflare` adapter.** Scaffold a complete Workers project or add the adapter to an existing worker. Two commands — scaffolded project to Cloudflare's 300+ edge locations:
+
+```bash
+vurb create my-server --target cloudflare
+cd my-server && wrangler deploy
 ```
+
+Same MVA structure — `models/`, `presenters/`, `tools/`, `registry.ts` — under `src/`. The only Cloudflare-specific file is the worker entry:
+
+```typescript
+// src/worker.ts
+import { cloudflareWorkersAdapter } from '@vurb/cloudflare';
+import { registry, contextFactory } from './mcp/vurb.js';
+
+export default cloudflareWorkersAdapter({ registry, contextFactory });
+// Returns { fetch(request, env, ctx) } — Workers ES Modules interface
+```
+
+**How the adapter works:**
+
+- **Same cold-start/warm-request split** as Vercel — registry compiled once, ephemeral server per request, stateless JSON-RPC via `WebStandardStreamableHTTPServerTransport`.
+- **`env` injection:** Cloudflare bindings (D1, KV, R2, secrets) are injected per-request through the Worker `fetch(request, env, ctx)` signature. The `contextFactory` receives all three — full access to edge-native storage:
+
+```typescript
+contextFactory: (req, env, ctx) => ({
+    db: env.DB,           // D1 — edge-native SQL
+    cache: env.CACHE,     // KV — sub-ms reads
+    storage: env.BUCKET,  // R2 — S3-compatible object storage
+    waitUntil: ctx.waitUntil.bind(ctx),
+})
+```
+
+- **Non-blocking cleanup:** Server shutdown is deferred via `ctx.waitUntil(server.close())` — does not delay the response to the client. Both success and error paths use `waitUntil`.
+- **Zero polyfills** — Cloudflare Workers natively support the WinterCG APIs (`Request`, `Response`, `ReadableStream`, `crypto`) that `@vurb/cloudflare` requires. No `@cloudflare/workers-types` runtime dependency — the adapter defines `ExecutionContext` inline.
+- **Wrangler config:** `compatibility_date: '2024-12-01'`, `compatibility_flags: ['nodejs_compat']`. Commented D1/KV/R2 binding examples ready to uncomment.
 
 ---
 
@@ -675,35 +834,35 @@ export default cloudflareWorkersAdapter({ registry, contextFactory });
 
 ### Adapters
 
-| Package | Target |
-|---|---|
-| [`@vurb/vercel`](https://vurb.vinkius.com/vercel-adapter) | Vercel Functions (Edge / Node.js) |
-| [`@vurb/cloudflare`](https://vurb.vinkius.com/cloudflare-adapter) | Cloudflare Workers — zero polyfills |
+| Package | Name | Target |
+|---|---|---|
+| [`@vurb/vercel`](https://vurb.vinkius.com/vercel-adapter) | Vercel Adapter | Vercel Functions (Edge / Node.js) |
+| [`@vurb/cloudflare`](https://vurb.vinkius.com/cloudflare-adapter) | Cloudflare Adapter | Cloudflare Workers — zero polyfills |
 
 ### Generators & Connectors
 
-| Package | Purpose |
-|---|---|
-| [`@vurb/openapi-gen`](https://vurb.vinkius.com/openapi-gen) | Generate typed tools from OpenAPI 3.x / Swagger 2.0 specs |
-| [`@vurb/prisma-gen`](https://vurb.vinkius.com/prisma-gen) | Generate CRUD tools with field-level security from Prisma |
-| [`@vurb/n8n`](https://vurb.vinkius.com/n8n-connector) | Auto-discover n8n workflows as MCP tools |
-| [`@vurb/aws`](https://vurb.vinkius.com/aws-connector) | Auto-discover AWS Lambda & Step Functions |
-| [`@vurb/skills`](https://vurb.vinkius.com/skills) | Progressive instruction distribution for agents |
+| Package | Name | Purpose |
+|---|---|---|
+| [`@vurb/openapi-gen`](https://vurb.vinkius.com/openapi-gen) | OpenAPI Generator | Generate typed tools from OpenAPI 3.x / Swagger 2.0 specs |
+| [`@vurb/prisma-gen`](https://vurb.vinkius.com/prisma-gen) | Prisma Generator | Generate CRUD tools with field-level security from Prisma |
+| [`@vurb/n8n`](https://vurb.vinkius.com/n8n-connector) | n8n Connector | Auto-discover n8n workflows as MCP tools |
+| [`@vurb/aws`](https://vurb.vinkius.com/aws-connector) | AWS Connector | Auto-discover AWS Lambda & Step Functions |
+| [`@vurb/skills`](https://vurb.vinkius.com/skills) | Agent Skills | Progressive instruction distribution for agents |
 
 ### Security & Auth
 
-| Package | Purpose |
-|---|---|
-| [`@vurb/oauth`](https://vurb.vinkius.com/oauth) | RFC 8628 Device Flow authentication |
-| [`@vurb/jwt`](https://vurb.vinkius.com/jwt) | JWT verification — HS256/RS256/ES256 + JWKS |
-| [`@vurb/api-key`](https://vurb.vinkius.com/api-key) | API key validation with timing-safe comparison |
+| Package | Name | Purpose |
+|---|---|---|
+| [`@vurb/oauth`](https://vurb.vinkius.com/oauth) | OAuth Provider | RFC 8628 Device Flow authentication |
+| [`@vurb/jwt`](https://vurb.vinkius.com/jwt) | JWT Verifier | JWT verification — HS256/RS256/ES256 + JWKS |
+| [`@vurb/api-key`](https://vurb.vinkius.com/api-key) | API Key Guard | API key validation with timing-safe comparison |
 
 ### Developer Experience
 
-| Package | Purpose |
-|---|---|
-| [`@vurb/testing`](https://vurb.vinkius.com/testing) | In-memory pipeline testing with MVA layer assertions |
-| [`@vurb/inspector`](https://vurb.vinkius.com/inspector) | Real-time terminal dashboard via Shadow Socket |
+| Package | Name | Purpose |
+|---|---|---|
+| [`@vurb/testing`](https://vurb.vinkius.com/testing) | Testing Kit | In-memory pipeline testing with MVA layer assertions |
+| [`@vurb/inspector`](https://vurb.vinkius.com/inspector) | Inspector | Real-time terminal dashboard via Shadow Socket |
 
 ---
 
