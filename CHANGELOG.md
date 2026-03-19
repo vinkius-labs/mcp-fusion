@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.2] - 2026-03-19
+
+### Fixed
+
+- **ToolRegistry namespace merge** — `registry.register()` now merges actions from builders that share the same namespace (e.g. `f.query('compliance.obligations')` and `f.query('compliance.timeline')` in separate files). Previously threw `Tool "compliance" is already registered`.
+- **Bundle-based introspection** — `vurb deploy` introspection now imports the pre-compiled esbuild bundle directly instead of re-importing source `.ts` files through tsx. Near-instant evaluation, no TypeScript compilation overhead. Timeout reduced from 10s to 5s.
+
 ## [3.7.1] - 2026-03-19
 
 ### Fixed

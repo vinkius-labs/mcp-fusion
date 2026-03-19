@@ -718,7 +718,20 @@ Assert every MVA layer: `result.data` (egress firewall), `result.systemRules` (J
 
 ## Deploy Anywhere
 
-Same tools, same Presenters, same middleware — **zero code changes between platforms**. Write once, deploy to any edge. The transport layer is the only thing that changes — your business logic, schemas, PII redaction, FSM gates, and HATEOAS suggestions are identical across all three targets.
+Same tools, same Presenters, same middleware — **zero code changes between platforms**:
+
+```bash
+# Vinkius Edge — zero-config managed deployment
+vurb deploy
+
+# Vercel Functions — Next.js App Router
+cd my-server && vercel deploy
+
+# Cloudflare Workers — V8 isolates, 300+ locations
+cd my-server && wrangler deploy
+```
+
+Write once, deploy to any edge. Your business logic, schemas, PII redaction, FSM gates, and HATEOAS suggestions are identical across all three targets — only the transport layer changes.
 
 ### Vinkius Edge
 
@@ -763,11 +776,10 @@ vurb deploy
 
 ### Vercel Functions
 
-**Next.js App Router + `@vurb/vercel` adapter.** Scaffold a complete Vercel project or wire up the adapter manually in any existing Next.js app. Two commands — scaffolded project to global edge:
+**Next.js App Router + `@vurb/vercel` adapter.** Deploy to Vercel with one command:
 
 ```bash
-vurb create my-server --target vercel
-cd my-server && vercel deploy
+vercel deploy
 ```
 
 Same MVA structure — `models/`, `presenters/`, `tools/`, `registry.ts` — under `src/mcp/`. The only Vercel-specific file is the route handler:
@@ -792,11 +804,10 @@ Works with both **Edge Runtime** (V8 isolate, global distribution) and **Node.js
 
 ### Cloudflare Workers
 
-**Workers + `@vurb/cloudflare` adapter.** Scaffold a complete Workers project or add the adapter to an existing worker. Two commands — scaffolded project to Cloudflare's 300+ edge locations:
+**Workers + `@vurb/cloudflare` adapter.** Deploy to Cloudflare's 300+ edge locations with one command:
 
 ```bash
-vurb create my-server --target cloudflare
-cd my-server && wrangler deploy
+wrangler deploy
 ```
 
 Same MVA structure — `models/`, `presenters/`, `tools/`, `registry.ts` — under `src/`. The only Cloudflare-specific file is the worker entry:
