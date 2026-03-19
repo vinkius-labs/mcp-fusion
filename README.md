@@ -20,11 +20,32 @@ Type-safe tools, structured AI perception, and built-in security. Deploy once �
 
 ---
 
+## Get Started in 5 Seconds
+
+```bash
+vurb create my-server
+```
+
+```
+→  "Build an MCP server for patient records with Prisma.
+    Redact SSN and diagnosis from LLM output. Add an FSM
+    that gates discharge tools until attending physician signs off."
+```
+
+Your AI agent reads the `SKILL.md` and writes the entire MCP server. First pass — no corrections.
+
+```bash
+vurb deploy
+```
+
+MCP server live. A production-ready MCP server with file-based routing, Presenters, middleware, tests, and pre-configured connections for **Cursor**, **Claude Desktop**, **Claude Code**, **Windsurf**, **Cline**, and **VS Code + GitHub Copilot**.
+
+---
+
 ## Table of Contents
 
 - [Zero Learning Curve — Ship a SKILL.md, Not a Tutorial](#zero-learning-curve--ship-a-skillmd-not-a-tutorial)
-- [Get Started in 5 Seconds](#get-started-in-5-seconds)
-  - [Deploy Targets](#deploy-targets)
+- [Deploy Targets](#deploy-targets)
 - [Why Vurb.ts Exists](#why-vurb-ts-exists)
 - [The MVA Solution](#the-mva-solution)
 - [Before vs. After](#before-vs-after)
@@ -70,14 +91,6 @@ Every framework you've adopted followed the same loop: read the docs, study the 
 
 Vurb.ts ships a **[SKILL.md](https://agentskills.io)** — a machine-readable architectural contract that your AI agent ingests before generating a single line. Not a tutorial. Not a "getting started guide" the LLM will paraphrase loosely. A **typed specification**: every Fluent API method, every builder chain, every Presenter composition rule, every middleware signature, every file-based routing convention. The agent doesn't approximate — it compiles against the spec.
 
-**One prompt. Working server. Zero iterations:**
-
-```
-→  "Build an MCP server for patient records with Prisma.
-    Redact SSN and diagnosis from LLM output. Add an FSM
-    that gates discharge tools until attending physician signs off."
-```
-
 The agent reads `SKILL.md` and produces:
 
 ```typescript
@@ -112,15 +125,6 @@ This works on Cursor, Claude Code, GitHub Copilot, Windsurf, Cline — any agent
 > **You don't learn Vurb.ts. You don't teach your agent Vurb.ts.** You hand it a 400-line contract. It writes the server. You review the PR.
 
 ---
-
-## Get Started in 5 Seconds
-
-```bash
-vurb create my-server
-cd my-server && vurb dev
-```
-
-That's it. A production-ready MCP server with file-based routing, Presenters, middleware, tests, and pre-configured connections for **Cursor**, **Claude Desktop**, **Claude Code**, **Windsurf**, **Cline**, and **VS Code + GitHub Copilot**.
 
 ```
   Project name?  › my-server
