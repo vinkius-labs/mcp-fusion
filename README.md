@@ -5,16 +5,17 @@
   <img src="https://github.com/user-attachments/assets/86ae1b28-a938-4e12-af29-bfc60a55dbe8" style="border-radius:8px;background:#000000;padding:10px;border:1px solid #414141;"  alt="Vurb.ts">
 </picture>
 
-**The TypeScript Framework for MCP Servers.**<br>
-Type-safe tools, structured AI perception, and built-in security. Deploy once — every AI assistant connects instantly.
+**The Express.js for MCP Servers.**<br>
+Type-safe tools · Presenters that control what the LLM sees · Built-in PII redaction · Deploy once — every AI assistant connects.
 
 [![npm version](https://img.shields.io/npm/v/@vurb/core.svg?color=0ea5e9)](https://www.npmjs.com/package/@vurb/core)
 [![Downloads](https://img.shields.io/npm/dw/@vurb/core)](https://www.npmjs.com/package/@vurb/core)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP Standard](https://img.shields.io/badge/MCP-Standard-purple)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green)](https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE)
+[![llms.txt](https://img.shields.io/badge/llms.txt-AI_Ready-8b5cf6)](https://vurb.vinkius.com/llms.txt)
 
-[Documentation](https://vurb.vinkius.com/) · [Quick Start](https://vurb.vinkius.com/quickstart-lightspeed) · [API Reference](https://vurb.vinkius.com/api/)
+[Documentation](https://vurb.vinkius.com/) · [Quick Start](https://vurb.vinkius.com/quickstart-lightspeed) · [API Reference](https://vurb.vinkius.com/api/) · [llms.txt](https://vurb.vinkius.com/llms.txt)
 
 </div>
 
@@ -28,13 +29,13 @@ vurb create my-server
 
 Open it in Cursor, Claude Code, or GitHub Copilot and prompt:
 
-```
-→  "Build an MCP server for patient records with Prisma.
-    Redact SSN and diagnosis from LLM output. Add an FSM
-    that gates discharge tools until attending physician signs off."
-```
+> 💬 **Tell your AI agent:**
+>
+> *"Build an MCP server for patient records with Prisma. Redact SSN and diagnosis from LLM output. Add an FSM that gates discharge tools until attending physician signs off."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Build+an+MCP+server+for+patient+records+with+Prisma.+Redact+SSN+and+diagnosis+from+LLM+output.+Add+an+FSM+that+gates+discharge+tools+until+attending+physician+signs+off.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Build+an+MCP+server+for+patient+records+with+Prisma.+Redact+SSN+and+diagnosis+from+LLM+output.+Add+an+FSM+that+gates+discharge+tools+until+attending+physician+signs+off.)
 
-The agent reads the `SKILL.md` and writes the entire server. First pass — no corrections.
+The agent reads the [`SKILL.md`](https://agentskills.io) (or the [`llms.txt`](https://vurb.vinkius.com/llms.txt)) and writes the entire server. First pass — no corrections.
 
 One command. Your MCP server is live on **Vinkius Edge**, **Vercel Functions**, or **Cloudflare Workers**. 
 
@@ -51,6 +52,7 @@ A production-ready MCP server with file-based routing, Presenters, middleware, t
 - [Zero Learning Curve — Ship a SKILL.md, Not a Tutorial](#zero-learning-curve--ship-a-skillmd-not-a-tutorial)
 - [Deploy Targets](#deploy-targets)
 - [Why Vurb.ts Exists](#why-vurb-ts-exists)
+  - [Raw MCP SDK vs. Vurb.ts](#raw-mcp-sdk-vs-vurbts)
 - [The MVA Solution](#the-mva-solution)
 - [Before vs. After](#before-vs-after)
 - [Architecture](#architecture)
@@ -83,6 +85,7 @@ A production-ready MCP server with file-based routing, Presenters, middleware, t
   - [Generators & Connectors](#generators--connectors)
   - [Security & Auth](#security--auth)
   - [Developer Experience](#developer-experience)
+- [How Prompt Deep Linking Works](#how-prompt-deep-linking-works)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -127,6 +130,18 @@ Correct Presenter with `.redactPII()`. FSM gating that makes `patients.discharge
 This works on Cursor, Claude Code, GitHub Copilot, Windsurf, Cline — any agent that can read a file. The `SKILL.md` is the single source of truth: the agent doesn't need to have been trained on Vurb.ts, it just needs to read the spec.
 
 > **You don't learn Vurb.ts. You don't teach your agent Vurb.ts.** You hand it a 400-line contract. It writes the server. You review the PR.
+
+<details>
+<summary>🤖 <strong>Don't have Cursor? Try it right now — zero install</strong></summary>
+
+Click one of these links. The AI will read the Vurb.ts architecture and generate production-ready code in seconds:
+
+- [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Create+an+invoice+query+tool+with+PII+redaction+on+customer+SSN,+tenant+isolation+middleware,+and+affordances+for+payment+actions.)
+- [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Create+an+invoice+query+tool+with+PII+redaction+on+customer+SSN,+tenant+isolation+middleware,+and+affordances+for+payment+actions.)
+
+The "super prompt" behind these links forces the AI to read [`vurb.vinkius.com/llms.txt`](https://vurb.vinkius.com/llms.txt) before writing code — guaranteeing correct MVA patterns, not hallucinated syntax.
+
+</details>
 
 ---
 
@@ -223,11 +238,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-**Data exfiltration.** `JSON.stringify(invoice)` sends `password_hash`, `internal_margin`, `customer_ssn` — every column — straight to the LLM provider. One field = one GDPR violation.
+🔴 **Data exfiltration.** `JSON.stringify(invoice)` sends `password_hash`, `internal_margin`, `customer_ssn` — every column — straight to the LLM provider. One field = one GDPR violation.
 
-**Token explosion.** Every tool schema is sent on every turn, even when irrelevant. System prompt rules for every domain entity are sent globally, bloating context with wasted tokens.
+🔴 **Token explosion.** Every tool schema is sent on every turn, even when irrelevant. System prompt rules for every domain entity are sent globally, bloating context with wasted tokens.
 
-**Context DDoS.** An unbounded `findMany()` can dump thousands of rows into the context window. The LLM hallucinates. Your API bill explodes.
+🔴 **Context DDoS.** An unbounded `findMany()` can dump thousands of rows into the context window. The LLM hallucinates. Your API bill explodes.
+
+### Raw MCP SDK vs. Vurb.ts
+
+| | Raw SDK | Vurb.ts |
+|---|---|---|
+| **Data leakage** | 🔴 `JSON.stringify()` — every column | 🟢 Presenter schema — allowlist only |
+| **PII protection** | 🔴 Manual, error-prone | 🟢 `.redactPII()` — zero-leak guarantee |
+| **Tool routing** | 🔴 Giant `if/else` chains | 🟢 File-based `autoDiscover()` |
+| **Context bloat** | 🔴 Unbounded `findMany()` | 🟢 `.limit()` + TOON encoding |
+| **Hallucination guard** | 🔴 None | 🟢 8 anti-hallucination mechanisms |
+| **Temporal safety** | 🔴 LLM calls anything anytime | 🟢 FSM State Gate — tools disappear |
+| **Governance** | 🔴 None | 🟢 Lockfile + SHA-256 attestation |
+| **Lines of code** | 🔴 ~200 per tool | 🟢 ~15 per tool |
+| **AI agent setup** | 🔴 Days of learning | 🟢 Reads SKILL.md — first pass correct |
 
 ---
 
@@ -265,7 +294,7 @@ No guessing. Undeclared fields rejected. Domain rules travel with data — not i
 
 ## Before vs. After
 
-**Before** — raw MCP:
+🔴 **DANGER ZONE** — raw MCP:
 
 ```typescript
 case 'get_invoice':
@@ -274,7 +303,7 @@ case 'get_invoice':
     // Leaks internal columns. No rules. No guidance.
 ```
 
-**After** — Vurb.ts with MVA:
+🟢 **SAFE ZONE** — Vurb.ts with MVA:
 
 ```typescript
 import { createPresenter, suggest, ui, t } from '@vurb/core';
@@ -313,6 +342,12 @@ export default f.query('billing.get_invoice')
 
 The handler returns raw data. The Presenter shapes absolutely everything the agent perceives.
 
+> 🏗️ **Architect's Checklist** — when reviewing AI-generated Vurb code, verify:
+> 1. `.schema()` only declares fields the LLM needs — undeclared columns are stripped.
+> 2. `.redactPII()` is called on the Presenter, not the handler — Late Guillotine pattern.
+> 3. `.rules()` travel with data, not in the system prompt — contextual, not global.
+> 4. `.suggest()` computes next actions from data state — not hardcoded.
+
 ---
 
 ## Architecture
@@ -327,6 +362,12 @@ const UserPresenter = createPresenter('User')
 // password_hash, tenant_id, internal_flags → STRIPPED at RAM level
 // A developer CANNOT accidentally expose a new column
 ```
+
+> 💬 **Tell your AI agent:**
+>
+> *"Add an Egress Firewall to the User Presenter — only expose id, name, and email. Strip password_hash and tenant_id at RAM level."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+an+Egress+Firewall+to+the+User+Presenter+—+only+expose+id,+name,+and+email.+Strip+password_hash+and+tenant_id+at+RAM+level.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+an+Egress+Firewall+to+the+User+Presenter+—+only+expose+id,+name,+and+email.+Strip+password_hash+and+tenant_id+at+RAM+level.)
 
 ### DLP Compliance Engine — PII Redaction
 
@@ -343,6 +384,14 @@ const PatientPresenter = createPresenter('Patient')
 ```
 
 Custom censors, wildcard paths (`'*.email'`, `'patients[*].diagnosis'`), and centralized PII field lists. **Zero-leak guarantee** — the developer cannot accidentally bypass redaction.
+
+> 🏗️ **Architect's Check:** Always verify that `.redactPII()` runs on the Presenter, not in the handler. The Late Guillotine pattern ensures UI blocks can use real values for logic, but the LLM never sees them.
+
+> 💬 **Tell your AI agent:**
+>
+> *"Add PII redaction to the PatientPresenter — mask ssn and diagnosis. Use the Late Guillotine pattern so UI blocks can reference real values but the LLM sees [REDACTED]."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+PII+redaction+to+the+PatientPresenter+—+mask+ssn+and+diagnosis.+Use+the+Late+Guillotine+pattern+so+UI+blocks+can+reference+real+values+but+the+LLM+sees+REDACTED.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+PII+redaction+to+the+PatientPresenter+—+mask+ssn+and+diagnosis.+Use+the+Late+Guillotine+pattern+so+UI+blocks+can+reference+real+values+but+the+LLM+sees+REDACTED.)
 
 ### 8 Anti-Hallucination Mechanisms
 
@@ -392,6 +441,12 @@ const pay = f.mutation('cart.pay')
 
 Three complementary layers: **Format** (Zod validates shape), **Guidance** (HATEOAS suggests the next tool), **Gate** (FSM physically removes wrong tools). XState v5 powered, serverless-ready with `fsmStore`.
 
+> 💬 **Tell your AI agent:**
+>
+> *"Add an FSM State Gate to the checkout flow — cart.pay is only visible in the 'payment' state. Use bindState to physically remove tools from tools/list."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+an+FSM+State+Gate+to+the+checkout+flow+—+cart.pay+is+only+visible+in+the+payment+state.+Use+bindState+to+physically+remove+tools+from+tools/list.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+an+FSM+State+Gate+to+the+checkout+flow+—+cart.pay+is+only+visible+in+the+payment+state.+Use+bindState+to+physically+remove+tools+from+tools/list.)
+
 ### Zero-Trust Sandbox — Computation Delegation
 
 The LLM sends JavaScript logic to your data instead of shipping data to the LLM. Code runs inside a sealed V8 isolate — **zero access** to `process`, `require`, `fs`, `net`, `fetch`, `Buffer`. Timeout kill, memory cap, output limit, automatic isolate recovery, and AbortSignal kill-switch (Connection Watchdog).
@@ -414,6 +469,12 @@ export default f.query('analytics.compute')
 
 `.sandboxed()` auto-injects HATEOAS instructions into the tool description — the LLM knows exactly how to format its code. Prototype pollution contained. `constructor.constructor` escape blocked. One isolate per engine, new pristine context per call.
 
+> 💬 **Tell your AI agent:**
+>
+> *"Add a sandboxed computation tool that lets the LLM send JavaScript to run on server-side data inside a sealed V8 isolate. Timeout 3s, memory 64MB."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+a+sandboxed+computation+tool+that+lets+the+LLM+send+JavaScript+to+run+on+server-side+data+inside+a+sealed+V8+isolate.+Timeout+3s,+memory+64MB.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+a+sandboxed+computation+tool+that+lets+the+LLM+send+JavaScript+to+run+on+server-side+data+inside+a+sealed+V8+isolate.+Timeout+3s,+memory+64MB.)
+
 ### State Sync — Temporal Awareness for Agents
 
 LLMs have no sense of time. After `sprints.list` then `sprints.create`, the agent still believes the list is unchanged. Vurb.ts injects RFC 7234-inspired cache-control signals:
@@ -432,6 +493,12 @@ const createSprint = f.action('sprints.create')
 ```
 
 Registry-level policies with `f.stateSync()`, glob patterns (`*`, `**`), policy overlap detection, observability hooks, and MCP `notifications/resources/updated` emission.
+
+> 💬 **Tell your AI agent:**
+>
+> *"Mark 'sprints.list' as stale (no-store) and configure 'sprints.create' to invalidate sprints.* and tasks.* on mutation. Use RFC 7234 cache-control signals."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Mark+sprints.list+as+stale+no-store+and+configure+sprints.create+to+invalidate+sprints+and+tasks+on+mutation.+Use+RFC+7234+cache-control+signals.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Mark+sprints.list+as+stale+no-store+and+configure+sprints.create+to+invalidate+sprints+and+tasks+on+mutation.+Use+RFC+7234+cache-control+signals.)
 
 ### Prompt Engine — Server-Side Templates
 
@@ -462,6 +529,12 @@ const IncidentAnalysis = f.prompt('incident_analysis')
 
 `PromptMessage.fromView()` decomposes any Presenter into prompt messages — same schema, same rules, same affordances in both tools and prompts. Multi-modal with `.image()`, `.audio()`, `.resource()`. Interceptors inject compliance footers after every handler. `PromptRegistry` with filtering, pagination, and lifecycle sync.
 
+> 💬 **Tell your AI agent:**
+>
+> *"Create a prompt called 'incident_analysis' with auth middleware, severity enum input, and PromptMessage.fromView() that decomposes the IncidentPresenter into structured messages."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Create+a+prompt+called+incident_analysis+with+auth+middleware,+severity+enum+input,+and+PromptMessage.fromView+that+decomposes+the+IncidentPresenter+into+structured+messages.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Create+a+prompt+called+incident_analysis+with+auth+middleware,+severity+enum+input,+and+PromptMessage.fromView+that+decomposes+the+IncidentPresenter+into+structured+messages.)
+
 ### Agent Skills — Progressive Instruction Distribution
 
 **No other MCP framework has this.** Distribute domain expertise to AI agents on demand via MCP. Three-layer progressive disclosure — the agent searches a lightweight index, loads only the relevant SKILL.md, and reads auxiliary files on demand. Zero context window waste.
@@ -486,6 +559,12 @@ skills/
 └── database-migration/
     └── SKILL.md
 ```
+
+> 💬 **Tell your AI agent:**
+>
+> *"Register all SKILL.md files from ./skills and expose them as MCP tools with progressive disclosure — search, load, and read_file."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Register+all+SKILL.md+files+from+./skills+and+expose+them+as+MCP+tools+with+progressive+disclosure+search,+load,+and+read_file.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Register+all+SKILL.md+files+from+./skills+and+expose+them+as+MCP+tools+with+progressive+disclosure+search,+load,+and+read_file.)
 
 ### Fluent API — Semantic Verbs & Chainable Builders
 
@@ -534,6 +613,12 @@ const requireAuth = f.middleware(async (ctx) => {
 ```
 
 Stack `.use()` calls for layered derivations: auth → permissions → tenant resolution → audit logging. Same `MiddlewareFn` signature works for both tools and prompts.
+
+> 💬 **Tell your AI agent:**
+>
+> *"Add auth middleware that validates JWT, injects tenant context, checks permissions, and passes everything as typed ctx downstream. Use f.middleware()."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+auth+middleware+that+validates+JWT,+injects+tenant+context,+checks+permissions,+and+passes+everything+as+typed+ctx+downstream.+Use+f.middleware.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+auth+middleware+that+validates+JWT,+injects+tenant+context,+checks+permissions,+and+passes+everything+as+typed+ctx+downstream.+Use+f.middleware.)
 
 ### Fluent Router — Grouped Tooling
 
@@ -611,6 +696,14 @@ PR diffs show exactly what changed in the AI-facing surface:
     }
   }
 ```
+
+> 💬 **Tell your AI agent:**
+>
+> *"Add governance to my MCP server: generate a vurb.lock, add lockfile check to CI, configure contract diffing, and enable zero-trust attestation with HMAC-SHA256."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+governance+to+my+MCP+server:+generate+a+vurb.lock,+add+lockfile+check+to+CI,+configure+contract+diffing,+and+enable+zero-trust+attestation+with+HMAC-SHA256.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Add+governance+to+my+MCP+server:+generate+a+vurb.lock,+add+lockfile+check+to+CI,+configure+contract+diffing,+and+enable+zero-trust+attestation+with+HMAC-SHA256.)
+
+> 💡 **Enterprise & Compliance** — Vurb blocks PII and locks capability surfaces locally. Need to prove it in a SOC2/GDPR/HIPAA audit? [Connect your Vurb server to Vinkius Cloud](https://vinkius.com) for immutable audit logs, visual compliance dashboards, and one-click deployment.
 
 ---
 
@@ -728,6 +821,12 @@ describe('SOC2 Data Governance', () => {
 
 Assert every MVA layer: `result.data` (egress firewall), `result.systemRules` (JIT rules), `result.uiBlocks` (server-rendered charts), `result.data.length` (cognitive guardrail), `rawResponse` (HATEOAS hints). Works with Vitest, Jest, Mocha, or `node:test`.
 
+> 💬 **Tell your AI agent:**
+>
+> *"Write Vitest tests that assert PII stripping, middleware access control, governance rules, and Presenter schema enforcement using createVurbTester."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Write+Vitest+tests+that+assert+PII+stripping,+middleware+access+control,+governance+rules,+and+Presenter+schema+enforcement+using+createVurbTester.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Write+Vitest+tests+that+assert+PII+stripping,+middleware+access+control,+governance+rules,+and+Presenter+schema+enforcement+using+createVurbTester.)
+
 ---
 
 ## Deploy Anywhere
@@ -746,6 +845,12 @@ cd my-server && wrangler deploy
 ```
 
 Write once, deploy to any edge. Your business logic, schemas, PII redaction, FSM gates, and HATEOAS suggestions are identical across all three targets — only the transport layer changes.
+
+> 💬 **Tell your AI agent:**
+>
+> *"Set up a production Vurb server with HTTP transport, Presenter-based tools, and deploy it to Vinkius Edge with vurb deploy."*
+>
+> [▶ Open in Claude](https://claude.ai/new?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Set+up+a+production+Vurb+server+with+HTTP+transport,+Presenter-based+tools,+and+deploy+it+to+Vinkius+Edge+with+vurb+deploy.) · [▶ Open in ChatGPT](https://chatgpt.com/?q=Read+the+framework+architecture+at+https://vurb.vinkius.com/llms.txt.+Based+strictly+on+those+patterns:+Set+up+a+production+Vurb+server+with+HTTP+transport,+Presenter-based+tools,+and+deploy+it+to+Vinkius+Edge+with+vurb+deploy.)
 
 ### Vinkius Edge
 
@@ -891,11 +996,46 @@ contextFactory: (req, env, ctx) => ({
 
 ---
 
+## How Prompt Deep Linking Works
+
+Every **"▶ Open in Claude / ChatGPT"** link in this README and [in our documentation](https://vurb.vinkius.com/) uses **Prompt Deep Linking** — a technique that injects an invisible "super prompt" before the visible instruction.
+
+**What you read on screen:**
+
+> *"Add PII redaction to the PatientPresenter — mask ssn and diagnosis."*
+
+**What the link actually sends to the AI:**
+
+```
+Read the framework architecture at https://vurb.vinkius.com/llms.txt.
+Based strictly on those patterns:
+Add PII redaction to the PatientPresenter — mask ssn and diagnosis.
+```
+
+The AI reads the Vurb.ts architectural spec **before writing a single line of code**. The result is always correct MVA patterns — not hallucinated syntax from other frameworks the LLM was trained on.
+
+**The mechanics:**
+
+```
+Claude:   https://claude.ai/new?q=[SUPER_PROMPT_URL_ENCODED]
+ChatGPT:  https://chatgpt.com/?q=[SUPER_PROMPT_URL_ENCODED]
+```
+
+**Why this matters for Vurb.ts:** LLMs were trained on MCP SDK code from 2024 — they don't know Vurb.ts exists. Without the `llms.txt` injection, the AI will hallucinate raw Anthropic SDK patterns. With it, every generated file uses the correct Fluent API, Presenter composition, and middleware chains.
+
+> 📄 **Machine-readable spec:** [vurb.vinkius.com/llms.txt](https://vurb.vinkius.com/llms.txt) — pure Markdown, zero HTML, optimized for LLM consumption.
+
+---
+
 ## Documentation
 
 Full guides, API reference, and cookbook recipes:
 
-**[Vurb.ts.vinkius.com](https://vurb.vinkius.com/)**
+**[vurb.vinkius.com](https://vurb.vinkius.com/)** · **[llms.txt](https://vurb.vinkius.com/llms.txt)** *(AI-optimized documentation)*
+
+Every documentation page includes interactive **Prompt Cards** with one-click **Copy for IDE**, **Open in Claude**, and **Open in ChatGPT** buttons — all powered by Prompt Deep Linking.
+
+> 💡 **Enterprise & Compliance** — Vurb blocks PII locally by default. Need to prove it in a SOC2/GDPR/HIPAA audit? [Connect your Vurb server to Vinkius Cloud](https://vinkius.com) for immutable audit logs, visual compliance dashboards, and one-click deployment.
 
 ## Contributing
 

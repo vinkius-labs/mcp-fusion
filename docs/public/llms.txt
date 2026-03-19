@@ -39,7 +39,7 @@ vurb deploy
 
 ## Links
 
-- Docs: https://vurb.dev
+- Docs: https://vurb.vinkius.com
 - GitHub: https://github.com/vinkius-labs/vurb.ts
 - npm: https://www.npmjs.com/package/@vurb/core
 
