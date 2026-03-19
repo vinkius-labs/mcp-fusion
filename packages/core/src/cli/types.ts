@@ -13,6 +13,9 @@ export type IngestionVector = 'vanilla' | 'prisma' | 'n8n' | 'openapi' | 'oauth'
 /** Transport layer for MCP communication */
 export type TransportLayer = 'stdio' | 'sse';
 
+/** Deploy target platform for scaffold generation */
+export type DeployTarget = 'node' | 'vercel' | 'cloudflare';
+
 /**
  * Project scaffold configuration.
  *
@@ -31,6 +34,9 @@ export interface ProjectConfig {
 
     /** Include @vurb/testing + Vitest */
     readonly testing: boolean;
+
+    /** Deploy target platform (default: 'node') */
+    readonly target?: DeployTarget;
 }
 
 /** Remote cloud configuration stored in .vurbrc (gitignored) */

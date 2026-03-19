@@ -37,3 +37,17 @@ export { cursorMcpJson } from './cursor.js';
 
 // Vector-specific
 export { prismaSchema, dbUsersToolTs, n8nConnectorTs, openapiYaml, openapiSetupMd, oauthSetupTs, oauthMiddlewareTs } from './vectors/index.js';
+
+// Target: Vercel
+export {
+    vercelPackageJson, vercelTsconfig, vercelNextConfig, vercelRouteTs,
+    vercelRegistryTs, vercelVurbTs, vercelContextTs, vercelEnvExample,
+    vercelGitignore, vercelReadme,
+} from './vercel.js';
+
+// Target: Cloudflare
+export {
+    cloudflarePackageJson, cloudflareTsconfig, cloudflareWranglerToml, cloudflareWorkerTs,
+    cloudflareRegistryTs, cloudflareVurbTs, cloudflareContextTs, cloudflareEnvExample,
+    cloudflareGitignore, cloudflareReadme,
+} from './cloudflare.js';

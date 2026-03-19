@@ -2,7 +2,7 @@
  * CLI argument parser.
  * @module
  */
-import type { IngestionVector, TransportLayer } from './types.js';
+import type { DeployTarget, IngestionVector, TransportLayer } from './types.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ export interface CliArgs {
     projectName: string | undefined;
     transport: TransportLayer | undefined;
     vector: IngestionVector | undefined;
+    target: DeployTarget | undefined;
     testing: boolean | undefined;
     yes: boolean;
     // ── Dev-specific ──
@@ -58,6 +59,7 @@ export function parseArgs(argv: string[]): CliArgs {
         projectName: undefined,
         transport: undefined,
         vector: undefined,
+        target: undefined,
         testing: undefined,
         yes: false,
         dir: undefined,
@@ -115,6 +117,10 @@ export function parseArgs(argv: string[]): CliArgs {
                 break;
             case '--vector':
                 result.vector = consumeValue(args, i, arg) as IngestionVector;
+                i++;
+                break;
+            case '--target':
+                result.target = consumeValue(args, i, arg) as DeployTarget;
                 i++;
                 break;
             case '--testing':

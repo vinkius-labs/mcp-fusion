@@ -29,7 +29,11 @@ interface ScaffoldFile {
  * @returns Array of relative file paths written
  */
 export function scaffold(targetDir: string, config: ProjectConfig): string[] {
-    const files = buildFileList(config);
+    const files = config.target === 'vercel'
+        ? buildVercelFileList(config)
+        : config.target === 'cloudflare'
+            ? buildCloudflareFileList(config)
+            : buildFileList(config);
 
     try {
         for (const file of files) {
@@ -131,4 +135,88 @@ function addVectorFiles(files: ScaffoldFile[], config: ProjectConfig): void {
             // No extra files for vanilla (autoDiscover handles everything)
             break;
     }
+}
+
+// ── Vercel File List Builder ────────────────────────────
+
+function buildVercelFileList(config: ProjectConfig): ScaffoldFile[] {
+    const files: ScaffoldFile[] = [];
+
+    // ── Root config ──
+    files.push({ path: 'package.json', content: tpl.vercelPackageJson(config) });
+    files.push({ path: 'tsconfig.json', content: tpl.vercelTsconfig() });
+    files.push({ path: 'next.config.ts', content: tpl.vercelNextConfig() });
+    files.push({ path: '.gitignore', content: tpl.vercelGitignore() });
+    files.push({ path: '.env.example', content: tpl.vercelEnvExample(config) });
+    files.push({ path: 'README.md', content: tpl.vercelReadme(config) });
+
+    // ── Next.js route handler ──
+    files.push({ path: 'app/api/mcp/route.ts', content: tpl.vercelRouteTs(config) });
+
+    // ── MCP source (under src/mcp/) ──
+    files.push({ path: 'src/mcp/vurb.ts', content: tpl.vercelVurbTs() });
+    files.push({ path: 'src/mcp/context.ts', content: tpl.vercelContextTs() });
+    files.push({ path: 'src/mcp/registry.ts', content: tpl.vercelRegistryTs() });
+
+    // ── Tools ──
+    files.push({ path: 'src/mcp/tools/system/health.ts', content: tpl.healthToolTs() });
+    files.push({ path: 'src/mcp/tools/system/echo.ts', content: tpl.echoToolTs() });
+
+    // ── Model + Presenter ──
+    files.push({ path: 'src/mcp/models/SystemModel.ts', content: tpl.systemModelTs() });
+    files.push({ path: 'src/mcp/presenters/SystemPresenter.ts', content: tpl.systemPresenterTs() });
+
+    // ── Testing ──
+    if (config.testing) {
+        files.push({ path: 'vitest.config.ts', content: tpl.vitestConfig() });
+        files.push({ path: 'tests/setup.ts', content: tpl.testSetupTs() });
+        files.push({ path: 'tests/system.test.ts', content: tpl.systemTestTs() });
+    }
+
+    // ── Vector-specific ──
+    addVectorFiles(files, config);
+
+    return files;
+}
+
+// ── Cloudflare File List Builder ─────────────────────────
+
+function buildCloudflareFileList(config: ProjectConfig): ScaffoldFile[] {
+    const files: ScaffoldFile[] = [];
+
+    // ── Root config ──
+    files.push({ path: 'package.json', content: tpl.cloudflarePackageJson(config) });
+    files.push({ path: 'tsconfig.json', content: tpl.cloudflareTsconfig() });
+    files.push({ path: 'wrangler.toml', content: tpl.cloudflareWranglerToml(config) });
+    files.push({ path: '.gitignore', content: tpl.cloudflareGitignore() });
+    files.push({ path: '.env.example', content: tpl.cloudflareEnvExample(config) });
+    files.push({ path: 'README.md', content: tpl.cloudflareReadme(config) });
+
+    // ── Worker entry point ──
+    files.push({ path: 'src/worker.ts', content: tpl.cloudflareWorkerTs(config) });
+
+    // ── MCP source ──
+    files.push({ path: 'src/vurb.ts', content: tpl.cloudflareVurbTs() });
+    files.push({ path: 'src/context.ts', content: tpl.cloudflareContextTs() });
+    files.push({ path: 'src/registry.ts', content: tpl.cloudflareRegistryTs() });
+
+    // ── Tools ──
+    files.push({ path: 'src/tools/system/health.ts', content: tpl.healthToolTs() });
+    files.push({ path: 'src/tools/system/echo.ts', content: tpl.echoToolTs() });
+
+    // ── Model + Presenter ──
+    files.push({ path: 'src/models/SystemModel.ts', content: tpl.systemModelTs() });
+    files.push({ path: 'src/presenters/SystemPresenter.ts', content: tpl.systemPresenterTs() });
+
+    // ── Testing ──
+    if (config.testing) {
+        files.push({ path: 'vitest.config.ts', content: tpl.vitestConfig() });
+        files.push({ path: 'tests/setup.ts', content: tpl.testSetupTs() });
+        files.push({ path: 'tests/system.test.ts', content: tpl.systemTestTs() });
+    }
+
+    // ── Vector-specific ──
+    addVectorFiles(files, config);
+
+    return files;
 }

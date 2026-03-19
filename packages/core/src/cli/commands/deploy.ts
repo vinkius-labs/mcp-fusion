@@ -299,6 +299,89 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         : 0;
     progress.done('compress', `Compressing (${rawKB}KB -> ${compressedKB}KB gzip, ${ratio}% smaller)`);
 
+    // ── Step 5b: introspect tools via real registry ──
+    // Import the entrypoint with VURB_INTROSPECT=1 so startServer() returns
+    // immediately without starting a transport. Then compile contracts and
+    // generate the lockfile manifest — the deploy's cryptographic signature.
+    progress.start('introspect', 'Introspecting tools');
+
+    interface IntrospectResult {
+        serverName: string;
+        version: string;
+        registry: { getBuilders(): Iterable<{ getName(): string; getActionNames(): string[]; buildToolDefinition(): unknown }> };
+    }
+
+    let manifest: Record<string, unknown> | null = null;
+    let toolNames: Array<{ name: string; description: string }> = [];
+
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = globalThis as any;
+
+        // Set up promise — startServer will resolve it in introspect mode
+        let resolveIntrospect!: (value: IntrospectResult) => void;
+        const introspectReady = new Promise<IntrospectResult>(resolve => {
+            resolveIntrospect = resolve;
+        });
+        g.__vurb_introspect_resolve = resolveIntrospect;
+        process.env['VURB_INTROSPECT'] = '1';
+
+        // Register tsx loader for .ts imports
+        if (absEntry.endsWith('.ts')) {
+            try {
+                const { createRequire } = await import('node:module');
+                const { pathToFileURL } = await import('node:url');
+                const userRequire = createRequire(absEntry);
+                const tsxApiPath = userRequire.resolve('tsx/esm/api');
+                const { register } = await import(pathToFileURL(tsxApiPath).href) as { register: () => void };
+                register();
+            } catch { /* tsx not available — fall through */ }
+        }
+
+        // Dynamic import triggers module evaluation → main() → startServer()
+        // startServer returns immediately in introspect mode
+        const { pathToFileURL } = await import('node:url');
+        await import(pathToFileURL(absEntry).href);
+
+        // Wait for startServer to fire (it resolves via globalThis)
+        const result = await Promise.race([
+            introspectReady,
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('startServer() was not called within 10s')), 10_000),
+            ),
+        ]);
+
+        // Clean up
+        delete process.env['VURB_INTROSPECT'];
+        delete g.__vurb_introspect_resolve;
+        delete g.__vurb_introspect_result;
+
+        // Compile contracts and generate lockfile using existing introspection
+        const { compileContracts } = await import('../../introspection/ToolContract.js');
+        const { generateLockfile } = await import('../../introspection/CapabilityLockfile.js');
+        const { VURB_VERSION } = await import('../constants.js');
+
+        const builders = [...result.registry.getBuilders()];
+        const contracts = await compileContracts(builders as Parameters<typeof compileContracts>[0]);
+        const lockfile = await generateLockfile(result.serverName, contracts, VURB_VERSION);
+
+        manifest = lockfile as unknown as Record<string, unknown>;
+
+        // Extract tool names + descriptions for CLI display
+        const lockTools = (lockfile.capabilities as { tools: Record<string, { surface: { description: string | null } }> }).tools;
+        toolNames = Object.entries(lockTools).map(([name, tool]) => ({
+            name,
+            description: tool.surface.description ?? '',
+        }));
+
+        progress.done('introspect', 'Introspecting tools', `${toolNames.length} tool${toolNames.length !== 1 ? 's' : ''}`);
+    } catch (err) {
+        // Introspection failure is non-fatal — deploy proceeds without manifest
+        delete process.env['VURB_INTROSPECT'];
+        progress.done('introspect', 'Introspecting tools', 'skipped');
+        process.stderr.write(`  ${ansi.dim(`⚠ Could not introspect: ${err instanceof Error ? err.message : String(err)}`)}\n`);
+    }
+
     // ── Step 6: upload ──
     progress.start('upload', 'Deploying to Edge');
 
@@ -324,6 +407,9 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
                 bundle: payload,
                 hash,
                 raw_size: rawSizeBytes,
+                ...(manifest ? { manifest } : {}),
+                // Also send simplified tool list for backward compat
+                tools: toolNames,
             }),
             signal: AbortSignal.timeout(60_000),
         });
@@ -370,6 +456,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         server_name: string;
         url: string;
         message: string;
+        tools_synced?: number;
     };
     try {
         data = await res.json() as typeof data;
@@ -380,19 +467,47 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
 
     progress.done('upload', 'Deploying to Edge');
 
-    // ── Step 7: done ──
+    // ── Step 7: Premium Output ──
     const elapsed = ((Date.now() - deployStart) / 1000).toFixed(1);
+    const w = process.stderr.write.bind(process.stderr);
+    const magenta = (s: string) => `\x1b[35m${s}\x1b[0m`;
+    const bgGreen = (s: string) => `\x1b[42m\x1b[30m${s}\x1b[0m`;
+    const bgCyan = (s: string) => `\x1b[46m\x1b[30m${s}\x1b[0m`;
+    const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
 
-    process.stderr.write('\n');
-    if (data.status === 'restored') {
-        process.stderr.write(`  ${ansi.bold(data.server_name)} — unchanged (rollback match)\n`);
-    } else {
-        process.stderr.write(`  ${ansi.bold(data.server_name)} — deployed to edge\n`);
+    w('\n');
+    w(`  ${magenta('Vinkius Edge')}  ${ansi.dim('·')}  ${ansi.bold(data.server_name)} ${ansi.dim('is ready in just')} ${ansi.green(elapsed + 's')}\n`);
+    w(`  ${ansi.dim('━'.repeat(56))}\n`);
+    w('\n');
+
+    // URL (the star of the show)
+    w(`  ${ansi.dim('MCP Server Stateful')}\n`);
+    w(`  ${ansi.cyan(data.url)}\n`);
+    w('\n');
+
+    // Tools discovered
+    if (toolNames.length > 0) {
+        w(`  ${bgCyan(' TOOLS ')} ${ansi.bold(String(toolNames.length))} ${ansi.dim(toolNames.length === 1 ? 'tool ready' : 'tools ready')}\n`);
+        w('\n');
+        for (const tool of toolNames) {
+            const desc = tool.description
+                ? `  ${ansi.dim(tool.description.length > 50 ? tool.description.slice(0, 50) + '…' : tool.description)}`
+                : '';
+            w(`    ${ansi.green('●')} ${white(tool.name)}${desc}\n`);
+        }
+        w('\n');
     }
-    process.stderr.write(`  ${ansi.dim('id:')}      ${data.deployment_id}\n`);
-    process.stderr.write(`  ${ansi.dim('entry:')}   ${entrypoint}\n`);
-    process.stderr.write(`  ${ansi.dim('size:')}    ${rawKB}KB -> ${compressedKB}KB gzip (${ratio}% smaller)\n`);
-    process.stderr.write(`  ${ansi.dim('url:')}     ${ansi.cyan(data.url)}\n`);
-    process.stderr.write(`  ${ansi.dim('time:')}    ${elapsed}s\n`);
-    process.stderr.write(`\n  ${ansi.dim('Vurb')} ${ansi.dim('->')} ${ansi.cyan('Vinkius Edge')}\n\n`);
+
+    // Bundle stats
+    w(`  ${ansi.dim(`${rawKB}KB → ${compressedKB}KB gzip (${ratio}% smaller)`)}\n`);
+
+    if (data.status === 'restored') {
+        w(`  ${ansi.dim('↻ instant deploy — bundle unchanged')}\n`);
+    }
+    if (manifest) {
+        w(`  ${ansi.dim('✓ manifest signed')}\n`);
+    }
+
+    w('\n');
 }
+

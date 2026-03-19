@@ -89,6 +89,39 @@ export interface StartServerOptions<TContext> {
 
     /** Extra attach options (debug, tracing, zeroTrust, etc.). */
     readonly attach?: Omit<AttachOptions<TContext>, 'contextFactory' | 'prompts' | 'telemetry'>;
+
+    /**
+     * Mutable state that survives V8 Isolate hibernation cycles.
+     *
+     * When running on Vinkius Cloud Edge, this object is serialized to disk
+     * before the isolate is disposed (hibernated) and restored transparently
+     * when the next tool call arrives. The developer never notices the cycle.
+     *
+     * **Requirements:**
+     * - Must be JSON-serializable (no functions, Map, Set, or circular refs)
+     * - Keep the state small (< 1MB) for sub-millisecond serialization
+     * - Use for counters, session data, caches — not for large datasets
+     *
+     * When running locally (stdio/http transport), this option is ignored —
+     * the server stays in memory and state is naturally preserved.
+     *
+     * @example
+     * ```typescript
+     * const myState = { requestCount: 0, sessions: {} };
+     *
+     * // Tools use the state via closure capture:
+     * const tool = defineTool({
+     *     name: 'greet',
+     *     handler: () => {
+     *         myState.requestCount++;
+     *         return { content: [{ type: 'text', text: `Request #${myState.requestCount}` }] };
+     *     },
+     * });
+     *
+     * await startServer({ name: 'my-server', registry, state: myState });
+     * ```
+     */
+    readonly state?: Record<string, unknown>;
 }
 
 /**
@@ -157,6 +190,7 @@ export async function startServer<TContext>(
         transport = 'stdio',
         port = 3001,
         attach = {},
+        state,
     } = options;
 
     // ── Vinkius Cloud Edge Detection ─────────────────────────────────────
@@ -263,7 +297,45 @@ export async function startServer<TContext>(
             };
         }
 
+        // ── Hibernation State Hooks ───────────────────────────
+        // When `state` is provided, expose serialization hooks so the
+        // runtime can extract/inject mutable state across freeze cycles.
+        // The state object is updated IN-PLACE to preserve closure references.
+        if (state) {
+            g.__vinkius_edge_getState = () => JSON.stringify(state);
+
+            g.__vinkius_edge_setState = (json: string) => {
+                const restored = JSON.parse(json);
+                // Clear existing keys (handles removed properties)
+                for (const key of Object.keys(state)) {
+                    delete (state as Record<string, unknown>)[key];
+                }
+                // Assign restored values (preserves object reference for closures)
+                Object.assign(state, restored);
+            };
+        }
+
         // Abort normal startup — no Server, no Transport (Bug #45 fix)
+        return { server: null, close: async () => {} };
+    }
+
+    // ── CLI Introspection Mode ───────────────────────────────────────────
+    // When `vurb deploy` sets VURB_INTROSPECT=1, we capture the registry
+    // and tool definitions without starting any transport. This allows the
+    // CLI to generate a fresh lockfile manifest as the deploy's signature.
+    if (process.env['VURB_INTROSPECT'] === '1') {
+        const introspectResult = {
+            serverName: name,
+            version,
+            registry,
+        };
+
+        // Store result and resolve the waiting promise from deploy.ts
+        g.__vurb_introspect_result = introspectResult;
+        if (typeof g.__vurb_introspect_resolve === 'function') {
+            g.__vurb_introspect_resolve(introspectResult);
+        }
+
         return { server: null, close: async () => {} };
     }
 

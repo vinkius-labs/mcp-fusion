@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-03-19
+
+### Added
+
+- **Deploy Manifest — Cryptographic Deploy Signature** — `vurb deploy` now generates a fresh **lockfile manifest** on every deploy using the real introspection system (`compileContracts` + `generateLockfile`). The manifest is the deploy's cryptographic signature — same SHA-256 behavioral digests as `vurb lock`. Sent with the deploy payload and stored per-deployment on the backend for audit trail.
+- **`VURB_INTROSPECT` mode in `startServer()`** — When the CLI sets `process.env.VURB_INTROSPECT=1`, `startServer()` captures the registry and tool definitions, resolves a `globalThis` promise, and returns immediately without starting any transport. Enables CLI introspection without side effects.
+- **Tool sync during deploy** — Tools are now synced to the dashboard immediately during deploy via `ToolSyncService`, eliminating the need to wait for runtime boot.
+- **Premium deploy output** — Redesigned CLI output with brand-forward "Vinkius Edge" header, MCP Server Stateful label, tool listing with descriptions, and manifest signature confirmation.
+
+### Removed
+
+- **Regex-based tool introspection** — The fragile `introspectToolsFromBundle()` regex scanner has been removed entirely. Tool discovery now uses the same real introspection pipeline as `vurb lock`.
+
 ## [3.6.10] - 2026-03-18
 
 ### Fixed

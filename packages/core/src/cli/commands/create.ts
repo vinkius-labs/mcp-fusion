@@ -9,10 +9,10 @@ import { createInterface } from 'node:readline';
 import type { CliArgs } from '../args.js';
 import type { ProgressReporter } from '../progress.js';
 import { ProgressTracker } from '../progress.js';
-import { ansi, VALID_TRANSPORTS, VALID_VECTORS } from '../constants.js';
+import { ansi, VALID_TRANSPORTS, VALID_VECTORS, VALID_TARGETS } from '../constants.js';
 import { ask } from '../utils.js';
 import { scaffold } from '../scaffold.js';
-import type { ProjectConfig, TransportLayer, IngestionVector } from '../types.js';
+import type { ProjectConfig, TransportLayer, IngestionVector, DeployTarget } from '../types.js';
 
 // ─── Validation ──────────────────────────────────────────────────
 
@@ -32,6 +32,14 @@ function validateVector(raw: string | undefined): IngestionVector {
     return 'vanilla';
 }
 
+/** @internal */
+function validateTarget(raw: string | undefined): DeployTarget {
+    if (!raw) return 'node';
+    if (VALID_TARGETS.includes(raw as DeployTarget)) return raw as DeployTarget;
+    process.stderr.write(`  ${ansi.red('⚠')} Unknown target "${raw}" — using ${ansi.bold('node')}. Valid: ${VALID_TARGETS.join(', ')}\n`);
+    return 'node';
+}
+
 // ─── Config Collection ───────────────────────────────────────────
 
 /**
@@ -49,12 +57,14 @@ export async function collectConfig(args: CliArgs): Promise<ProjectConfig | null
 
         const transport = validateTransport(args.transport);
         const vector = validateVector(args.vector);
+        const target = validateTarget(args.target);
 
         return {
             name,
             transport,
             vector,
             testing: args.testing ?? true,
+            target,
         };
     }
 
@@ -71,8 +81,17 @@ export async function collectConfig(args: CliArgs): Promise<ProjectConfig | null
             return null;
         }
 
-        const transportRaw = args.transport ?? await ask(rl, 'Transport? [stdio, sse]', 'stdio');
-        const transport = validateTransport(transportRaw);
+        const targetRaw = args.target ?? await ask(rl, 'Target? [node, vercel, cloudflare]', 'node');
+        const target = validateTarget(targetRaw);
+
+        // For vercel/cloudflare, transport is always HTTP (stateless JSON-RPC)
+        let transport: TransportLayer;
+        if (target === 'vercel' || target === 'cloudflare') {
+            transport = 'sse';
+        } else {
+            const transportRaw = args.transport ?? await ask(rl, 'Transport? [stdio, sse]', 'stdio');
+            transport = validateTransport(transportRaw);
+        }
 
         const vectorRaw = args.vector ?? await ask(rl, 'Vector? [vanilla, prisma, n8n, openapi, oauth]', 'vanilla');
         const vector = validateVector(vectorRaw);
@@ -81,7 +100,7 @@ export async function collectConfig(args: CliArgs): Promise<ProjectConfig | null
         const testing = typeof testingRaw === 'boolean' ? testingRaw : testingRaw !== 'no';
 
         process.stderr.write('\n');
-        return { name, transport, vector, testing };
+        return { name, transport, vector, testing, target };
     } finally {
         rl.close();
     }
@@ -122,18 +141,35 @@ export async function commandCreate(args: CliArgs, reporter?: ProgressReporter):
     }
 
     const steps = [`cd ${config.name}`];
-    if (config.transport === 'sse') {
+    if (config.target === 'vercel') {
+        steps.push('npm run dev', '# MCP endpoint: POST http://localhost:3000/api/mcp', 'npx vercel deploy');
+    } else if (config.target === 'cloudflare') {
+        steps.push('npm run dev', '# MCP endpoint: POST http://localhost:8787/', 'npm run deploy');
+    } else if (config.transport === 'sse') {
         steps.push('vurb dev', '# then connect Cursor or Claude to http://localhost:3001/mcp');
     } else {
         steps.push('vurb dev');
     }
     if (config.testing) steps.push('npm test');
 
-    process.stderr.write(`\n  ${ansi.green('✓')} ${ansi.bold(config.name)} is ready!\n\n`);
+    const targetLabel = config.target === 'vercel'
+        ? ' (Vercel)'
+        : config.target === 'cloudflare'
+            ? ' (Cloudflare)'
+            : '';
+
+    process.stderr.write(`\n  ${ansi.green('✓')} ${ansi.bold(config.name)}${targetLabel} is ready!\n\n`);
     process.stderr.write(`  ${ansi.dim('Next steps:')}\n`);
     for (const step of steps) {
         process.stderr.write(`    ${ansi.cyan('$')} ${step}\n`);
     }
-    process.stderr.write(`\n  ${ansi.dim('Cursor:')} .cursor/mcp.json is pre-configured — open in Cursor and go.\n`);
+
+    if (config.target === 'vercel') {
+        process.stderr.write(`\n  ${ansi.dim('Deploy:')} npx vercel deploy\n`);
+    } else if (config.target === 'cloudflare') {
+        process.stderr.write(`\n  ${ansi.dim('Deploy:')} npx wrangler deploy\n`);
+    } else {
+        process.stderr.write(`\n  ${ansi.dim('Cursor:')} .cursor/mcp.json is pre-configured — open in Cursor and go.\n`);
+    }
     process.stderr.write(`  ${ansi.dim('Docs:')}   ${ansi.cyan('https://vurb.vinkius.com/')}\n\n`);
 }
