@@ -26,13 +26,15 @@ Type-safe tools, structured AI perception, and built-in security. Deploy once �
 vurb create my-server
 ```
 
+Open it in Cursor, Claude Code, or GitHub Copilot and prompt:
+
 ```
 →  "Build an MCP server for patient records with Prisma.
     Redact SSN and diagnosis from LLM output. Add an FSM
     that gates discharge tools until attending physician signs off."
 ```
 
-Your AI agent reads the `SKILL.md` and writes the entire MCP server. First pass — no corrections.
+The agent reads the `SKILL.md` and writes the entire server. First pass — no corrections.
 
 ```bash
 vurb deploy
@@ -125,6 +127,12 @@ This works on Cursor, Claude Code, GitHub Copilot, Windsurf, Cline — any agent
 > **You don't learn Vurb.ts. You don't teach your agent Vurb.ts.** You hand it a 400-line contract. It writes the server. You review the PR.
 
 ---
+
+### Scaffold Options
+
+```bash
+vurb create my-server
+```
 
 ```
   Project name?  › my-server
