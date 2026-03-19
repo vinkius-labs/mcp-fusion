@@ -36,11 +36,13 @@ Open it in Cursor, Claude Code, or GitHub Copilot and prompt:
 
 The agent reads the `SKILL.md` and writes the entire server. First pass — no corrections.
 
+One command. Your MCP server is live on **Vinkius Edge**, **Vercel Functions**, or **Cloudflare Workers**. 
+
 ```bash
 vurb deploy
 ```
 
-MCP server live. A production-ready MCP server with file-based routing, Presenters, middleware, tests, and pre-configured connections for **Cursor**, **Claude Desktop**, **Claude Code**, **Windsurf**, **Cline**, and **VS Code + GitHub Copilot**.
+A production-ready MCP server with file-based routing, Presenters, middleware, tests, and pre-configured connections for **Cursor**, **Claude Desktop**, **Claude Code**, **Windsurf**, **Cline**, and **VS Code + GitHub Copilot**.
 
 ---
 
