@@ -1,0 +1,52 @@
+
+> @vurb/api-key@3.7.11 build
+> tsc
+
+
+> @vurb/aws@3.7.11 build
+> tsc
+
+
+> @vurb/cloudflare@3.7.11 build
+> tsc
+
+
+> @vurb/core@3.7.11 build
+> rimraf dist && tsc
+
+
+> @vurb/inspector@3.7.11 build
+> tsc
+
+
+> @vurb/jwt@3.7.11 build
+> tsc
+
+
+> @vurb/n8n@3.7.11 build
+> tsc
+
+
+> @vurb/oauth@3.7.11 build
+> tsc
+
+
+> @vurb/openapi-gen@3.7.11 build
+> tsc
+
+
+> @vurb/prisma-gen@3.7.11 build
+> tsc
+
+
+> @vurb/skills@3.7.11 build
+> tsc
+
+
+> @vurb/testing@3.7.11 build
+> tsc
+
+
+> @vurb/vercel@3.7.11 build
+> tsc
+

@@ -48,8 +48,9 @@ describe('Bug #129 — autoDiscover deduplicates by tool name', () => {
         try { await fs.rm(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
     });
 
-    it('registers only one builder when two files export the same tool name', async () => {
-        // Create two files that export a builder with the same getName()
+    it('registers both builders when two files export builders with the same getName()', async () => {
+        // Create two files that export different builder objects with the same getName()
+        // Both should be registered — ToolRegistry.register() handles merging
         await fs.writeFile(
             join(tempDir, 'billing.js'),
             `exports.tool = { getName() { return 'billing'; } };`,
@@ -64,7 +65,8 @@ describe('Bug #129 — autoDiscover deduplicates by tool name', () => {
 
         await autoDiscover(registry, tempDir, { loader: 'cjs' });
 
-        expect(registered).toHaveLength(1);
+        // Both different objects are registered — ToolRegistry handles merge
+        expect(registered).toHaveLength(2);
     });
 
     it('registers both builders when tool names are different', async () => {
@@ -85,7 +87,7 @@ describe('Bug #129 — autoDiscover deduplicates by tool name', () => {
         expect(registered).toHaveLength(2);
     });
 
-    it('deduplicates across subdirectories', async () => {
+    it('registers builders from subdirectories with the same getName()', async () => {
         const subDir = join(tempDir, 'sub');
         await fs.mkdir(subDir, { recursive: true });
 
@@ -103,11 +105,13 @@ describe('Bug #129 — autoDiscover deduplicates by tool name', () => {
 
         await autoDiscover(registry, tempDir, { loader: 'cjs' });
 
-        expect(registered).toHaveLength(1);
+        // Both are different objects — both registered, ToolRegistry handles merge
+        expect(registered).toHaveLength(2);
     });
 
-    it('deduplicates multiple exports from a single file', async () => {
-        // A file exporting two builders with the same name
+    it('registers all exports from a single file with the same getName()', async () => {
+        // A file exporting two different builder objects with the same name
+        // This is the router pattern: multiple actions share one router name
         await fs.writeFile(
             join(tempDir, 'dup.js'),
             `
@@ -123,8 +127,8 @@ describe('Bug #129 — autoDiscover deduplicates by tool name', () => {
 
         await autoDiscover(registry, tempDir, { loader: 'cjs' });
 
-        // Only the first one should be registered
-        expect(registered).toHaveLength(1);
+        // Both different objects are registered — ToolRegistry.mergeActions() handles merge
+        expect(registered).toHaveLength(2);
     });
 });
 

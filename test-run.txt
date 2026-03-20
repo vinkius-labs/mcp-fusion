@@ -1,0 +1,563 @@
+
+> @vurb/dev@3.7.8 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mC:/Users/renat/Projects/Vinkius/VinkiusLabs/vurb-ts[39m
+
+ [32mÔ£ô[39m packages/jwt/tests/JwtVerifier.edge.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 138[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/execution/DrainGeneratorZombie-bug4.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 258[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/deployEdgeStub-bug151.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 231[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/resource/ResourceSubscription.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 184[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/VurbClientEnhanced.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 160[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxEdgeCases.test.ts [2m([22m[2m53 tests[22m[2m)[22m[33m 304[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/PromptLockfile.test.ts [2m([22m[2m38 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxEngine.test.ts [2m([22m[2m17 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 457[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/ZodDescriptionExtractor.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/RedactEngineRace-bug5.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 139[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/autoDiscoverOrder-bug102.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+stderr | packages/core/tests/core/MediumBugs-12-13-14-15-16.test.ts > Bug #12 ÔÇö ToolRegistry propagates observability to late-registered builders > propagates all three at once to a late builder
+[vurb] Both tracing and debug are enabled. Tracing takes precedence; debug events will not be emitted.
+
+ [32mÔ£ô[39m packages/jwt/tests/JwtVerifier.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MediumBugs-12-13-14-15-16.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 828[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Bug #12 ÔÇö ToolRegistry propagates observability to late-registered builders[2m > [22mpropagates debug observer to builder registered AFTER enableDebug() [33m 775[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MediumBugs-8-9-10-11.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 843[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Bug #11 ÔÇö GroupedToolBuilder.tags() accumulates like FluentToolBuilder[2m > [22mcalling tags() multiple times accumulates (does not replace) [33m 515[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/AutoDiscover.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 118[2mms[22m[39m
+ [32mÔ£ô[39m packages/oauth/tests/TokenManagerPermissions.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 95[2mms[22m[39m
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Security: Attestation with adversarial inputs > rejects empty secret for HMAC signer
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 0). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Security: Attestation with adversarial inputs > rejects signature of different length
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 6). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/oauth/tests/TokenManager.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 924[2mms[22m[39m
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Security: Attestation with adversarial inputs > rejects truncated hex signature
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 9). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Security: Attestation with adversarial inputs > rejects corrupted signature (single char change)
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 9). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Security: Attestation with adversarial inputs > multiple sequential attestations are idempotent
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 13). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxPointers.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 896[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Pointer Lifecycle: ExternalCopy Release[2m > [22mshould NOT accumulate external memory after timeouts [33m 548[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MediumBugs-115-116-117.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 210[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/LargeScaleScenarios.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 229[2mms[22m[39m
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Corruption: Attestation with malformed inputs > attestServerDigest with empty digest in ServerDigest
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 6). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Corruption: Attestation with malformed inputs > verifyCapabilityPin throws AttestationError on mismatch
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 6). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > Corruption: Attestation with malformed inputs > verifyCapabilityPin returns result when failOnMismatch is false
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 6). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/integration/MutationSerializer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 260[2mms[22m[39m
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > CrossModule: Attestation Ôåö Lockfile integrity > lockfile integrityDigest matches attestation computedDigest
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 11). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > CrossModule: Attestation Ôåö Lockfile integrity > lockfile drift detected when attestation expected digest changes
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 6). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/GovernanceRobust.test.ts > CrossModule: Full governance pipeline with observability > end-to-end: build ÔåÆ compile ÔåÆ digest ÔåÆ lock ÔåÆ check ÔåÆ attest ÔåÆ verify
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 15). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/introspection/GovernanceRobust.test.ts [2m([22m[2m193 tests[22m[2m)[22m[32m 165[2mms[22m[39m
+stderr | packages/core/tests/integration/FullStack.test.ts > Integration Sad Path: Debug + Tracing Error Correlation > should emit debug error event AND trace span error for unknown tool via registry
+[vurb] Both tracing and debug are enabled. Tracing takes precedence; debug events will not be emitted.
+
+ [32mÔ£ô[39m packages/core/tests/core/JsonSerializer.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+ [32mÔ£ô[39m packages/aws/tests/awsPollReentrancy-bug90.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 1025[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m AWS Connector: polling re-entrancy guard[2m > [22mshould NOT start a second refresh while the first is still running [33m 506[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m AWS Connector: polling re-entrancy guard[2m > [22mshould stop polling when stop() is called [33m 307[2mms[22m[39m
+stderr | packages/core/tests/introspection/GovernanceE2E.test.ts > CryptoAttestation ÔÇö extended coverage (doc parity) > createHmacSigner: short secret still works
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 5). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/integration/FullStack.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 125[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/GovernanceE2E.test.ts [2m([22m[2m104 tests[22m[2m)[22m[32m 95[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxAbortBytes.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/devServerEsm-bug88.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1291[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m DevServer: ESM cache-bust (bug #88)[2m > [22mshould be exported from the server barrel [33m 787[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m DevServer: ESM cache-bust (bug #88)[2m > [22mshould be exported from the main index [33m 484[2mms[22m[39m
+  ÔÜá Unknown transport "websocket" ÔÇö using stdio. Valid: stdio, sse
+  ÔÜá Unknown vector "graphql" ÔÇö using vanilla. Valid: vanilla, prisma, n8n, openapi, oauth
+ [32mÔ£ô[39m packages/core/tests/observability/DebugObserver.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+ [32mÔ£ô[39m packages/jwt/tests/JwtAlgorithmConfig.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/integration/Pipeline.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 95[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/BarrelExport.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1504[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Barrel Export (src/index.ts)[2m > [22mshould export all domain model classes and factories [33m 1501[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGateReset-bug62.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1415[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m resetXStateCache (Bug #62)[2m > [22mshould be re-exported from the package index [33m 1384[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxAbortSignal.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 1387[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Connection Watchdog: Pointer Lifecycle[2m > [22mshould not leak memory across multiple abort cycles [33m 477[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/VurbClient.executeBatch-throwOnError-bug11.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/parser/OpenApiParser.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/CapabilityLockfile.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/RuntimeGuards.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 358[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/scaffoldCleanup-bug80.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/ApiKeyManager.edge.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ConcurrencyGuard.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/integration/PromptEngine.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/LowBugs-129-130-131.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/HttpBodyLimit-adversarial.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGateIsolation-bug77.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxBugs-132-133.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+stderr | packages/skills/tests/autoDiscoverSkills.test.ts > autoDiscoverSkills > skips invalid skills in non-strict mode
+[vurb/skills] Failed to parse invalid: Invalid SKILL.md: no YAML frontmatter found
+
+ [32mÔ£ô[39m packages/skills/tests/autoDiscoverSkills.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.concurrency-bug3.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+  Ô£ù Invalid name: must start with a letter/number, end with a letter/number, and contain only lowercase letters, numbers, and hyphens.
+  Ô£ù Invalid name: must start with a letter/number, end with a letter/number, and contain only lowercase letters, numbers, and hyphens.
+  Ô£ù Invalid name: must start with a letter/number, end with a letter/number, and contain only lowercase letters, numbers, and hyphens.
+  ÔÜá Unknown transport "http" ÔÇö using stdio. Valid: stdio, sse
+  ÔÜá Unknown vector "redis" ÔÇö using vanilla. Valid: vanilla, prisma, n8n, openapi, oauth
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.edge.test.ts [2m([22m[2m68 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/vurb.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > setup callback receives registry with working register() method
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > register() collects builders correctly during reload
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > each reload creates a fresh registry (no builder leaks between reloads)
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > register() does not throw for any builder type
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > async setup with register() works correctly
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.reload-regression.test.ts > Bug #2 Regression: DevServer reload must provide working registry > MCP notification is sent after successful setup with register()
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+ [32mÔ£ô[39m packages/core/tests/cli/scaffoldOauthAuth-bug95.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/DevServer.reload-regression.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32mÔ£ô[39m packages/n8n/tests/N8nConnector.test.ts [2m([22m[2m41 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/regression/LowBugs-31-32-33-34-35-36.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MutationSerializer.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 789[2mms[22m[39m
+  Ô£ù Directory "existing-proj" already exists.
+  Ô£ù Directory "already-here" already exists.
+
+[2K  Ôáï Scaffolding project...
+[2K  Ô£ô Scaffolding project
+
+ [32mÔ£ô[39m packages/core/tests/server/HttpBodyLimit-bug149.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/AdversarialQA.test.ts [2m([22m[2m87 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/observability/TelemetryBusChmod-bug7.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/observability/Tracing.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/VurbClient.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/GovernanceObserverAsync-bug50.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/ContractGovernance.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.test.ts [2m([22m[2m54 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ActionGroupBuilder.semantic-verbs.test.ts [2m([22m[2m47 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxBugs-139-142.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32mÔ£ô[39m packages/vercel/tests/VercelAdapter.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/SchemaCollision.test.ts [2m([22m[2m58 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/FsmSnapshotBounded-bug108.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptInterceptors.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/cors-hmac-hardening.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/InvariantContracts.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxBugs-134-138.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ContextDerivation.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.init-race-bug6.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/GroupedToolBuilder.test.ts [2m([22m[2m50 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/ResourceSubscriptionIntegration.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/RedactEngine.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/aws/tests/EdgeCasesE2E.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/RedactPiiLeak-bug9.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/TypeSafety.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/model/defineModel.test.ts [2m([22m[2m87 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/IntrospectionIntegration.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/FluentProxy.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+[2K  Ôáï Installing dependencies...stderr | packages/core/tests/introspection/CryptoCanonical.test.ts > createHmacSigner > rejects empty secret (Web Crypto API limitation)
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 0). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/introspection/MediumBugs-17-18-19-20-21-22.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/CryptoCanonical.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/OmitCommon.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/TypedRegistry.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterFluentAPI.test.ts [2m([22m[2m64 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m packages/oauth/tests/DeviceAuthenticator.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/McpServerAdapter.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/EndToEnd.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/LowBugs-118-119-120.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/exposition/ToolExpositionSadPath.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ResponseHelper.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/FsmGateEnforcement-bug107.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/Introspection.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/CursorCodec.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/DeepVerification.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/emitter/CodeEmitter.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentApiDeep.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/StateSyncEnhanced.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/LowBugs-125-126-127-128.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+stderr | packages/core/tests/introspection/ExpositionCrypto-bug54-55.test.ts > Bug #55: CryptoAttestation lazy SubtleCrypto (no top-level await) > HMAC signing still works with lazy resolution
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 11). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/ExpositionCrypto-bug54-55.test.ts > Bug #55: CryptoAttestation lazy SubtleCrypto (no top-level await) > HMAC signing produces deterministic output
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 9). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+stderr | packages/core/tests/introspection/ExpositionCrypto-bug54-55.test.ts > Bug #55: CryptoAttestation lazy SubtleCrypto (no top-level await) > different secrets produce different signatures
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 8). Use a cryptographically random value (e.g. openssl rand -hex 32).
+ÔÜá´©Å  [Vurb] HMAC secret must be at least 32 characters (got 8). Use a cryptographically random value (e.g. openssl rand -hex 32).
+
+ [32mÔ£ô[39m packages/core/tests/introspection/ExpositionCrypto-bug54-55.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/parser/Swagger2Converter.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/DefineTool.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ParamDescriptors.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+[90mstdout[2m | packages/core/tests/core/ToonDescription.test.ts[2m > [22m[2mToonDescriptionGenerator[2m > [22m[2mToken savings[2m > [22m[2mproduces a shorter description than the default markdown generator
+[22m[39m  Default description length: 438 chars
+  TOON description length: 420 chars
+  TOON contains more detail in comparable or less space
+
+ [32mÔ£ô[39m packages/core/tests/core/SecurityDeep.test.ts [2m([22m[2m40 tests[22m[2m)[22m[33m 2734[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Security: ReDoS via Zod Patterns[2m > [22mshould handle evil regex input without hanging (exponential backtracking) [33m 2654[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ToonDescription.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ProxyHandler.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ValidationErrorFormatter.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/envParser-bug98.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/InternalLoopback.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/LedgerAttestation.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/aws/tests/AwsConnector.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptRegistry.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+stderr | packages/core/tests/presenter/PresenterBatch2.test.ts > extendPresenter() (#6) > should merge static rules additively
+[vurb] Presenter "Invoice": PII redaction configured but fast-redact is not available. Data will pass through WITHOUT redaction. Ensure initVurb() completes before .make() is called, or install fast-redact as a dependency.
+
+stderr | packages/core/tests/presenter/PresenterBatch2.test.ts > extendPresenter() (#6) > should use only base rules when override has none
+[vurb] Presenter "Simple": PII redaction configured but fast-redact is not available. Data will pass through WITHOUT redaction. Ensure initVurb() completes before .make() is called, or install fast-redact as a dependency.
+
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterBatch2.test.ts [2m([22m[2m46 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/prisma-gen/tests/ToolEmitter.test.ts [2m([22m[2m48 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/RingBuffer.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterAdversarial.test.ts [2m([22m[2m50 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterRobustness.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterPipeline.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/HydrationSandbox.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/jwt/tests/middleware-telemetry.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 105[2mms[22m[39m
+ [32mÔ£ô[39m packages/jwt/tests/middleware.edge.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 139[2mms[22m[39m
+ [32mÔ£ô[39m packages/jwt/tests/middleware.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 148[2mms[22m[39m
+ [32mÔ£ô[39m packages/testing/tests/VurbTester.test.ts [2m([22m[2m50 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/EntitlementScanner.test.ts [2m([22m[2m42 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ToolRegistry.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptExecutionPipeline.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentStateSync.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/BuildPipeline.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/ApiKeyManager.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/SelectReflection.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.clone-regression.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentApi.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/simulatorDuplicateExec-bug101.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+stderr | packages/core/tests/server/DevServerCacheBust-bug13.test.ts > Bug #13 Regression: DevServer cache-bust in setup context > should pass DevServerSetupContext to setup callback on reload
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServerCacheBust-bug13.test.ts > Bug #13 Regression: DevServer cache-bust in setup context > should allow legacy setup(registry) pattern via duck typing
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServerCacheBust-bug13.test.ts > Bug #13 Regression: DevServer cache-bust in setup context > should support new context pattern for ESM imports
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServerCacheBust-bug13.test.ts > Bug #13 Regression: DevServer cache-bust in setup context > should expose register() at top level of context for backward compat
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServerCacheBust-bug13.test.ts > Bug #13 Regression: DevServer cache-bust in setup context > should collect builders via duck-typed register()
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+ [32mÔ£ô[39m packages/core/tests/server/DevServerCacheBust-bug13.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/StreamingProgress.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/EdgeCases.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m packages/skills/tests/createSkillTools.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+stderr | packages/core/tests/server/DevServer.test.ts > createDevServer > should call setup on reload
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.test.ts > createDevServer > should call onReload callback when specified
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+ [32mÔ£ô[39m packages/core/tests/state-sync/PolicyEngine.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+stderr | packages/core/tests/server/DevServer.test.ts > createDevServer > should send MCP notification when server is provided
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.test.ts > createDevServer > should handle server notification failure silently
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+ [32mÔ£ô[39m packages/core/tests/server/DevServer.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/prisma-gen/tests/PresenterEmitter.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/vercel/tests/contextFactoryGuard-bug89.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/extractLastJson-adversarial.test.ts [2m([22m[2m50 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/ToolContractFingerprint-bug47-48.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > collected builders are transferred to the real registry via register()
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > real registry is cleared before re-registration (if clear() exists)
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > works without clear() on the real registry (backward compatible)
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > no transfer when no builders are collected
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > no transfer when no real registry is provided (backward compatible)
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+stderr | packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts > Bug #42 Regression: DevServer transfers builders to real registry > MCP notification + real registry transfer work together
+[vurb dev] ESM hot-reload requires cache-busted imports. Use the `cacheBustUrl` from the setup context or `cacheBustUrl()` from '@vurb/core' when dynamically importing modules. Plain `import('./path')` will use stale cache.
+
+ [32mÔ£ô[39m packages/core/tests/server/DevServer.registry-transfer-bug42.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+stderr | packages/skills/tests/SkillRegistry.test.ts > SkillRegistry > validates skills on registration by default
+[vurb/skills] [Ô£ù] Bad-Name ÔåÆ name: Name must contain only lowercase alphanumeric characters and hyphens (a-z, 0-9, -)
+
+stderr | packages/skills/tests/SkillRegistry.test.ts > SkillRegistry > registerAll is atomic ÔÇö no partial registration on error
+[vurb/skills] [Ô£ù] Bad-Name ÔåÆ name: Name must contain only lowercase alphanumeric characters and hyphens (a-z, 0-9, -)
+
+ [32mÔ£ô[39m packages/skills/tests/SkillRegistry.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/ProgressWiring.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/oauth/tests/createAuthTool.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 804[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/exposition/ToolExposition.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Group.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/CreateTool.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterAdvanced.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptCursorMutation-bug57.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/middleware.edge.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/DxHelpers.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PresenterE2E.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/DefinePrompt.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/ServerDevFixes-bug59-61.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/DefinePresenter.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/skills/tests/SkillSearchEngine.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/GovernanceEvolutions.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PostProcessor.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/middleware/InputFirewall-adversarial.test.ts [2m([22m[2m50 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/Presenter.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/AnsiRenderer.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/entitlementIntegration-bug93.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/StandardSchema.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/TokenEconomicsUnit.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/XStateCachedFailure-bug10.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/middleware/AuditTrail.status-classification-bug10.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/startServer-http-hardening.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/InitVurb.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/FluentPromptBuilder.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/StartServerEdge-bug45.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/CancellationPropagation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/integration/EgressGuard.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/skills/tests/SkillParser.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/CreateGroup.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PromptFirewall-adversarial.test.ts [2m([22m[2m47 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptMessageFromView.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/regression/LowBugs-24-25-26-27-28-29-30.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentToolBuilderVoidHandler-bug41.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/schema/ZodCompiler.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/LowBugs-121-122-123-124.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxGuard.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/CreateGroup.errorHandling-regression.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/FluentSandbox.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/UnderscoreParsing.bug4-5.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/bug106-cursor-fallback.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/ResponseBuilder.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/fsm/StateMachineGate.restore-regression.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/FsmStateFallback-bug44.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/runtime/HttpHandlerFactory.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/converters/Converters.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/GroupCycleConsistency-bug52-53.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/ManifestCompiler.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MediumBugs-112-113-114.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/observability/TelemetryBusSignalCleanup-bug49.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/mapper/EndpointMapper.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/UnderscoreParsing.regression.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/ConsensusFailOpen-bug8.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/MediumBugs-109-110-111.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ResultMonad.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/prisma-gen/tests/AnnotationParser.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/CreateGroup.contractCompliance-bug6.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m packages/oauth/tests/middleware.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/PromptInjectionFence-bug150.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/config/GeneratorConfig.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/PolicyValidator.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/skills/tests/SkillValidator.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/CreateGroup.zodTransform-bug38.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/UiHelpers.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/ExtractLastJson-bug6.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/builder/ProxyHandler.delete-params-bug12.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/ExpositionCache-bug7.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Group.reparenting-bug7.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/FsmSessionLeak-bug3.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/argsFlagGuard-bug96.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/StateSyncLayer.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/GlobMatcher.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/VurbClientDiscriminator-bug85.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/RateLimiter.destroy-bug11.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/middleware.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/BaseModel.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/RateLimiter.resetMs-bug8.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/SelfHealing.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/model/ModelToApi.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/GroupItem.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/client/VurbClientRouting-bug51.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ToolFilterEngine.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/openapi/tests/parser/RefResolver.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/PipelineEgressFixes.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Prompt.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/TokenEconomicsOverhead-bug46.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Resource.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/testing/tests/testerSpreadOrder-bug100.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/SelfHealingIntegration-bug43.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Annotations.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/isCLI-bug74.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/validateArgs-bug86.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/bug104-timing-safe.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/devReloadOrder-bug75.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Tool.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptMessage.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/PromptCoerceEmpty-bug56.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentToolBuilderProtoPollution-bug78.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/ErrorBuilder.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/sandbox/SandboxGuard.async-property-bug10.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/ToolAnnotations.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentEnumDefault-bug39.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Icon.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/ServerAttachment.fsm-bind-bug9.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/sseTemplate-bug79.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/PromptArgument.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/prisma-gen/tests/findUniqueNotFound-bug91.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/versionDynamic-bug99.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/domain/Role.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/ResponseDecorator.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/DescriptionDecorator.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/deployServerId-bug84.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/state-sync/CausalEngine.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/SessionTtl-bug12.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/deployEsbuildAsk-bug83.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/presenter/IsToolResponseStrict-bug58.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/execution/bug105-async-gen-detection.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/prompt/interceptorRoles-bug92.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/introspection/overheadSlice-bug94.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/askClose-bug97.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/cloudflare/tests/waitUntilCleanup-bug103.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/cli/deployGuards-bug81-82.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/FluentRouterTags-bug40.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/api-key/tests/middleware-telemetry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/StateSyncBuilder.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/server/recompileCache-bug87.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/builder/FluentToolBuilder.addParam-prototype-bug9.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/core/RegistryNameLeak.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m packages/core/tests/builder/FluentToolBuilder.prototype-bug13.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2K  Ô£ô Installing dependencies
+
+  Ô£ô fresh-create is ready!
+
+  Next steps:
+    $ cd fresh-create
+    $ vurb dev
+
+  Cursor: .cursor/mcp.json is pre-configured ÔÇö open in Cursor and go.
+  Docs:   https://vurb.vinkius.com/
+
+ [32mÔ£ô[39m packages/core/tests/cli/create.test.ts [2m([22m[2m247 tests[22m[2m)[22m[33m 7655[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m commandCreate ÔÇö SSE transport path[2m > [22mSSE transport shows npm start instead of npm run dev [33m 6749[2mms[22m[39m
+
+[2K  Ôáï Scaffolding project...
+[2K  Ô£ô Scaffolding project
+
+ [32mÔ£ô[39m packages/inspector/tests/TelemetryBus.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 9577[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Client Connection[2m > [22mshould broadcast events as NDJSON [33m 1013[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Client Connection[2m > [22mshould send topology on connect when onConnect is configured [33m 511[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Heartbeat[2m > [22mshould emit heartbeat events to connected clients [33m 6515[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Adversarial[2m > [22mshould handle non-serializable events gracefully [33m 515[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Adversarial[2m > [22mshould handle rapid client connect/disconnect [33m 616[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m TelemetryBus ÔÇö Adversarial[2m > [22mshould handle emit before any client connects [33m 312[2mms[22m[39m
+[2K  Ôáï Installing dependencies...
+[2K  Ô£ù Installing dependencies ÔÇö run npm install manually
+
+  Ô£ô first-proj is ready!
+
+  Next steps:
+    $ cd first-proj
+    $ vurb dev
+    $ npm test
+
+  Cursor: .cursor/mcp.json is pre-configured ÔÇö open in Cursor and go.
+  Docs:   https://vurb.vinkius.com/
+
+
+[2K  Ôáï Scaffolding project...
+[2K  Ô£ô Scaffolding project
+
+[2K  Ôáï Installing dependencies...
+[2K  Ô£ù Installing dependencies ÔÇö run npm install manually
+
+  Ô£ô second-proj is ready!
+
+  Next steps:
+    $ cd second-proj
+    $ vurb dev
+    $ npm test
+
+  Cursor: .cursor/mcp.json is pre-configured ÔÇö open in Cursor and go.
+  Docs:   https://vurb.vinkius.com/
+
+ [32mÔ£ô[39m packages/core/tests/cli/create.e2e.test.ts [2m([22m[2m123 tests[22m[2m)[22m[33m 17526[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E: commandCreate ÔÇö full function integration[2m > [22mcommandCreate scaffolds files before npm install (fresh dir) [33m 6563[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E: commandCreate ÔÇö full function integration[2m > [22mcommandCreate scaffolds without cross-contamination between projects [33m 9393[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/StreamLogger.test.ts [2m([22m[2m61 tests[22m[2m)[22m[33m 19413[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö NDJSON Buffer Splitting Robustness[2m > [22mshould handle partial lines split across TCP chunks [33m 514[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö NDJSON Buffer Splitting Robustness[2m > [22mshould handle rapid burst of events without line merging [33m 1006[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö NDJSON Buffer Splitting Robustness[2m > [22mshould NOT corrupt JSON when events contain special chars [33m 310[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Stderr Integration (IPC ÔåÆ Format)[2m > [22mshould format every IPC event into a non-empty string line [33m 2017[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Stderr Integration (IPC ÔåÆ Format)[2m > [22mshould deliver enriched error events with recovery data through IPC [33m 4003[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Stderr Integration (IPC ÔåÆ Format)[2m > [22mshould deliver enriched execute events with select reflection through IPC [33m 4011[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Stderr Integration (IPC ÔåÆ Format)[2m > [22mshould deliver enriched execute events with guardrail data through IPC [33m 4011[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Trace ID Correlation[2m > [22mshould correlate same traceId across pipeline stages [33m 3013[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m StreamLogger ÔÇö Cross-Platform Connection Stability[2m > [22mshould handle concurrent connections from 5 clients [33m 504[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/e2e.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 55134[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Full Pipeline[2m > [22mshould deliver a complete event stream from Simulator through IPC [33m 3022[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Full Pipeline[2m > [22mshould produce valid JSON for every single event (no corruption) [33m 2010[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Full Pipeline[2m > [22mshould maintain event.type field on every event through the wire [33m 2505[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Topology Handshake[2m > [22mshould send topology as the FIRST event to a new client [33m 506[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Topology Handshake[2m > [22mshould include server metadata in topology [33m 513[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Topology Handshake[2m > [22mshould send topology to EACH new client independently [33m 1022[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Event Completeness[2m > [22mshould deliver route ÔåÆ validate ÔåÆ middleware ÔåÆ execute in sequence [33m 4014[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Multi-Client Broadcast[2m > [22mshould broadcast the SAME route events to two independent clients [33m 2007[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Multi-Client Broadcast[2m > [22mshould not cross-contaminate events between clients [33m 3014[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Graceful Shutdown[2m > [22mshould close all IPC connections when simulator stops [33m 416[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Graceful Shutdown[2m > [22mshould handle client disconnecting mid-stream without crashing simulator [33m 819[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö StreamLogger Format Verification[2m > [22mshould format topology events with server name and tool count [33m 513[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö StreamLogger Format Verification[2m > [22mshould deliver heartbeat with all required memory fields [33m 6516[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö StreamLogger Format Verification[2m > [22mshould deliver DLP events with paths array for StreamLogger [33m 4013[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö StreamLogger Format Verification[2m > [22mshould deliver governance events with operation and outcome [33m 10016[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Stress Pipeline[2m > [22mshould handle high RPS without data loss or corruption [33m 3021[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Stress Pipeline[2m > [22mshould maintain NDJSON framing under burst load [33m 2011[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Reconnection[2m > [22mshould serve new topology to reconnecting client [33m 1937[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Reconnection[2m > [22mshould continue emitting events after client disconnect [33m 2035[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Event Ordering[2m > [22mshould have monotonically non-decreasing timestamps within each tool pipeline [33m 3014[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m E2E ÔÇö Event Ordering[2m > [22mshould have recent timestamps (not stale or future) [33m 2002[2mms[22m[39m
+ [32mÔ£ô[39m packages/inspector/tests/Simulator.test.ts [2m([22m[2m36 tests[22m[2m)[22m[33m 55397[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit topology event immediately on start [33m 512[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit route events within 3 seconds [33m 3005[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit validate events [33m 2002[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit middleware events [33m 2007[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit execute events [33m 2514[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Emission[2m > [22mshould emit all 13 event types given enough time [33m 8006[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Topology Tools[2m > [22mshould include all 6 simulated tools [33m 514[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Topology Tools[2m > [22mshould mark billing as destructive [33m 508[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Topology Tools[2m > [22mshould mark analytics as sandboxed [33m 510[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Topology Tools[2m > [22mshould have auth tool with FSM states [33m 510[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mall events should have type and timestamp [33m 3020[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mroute events should have tool and action [33m 2017[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mheartbeat events should have memory metrics [33m 6504[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mDLP events should have fieldsRedacted and paths [33m 4008[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mpresenter.slice events should have byte metrics [33m 4005[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22msandbox.exec events should have executionMs [33m 5015[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Simulator ÔÇö Event Structure[2m > [22mfsm.transition events should have state fields [33m 10003[2mms[22m[39m
+   [33m[2mÔ£ô[22m[39m Adversarial ÔÇö Simulator[2m > [22mshould not leak events after close [33m 507[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m285 passed[39m[22m[90m (285)[39m
+[2m      Tests [22m [1m[32m5806 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (5807)[39m
+[2m   Start at [22m 13:33:56
+[2m   Duration [22m 60.30s[2m (transform 14.27s, setup 0ms, collect 106.56s, tests 188.03s, environment 53ms, prepare 30.77s)[22m
+

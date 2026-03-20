@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.12] - 2026-03-20
+
+### Fixed
+
+- **`autoDiscover` name-based dedup blocks router action merging (Bug #129)** — When a single file exports multiple action builders from the same router (e.g., `issues.query('list')`, `issues.mutation('ignore')`), all builders return the same `getName()` value (the router name). The dedup logic used `Set<string>` keyed by `getName()`, so only the first alphabetical builder was registered and the rest were silently skipped. For a router with 7 actions, only 1 was visible to the LLM. Fixed by changing dedup from name-based (`Set<string>`) to reference-based (`Set<ToolBuilderLike>`), which correctly prevents the same builder object from being registered twice while allowing different builders sharing the same router name to reach `ToolRegistry.register()` where `mergeActions()` handles the merge.
+
+### Test Suite
+
+- **3 new regression tests** in `autoDiscoverRouterDedup-bug129.test.ts` — Same-name different-object builders all registered, same-reference dedup still works, split-file routers merge correctly.
+
 ## [3.7.11] - 2026-03-20
 
 ### Tests
