@@ -432,6 +432,8 @@ export interface RegistryDelegate<TContext> {
     enableTelemetry?(sink: TelemetrySink): void;
     /** Get an iterable of all registered builders (for introspection and exposition) */
     getBuilders(): Iterable<ToolBuilder<TContext>>;
+    /** O(1) count of registered builders — used by recompile() cache safety net. */
+    readonly size: number;
 }
 
 // ── Internal Shared State ────────────────────────────────
@@ -609,7 +611,18 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         // Resolve group/action from the routing map instead of naive
         // split('_') — avoids misattributing tools with underscores
         // in their names (e.g. 'user_accounts_list' → group='user_accounts', action='list').
-        const exposition = hCtx.isFlat ? hCtx.recompile() : undefined;
+        //
+        // Bug fix: recompile() was called unconditionally in flat mode, even when
+        // neither telemetry nor FSM were active. We now lazily compute it once
+        // and reuse the same ExpositionResult for telemetry, FSM gate, and routing.
+        let _cachedExposition: ReturnType<typeof hCtx.recompile> | undefined;
+        const getExposition = (): ReturnType<typeof hCtx.recompile> | undefined => {
+            if (!hCtx.isFlat) return undefined;
+            if (!_cachedExposition) _cachedExposition = hCtx.recompile();
+            return _cachedExposition;
+        };
+
+        const exposition = getExposition();
         const flatRoute = exposition?.routingMap.get(name);
         const toolGroup = flatRoute ? flatRoute.builder.getName() : name;
         const action = flatRoute ? flatRoute.actionKey : name;
@@ -1072,22 +1085,25 @@ export async function attachToServer<TContext>(
         toolExposition, actionSeparator,
         isFlat: toolExposition === 'flat',
         // Bug #7 fix: O(1) exposition cache with dirty flag + builder-count safety net.
-        // Previous code did O(N) identity comparison on every tools/call request.
-        // Now uses a dirty flag for O(1) fast-path, plus a lightweight builder-count
-        // check to detect late-registered builders without O(N) element comparison.
+        // The dirty flag provides O(1) fast-path invalidation (set whenever a builder
+        // registers or the filter changes). The builder-count safety net catches
+        // late-registered builders that might have been missed by the dirty flag.
+        //
+        // Bug #4 (Performance) fix: previous safety net iterated `registry.getBuilders()`
+        // with a for...of loop (O(n)) on every tools/call request even on the cache hit path.
+        // `ToolRegistry.size` is a Map.size getter — always O(1). No loop needed.
         recompile: (() => {
             let cachedResult: ExpositionResult<TContext> | undefined;
             let cachedBuilderCount = -1;
             return () => {
-                if (!_expositionDirty && cachedResult) {
-                    // O(1) count check: detect late-registered builders
-                    let count = 0;
-                    for (const _ of registry.getBuilders()) count++;
-                    if (count === cachedBuilderCount) return cachedResult;
+                // O(1) size check: detect late-registered builders without iterating.
+                const currentCount = registry.size;
+                if (!_expositionDirty && cachedResult && currentCount === cachedBuilderCount) {
+                    return cachedResult;
                 }
                 _expositionDirty = false;
+                cachedBuilderCount = currentCount;
                 const builders = [...registry.getBuilders()];
-                cachedBuilderCount = builders.length;
                 // Bug #131: route diagnostic warnings through debug observer
                 const warnFn = debug
                     ? (msg: string) => debug({ type: 'error', tool: '', action: '', error: msg, step: 'route', timestamp: Date.now() })

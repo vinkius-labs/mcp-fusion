@@ -392,8 +392,13 @@ export class StateMachineGate {
         }
 
         if (this._actor) {
-            // XState actor handles the transition
+            // XState actor handles the transition.
+            // Bug fix: await a microtask after send() so the subscribe() callback
+            // that updates _currentState is guaranteed to have run before we read it.
+            // XState v5 dispatches subscribe() synchronously in most cases, but
+            // this is not contractual — a microtask yield makes it safe for all versions.
             this._actor.send({ type: eventType });
+            await Promise.resolve();
         } else {
             // Fallback: manual transition without XState
             this._transitionManual(eventType);

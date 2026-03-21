@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.13] - 2026-03-21
+
+### Fixed
+
+- **`StateMachineGate.transition()` race with XState subscriber (Bug #1)** — `transition()` read `_currentState` immediately after `actor.send()`, before the XState `subscribe()` callback had a chance to update it. The result was `transition.changed === false` even when the FSM state had genuinely changed, causing FSM snapshots to not be persisted to `fsmStore`/`fsmMemorySnapshots` and `notifications/tools/list_changed` to not be emitted. Fixed by adding `await Promise.resolve()` after `actor.send()` to flush pending microtasks (including the subscribe callback) before reading `_currentState`.
+
+- **`SandboxEngine.execute()` — context undefined in abort handler (Bug #2)** — The `onAbort` closure captured the `context` variable before it was assigned via `await isolate.createContext()`. When `activeExecutions > 1` and the abort signal fired during context creation, `context` was still `undefined`, so `context?.release()` was a no-op — the script continued running until its timeout (up to 5s) instead of being interrupted immediately. Fixed by introducing a mutable `ctxRef` wrapper object created before `onAbort`, populated immediately after `createContext()`. The handler now calls `ctxRef.current?.release()`, always seeing the latest context reference.
+
+- **`BuildPipeline` — ToolResponse shape heuristic false-positive (Bug #3)** — The fallback shape-based detection for `ToolResponse` in `wrappedHandler` could incorrectly identify domain objects matching `{ content: [{ type: 'text', text: '...' }], isError?: boolean }` as framework responses, causing them to bypass `success()` wrapping and the Presenter pipeline (silent data loss). Fixed by removing the shape heuristic entirely. Only the `TOOL_RESPONSE_BRAND` symbol (stamped by all framework helpers — `success()`, `error()`, `toolError()`, `required()`, `toonSuccess()`) is now trusted for identification.
+
+- **`recompile()` cache fast-path — O(n) loop per request (Bug #4)** — The exposition cache in `ServerAttachment` (introduced in Bug #7 fix) used a dirty flag for O(1) invalidation but still executed a `for...of` loop over `registry.getBuilders()` on every cache hit to count builders as a safety net for late-registered tools. `ToolRegistry` already exposes `get size(): number` backed by `Map.size` — always O(1). Fixed by reading `registry.size` directly and removing the loop. Added `readonly size: number` to the `RegistryDelegate` interface to formalize the contract without a type cast.
+
+### Test Suite
+
+- **7 new regression tests** in `StateMachineGate.transition-race.test.ts` — Verifies `changed` flag correctness after `actor.send()`, sequential transition chain, `onTransition` callback ordering, and restore-then-transition path.
+- **5 new regression tests** in `SandboxAbortContextRef.test.ts` — Covers pre-aborted signal, abort during heavy computation (verifies elapsed < 3s), engine reusability after partial abort (concurrent executions), and `activeExecutions` counter cleanup.
+- **13 new regression tests** in `BuildPipeline.toolresponse-brand.test.ts` — Covers domain objects with exact ToolResponse shape, `isError` variant, all branded helpers (`success`, `error`, `toolError`, `required`, `toonSuccess`), raw string/object/null/undefined wrapping, and `TOOL_RESPONSE_BRAND` non-enumerability in JSON.
+
 ## [3.7.12] - 2026-03-20
 
 ### Fixed

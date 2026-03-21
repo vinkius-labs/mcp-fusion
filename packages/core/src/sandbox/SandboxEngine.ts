@@ -315,6 +315,11 @@ export class SandboxEngine {
         // When the signal fires and this is the ONLY execution in
         // progress, we call isolate.dispose() to kill V8 instantly.
         //
+        // Bug fix: `context` is assigned later via `await isolate.createContext()`,
+        // so a plain closure over `let context` would capture `undefined` if the abort
+        // fires before that line. We use a mutable reference object (`ctxRef`) so the
+        // closure always sees the latest assigned value.
+        //
         // Bug #142: When other executions share the same isolate
         // (activeExecutions > 1), we cannot dispose the isolate
         // without killing all concurrent work (Bug #63 fix). Instead
@@ -323,6 +328,8 @@ export class SandboxEngine {
         // script without collateral damage. If context is not yet
         // created, the script will terminate at its timeout boundary.
         let aborted = false;
+        // Mutable wrapper so the abort closure always reads the latest context ref.
+        const ctxRef: { current: typeof context } = { current: undefined };
         const onAbort = signal ? () => {
             aborted = true;
             if (this._activeExecutions <= 1) {
@@ -330,7 +337,7 @@ export class SandboxEngine {
             } else {
                 // Release this request's context to interrupt execution
                 // without killing the shared isolate (Bug #142).
-                try { context?.release(); } catch { /* may already be released */ }
+                try { ctxRef.current?.release(); } catch { /* may already be released */ }
             }
         } : undefined;
 
@@ -351,6 +358,8 @@ export class SandboxEngine {
         try {
             // Create pristine context (NO globals injected — this IS the security)
             context = await isolate.createContext();
+            // Keep ctxRef in sync so the abort handler can release it if needed.
+            ctxRef.current = context;
 
             // Deep-copy data into isolated heap (no references!)
             // Bug #135: catch serialization errors from ExternalCopy separately

@@ -111,24 +111,18 @@ export function buildToolFromFluent<TContext, TCtx>(
             return success('OK');
         }
 
-        // Auto-wrap non-ToolResponse results (implicit success)
-        // Primary: check brand symbol stamped by success()/error()/toolError() helpers.
-        // Fallback: shape-based heuristic for manually constructed ToolResponse objects.
+        // Auto-wrap non-ToolResponse results (implicit success).
+        // Detection is based solely on the brand symbol stamped by the response helpers
+        // (success(), error(), toolError(), required(), toonSuccess()).
+        //
+        // The previous shape-based heuristic (checking 'content', 'isError', etc.) was
+        // removed because domain objects that coincidentally match the ToolResponse shape
+        // would be returned as-is instead of being serialized — a silent data loss bug.
+        // Always use the framework helpers; never construct ToolResponse manually.
         if (typeof result === 'object' && result !== null) {
             // Brand check — reliable, no false positives (Bug #127)
             if (TOOL_RESPONSE_BRAND in result) {
                 return result as unknown as ToolResponse;
-            }
-            // Shape heuristic — backward compat for manually constructed ToolResponse
-            if (
-                'content' in result &&
-                Array.isArray((result as { content: unknown }).content) &&
-                (result as { content: Array<{ type?: unknown }> }).content.length > 0 &&
-                (result as { content: Array<{ type?: unknown }> }).content[0]?.type === 'text' &&
-                typeof (result as { content: Array<{ text?: unknown }> }).content[0]?.text === 'string' &&
-                Object.keys(result).every(k => k === 'content' || k === 'isError')
-            ) {
-                return result as ToolResponse;
             }
         }
 
