@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.2] - 2026-03-26
+
+### Fixed
+
+- **Introspection action expansion** (`@vurb/core`) — `vurb deploy` now correctly expands grouped tools into individual action entries for both the CLI output and the dashboard sync payload. A namespace like `compliance` with actions `obligations`, `timeline`, and `generate_report` now reports three separate entries (`compliance.obligations`, `compliance.timeline`, `compliance.generate_report`). Flat tools with a single action remain unchanged. The previous implementation incorrectly cast `LockfileToolSurface.actions` (`readonly string[]`) to a `Record` type, causing a TS2352 build error; now uses the pre-lockfile `contracts` (`ToolContract.surface.actions`) which carries per-action `ActionContract` with description fields.
+- **Deploy success banner styling** (`@vurb/core`) — The success line is now plain white text with only the elapsed time highlighted in green, replacing the previous magenta/dim/bold mix.
+
 ## [3.8.1] - 2026-03-25
 
 ### Fixed

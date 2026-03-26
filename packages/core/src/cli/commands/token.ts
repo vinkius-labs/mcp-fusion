@@ -39,7 +39,7 @@ export async function commandToken(args: CliArgs): Promise<void> {
         const rc = readVurbRc(cwd);
         const remote = rc.remote ?? VINKIUS_CLOUD_URL;
         try {
-            const res = await fetch(`${remote.replace(/\/+$/, '')}/api/token/info`, {
+            const res = await fetch(`${remote.replace(/\/+$/, '')}/token/info`, {
                 headers: { 'Authorization': `Bearer ${args.tokenValue}`, 'Accept': 'application/json' },
                 signal: AbortSignal.timeout(5_000),
             });

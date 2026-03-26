@@ -28,7 +28,7 @@ export const VURB_VERSION: string = (() => {
 })();
 
 /** Default API endpoint — Vinkius Cloud production */
-export const VINKIUS_CLOUD_URL = 'https://cloud.vinkius.com';
+export const VINKIUS_CLOUD_URL = 'https://deploy.vinkius.com';
 
 // ─── Validation Constants ────────────────────────────────────────
 
