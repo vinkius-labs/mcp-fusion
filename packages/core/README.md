@@ -5,8 +5,8 @@
   <img src="https://github.com/user-attachments/assets/86ae1b28-a938-4e12-af29-bfc60a55dbe8" style="border-radius:8px;background:#000000;padding:10px;border:1px solid #414141;"  alt="Vurb.ts">
 </picture>
 
-**The Express.js for MCP Servers.**<br>
-Type-safe tools · Presenters that control what the LLM sees · Built-in PII redaction · Deploy once — every AI assistant connects.
+**MCP Server Framework for TypeScript — The Express.js of MCP Servers.**<br>
+Type-safe tools · Egress Firewall (Presenters) · Built-in PII redaction · Deploy once — every AI assistant connects via Model Context Protocol.
 
 [![npm version](https://img.shields.io/npm/v/@vurb/core.svg?color=0ea5e9)](https://www.npmjs.com/package/@vurb/core)
 [![Downloads](https://img.shields.io/npm/dw/@vurb/core)](https://www.npmjs.com/package/@vurb/core)

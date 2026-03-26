@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/openapi-gen</h1>
   <p align="center">
-    <strong>OpenAPI 3.x / Swagger 2.0 → Vurb.ts Server Generator</strong> — Parse any spec, generate a complete MCP server
+    <strong>MCP Server Generator from OpenAPI — Vurb.ts</strong> — A framework for creating MCP servers from any REST API<br/>
+    OpenAPI 3.x / Swagger 2.0 → complete MCP server in one command · Presenters · PII redaction · Zod schemas
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/openapi-gen"><img src="https://img.shields.io/npm/v/@vurb/openapi-gen?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> Parse any **OpenAPI 3.x** or **Swagger 2.0** spec and generate a **complete, ready-to-run MCP Server** powered by Vurb.ts — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
+> **MCP Server Generator from OpenAPI — Vurb.ts**, the Model Context Protocol framework for building production MCP servers. Parse any **OpenAPI 3.x** or **Swagger 2.0** spec and generate a **complete, ready-to-run MCP Server** — with Presenters, Tools, ToolRegistry, and server bootstrap. All features configurable via YAML.
 
 ## What It Generates
 

@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/api-key</h1>
   <p align="center">
-    <strong>API Key Validation Middleware</strong> — Timing-safe key authentication for Vurb.ts servers
+    <strong>MCP API Key Authentication for Vurb.ts</strong> — A framework for creating secure MCP servers<br/>
+    Timing-safe API key validation · SHA-256 hashing · Async validators · Self-healing error responses
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/api-key"><img src="https://img.shields.io/npm/v/@vurb/api-key?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> API key validation middleware for MCP servers built with Vurb.ts. Timing-safe comparison, SHA-256 hashing, async validators, and self-healing error responses.
+> **MCP API Key Authentication for Vurb.ts** — the Model Context Protocol framework for building production MCP servers. Timing-safe key comparison, SHA-256 hashing, async validators, and self-healing error responses.
 
 ## Quick Start
 

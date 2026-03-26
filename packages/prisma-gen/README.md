@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/prisma-gen</h1>
   <p align="center">
-    <strong>Prisma Schema → MCP Tools Generator</strong> — Compile-time CRUD generation with field-level security
+    <strong>MCP Tools from Prisma Schema — Vurb.ts</strong> — A framework for creating MCP servers from Prisma databases<br/>
+    Prisma Generator → MCP tools with field-level security · Tenant isolation · PII redaction · OOM protection
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/prisma-gen"><img src="https://img.shields.io/npm/v/@vurb/prisma-gen?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> A compile-time Prisma Generator that reads `schema.prisma` annotations and emits hardened Vurb.ts Presenters and ToolBuilders — with field-level security, tenant isolation, and OOM protection baked into the generated code.
+> **MCP Tools from Prisma Schema — Vurb.ts**, the Model Context Protocol framework for building production MCP servers. A compile-time Prisma Generator that reads `schema.prisma` annotations and emits hardened MCP Presenters and ToolBuilders — with field-level security, tenant isolation, and OOM protection baked into the generated code.
 
 ## Quick Start
 

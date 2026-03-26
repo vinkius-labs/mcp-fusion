@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/jwt</h1>
   <p align="center">
-    <strong>JWT Verification Middleware</strong> — Standards-compliant token validation for Vurb.ts servers
+    <strong>MCP JWT Authentication for Vurb.ts</strong> — A framework for creating secure MCP servers<br/>
+    Standards-compliant JWT verification · JWKS auto-discovery · Auth0 · Clerk · Supabase · Firebase
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/jwt"><img src="https://img.shields.io/npm/v/@vurb/jwt?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> JWT verification middleware for MCP servers built with Vurb.ts. Timing-safe validation with `jose`, JWKS auto-discovery, and self-healing error responses.
+> **MCP JWT Authentication for Vurb.ts** — the Model Context Protocol framework for building production MCP servers. Timing-safe JWT validation with `jose`, JWKS auto-discovery, and self-healing error responses. Works with any OIDC provider: Auth0, Clerk, Supabase, Firebase.
 
 ## Quick Start
 

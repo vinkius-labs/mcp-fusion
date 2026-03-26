@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/inspector</h1>
   <p align="center">
-    <strong>Vurb.ts Inspector</strong> — Real-time interactive terminal dashboard for Vurb.ts servers
+    <strong>MCP Inspector for Vurb.ts</strong> — A framework for creating MCP servers<br/>
+    Real-time interactive terminal dashboard for MCP servers · Zero stdio interference · Shadow Socket IPC
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/inspector"><img src="https://img.shields.io/npm/v/@vurb/inspector?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> Zero-overhead observability for Vurb.ts servers. Connects via **Shadow Socket** (IPC) — no stdio interference, no port conflicts, no agent disruption.
+> **MCP Inspector for Vurb.ts** — the Model Context Protocol framework for building production MCP servers. Zero-overhead observability: connects via **Shadow Socket** (IPC) — no stdio interference, no port conflicts, no agent disruption.
 
 ## Why Inspector?
 

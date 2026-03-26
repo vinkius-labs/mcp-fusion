@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/cloudflare</h1>
   <p align="center">
-    <strong>Cloudflare Workers Adapter</strong> — Deploy Vurb.ts servers to the edge with zero config
+    <strong>MCP Server on Cloudflare Workers — Vurb.ts</strong> — A framework for creating MCP servers at the edge<br/>
+    Deploy MCP servers to Cloudflare Workers · Zero polyfills · Native KV, D1, R2 bindings · Wrangler ready
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/cloudflare"><img src="https://img.shields.io/npm/v/@vurb/cloudflare?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> Cloudflare Workers adapter for Vurb.ts. Deploys your MCP server to the edge — stateless JSON-RPC, cold-start caching, native env injection, zero polyfills.
+> **MCP Server on Cloudflare Workers — Vurb.ts**, the Model Context Protocol framework for building production MCP servers. Deploy your MCP server to the global edge: stateless JSON-RPC, cold-start caching, native KV/D1/R2 bindings, zero polyfills, `wrangler deploy` ready.
 
 ## Quick Start
 

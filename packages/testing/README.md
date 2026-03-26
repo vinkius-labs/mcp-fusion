@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/testing</h1>
   <p align="center">
-    <strong>In-Memory MVA Pipeline Tester</strong> — Run the full execution pipeline without MCP transport
+    <strong>MCP Server Testing Framework — Vurb.ts</strong> — A framework for testing MCP servers in-memory<br/>
+    Full MVA pipeline · Egress Firewall audit · PII redaction checks · Middleware guards · Vitest · Jest · Mocha
   </p>
 </p>
 
@@ -10,11 +11,13 @@
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero Dependencies" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> The official test runner for Vurb.ts applications. In-memory MVA lifecycle emulator — runs the full execution pipeline without network transport. Zero runtime dependencies. Runner agnostic (Vitest, Jest, Mocha, `node:test`).
+> **MCP Server Testing Framework — Vurb.ts**, the Model Context Protocol framework for building production MCP servers. In-memory MVA lifecycle emulator — runs the full execution pipeline without network transport. Zero runtime dependencies. Runner agnostic (Vitest, Jest, Mocha, `node:test`).
 
 ## Why
 

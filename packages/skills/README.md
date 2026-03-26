@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/skills</h1>
   <p align="center">
-    <strong>Agent Skills</strong> — Teach AI agents domain-specific procedures through progressive disclosure
+    <strong>MCP Agent Skills for Vurb.ts</strong> — A framework for teaching AI agents via MCP servers<br/>
+    Progressive SKILL.md disclosure · Domain expertise over MCP · Context-efficient · agentskills.io standard
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/skills"><img src="https://img.shields.io/npm/v/@vurb/skills?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> Parse, validate, search, and serve **SKILL.md** files via MCP. Context-efficient three-layer progressive disclosure keeps agent context windows lean.
+> **MCP Agent Skills for Vurb.ts**, the Model Context Protocol framework for building production MCP servers. Parse, validate, search, and serve **SKILL.md** files via MCP — context-efficient three-layer progressive disclosure keeps agent context windows lean.
 
 ## What Are Agent Skills?
 

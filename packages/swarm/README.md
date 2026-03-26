@@ -1,12 +1,22 @@
-# `@vurb/swarm`
+<p align="center">
+  <h1 align="center">@vurb/swarm</h1>
+  <p align="center">
+    <strong>MCP Multi-Agent Orchestration for Vurb.ts</strong> — A framework for creating multi-agent MCP server networks<br/>
+    Federated Handoff Protocol · Zero-trust HMAC delegation · Namespace isolation · B2BUA gateway · Claude · Cursor · Copilot
+  </p>
+</p>
 
-**Federated Handoff Protocol for Vurb** — multi-agent orchestration with zero-trust delegation, namespace isolation, and a bidirectional MCP tunnel (B2BUA).
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vurb/swarm"><img src="https://img.shields.io/npm/v/@vurb/swarm?color=blue" alt="npm" /></a>
+  <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
+</p>
 
 ---
 
-## What is it?
-
-`@vurb/swarm` lets a single gateway MCP server dynamically hand off an LLM session to a **specialist upstream MCP micro-server** — and bring it back — without the LLM ever losing context or the conversation thread.
+> **MCP Multi-Agent Orchestration for Vurb.ts** — the Model Context Protocol framework for building production MCP server networks. `@vurb/swarm` lets a single gateway MCP server dynamically hand off an LLM session to a specialist upstream MCP micro-server — and bring it back — without the LLM ever losing context or the conversation thread.
 
 The gateway acts as a **Back-to-Back User Agent (B2BUA)**:
 

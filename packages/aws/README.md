@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/aws</h1>
   <p align="center">
-    <strong>AWS Lambda & Step Functions Connector</strong> — Auto-discover cloud functions as MCP tools
+    <strong>MCP AWS Lambda Connector for Vurb.ts</strong> — A framework for creating MCP servers on AWS<br/>
+    Auto-discover Lambda & Step Functions as MCP tools · IAM integration · Multi-region
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/aws"><img src="https://img.shields.io/npm/v/@vurb/aws?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> AWS Lambda & Step Functions connector for Vurb.ts. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.
+> **MCP AWS Connector for Vurb.ts** — the Model Context Protocol framework for building production MCP servers. Auto-discovers tagged AWS Lambda & Step Functions and produces typed MCP tools — so AI agents can invoke your cloud functions natively via IAM.
 
 ## Quick Start
 

@@ -1,6 +1,6 @@
 {
   "name": "@vurb/jwt",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "description": "JWT verification middleware for MCP servers built with vurb. Standards-compliant token validation with jose, JWKS support, and self-healing error responses.",
   "type": "module",
   "main": "dist/index.js",

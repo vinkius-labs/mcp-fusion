@@ -1,7 +1,8 @@
 <p align="center">
   <h1 align="center">@vurb/n8n</h1>
   <p align="center">
-    <strong>n8n Workflow Connector</strong> — Auto-discover n8n workflows as native MCP tools
+    <strong>MCP Tools from n8n Workflows — Vurb.ts</strong> — A framework for creating MCP servers from n8n automations<br/>
+    Auto-discover n8n workflows as MCP tools · Live hot-reload · Semantic inference · Zero-downtime sync
   </p>
 </p>
 
@@ -9,11 +10,13 @@
   <a href="https://www.npmjs.com/package/@vurb/n8n"><img src="https://img.shields.io/npm/v/@vurb/n8n?color=blue" alt="npm" /></a>
   <a href="https://github.com/vinkius-labs/vurb.ts/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" alt="Node" />
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP" /></a>
+  <a href="https://vurb.vinkius.com/"><img src="https://img.shields.io/badge/Vurb.ts-framework-0ea5e9" alt="Vurb.ts" /></a>
 </p>
 
 ---
 
-> A bidirectional translation driver: **n8n REST API ↔ MCP In-Memory Objects**. Drop this package in and your entire n8n automation infrastructure becomes AI-native tools.
+> **MCP Tools from n8n Workflows — Vurb.ts**, the Model Context Protocol framework for building production MCP servers. A bidirectional translation driver: **n8n REST API ↔ MCP In-Memory Objects**. Drop this package in and your entire n8n automation infrastructure becomes AI-native MCP tools.
 
 ## Quick Start
 
