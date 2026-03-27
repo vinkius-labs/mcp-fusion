@@ -23,6 +23,7 @@ import { attachToServer as _attachToServer, type AttachOptions, _missingContextP
 import { createTelemetryBus, type TelemetryBusInstance } from '../observability/TelemetryBus.js';
 import type { PromptRegistry } from '../prompt/PromptRegistry.js';
 import type { ProgressSink } from '../core/execution/ProgressHelper.js';
+import type { CredentialsMap } from '../credentials/index.js';
 
 // ============================================================================
 // Types
@@ -157,6 +158,28 @@ export interface StartServerOptions<TContext> {
      * ```
      */
     readonly state?: Record<string, unknown>;
+
+    /**
+     * Credential declarations for marketplace-published servers (BYOC).
+     *
+     * Each key becomes an environment variable name injected at runtime via
+     * `globalThis.__vinkius_secrets`. The marketplace reads this map and
+     * prompts the buyer to configure credentials before server activation.
+     *
+     * Use `requireCredential(key)` inside tool handlers to read values.
+     *
+     * @example
+     * ```ts
+     * import { defineCredentials } from '@vurb/core';
+     *
+     * export const credentials = defineCredentials({
+     *   API_KEY: { label: 'API Key', description: 'Your key', type: 'api_key', required: true, sensitive: true },
+     * });
+     *
+     * await startServer({ name: 'my-server', registry, credentials });
+     * ```
+     */
+    readonly credentials?: CredentialsMap;
 }
 
 /**
@@ -334,6 +357,7 @@ export async function startServer<TContext>(
         port = 3001,
         attach = {},
         state,
+        credentials,
     } = options;
 
     // ── Vinkius Cloud Edge Detection ─────────────────────────────────────
@@ -385,6 +409,7 @@ export async function startServer<TContext>(
                 tools,
                 ...(promptDefs.length > 0 ? { prompts: promptDefs } : {}),
                 ...(fsmData ? { fsm: fsmData } : {}),
+                ...(credentials ? { credentials } : {}),
             }),
         ]);
 
@@ -476,6 +501,7 @@ export async function startServer<TContext>(
             serverName: name,
             version,
             registry,
+            ...(credentials ? { credentials } : {}),
         };
 
         // Store result and resolve the waiting promise from deploy.ts

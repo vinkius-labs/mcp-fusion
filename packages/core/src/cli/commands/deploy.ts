@@ -50,7 +50,10 @@ const BUILTIN_FILTER = new RegExp(
 // esbuild and third-party SDKs emit these legitimately (CJS interop,
 // class transpilation, dead-code paths). Each transformation breaks
 // the server regex without changing JavaScript semantics.
-// The V8 isolate sandbox is the real security boundary.
+// The V8 isolate + server-side scanner are the real security boundary.
+//
+// NOTE: Credential security scanning is intentionally server-side only.
+// Any client-side check can be bypassed by modifying this open-source file.
 function sanitizeBundleForEdge(code: string): string {
     return code
         // eval( → (0,eval)( — indirect eval, same semantics, no \b word boundary match
@@ -464,9 +467,11 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     if (!res.ok) {
         const errBody = await res.text();
         let message = `HTTP ${res.status}`;
+        let serverViolations: string[] = [];
         try {
-            const parsed = JSON.parse(errBody);
+            const parsed = JSON.parse(errBody) as { message?: string; violations?: string[] };
             message = parsed.message ?? message;
+            serverViolations = parsed.violations ?? [];
         } catch { /* use status code */ }
 
         if (res.status === 401) {
@@ -475,6 +480,22 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
             message = 'connection token does not belong to this server';
         } else if (res.status === 404) {
             message = 'server not found — check your server ID';
+        } else if (res.status === 422 && message.startsWith('Bundle rejected by static analysis:')) {
+            // Server-side security scan failure — display each violation
+            const w2 = process.stderr.write.bind(process.stderr);
+            progress.fail('upload', 'Deploying to Edge', 'bundle rejected by security scan');
+            w2(`\n  ${ansi.dim('The server rejected your bundle. Fix the issues below and redeploy.')}\n\n`);
+
+            // Use structured violations array when provided, fall back to parsing the message
+            const rawViolations = serverViolations.length > 0
+                ? serverViolations
+                : message.replace('Bundle rejected by static analysis: ', '').split('; ');
+
+            for (const violation of rawViolations) {
+                w2(`  ${ansi.yellow('▸')} ${violation}\n\n`);
+            }
+            w2(`  ${ansi.dim('Docs: https://docs.vinkius.com/marketplace/byoc-security')}\n\n`);
+            process.exit(1);
         } else if (res.status === 422 && message.startsWith('HTTP')) {
             message = 'invalid payload — check your entrypoint';
         }

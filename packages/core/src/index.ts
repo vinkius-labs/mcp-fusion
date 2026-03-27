@@ -389,6 +389,20 @@ export type {
     FsmConfig, FsmStateStore, FsmSnapshot, TransitionResult,
 } from './fsm/StateMachineGate.js';
 
+// ── Credentials (BYOC Marketplace) ──────────────────────────
+/** @category Credentials */
+export {
+    defineCredentials,
+    requireCredential,
+    CredentialMissingError,
+} from './credentials/index.js';
+/** @category Credentials */
+export type {
+    CredentialDef,
+    CredentialsMap,
+    CredentialType,
+} from './credentials/index.js';
+
 // ── Security Layer ──────────────────────────────────────
 /** @category Security */
 export { createJudgeChain } from './presenter/JudgeChain.js';
