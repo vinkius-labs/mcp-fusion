@@ -18,6 +18,7 @@ import { ProgressTracker } from '../progress.js';
 import { ansi, VINKIUS_CLOUD_URL } from '../constants.js';
 import { ask, inferServerEntry } from '../utils.js';
 import { loadEnv, readVurbRc } from '../rc.js';
+import { readMarketplaceManifest, normalizeMarketplacePayload } from '../MarketplaceManifest.js';
 import type * as EsbuildNS from 'esbuild';
 
 // ── Edge Stub Plugin ─────────────────────────────────────────────────────────
@@ -419,6 +420,18 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         process.stderr.write(`  ${ansi.dim(`⚠ Could not introspect: ${err instanceof Error ? err.message : String(err)}`)}\n`);
     }
 
+    // ── Step 5c: marketplace manifest ──
+    let marketplacePayload: Record<string, unknown> | null = null;
+    try {
+        const marketplaceManifest = readMarketplaceManifest(cwd);
+        if (marketplaceManifest) {
+            marketplacePayload = normalizeMarketplacePayload(marketplaceManifest);
+            process.stderr.write(`  ${ansi.dim('✓ marketplace manifest loaded')}\n`);
+        }
+    } catch (mktErr) {
+        process.stderr.write(`  ${ansi.yellow('⚠')} marketplace manifest error: ${mktErr instanceof Error ? mktErr.message : String(mktErr)}\n`);
+    }
+
     // ── Step 6: upload ──
     progress.start('upload', 'Deploying to Edge');
 
@@ -445,6 +458,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
                 hash,
                 raw_size: rawSizeBytes,
                 ...(manifest ? { manifest } : {}),
+                ...(marketplacePayload ? { marketplace: marketplacePayload } : {}),
                 // Also send simplified tool list for backward compat
                 tools: toolNames,
             }),
@@ -512,6 +526,8 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         url: string;
         message: string;
         tools_synced?: number;
+        marketplace_synced?: boolean;
+        trust_tier?: string;
     };
     try {
         data = await res.json() as typeof data;
@@ -561,6 +577,12 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     }
     if (manifest) {
         w(`  ${ansi.dim('✓ manifest signed')}\n`);
+    }
+    if (data.marketplace_synced) {
+        const tierBadge = data.trust_tier === 'gold' ? '🏆'
+            : data.trust_tier === 'silver' ? '🥈'
+            : data.trust_tier === 'bronze' ? '🥉' : '⚪';
+        w(`  ${ansi.dim('✓ marketplace listing synced')} ${tierBadge}\n`);
     }
 
     w('\n');

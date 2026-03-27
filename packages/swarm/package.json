@@ -1,6 +1,6 @@
 {
   "name": "@vurb/swarm",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "description": "Federated Handoff Protocol for Vurb — SwarmGateway B2BUA, multi-agent orchestration, zero-trust delegation, and upstream MCP client tunneling.",
   "type": "module",
   "main": "dist/index.js",

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2026-03-27
+
+### Added
+
+#### `@vurb/core` — Marketplace Behavioral Transparency
+
+Vinkius Cloud now auto-computes a **Behavioral Trust Score** from the `CapabilityLockfile` (vurb.lock) at deploy time and exposes a public **Security Passport** on every marketplace listing — zero seller effort required.
+
+- **Behavioral Trust Score** — Auto-computed from 10 lockfile signals (tool descriptions, entitlements, destructive action flags, middleware chain, cognitive guardrails, unbounded collections, schema field count, credential schema, integrity digest). Assigns a tier badge: 🏆 Gold (≥ 85) · 🥈 Silver (≥ 60) · 🥉 Bronze (≥ 40) · ⚪ Unrated (< 40).
+- **Security Passport** — Public transparency tab rendered on every listing detail page. Displays entitlements grid (network, filesystem, subprocess, codeEvaluation), tool surface (count + destructive actions flagged), middleware chain, and cryptographic integrity digest — all auto-extracted from `vurb.lock`.
+- **Publisher Type** — New `publisher_type` field (`official` | `partner` | `community`) at the MCP server level. Official and Partner status require admin verification after review.
+- **i18n Marketplace Descriptions** — Sellers can now provide `short_description` and `long_description` in EN, PT, ES, and FR via a shared `I18nLangTabs` component. Canonical `en` field is maintained for backward compatibility.
+
+### Changed
+
+- **Listing Detail View** — Trust badge and publisher type badge rendered in the listing header alongside existing metadata.
+- **Seller Dashboard** — Added a 5th stat card for Trust Score with tier emoji display.
+
+
 ## [3.9.0] - 2026-03-27
 
 ### Added
