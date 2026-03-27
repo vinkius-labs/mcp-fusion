@@ -173,6 +173,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/security/' },
           { text: 'Authentication', link: '/oauth' },
+          { text: 'Credentials (BYOC)', link: '/credentials' },
           { text: 'Governance & Lockfile', link: '/governance/' },
           { text: 'Runtime Guards', link: '/runtime-guards' },
         ]

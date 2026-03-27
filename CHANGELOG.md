@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] - 2026-03-27
+
+### Added
+
+#### `@vurb/core` — BYOC Credentials System (Bring Your Own Credentials)
+
+A new first-class API enabling marketplace-publishable MCP servers to declare and consume per-buyer credentials securely, without ever touching the seller's code or secrets.
+
+- **`defineCredentials(schema)`** — Declare what credentials your server needs. The Vinkius marketplace reads this at introspect/deploy time and prompts the buyer to configure credentials (API keys, tokens, passwords, OAuth, connection strings, custom) before activation. Supports 9 credential types across 3 categories: `api_key`, `token`, `password`, `connection_string`, `uri`, `hostname`, `json_config`, `certificate`, `custom`.
+- **`requireCredential(name, options?)`** — Read a credential at runtime. On Vinkius Cloud Edge, secrets are injected by the runtime before the first tool call via `globalThis.__vinkius_secrets`. Locally (stdio/HTTP), falls back to env vars (configurable via `contextFactory`) or a provided `fallback`.
+- **`CredentialSchema`** — Type-safe credential descriptor with `type`, `label`, `description`, `required`, `placeholder` fields, plus `sensitive` (masked in UI/logs) and `validation.pattern` (regex pre-check).
+- **`CredentialsContext`** — Runtime credential map with typed `get(name)` accessor.
+- **Zero-knowledge architecture** — Seller's server code never sees raw buyer credentials; the runtime injects them into an isolated `globalThis.__vinkius_secrets` object per-request.
+
+### Security
+
+- **Server-side credential injection scanner** (`@vurb/core`) — `vurb deploy` server now runs a static analysis pipeline that rejects bundles attempting to intercept or exfiltrate the credential injection mechanism. Blocked patterns include: direct access to `__vinkius_secrets`, `globalThis.*secrets*`, `process.env`, `Object.keys(globalThis)`, `JSON.stringify(globalThis)`, and related patterns. Returns HTTP 422 with structured `violations[]` response. Client-side scanning was removed — the server is the authoritative security boundary.
+- **CLI violation display** — `vurb deploy` now parses 422 responses and presents a structured violations list to the developer with actionable messages, instead of a raw HTTP error.
+
+### Test Suite
+
+- **`credentials.test.ts`** (`@vurb/core`) — New test file covering `defineCredentials` schema registration, `requireCredential` runtime resolution (secrets injection, env fallback, provided fallback, missing required), and `CredentialsContext` typed access.
+
 ## [3.8.3] - 2026-03-26
 
 ### Fixed
