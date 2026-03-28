@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.7] - 2026-03-28
+
+### Fixed
+
+#### `@vurb/core` — Graceful Changelog File Reference
+
+- **Missing `CHANGELOG.md` no longer blocks marketplace sync** — When `vurb.marketplace.json` references `"changelog": "file:CHANGELOG.md"` but the file does not exist, `readMarketplaceManifest()` previously threw, causing the entire marketplace payload to be set to `null`. The deploy succeeded (edge bundle was uploaded) but the listing was never created or updated. Now the changelog field is silently dropped and the rest of the manifest (title, descriptions, FAQs, integration, tags) is sent normally. A missing changelog is a cosmetic omission, not a deployment blocker.
+
 ## [3.12.6] - 2026-03-28
 
 ### Fixed

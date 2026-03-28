@@ -164,7 +164,12 @@ export function readMarketplaceManifest(cwd: string): MarketplaceManifest | null
         resolved['longDescription'] = resolveI18nFileRefs(parsed.longDescription, cwd);
     }
     if (parsed.changelog) {
-        resolved['changelog'] = resolveFileRef(parsed.changelog, cwd);
+        try {
+            resolved['changelog'] = resolveFileRef(parsed.changelog, cwd);
+        } catch {
+            // Changelog is optional — skip silently when the referenced file is missing.
+            delete resolved['changelog'];
+        }
     }
 
     // Resolve file: references in FAQ answers
