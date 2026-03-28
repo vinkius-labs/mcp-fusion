@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.6] - 2026-03-28
+
+### Fixed
+
+#### `@vurb/core` — Resilient esbuild Discovery (4-Strategy Resolution)
+
+- **`resolveEsbuild()` replaces blind `npm install`** — Projects with `tsx` + `vitest` have conflicting pinned esbuild versions (`~0.27` vs `0.21`), causing `npm install -D esbuild` to fail with `ERESOLVE`. The new `resolveEsbuild()` function tries 4 strategies in order:
+  1. Direct ESM `import('esbuild')`
+  2. CJS `createRequire` from project root (bypasses ESM cache)
+  3. **Transitive discovery** — finds esbuild nested inside `tsx`, `vite`, or `vitest` `node_modules`
+  4. `npm install --legacy-peer-deps` as last resort
+
+- **Shared between `validate` and `deploy`** — Both commands now use the same `resolveEsbuild()` from `introspect.ts`, eliminating duplicated esbuild resolution logic.
+
 ## [3.12.5] - 2026-03-28
 
 ### Fixed

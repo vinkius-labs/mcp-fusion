@@ -1,6 +1,6 @@
 {
   "name": "@vurb/cloudflare",
-  "version": "3.12.5",
+  "version": "3.12.6",
   "description": "Cloudflare Workers adapter for Vurb. Deploys your MCP server to the edge with zero config — stateless JSON-RPC, cold-start caching, and native env injection.",
   "type": "module",
   "main": "dist/index.js",

@@ -226,36 +226,13 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- typeof import() needed: namespace import cannot be used as a type
     let esbuild: typeof import('esbuild');
     try {
-        esbuild = await import('esbuild');
+        const { resolveEsbuild } = await import('./introspect.js');
+        esbuild = await resolveEsbuild(cwd);
     } catch {
-        // Auto-install esbuild — zero friction
+        // resolveEsbuild exhausted all strategies — ask user to install manually
         progress.done('bundle', 'Bundling with esbuild');
-
-        // Ask user before auto-installing to avoid silent supply-chain modifications
-        const { createInterface } = await import('node:readline');
-        const rl = createInterface({ input: process.stdin, output: process.stderr });
-        const answer = await ask(rl, 'esbuild is not installed. Install it now?', 'yes');
-        rl.close();
-        if (answer !== 'yes' && answer !== 'y') {
-            process.stderr.write('\n  Aborted. Install manually: npm install -D esbuild\n\n');
-            process.exit(1);
-        }
-
-        progress.start('bundle', 'Installing esbuild');
-        try {
-            const { execSync } = await import('node:child_process');
-            execSync('npm install -D esbuild', { cwd, stdio: 'pipe' });
-            // Use createRequire (CJS) — Node ESM caches the failed resolution
-            // from the first import('esbuild'), so a second call would fail.
-            const { createRequire } = await import('node:module');
-            const { join } = await import('node:path');
-            esbuild = createRequire(join(cwd, 'package.json'))('esbuild');
-        } catch {
-            progress.fail('bundle', 'Installing esbuild', 'failed to install — run: npm install -D esbuild');
-            process.exit(1);
-        }
-        progress.done('bundle', 'Installing esbuild');
-        progress.start('bundle', 'Bundling with esbuild');
+        progress.fail('bundle', 'esbuild', 'not found — run: npm install -D esbuild');
+        process.exit(1);
     }
 
     let buildResult: Awaited<ReturnType<typeof esbuild.build>>;

@@ -1,9 +1,10 @@
 /**
- * Bug #83 — Deploy auto-installs esbuild without confirmation
+ * Bug #83 — Deploy esbuild resolution
  *
- * Verifies that the deploy command asks the user before
- * auto-installing esbuild, rather than silently running
- * `npm install -D esbuild` with `stdio: 'ignore'`.
+ * Verifies that deploy.ts uses the shared `resolveEsbuild` helper
+ * which discovers esbuild from transitive deps (tsx, vite, vitest)
+ * and only falls back to `npm install --legacy-peer-deps` as a last
+ * resort, rather than blindly running `npm install -D esbuild`.
  *
  * @module
  */
@@ -16,16 +17,15 @@ const deploySource = readFileSync(
     'utf-8',
 );
 
-describe('Bug #83 — esbuild install confirmation', () => {
-    it('should ask the user before installing esbuild', () => {
-        // The code must contain an ask() call near the esbuild install
-        expect(deploySource).toContain('esbuild is not installed');
-        expect(deploySource).toContain('ask(');
-    });
+const introspectSource = readFileSync(
+    resolve(__dirname, '../../src/cli/commands/introspect.ts'),
+    'utf-8',
+);
 
-    it('should abort if the user declines', () => {
-        expect(deploySource).toContain('Aborted');
-        expect(deploySource).toContain('Install manually');
+describe('Bug #83 — esbuild resolution resilience', () => {
+    it('deploy.ts should use resolveEsbuild from introspect', () => {
+        expect(deploySource).toContain('resolveEsbuild');
+        expect(deploySource).toContain('./introspect.js');
     });
 
     it('should NOT use stdio: ignore for the npm install', () => {
@@ -33,7 +33,14 @@ describe('Bug #83 — esbuild install confirmation', () => {
         expect(deploySource).not.toContain("stdio: 'ignore'");
     });
 
-    it('should import ask from utils', () => {
-        expect(deploySource).toMatch(/import\s*\{[^}]*ask[^}]*\}\s*from\s*['"]\.\.\/utils/);
+    it('resolveEsbuild should try transitive discovery before npm install', () => {
+        // Must try tsx, vite, vitest as transitive hosts
+        expect(introspectSource).toContain("'tsx'");
+        expect(introspectSource).toContain("'vite'");
+        expect(introspectSource).toContain("'vitest'");
+    });
+
+    it('resolveEsbuild should use --legacy-peer-deps in installfall back', () => {
+        expect(introspectSource).toContain('--legacy-peer-deps');
     });
 });

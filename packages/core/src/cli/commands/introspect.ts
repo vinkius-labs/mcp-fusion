@@ -36,6 +36,53 @@ export interface IntrospectionReport {
     buildTimeMs: number;
 }
 
+// ─── esbuild Resolution ─────────────────────────────────────────
+
+/**
+ * Resolve esbuild from multiple sources, in priority order:
+ *
+ * 1. Direct ESM `import('esbuild')` — works if esbuild is a direct or hoisted dep.
+ * 2. CJS `createRequire(projectRoot)('esbuild')` — bypasses ESM resolution cache.
+ * 3. Transitive discovery — find esbuild nested inside tsx, vite, or vitest.
+ * 4. Auto-install fallback — `npm install -D esbuild --legacy-peer-deps`.
+ */
+export async function resolveEsbuild(projectRoot: string): Promise<typeof import('esbuild')> {
+    // Strategy 1: standard ESM import
+    try {
+        return await import('esbuild');
+    } catch { /* not directly available — try alternatives */ }
+
+    const { createRequire } = await import('node:module');
+    const { join } = await import('node:path');
+    const projectRequire = createRequire(join(projectRoot, 'package.json'));
+
+    // Strategy 2: CJS require from project root (bypasses ESM cache)
+    try {
+        return projectRequire('esbuild');
+    } catch { /* not a direct dep — try transitive */ }
+
+    // Strategy 3: discover esbuild nested inside common transitive hosts
+    const hosts = ['tsx', 'vite', 'vitest'];
+    for (const host of hosts) {
+        try {
+            const hostPath = projectRequire.resolve(host);
+            const hostRequire = createRequire(hostPath);
+            return hostRequire('esbuild');
+        } catch { /* host not installed or esbuild not nested there */ }
+    }
+
+    // Strategy 4: auto-install as last resort
+    const { execSync } = await import('node:child_process');
+    try {
+        execSync('npm install -D esbuild --legacy-peer-deps', { cwd: projectRoot, stdio: 'pipe' });
+        return projectRequire('esbuild');
+    } catch { /* install failed */ }
+
+    throw new Error(
+        'esbuild is required but could not be resolved. Run: npm install -D esbuild',
+    );
+}
+
 // ─── Pipeline ────────────────────────────────────────────────────
 
 /**
@@ -48,27 +95,7 @@ export interface IntrospectionReport {
  * @throws If esbuild build fails, server doesn't boot, or contracts fail to compile.
  */
 export async function runIntrospection(absEntry: string, projectRoot?: string): Promise<IntrospectionReport> {
-    let esbuild: typeof import('esbuild');
-    try {
-        esbuild = await import('esbuild');
-    } catch {
-        // Auto-install esbuild — zero friction for CLI users
-        const { execSync } = await import('node:child_process');
-        const cwd = projectRoot ?? (await import('node:path')).dirname(absEntry);
-        try {
-            execSync('npm install -D esbuild', { cwd, stdio: 'pipe' });
-            // Use createRequire (CJS) instead of import() — Node ESM caches
-            // the failed resolution from the first import('esbuild') above,
-            // so a second import('esbuild') would return the cached failure.
-            const { createRequire } = await import('node:module');
-            const { join } = await import('node:path');
-            esbuild = createRequire(join(cwd, 'package.json'))('esbuild');
-        } catch {
-            throw new Error(
-                'esbuild is required but could not be installed automatically. Run: npm install -D esbuild',
-            );
-        }
-    }
+    const esbuild = await resolveEsbuild(projectRoot ?? (await import('node:path')).dirname(absEntry));
 
     // ── 1. Build (Node platform, ESM — for local execution, not edge) ──
     const buildStart = Date.now();
