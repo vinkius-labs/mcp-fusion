@@ -324,7 +324,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
     }
 
     let manifest: Record<string, unknown> | null = null;
-    let toolNames: Array<{ name: string; description: string }> = [];
+    let toolNames: Array<{ name: string; description: string; readOnly?: boolean }> = [];
 
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -403,9 +403,11 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
             const actionEntries = Object.entries(contract.surface.actions);
             if (actionEntries.length <= 1) {
                 // Flat tool — single action or no actions: use namespace name
+                const singleAction = actionEntries[0]?.[1];
                 toolNames.push({
                     name: namespace,
                     description: contract.surface.description ?? '',
+                    readOnly: singleAction?.readOnly ?? false,
                 });
             } else {
                 // Grouped tool — expand each action as namespace.action
@@ -413,6 +415,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
                     toolNames.push({
                         name: `${namespace}.${actionKey}`,
                         description: action.description ?? contract.surface.description ?? '',
+                        readOnly: action.readOnly ?? false,
                     });
                 }
             }

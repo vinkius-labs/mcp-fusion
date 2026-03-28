@@ -1,6 +1,5 @@
 {
   "name": "@vurb/openapi-gen",
-  "version": "3.12.7",
   "description": "OpenAPI-to-Vurb Server Generator. Parses OpenAPI 3.x and Swagger 2.0 specs and generates a complete, ready-to-run MCP Server with full MVA tool stacks (Presenters, Tools, Registry, Server) — all features configurable via YAML.",
   "type": "module",
   "main": "dist/index.js",
@@ -65,5 +64,6 @@
   "devDependencies": {
     "@types/node": "^25.3.0",
     "@vurb/core": ">=3.8.0"
-  }
+  },
+  "version": "3.12.8"
 }

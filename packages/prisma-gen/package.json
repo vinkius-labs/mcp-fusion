@@ -1,6 +1,5 @@
 {
   "name": "@vurb/prisma-gen",
-  "version": "3.12.7",
   "description": "Prisma Generator for Vurb. Reads schema annotations (@vurb.hide, @vurb.describe, @vurb.tenantKey) and emits hardened Presenters and ToolBuilders with field-level security, tenant isolation, and OOM protection.",
   "type": "module",
   "main": "dist/index.js",
@@ -63,5 +62,6 @@
     "@types/node": "^25.3.0",
     "@vurb/core": ">=3.8.0"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "version": "3.12.8"
 }

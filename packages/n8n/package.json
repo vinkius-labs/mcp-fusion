@@ -1,6 +1,5 @@
 {
   "name": "@vurb/n8n",
-  "version": "3.12.7",
   "description": "n8n connector for Vurb. Auto-discovers webhook workflows and produces ToolBuilders — so AI agents can call your automations natively.",
   "type": "module",
   "main": "dist/index.js",
@@ -54,5 +53,6 @@
     "@types/node": "^25.3.0",
     "@vurb/core": ">=3.8.0"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "version": "3.12.8"
 }

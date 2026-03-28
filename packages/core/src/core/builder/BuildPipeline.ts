@@ -169,9 +169,13 @@ export function buildToolFromFluent<TContext, TCtx>(
         builder.use(mw);
     }
 
-    // Register the single action
+    // Register the single action — pass description at the action level
+    // so that when multiple dotted-name tools (e.g. 'cy.get_user', 'cy.list_events')
+    // are merged into the same namespace builder, each action retains its
+    // own unique description instead of falling back to the builder's (first tool's).
     builder.action({
         name: actionName,
+        ...(compiledDescription ? { description: compiledDescription } : {}),
         handler: wrappedHandler,
         ...(inputSchema ? { schema: inputSchema } : {}),
         ...(readOnly !== undefined ? { readOnly } : {}),
