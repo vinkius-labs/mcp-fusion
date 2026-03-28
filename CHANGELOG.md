@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0] - 2026-03-28
+
+### Added
+
+#### `@vurb/core` — Marketplace Prompt Examples
+
+Publishers can now showcase realistic AI agent interactions directly in marketplace listings, giving buyers a clear preview of what the MCP server can do — before subscribing.
+
+- **`promptExamples`** — New manifest field in `vurb.marketplace.json` for declaring conversational demos (user → agent exchanges). Each example has a `prompt` (what the user asks) and a `response` (what the agent replies), both supporting full i18n (`en`, `pt`, `es`, `fr`).
+- **`MarketplacePromptExample` interface** — New type in `MarketplaceManifest.ts` with `I18nString`-capable `prompt` and `response` fields.
+- **Normalizer support** — `normalizeMarketplacePayload()` extracts canonical `en` values and builds `prompt_i18n` / `response_i18n` maps for multilingual examples.
+- **File-ref resolution** — `readMarketplaceManifest()` resolves `file:` references in prompt example fields, consistent with existing FAQ and long description behavior.
+
+### Example
+
+```json
+{
+  "promptExamples": [
+    {
+      "prompt": {
+        "en": "What meetings do I have tomorrow?",
+        "pt": "Quais reuniões tenho amanhã?"
+      },
+      "response": {
+        "en": "You have 3 meetings tomorrow. 09:00 — Product Demo with Sarah Chen...",
+        "pt": "Você tem 3 reuniões amanhã. 09:00 — Demo de Produto com Sarah Chen..."
+      }
+    }
+  ]
+}
+```
+
 ## [3.12.7] - 2026-03-28
 
 ### Fixed

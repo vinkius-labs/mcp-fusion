@@ -35,6 +35,14 @@ export interface MarketplaceFaq {
     readonly answer: I18nString;
 }
 
+/** A single prompt example showing a user→agent conversation. */
+export interface MarketplacePromptExample {
+    /** The user's prompt or question. */
+    readonly prompt: I18nString;
+    /** The agent's response. */
+    readonly response: I18nString;
+}
+
 /** Pricing configuration for paid listings. */
 export interface MarketplacePricing {
     readonly priceCents: number;
@@ -94,6 +102,13 @@ export interface MarketplaceManifest {
      * Each entry supports i18n for question and answer.
      */
     readonly faqs?: readonly MarketplaceFaq[];
+
+    /**
+     * Prompt examples — conversational demos (user → agent).
+     * Auto-synced to `listing_prompt_examples` table.
+     * Each entry supports i18n for prompt and response.
+     */
+    readonly promptExamples?: readonly MarketplacePromptExample[];
 
     /**
      * Changelog — `"file:CHANGELOG.md"` or inline markdown.
@@ -180,6 +195,14 @@ export function readMarketplaceManifest(cwd: string): MarketplaceManifest | null
         }));
     }
 
+    // Resolve file: references in prompt examples
+    if (parsed.promptExamples && Array.isArray(parsed.promptExamples)) {
+        resolved['promptExamples'] = (parsed.promptExamples as MarketplacePromptExample[]).map(ex => ({
+            prompt: resolveI18nFileRefs(ex.prompt, cwd),
+            response: resolveI18nFileRefs(ex.response, cwd),
+        }));
+    }
+
     return resolved as unknown as MarketplaceManifest;
 }
 
@@ -246,6 +269,18 @@ export function normalizeMarketplacePayload(
             const entry: Record<string, unknown> = { question: q, answer: a };
             if (qI18n && Object.keys(qI18n).length > 1) entry['question_i18n'] = qI18n;
             if (aI18n && Object.keys(aI18n).length > 1) entry['answer_i18n'] = aI18n;
+            return entry;
+        });
+    }
+
+    // Prompt Examples
+    if (manifest.promptExamples && manifest.promptExamples.length > 0) {
+        payload['prompt_examples'] = manifest.promptExamples.map(ex => {
+            const { canonical: p, i18n: pI18n } = extractI18n(ex.prompt);
+            const { canonical: r, i18n: rI18n } = extractI18n(ex.response);
+            const entry: Record<string, unknown> = { prompt: p, response: r };
+            if (pI18n && Object.keys(pI18n).length > 1) entry['prompt_i18n'] = pI18n;
+            if (rI18n && Object.keys(rI18n).length > 1) entry['response_i18n'] = rI18n;
             return entry;
         });
     }
