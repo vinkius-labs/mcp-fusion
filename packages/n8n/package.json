@@ -1,6 +1,6 @@
 {
   "name": "@vurb/n8n",
-  "version": "3.12.0",
+  "version": "3.12.1",
   "description": "n8n connector for Vurb. Auto-discovers webhook workflows and produces ToolBuilders — so AI agents can call your automations natively.",
   "type": "module",
   "main": "dist/index.js",

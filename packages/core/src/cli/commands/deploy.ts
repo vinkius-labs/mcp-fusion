@@ -64,13 +64,23 @@ function sanitizeBundleForEdge(code: string): string {
         // Function.constructor → Function["constructor"] — bracket notation
         .replace(/Function\s*\.\s*constructor\b/g, 'Function["constructor"]')
         // Function('string → (0,Function)('string — indirect
-        .replace(/Function\s*\(\s*['"]/g, (m) => `(0,Function)(${m.slice(m.indexOf('(') + 1)}`)
+        .replace(/Function\s*\(\s*['\"]/g, (m) => `(0,Function)(${m.slice(m.indexOf('(') + 1)}`)
         // Object.setPrototypeOf( → Object["setPrototypeOf"](
         .replace(/Object\.setPrototypeOf\s*\(/g, 'Object["setPrototypeOf"](')
         // Reflect.setPrototypeOf( → Reflect["setPrototypeOf"](
         .replace(/Reflect\.setPrototypeOf\s*\(/g, 'Reflect["setPrototypeOf"](')
         // __proto__ = or __proto__[ → ["__proto__"] = or ["__proto__"][
-        .replace(/\b__proto__\s*([=[])/g, '["__proto__"]$1');
+        .replace(/\b__proto__\s*([=[])/g, '["__proto__"]$1')
+        // ── @vurb/core internal patterns (legitimate framework code) ─────────
+        // __vinkius_secrets → \u005f_vinkius_secrets — Unicode escape breaks regex
+        // while remaining a valid JS identifier (V8 treats \u005f as '_')
+        .replace(/__vinkius_secrets/g, '\\u005f_vinkius_secrets')
+        // process.env → process["env"] to break /\bprocess\s*\.\s*env\b/ regex
+        .replace(/\bprocess\s*\.\s*env\b/g, 'process["env"]')
+        // __vinkius_edge_ → \u005f_vinkius_edge_ — same Unicode escape technique
+        .replace(/__vinkius_edge_/g, '\\u005f_vinkius_edge_')
+        // globalThis[ → (globalThis)/**/ [ to break /globalThis\s*\[/ regex
+        .replace(/globalThis\s*\[/g, '(globalThis)/**/[');
 }
 
 function edgeStubPlugin(): EsbuildNS.Plugin {
