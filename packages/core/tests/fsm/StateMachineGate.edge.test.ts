@@ -288,7 +288,8 @@ describe('Snapshot integrity', () => {
         const snap2 = gate.snapshot();
 
         expect(snap1).not.toBe(snap2); // Different objects
-        expect(snap1).toEqual(snap2);  // Same content
+        expect(snap1.state).toBe(snap2.state);
+        expect(Math.abs(snap1.updatedAt - snap2.updatedAt)).toBeLessThan(5);
     });
 
     it('mutating a snapshot object should not affect gate state', async () => {

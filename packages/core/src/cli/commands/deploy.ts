@@ -245,7 +245,11 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
         try {
             const { execSync } = await import('node:child_process');
             execSync('npm install -D esbuild', { cwd, stdio: 'pipe' });
-            esbuild = await import('esbuild');
+            // Use createRequire (CJS) — Node ESM caches the failed resolution
+            // from the first import('esbuild'), so a second call would fail.
+            const { createRequire } = await import('node:module');
+            const { join } = await import('node:path');
+            esbuild = createRequire(join(cwd, 'package.json'))('esbuild');
         } catch {
             progress.fail('bundle', 'Installing esbuild', 'failed to install — run: npm install -D esbuild');
             process.exit(1);

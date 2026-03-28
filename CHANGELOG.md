@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.5] - 2026-03-28
+
+### Fixed
+
+#### `@vurb/core` — esbuild Auto-install: ESM Resolution Cache Bypass
+
+- **`createRequire()` replaces `import()` after esbuild auto-install** — Node.js ESM caches resolution failures per specifier. After `import('esbuild')` fails (esbuild not installed), the runtime caches that failure. Even after `npm install -D esbuild` succeeds, a second `import('esbuild')` returns the cached error. The fix uses `createRequire()` from `node:module` anchored at the project root, which uses CJS resolution and does not cache ESM failures. Applied to both `introspect.ts` (validate) and `deploy.ts`.
+
 ## [3.12.4] - 2026-03-28
 
 ### Fixed

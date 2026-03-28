@@ -57,7 +57,12 @@ export async function runIntrospection(absEntry: string, projectRoot?: string): 
         const cwd = projectRoot ?? (await import('node:path')).dirname(absEntry);
         try {
             execSync('npm install -D esbuild', { cwd, stdio: 'pipe' });
-            esbuild = await import('esbuild');
+            // Use createRequire (CJS) instead of import() — Node ESM caches
+            // the failed resolution from the first import('esbuild') above,
+            // so a second import('esbuild') would return the cached failure.
+            const { createRequire } = await import('node:module');
+            const { join } = await import('node:path');
+            esbuild = createRequire(join(cwd, 'package.json'))('esbuild');
         } catch {
             throw new Error(
                 'esbuild is required but could not be installed automatically. Run: npm install -D esbuild',
