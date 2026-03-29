@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0] - 2026-03-29
+
+### Added
+
+#### `@vurb/core` — OAuth 2.0 BYOA (Bring Your Own Account)
+
+Marketplace buyers can now authenticate with OAuth 2.0 providers (Calendly, Salesforce, Slack, Zoom, etc.) using their own OAuth credentials — orchestrated entirely by the platform, with zero MCP server code changes.
+
+- **`'oauth2'` credential type** — New value in the `CredentialType` union. When a credential field uses `type: 'oauth2'`, the platform takes over the full token lifecycle: initiation, code exchange, encrypted storage, proactive refresh, and runtime injection.
+- **`OAuthConfig` interface** — Attached to a `CredentialDef` via `oauth?: OAuthConfig`. Declares the provider's OAuth endpoints, scopes, grant type, and field references:
+  - `provider` — Display name ("Connect with {provider}")
+  - `grant_type` — `'authorization_code'` (default) or `'client_credentials'`
+  - `authorize_url` — Provider's consent screen URL (auth code only)
+  - `token_url` — Token exchange endpoint
+  - `scopes` — Required OAuth scopes
+  - `client_id_field` / `client_secret_field` — References to buyer's credential keys
+  - `user_info_url` / `user_info_email_path` — Optional endpoint to show "Connected as {email}"
+  - `token_expires_in` — Fallback TTL when provider doesn't return `expires_in`
+  - `supports_refresh` — Whether provider returns refresh tokens
+  - `extra_params` — Extra token request params (keys ending in `_field` resolved from buyer credentials)
+- **`oauth?` on `CredentialDef`** — Optional field, only valid when `type: 'oauth2'`
+
+### Example
+
+```ts
+export const credentials = defineCredentials({
+  CALENDLY_ACCESS_TOKEN: {
+    label: 'Calendly Access Token',
+    description: 'Managed by the platform via OAuth.',
+    type: 'oauth2',
+    oauth: {
+      provider: 'Calendly',
+      authorize_url: 'https://auth.calendly.com/oauth/authorize',
+      token_url: 'https://auth.calendly.com/oauth/token',
+      scopes: ['default'],
+      client_id_field: 'CALENDLY_CLIENT_ID',
+      client_secret_field: 'CALENDLY_CLIENT_SECRET',
+      user_info_url: 'https://api.calendly.com/users/me',
+      user_info_email_path: 'resource.email',
+    },
+  },
+  CALENDLY_CLIENT_ID: {
+    label: 'Client ID',
+    description: 'From your Calendly OAuth App.',
+    type: 'string',
+  },
+  CALENDLY_CLIENT_SECRET: {
+    label: 'Client Secret',
+    description: 'From your Calendly OAuth App.',
+    type: 'api_key',
+  },
+});
+```
+
 ## [3.13.1] - 2026-03-28
 
 ### Fixed
