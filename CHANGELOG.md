@@ -5,8 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.14.0] - 2026-03-29
+## [3.14.1] - 2026-03-29
 
+### Fixed
+
+#### `@vurb/core` — Marketplace Manifest Authentication Block
+
+- **`vurb deploy` and `normalizeMarketplacePayload` now retain `authentication` field** — Previously, the `authentication` block in `vurb.marketplace.json` (used to define the UX strategy for credentials, such as `{"method": "static", "provider": "X", ...}`) was completely ignored by the TypeScript definitions, causing the CLI to strip it out when building the deploy payload. Added the `MarketplaceAuthentication` interface to `MarketplaceManifest.ts`, enabling parsing, camelCase-to-snake_case property mapping (`redirectUri` → `redirect_uri`), and i18n support for `setupInstructions`. This ensures the setup instructions reach the Cloud API intact.
+
+## [3.14.0] - 2026-03-29
 ### Added
 
 #### `@vurb/core` — OAuth 2.0 BYOA (Bring Your Own Account)

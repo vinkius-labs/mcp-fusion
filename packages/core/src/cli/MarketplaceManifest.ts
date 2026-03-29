@@ -52,6 +52,18 @@ export interface MarketplacePricing {
 }
 
 /**
+ * Authentication metadata for the marketplace UI.
+ * Does not control logic (credential_schema does).
+ */
+export interface MarketplaceAuthentication {
+    readonly method?: 'static' | 'oauth2' | 'hybrid';
+    readonly provider?: string;
+    readonly redirectUri?: string;
+    readonly setupInstructions?: I18nString;
+    readonly docsUrl?: string;
+}
+
+/**
  * Marketplace manifest — listing metadata declared in code.
  *
  * Every field maps to a column or relation on the `MarketplaceListing` model.
@@ -142,6 +154,9 @@ export interface MarketplaceManifest {
 
     /** MCP clients this server is tested/compatible with. */
     readonly compatibility?: readonly string[];
+
+    /** Authentication UI metadata */
+    readonly authentication?: MarketplaceAuthentication;
 }
 
 // ============================================================================
@@ -201,6 +216,14 @@ export function readMarketplaceManifest(cwd: string): MarketplaceManifest | null
             prompt: resolveI18nFileRefs(ex.prompt, cwd),
             response: resolveI18nFileRefs(ex.response, cwd),
         }));
+    }
+
+    // Resolve file: references in setup instructions
+    if (parsed.authentication?.setupInstructions) {
+        (resolved['authentication'] as MarketplaceAuthentication) = {
+            ...parsed.authentication,
+            setupInstructions: resolveI18nFileRefs(parsed.authentication.setupInstructions, cwd)
+        };
     }
 
     return resolved as unknown as MarketplaceManifest;
@@ -310,6 +333,31 @@ export function normalizeMarketplacePayload(
     if (manifest.supportUrl) payload['support_url'] = manifest.supportUrl;
     if (manifest.sourceCodeUrl) payload['source_code_url'] = manifest.sourceCodeUrl;
     if (manifest.compatibility) payload['compatibility'] = manifest.compatibility;
+
+    // Authentication
+    if (manifest.authentication) {
+        const auth: Record<string, unknown> = { ...manifest.authentication };
+        if (manifest.authentication.setupInstructions) {
+            const { canonical, i18n } = extractI18n(manifest.authentication.setupInstructions);
+            auth['setup_instructions'] = canonical;
+            if (i18n && Object.keys(i18n).length > 1) {
+                auth['setup_instructions_i18n'] = i18n;
+            }
+            delete auth['setupInstructions']; // remove camelCase version
+        }
+        
+        // map camelCase to snake_case
+        if (auth['redirectUri']) {
+            auth['redirect_uri'] = auth['redirectUri'];
+            delete auth['redirectUri'];
+        }
+        if (auth['docsUrl']) {
+            auth['docs_url'] = auth['docsUrl'];
+            delete auth['docsUrl'];
+        }
+        
+        payload['authentication'] = auth;
+    }
 
     return payload;
 }
