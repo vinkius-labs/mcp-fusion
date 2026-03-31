@@ -71,12 +71,23 @@ export const Buffer = {
     allocUnsafe: (): never => CRASH('Buffer.allocUnsafe (use Uint8Array)'),
 };
 
-// Path stubs — crash like Tier 2 stubs for consistency.
-// If these are ever reached at runtime, a silent empty string
-// would propagate and create hard-to-debug path errors.
-export const resolve = (): never => CRASH('node:path.resolve');
-export const join = (): never => CRASH('node:path.join');
-export const dirname = (): never => CRASH('node:path.dirname');
-export const basename = (): never => CRASH('node:path.basename');
+// Path stubs — safe defaults for import-time init (MCP SDK session paths).
+// Return concatenated strings so path construction doesn't crash.
+export const resolve = (...parts: string[]): string => parts.filter(Boolean).join('/');
+export const join = (...parts: string[]): string => parts.filter(Boolean).join('/');
+export const dirname = (p: string): string => p.split('/').slice(0, -1).join('/') || '/';
+export const basename = (p: string): string => p.split('/').pop() || '';
+export const sep = '/';
+export const posix = { sep: '/', join, resolve, dirname, basename };
+
+// OS stubs — safe defaults for import-time init (MCP SDK, zod, etc.)
+export const tmpdir = (): string => '/tmp';
+export const homedir = (): string => '/home';
+export const platform = (): string => 'linux';
+export const arch = (): string => 'x64';
+export const cpus = (): unknown[] => [];
+export const totalmem = (): number => 0;
+export const freemem = (): number => 0;
+export const EOL = '\n';
 
 export default {};

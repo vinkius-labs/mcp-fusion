@@ -69,8 +69,8 @@ function sanitizeBundleForEdge(code: string): string {
         .replace(/Object\.setPrototypeOf\s*\(/g, 'Object["setPrototypeOf"](')
         // Reflect.setPrototypeOf( → Reflect["setPrototypeOf"](
         .replace(/Reflect\.setPrototypeOf\s*\(/g, 'Reflect["setPrototypeOf"](')
-        // __proto__ = or __proto__[ → ["__proto__"] = or ["__proto__"][
-        .replace(/\b__proto__\s*([=[])/g, '["__proto__"]$1')
+        // .__proto__ = or .__proto__[ → ["__proto__"] = or ["__proto__"][
+        .replace(/\.__proto__\s*([=[])/g, '["__proto__"]$1')
         // ── @vurb/core internal patterns (legitimate framework code) ─────────
         // __vinkius_secrets → \u005f_vinkius_secrets — Unicode escape breaks regex
         // while remaining a valid JS identifier (V8 treats \u005f as '_')

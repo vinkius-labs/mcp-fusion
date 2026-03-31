@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.14.1] - 2026-03-29
+## [3.14.4] - 2026-03-31
+
+### Fixed
+
+#### `@vurb/core` — Edge Deploy: V8 Isolate Boot Failures
+
+Three fixes enabling successful V8 isolate boot for edge-deployed MCP servers that depend on Zod or the MCP SDK.
+
+- **`sanitizeBundleForEdge()` — `__proto__` regex produced invalid JS** — The regex `/\b__proto__\s*([=[])/g` replaced `__proto__` with `["__proto__"]` but did not consume the preceding `.` character. This turned `this.__proto__=n` (valid JS) into `this.["__proto__"]=n` (invalid JS — `SyntaxError: Unexpected token '['`). The V8 isolate failed to compile the bundle on boot. Fixed by changing the regex to `/\.__proto__\s*([=[])/g`, which consumes the dot and produces valid `this["__proto__"]=n`. Affects any server that bundles Zod (the `ZodError` class uses `__proto__` assignment in its constructor).
+- **Edge stub — missing `os` module functions** — The MCP SDK calls `os.tmpdir()` during import-time initialization (session path defaults). The edge stub had no `os` module functions, so the Proxy catch-all threw `TypeError: (0 , or.tmpdir) is not a function`. Added safe stubs: `tmpdir()`, `homedir()`, `platform()`, `arch()`, `cpus()`, `totalmem()`, `freemem()`, and `EOL`.
+- **Edge stub — `path` functions changed from CRASH to safe defaults** — The MCP SDK calls `path.join()` during import-time initialization for session directory construction. The edge stub previously threw a CRASH error for all path functions. Changed `resolve()`, `join()`, `dirname()`, `basename()` to return concatenated strings, and added `sep` and `posix` exports. These stubs are only used during dead-code import-time init — actual runtime path operations are handled by the V8 isolate's controlled environment.
+
 
 ### Fixed
 
