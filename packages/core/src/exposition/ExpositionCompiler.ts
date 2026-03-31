@@ -19,7 +19,7 @@
  */
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { zodToJson } from '../core/schema/ZodCompat.js';
 import { type InternalAction, type ToolBuilder } from '../core/types.js';
 import { isPresenter } from '../presenter/Presenter.js';
 import { type ToolExposition } from './types.js';
@@ -225,7 +225,7 @@ function buildAtomicSchema<TContext>(
             ? new Set(action.omitCommonFields)
             : undefined;
 
-        const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' }) as {
+        const jsonSchema = zodToJson(commonSchema) as {
             properties?: Record<string, object>;
             required?: string[];
         };
@@ -245,7 +245,7 @@ function buildAtomicSchema<TContext>(
 
     // ── Merge action-specific schema fields ──────────────
     if (action.schema) {
-        const jsonSchema = zodToJsonSchema(action.schema, { target: 'jsonSchema7' }) as {
+        const jsonSchema = zodToJson(action.schema) as {
             properties?: Record<string, object>;
             required?: string[];
         };

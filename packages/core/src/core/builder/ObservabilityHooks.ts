@@ -43,7 +43,7 @@ export interface HookContext {
  */
 export function buildDebugHooks(debug: DebugObserverFn, ctx: HookContext): PipelineHooks {
     const toolName = ctx.name;
-    const startTime = performance.now();
+    const startTime = Date.now();
 
     return {
         onRouteError: () => {
@@ -66,7 +66,7 @@ export function buildDebugHooks(debug: DebugObserverFn, ctx: HookContext): Pipel
         },
         onExecuteOk: (action, response) => {
             const isErr = response.isError === true;
-            debug({ type: 'execute', tool: toolName, action, durationMs: performance.now() - startTime, isError: isErr, timestamp: Date.now() });
+            debug({ type: 'execute', tool: toolName, action, durationMs: Date.now() - startTime, isError: isErr, timestamp: Date.now() });
         },
         onExecuteError: (action, err) => {
             const message = toErrorMessage(err);
@@ -96,12 +96,12 @@ export function buildTracedHooks(tracer: VurbTracer, ctx: HookContext): Pipeline
     if (ctx.description) startAttrs['mcp.description'] = ctx.description;
 
     const span = tracer.startSpan(`mcp.tool.${ctx.name}`, { attributes: startAttrs });
-    const startTime = performance.now();
+    const startTime = Date.now();
     let statusCode: number = SpanStatusCode.UNSET;
     let statusMessage: string | undefined;
 
     const finalizeSpan = (response?: ToolResponse) => {
-        span.setAttribute('mcp.durationMs', performance.now() - startTime);
+        span.setAttribute('mcp.durationMs', Date.now() - startTime);
         if (response) {
             span.setAttribute('mcp.response_size', computeResponseSize(response));
         }
@@ -172,7 +172,7 @@ export function buildTracedHooks(tracer: VurbTracer, ctx: HookContext): Pipeline
  */
 export function buildTelemetryHooks(emit: TelemetrySink, ctx: HookContext): PipelineHooks {
     const toolName = ctx.name;
-    const startTime = performance.now();
+    const startTime = Date.now();
 
     return {
         onValidateError: (action, durationMs) => {
@@ -201,7 +201,7 @@ export function buildTelemetryHooks(emit: TelemetrySink, ctx: HookContext): Pipe
 
             emit({
                 type: 'execute', tool: toolName, action,
-                durationMs: performance.now() - startTime,
+                durationMs: Date.now() - startTime,
                 isError: isErr,
                 ...(recovery ? { recovery } : {}),
                 ...(recoveryActions && recoveryActions.length > 0 ? { recoveryActions } : {}),

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.8] - 2026-03-31
+
+### Fixed
+
+#### `@vurb/core` — Zod 4 JSON Schema Compatibility
+
+- **`zodToJsonSchema` silently returns empty schemas on Zod 4** — The `zod-to-json-schema` library (v3.x) is incompatible with Zod 4: it returns `{ "$schema": "..." }` with no `properties` or `required` fields, causing all MCP tool parameters to disappear from the `inputSchema` exposed to clients. This affected any MCP server installed with Zod 4 (e.g., `zod@^4.0.0`), making tools appear to accept no arguments even when parameters like `app_name` were correctly declared via `.withString()`.
+
+- **New `ZodCompat.ts` compatibility layer** — Introduced `zodToJson()` and `zodToJsonWithOptions()` wrapper functions that detect the Zod version at runtime:
+  - **Zod 4**: Uses the native `z.toJSONSchema()` built-in conversion method, which produces correct JSON Schema output. Strips `$schema` metadata for pipeline compatibility.
+  - **Zod 3**: Delegates to `zod-to-json-schema` as before, preserving full backward compatibility.
+
+- **Three call-sites migrated**:
+  - `SchemaGenerator.ts` — Grouped tool schema compilation (action merging pipeline)
+  - `ExpositionCompiler.ts` — Flat tool schema compilation (single-tool exposition)
+  - `JsonSerializer.ts` — AOT JSON serialization via `fast-json-stringify`
+
+### Test Suite
+
+- **`ZodCompat.test.ts`** — 13 tests covering: simple objects, field descriptions, required/optional fields, `$schema` stripping (version-aware), enums, numbers with constraints, booleans, arrays, empty objects, nested objects, `zodToJsonWithOptions` parity, and a regression test for the single-field action schema pattern.
+
+## [v3.14.6]
+### Fixed
+- Fixed ReferenceError in `@vurb/core` within `isolated-vm` execution by replacing `performance.now()` with `Date.now()` for telemetry and duration calculation, ensuring V8 compatibility.
+
 ## [3.14.5] - 2026-03-31
 
 ### Fixed

@@ -53,5 +53,5 @@
   "devDependencies": {
     "@vurb/core": ">=3.8.0"
   },
-  "version": "3.14.5"
+  "version": "3.14.8"
 }

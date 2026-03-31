@@ -353,7 +353,7 @@ export class SandboxEngine {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let script: any | undefined;      // ivm.Script
 
-        const startMs = performance.now();
+        const startMs = Date.now();
 
         try {
             // Create pristine context (NO globals injected — this IS the security)
@@ -384,7 +384,7 @@ export class SandboxEngine {
             // ASYNC execution — never blocks the Node.js event loop
             const rawResult = await script.run(context, { timeout: this._timeout });
 
-            const executionMs = performance.now() - startMs;
+            const executionMs = Date.now() - startMs;
 
             // ── Step 5: Output size guard ───────────────
             if (typeof rawResult === 'string') {

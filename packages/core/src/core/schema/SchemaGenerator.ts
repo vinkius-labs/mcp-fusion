@@ -9,7 +9,7 @@
  * Pure-function module: no state, no side effects.
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { zodToJson } from './ZodCompat.js';
 import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { type InternalAction } from '../types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
@@ -113,7 +113,7 @@ function collectCommonFields(
     const commonRequiredFields = new Set<string>();
     if (!commonSchema) return commonRequiredFields;
 
-    const jsonSchema = zodToJsonSchema(commonSchema, { target: 'jsonSchema7' }) as JsonSchemaObject;
+    const jsonSchema = zodToJson(commonSchema) as JsonSchemaObject;
     const schemaProps = jsonSchema.properties ?? {};
     const schemaRequired = jsonSchema.required ?? [];
 
@@ -155,7 +155,7 @@ function collectActionFields<TContext>(
     for (const action of actions) {
         if (!action.schema) continue;
 
-        const jsonSchema = zodToJsonSchema(action.schema, { target: 'jsonSchema7' }) as JsonSchemaObject;
+        const jsonSchema = zodToJson(action.schema) as JsonSchemaObject;
         const schemaProps = jsonSchema.properties ?? {};
         const schemaRequired = jsonSchema.required ?? [];
         const requiredSet = new Set(schemaRequired);

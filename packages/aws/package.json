@@ -1,6 +1,6 @@
 {
   "name": "@vurb/aws",
-  "version": "3.14.5",
+  "version": "3.14.8",
   "description": "AWS Lambda & Step Functions connector for Vurb. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.",
   "type": "module",
   "main": "dist/index.js",

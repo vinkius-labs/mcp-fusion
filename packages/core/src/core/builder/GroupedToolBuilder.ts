@@ -1100,9 +1100,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         }
 
         // Step 3: Validate
-        const validateStart = performance.now();
+        const validateStart = Date.now();
         const validationResult = validateArgs(execCtx, resolved.value, args);
-        const validateMs = performance.now() - validateStart;
+        const validateMs = Date.now() - validateStart;
 
         if (!validationResult.ok) {
             hooks?.onValidateError?.(actionName, validateMs);
