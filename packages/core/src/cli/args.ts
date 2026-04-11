@@ -39,6 +39,7 @@ export interface CliArgs {
     serverId: string | undefined;
     remoteUrl: string | undefined;
     allowInsecure: boolean;
+    skipMarketplace: boolean;
     // ── Token-specific ──
     tokenValue: string | undefined;
     clearToken: boolean;
@@ -67,6 +68,7 @@ export function parseArgs(argv: string[]): CliArgs {
         serverId: undefined,
         remoteUrl: undefined,
         allowInsecure: false,
+        skipMarketplace: false,
         tokenValue: undefined,
         clearToken: false,
     };
@@ -157,6 +159,9 @@ export function parseArgs(argv: string[]): CliArgs {
                 break;
             case '--allow-insecure':
                 result.allowInsecure = true;
+                break;
+            case '--no-marketplace':
+                result.skipMarketplace = true;
                 break;
             case '--clear':
                 result.clearToken = true;

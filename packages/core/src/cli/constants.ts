@@ -72,6 +72,7 @@ DEV OPTIONS
 DEPLOY OPTIONS
   --server, -s <path>      Path to server entrypoint (default: auto-detect)
   --token <token>          Override VURB_DEPLOY_TOKEN (connection token)
+  --no-marketplace         Skip marketplace manifest (deploy code only)
   --allow-insecure         Suppress HTTP plaintext warning
 
 REMOTE OPTIONS

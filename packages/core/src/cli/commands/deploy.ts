@@ -438,14 +438,18 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
 
     // ── Step 5c: marketplace manifest ──
     let marketplacePayload: Record<string, unknown> | null = null;
-    try {
-        const marketplaceManifest = readMarketplaceManifest(cwd);
-        if (marketplaceManifest) {
-            marketplacePayload = normalizeMarketplacePayload(marketplaceManifest);
-            process.stderr.write(`  ${ansi.dim('✓ marketplace manifest loaded')}\n`);
+    if (args.skipMarketplace) {
+        process.stderr.write(`  ${ansi.dim('⏭ marketplace manifest skipped (--no-marketplace)')}\n`);
+    } else {
+        try {
+            const marketplaceManifest = readMarketplaceManifest(cwd);
+            if (marketplaceManifest) {
+                marketplacePayload = normalizeMarketplacePayload(marketplaceManifest);
+                process.stderr.write(`  ${ansi.dim('✓ marketplace manifest loaded')}\n`);
+            }
+        } catch (mktErr) {
+            process.stderr.write(`  ${ansi.yellow('⚠')} marketplace manifest error: ${mktErr instanceof Error ? mktErr.message : String(mktErr)}\n`);
         }
-    } catch (mktErr) {
-        process.stderr.write(`  ${ansi.yellow('⚠')} marketplace manifest error: ${mktErr instanceof Error ? mktErr.message : String(mktErr)}\n`);
     }
 
     // ── Step 6: upload ──

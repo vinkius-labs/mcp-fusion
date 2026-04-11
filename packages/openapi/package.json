@@ -65,5 +65,5 @@
     "@types/node": "^25.3.0",
     "@vurb/core": ">=3.8.0"
   },
-  "version": "3.15.1"
+  "version": "3.15.2"
 }
