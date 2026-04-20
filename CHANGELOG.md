@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.3] - 2026-04-20
+
+### Fixed
+
+#### All Satellite Packages — Standalone Installation
+
+- **`@vurb/core` promoted from `peerDependencies` to `dependencies`** — All 13 satellite packages (`@vurb/cloudflare`, `@vurb/vercel`, `@vurb/swarm`, `@vurb/testing`, `@vurb/inspector`, `@vurb/jwt`, `@vurb/api-key`, `@vurb/aws`, `@vurb/n8n`, `@vurb/openapi-gen`, `@vurb/prisma-gen`, `@vurb/skills`, `@vurb/oauth`) now declare `@vurb/core` as a real dependency instead of a peer dependency. Previously, running `npm install @vurb/inspector` (or any other satellite) without manually installing `@vurb/core` first would fail with unresolved peer dependency errors. Core is now auto-installed as a transitive dependency, matching the behavior of frameworks like `@trpc/server` and `@nestjs/core`.
+
+### Added
+
+#### Ecosystem Health CI
+
+- **Scheduled smoke tests** — New `ecosystem-health.yml` workflow runs 4× daily (every 6 hours) across Node 18/20/22 × Ubuntu/macOS/Windows (9 matrix combinations). Installs all 14 `@vurb/*` packages from the npm registry and verifies ESM imports, catching publishing regressions (missing files, broken exports) before users do.
+- **Daily upstream regression check** — Existing CI workflow now runs on a daily schedule to detect breaking changes from upstream dependencies (`@modelcontextprotocol/sdk`, `zod`, etc.).
+
 ## [3.15.2] - 2026-04-11
 
 ### Added
