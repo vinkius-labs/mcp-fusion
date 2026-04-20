@@ -50,13 +50,14 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "@vurb/core": "^3.8.0"
+  },
   "peerDependencies": {
-    "@vurb/core": "^3.8.0",
     "@modelcontextprotocol/sdk": "^1.12.1"
   },
   "license": "Apache-2.0",
   "devDependencies": {
-    "@vurb/core": ">=3.8.0",
     "rimraf": "^6.0.0",
     "vitest": "^3.0.0"
   },

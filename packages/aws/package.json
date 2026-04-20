@@ -47,10 +47,12 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "@vurb/core": "^3.8.0"
+  },
   "peerDependencies": {
     "@aws-sdk/client-lambda": "^3.0.0",
-    "@aws-sdk/client-sfn": "^3.0.0",
-    "@vurb/core": "^3.8.0"
+    "@aws-sdk/client-sfn": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-lambda": {
@@ -63,8 +65,7 @@
   "devDependencies": {
     "@aws-sdk/client-lambda": "^3.0.0",
     "@aws-sdk/client-sfn": "^3.0.0",
-    "@types/node": "^25.3.0",
-    "@vurb/core": ">=3.8.0"
+    "@types/node": "^25.3.0"
   },
   "license": "Apache-2.0"
 }

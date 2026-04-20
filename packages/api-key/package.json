@@ -45,11 +45,9 @@
   "publishConfig": {
     "access": "public"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@vurb/core": "^3.8.0"
   },
-  "devDependencies": {
-    "@vurb/core": ">=3.8.0"
-  },
+  "devDependencies": {},
   "license": "Apache-2.0"
 }
