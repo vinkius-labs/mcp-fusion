@@ -49,7 +49,7 @@ jobs:
                     @vurb/api-key \
                     @vurb/aws \
                     @vurb/n8n \
-                    @vurb/openapi \
+                    @vurb/openapi-gen \
                     @vurb/prisma-gen \
                     @vurb/skills \
                     @vurb/oauth \
@@ -72,7 +72,7 @@ jobs:
                       '@vurb/api-key',
                       '@vurb/aws',
                       '@vurb/n8n',
-                      '@vurb/openapi',
+                      '@vurb/openapi-gen',
                       '@vurb/prisma-gen',
                       '@vurb/skills',
                       '@vurb/oauth',
