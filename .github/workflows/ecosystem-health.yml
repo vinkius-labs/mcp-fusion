@@ -1,0 +1,98 @@
+name: Ecosystem Health
+
+on:
+    schedule:
+        # Every 6 hours — standard cadence for published-package health checks
+        - cron: "30 2,8,14,20 * *"
+    workflow_dispatch: {}
+
+permissions:
+    contents: read
+
+jobs:
+    smoke-test:
+        name: Smoke · Node ${{ matrix.node-version }} · ${{ matrix.os }}
+        runs-on: ${{ matrix.os }}
+
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: [18, 20, 22]
+                os: [ubuntu-latest, macos-latest, windows-latest]
+
+        steps:
+            - name: Setup Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  # Intentionally no cache — smoke tests must verify fresh installs
+
+            - name: Create isolated test project
+              shell: bash
+              run: |
+                  mkdir smoke-test
+                  cd smoke-test
+                  npm init -y --silent
+
+            - name: Install @vurb ecosystem from registry
+              working-directory: smoke-test
+              shell: bash
+              run: |
+                  npm install --save \
+                    @vurb/core \
+                    @vurb/cloudflare \
+                    @vurb/vercel \
+                    @vurb/swarm \
+                    @vurb/testing \
+                    @vurb/inspector \
+                    @vurb/jwt \
+                    @vurb/api-key \
+                    @vurb/aws \
+                    @vurb/n8n \
+                    @vurb/openapi \
+                    @vurb/prisma-gen \
+                    @vurb/skills \
+                    @vurb/oauth \
+                    @modelcontextprotocol/sdk \
+                    zod
+
+            - name: Verify package imports
+              working-directory: smoke-test
+              shell: bash
+              run: |
+                  node --input-type=module -e "
+                    const packages = [
+                      '@vurb/core',
+                      '@vurb/cloudflare',
+                      '@vurb/vercel',
+                      '@vurb/swarm',
+                      '@vurb/testing',
+                      '@vurb/inspector',
+                      '@vurb/jwt',
+                      '@vurb/api-key',
+                      '@vurb/aws',
+                      '@vurb/n8n',
+                      '@vurb/openapi',
+                      '@vurb/prisma-gen',
+                      '@vurb/skills',
+                      '@vurb/oauth',
+                    ];
+
+                    let failed = 0;
+                    for (const pkg of packages) {
+                      try {
+                        await import(pkg);
+                        console.log('✓', pkg);
+                      } catch (e) {
+                        console.error('✗', pkg, '-', e.message);
+                        failed++;
+                      }
+                    }
+
+                    if (failed > 0) {
+                      console.error('\n' + failed + ' package(s) failed to import');
+                      process.exit(1);
+                    }
+
+                    console.log('\n✓ All ' + packages.length + ' packages imported successfully');
+                  "

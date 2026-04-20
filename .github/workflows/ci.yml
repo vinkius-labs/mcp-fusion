@@ -1,6 +1,9 @@
 name: CI
 
 on:
+    schedule:
+        # Daily regression check against latest upstream dependencies
+        - cron: "0 4 * * *"
     push:
         branches: [main]
     pull_request:
