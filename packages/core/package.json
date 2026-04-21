@@ -55,6 +55,10 @@
     "./sandbox": {
       "import": "./dist/sandbox/index.js",
       "types": "./dist/sandbox/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli/rc.js",
+      "types": "./dist/cli/rc.d.ts"
     }
   },
   "scripts": {
@@ -149,5 +153,5 @@
     "fast-redact": "^3.5.0",
     "rimraf": "^6.0.0"
   },
-  "version": "3.17.0"
+  "version": "3.17.1"
 }

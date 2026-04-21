@@ -87,7 +87,7 @@ export { extractPath, applyResponseTransform } from './compiler/ResponseTransfor
 export { loadYamlServer } from './runtime/LocalServer.js';
 export type { CompiledYamlServer } from './runtime/LocalServer.js';
 
-export { createYamlMcpServer } from './runtime/YamlMcpServer.js';
+export { createYamlMcpServer, buildToolsList, buildResourcesList, buildPromptsList, readResourceContent } from './runtime/YamlMcpServer.js';
 export type { YamlServerOptions, YamlServerResult, YamlServerTransport } from './runtime/YamlMcpServer.js';
 
 export { executeYamlTool, interpolateParams, interpolateDeep } from './runtime/BasicToolExecutor.js';

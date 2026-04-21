@@ -12,6 +12,7 @@
  */
 import type { CompiledTool } from '../compiler/ToolCompiler.js';
 import { applyResponseTransform } from '../compiler/ResponseTransformer.js';
+import { randomUUID } from 'node:crypto';
 
 /** Regex matching {{param}} placeholders in strings. */
 const PARAM_PLACEHOLDER = /\{\{(\w+)\}\}/g;
@@ -20,7 +21,7 @@ const PARAM_PLACEHOLDER = /\{\{(\w+)\}\}/g;
 const BUILT_INS: Record<string, () => string> = {
     '__NOW_ISO__': () => new Date().toISOString(),
     '__NOW_EPOCH__': () => String(Math.floor(Date.now() / 1000)),
-    '__REQUEST_ID__': () => crypto.randomUUID(),
+    '__REQUEST_ID__': () => randomUUID(),
 };
 
 /**

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.1] - 2026-04-21
+
+### Fixed
+
+- **`@vurb/yaml`** — Fixed `ReferenceError: crypto is not defined` in `BasicToolExecutor` and `YamlMcpServer` by importing `randomUUID` from `node:crypto` instead of using bare `globalThis.crypto`. This crashed test runners and Node.js environments where the global `crypto` object is not available.
+
+### Added
+
+- **`@vurb/yaml`** — Exported reusable MCP handler helpers: `buildToolsList()`, `buildResourcesList()`, `buildPromptsList()`, and `readResourceContent()` from `YamlMcpServer.ts`. These are now available as public API for enterprise runtimes to reuse without reimplementing handler logic.
+- **`@vurb/core`** — Added `./cli` export path (`@vurb/core/cli`) exposing `readVurbRc()`, `writeVurbRc()`, `loadEnv()`, and `ensureGitignore()` for use by other packages in the monorepo.
+
+### Changed
+
+- **All `@vurb/*` cross-dependencies updated to `^3.17.0`** — Ensures consistent resolution across the monorepo.
+
 ## [3.17.0] - 2026-04-21
 
 ### Added

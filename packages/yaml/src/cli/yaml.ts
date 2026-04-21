@@ -63,16 +63,21 @@ ${BLD}vurb yaml${RST} — Declarative MCP Server Engine
 ${BLD}USAGE${RST}
   vurb yaml validate [file]          Validate a vurb.yaml manifest
   vurb yaml dev [file]               Start a local MCP dev server
+  vurb yaml deploy [file]            Deploy manifest to Vinkius Cloud
 
 ${BLD}DEV OPTIONS${RST}
   --transport, -t ${CYN}<stdio|http>${RST}   Transport layer (default: stdio)
   --port, -p ${CYN}<number>${RST}            HTTP port (default: 3001)
 
+${BLD}DEPLOY OPTIONS${RST}
+  --token ${CYN}<token>${RST}                Connection token (or use .vurbrc / VURB_DEPLOY_TOKEN)
+
 ${BLD}EXAMPLES${RST}
   ${DIM}vurb yaml validate${RST}
   ${DIM}vurb yaml dev${RST}
   ${DIM}vurb yaml dev --transport http --port 8080${RST}
-  ${DIM}vurb yaml dev ./servers/my-server/vurb.yaml${RST}
+  ${DIM}vurb yaml deploy${RST}
+  ${DIM}vurb yaml deploy ./servers/my-api/vurb.yaml --token vk_xxxxx${RST}
 `.trim();
 
 // ── Internal Arg Parser ──────────────────────────────────
@@ -82,6 +87,7 @@ interface YamlArgs {
     file: string | undefined;
     transport: 'stdio' | 'http';
     port: number;
+    token: string | undefined;
     help: boolean;
 }
 
@@ -91,6 +97,7 @@ function parseYamlArgs(argv: string[]): YamlArgs {
         file: undefined,
         transport: 'stdio',
         port: 3001,
+        token: undefined,
         help: false,
     };
 
@@ -108,6 +115,8 @@ function parseYamlArgs(argv: string[]): YamlArgs {
             if (val === 'http' || val === 'stdio') result.transport = val;
         } else if (arg === '--port' || arg === '-p') {
             result.port = parseInt(args[++i] ?? '3001', 10);
+        } else if (arg === '--token') {
+            result.token = args[++i];
         } else if (!arg.startsWith('-')) {
             positional.push(arg);
         }
@@ -203,6 +212,176 @@ async function subDev(
     }
 }
 
+// ── Deploy ───────────────────────────────────────────────
+
+const VINKIUS_CLOUD_URL = 'https://api.vinkius.com';
+const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
+
+function maskToken(token: string): string {
+    if (token.length <= 8) return '****';
+    return token.slice(0, 4) + '…' + token.slice(-4);
+}
+
+async function subDeploy(
+    fileArg: string | undefined,
+    tokenArg: string | undefined,
+): Promise<void> {
+    const filePath = findYamlFile(fileArg);
+    const yaml = readFileSync(filePath, 'utf-8');
+
+    // ── 1. Local validation ──────────────────────────────
+    log(`${DIM}Validating ${filePath}...${RST}`);
+
+    let spec: ReturnType<typeof parseVurbYaml>;
+    try {
+        spec = parseVurbYaml(yaml);
+    } catch (e) {
+        if (e instanceof VurbYamlError) {
+            log(`${RED}✗ Validation failed — fix errors before deploying${RST}`);
+            for (const err of e.details ?? [e.message]) {
+                log(`  ${RED}•${RST} ${err}`);
+            }
+            process.exit(1);
+        }
+        throw e;
+    }
+
+    log(`${GRN}✓ Valid vurb.yaml${RST}  ${spec.tools?.length ?? 0} tools, ${spec.resources?.length ?? 0} resources, ${spec.prompts?.length ?? 0} prompts`);
+
+    // ── 2. Resolve credentials ───────────────────────────
+    // Priority: --token flag > VURB_DEPLOY_TOKEN env > .vurbrc
+    let token = tokenArg ?? process.env['VURB_DEPLOY_TOKEN'];
+    let serverId: string | undefined;
+    let remote = VINKIUS_CLOUD_URL;
+
+    try {
+        const { readVurbRc, loadEnv } = await import('@vurb/core/cli');
+        const cwd = process.cwd();
+        loadEnv(cwd);
+        const rc = readVurbRc(cwd);
+        if (!token) token = rc.token;
+        serverId = rc.serverId;
+        if (rc.remote) remote = rc.remote;
+    } catch {
+        // @vurb/core/cli not available — rely on env/flag only
+    }
+
+    if (!token) {
+        log(`${RED}✗ No deploy token found${RST}`);
+        log(`  ${DIM}Set via: --token <token>, VURB_DEPLOY_TOKEN env, or vurb token <token>${RST}`);
+        process.exit(1);
+    }
+
+    // ── 3. Resolve serverId from token ───────────────────
+    if (!serverId) {
+        log(`${DIM}Resolving server from token...${RST}`);
+        try {
+            const infoRes = await fetch(`${remote.replace(/\/+$/, '')}/token/info`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+                signal: AbortSignal.timeout(10_000),
+            });
+            if (infoRes.ok) {
+                const info = await infoRes.json() as { server_id: string; server_name: string };
+                serverId = info.server_id;
+                log(`  ${GRN}✓${RST} ${info.server_name} ${DIM}(${serverId})${RST}`);
+            } else {
+                log(`${RED}✗ Token rejected (HTTP ${infoRes.status})${RST}`);
+                log(`  ${DIM}Check your token or set serverId in .vurbrc${RST}`);
+                process.exit(1);
+            }
+        } catch (e) {
+            log(`${RED}✗ Cannot reach Vinkius Cloud: ${e instanceof Error ? e.message : String(e)}${RST}`);
+            process.exit(1);
+        }
+    }
+
+    if (!SAFE_ID.test(serverId)) {
+        log(`${RED}✗ Invalid server ID: ${serverId}${RST}`);
+        process.exit(1);
+    }
+
+    // ── 4. Deploy ────────────────────────────────────────
+    log(`${DIM}Deploying to ${remote}...${RST}`);
+
+    const url = `${remote.replace(/\/+$/, '')}/servers/${encodeURIComponent(serverId)}/yaml-deploy`;
+
+    let res: Response;
+    try {
+        res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ yaml_spec: yaml }),
+            signal: AbortSignal.timeout(30_000),
+        });
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log(`${RED}✗ Network error: ${msg}${RST}`);
+        process.exit(1);
+    }
+
+    if (!res.ok) {
+        const errBody = await res.text();
+        let message = `HTTP ${res.status}`;
+        let errors: string[] = [];
+
+        try {
+            const parsed = JSON.parse(errBody) as { message?: string; errors?: string[] };
+            message = parsed.message ?? message;
+            errors = parsed.errors ?? [];
+        } catch { /* use status code */ }
+
+        if (res.status === 401) {
+            message = 'token revoked or invalid — check your dashboard';
+        } else if (res.status === 403) {
+            message = 'token does not belong to this server';
+        }
+
+        log(`${RED}✗ Deploy failed: ${message}${RST}`);
+        for (const err of errors) {
+            log(`  ${RED}•${RST} ${err}`);
+        }
+        process.exit(1);
+    }
+
+    const data = await res.json() as {
+        status: string;
+        server_id: string;
+        message: string;
+        warnings?: string[];
+    };
+
+    // ── 5. Output ────────────────────────────────────────
+    log('');
+    log(`  ${GRN}✓ YAML manifest deployed${RST}`);
+    log(`  ${DIM}Server:${RST} ${data.server_id}`);
+    log(`  ${DIM}Token:${RST}  ${maskToken(token)}`);
+
+    if (spec.tools && spec.tools.length > 0) {
+        log('');
+        log(`  ${BLD}${spec.tools.length}${RST} ${spec.tools.length === 1 ? 'tool' : 'tools'} registered:`);
+        for (const tool of spec.tools) {
+            const tag = tool.tag ? ` ${DIM}[${tool.tag}]${RST}` : '';
+            log(`    ${GRN}●${RST} ${tool.name}${tag}`);
+        }
+    }
+
+    if (data.warnings && data.warnings.length > 0) {
+        log('');
+        for (const w of data.warnings) {
+            log(`  ${CYN}⚠${RST} ${w}`);
+        }
+    }
+
+    log('');
+}
+
 // ── Entry Point (called by @vurb/core CLI) ───────────────
 
 /**
@@ -236,6 +415,9 @@ export async function commandYaml(): Promise<void> {
             break;
         case 'dev':
             await subDev(args.file, args.transport, args.port);
+            break;
+        case 'deploy':
+            await subDeploy(args.file, args.token);
             break;
         default:
             log(`${RED}Unknown yaml subcommand: "${args.subcommand}"${RST}`);

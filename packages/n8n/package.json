@@ -55,5 +55,5 @@
     "@types/node": "^25.3.0"
   },
   "license": "Apache-2.0",
-  "version": "3.17.0"
+  "version": "3.17.1"
 }

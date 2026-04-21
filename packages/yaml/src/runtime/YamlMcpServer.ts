@@ -24,6 +24,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import {
     ListToolsRequestSchema,
     CallToolRequestSchema,
@@ -68,7 +69,7 @@ export interface YamlServerResult {
 // ── Tool Handler Helpers ─────────────────────────────────
 
 /** Build MCP tools/list response from compiled tools. */
-function buildToolsList(tools: readonly CompiledTool[]) {
+export function buildToolsList(tools: readonly CompiledTool[]) {
     return tools.map(tool => ({
         name: tool.name,
         description: tool.description,
@@ -78,7 +79,7 @@ function buildToolsList(tools: readonly CompiledTool[]) {
 }
 
 /** Build MCP resources/list response from compiled resources. */
-function buildResourcesList(resources: readonly CompiledResource[]) {
+export function buildResourcesList(resources: readonly CompiledResource[]) {
     return resources.map(resource => ({
         name: resource.name,
         uri: resource.uri,
@@ -88,7 +89,7 @@ function buildResourcesList(resources: readonly CompiledResource[]) {
 }
 
 /** Build MCP prompts/list response from compiled prompts. */
-function buildPromptsList(prompts: readonly CompiledPrompt[]) {
+export function buildPromptsList(prompts: readonly CompiledPrompt[]) {
     return prompts.map(prompt => ({
         name: prompt.name,
         ...(prompt.description ? { description: prompt.description } : {}),
@@ -103,7 +104,7 @@ function buildPromptsList(prompts: readonly CompiledPrompt[]) {
 // ── Resource Content Reader ─────────────────────────────
 
 /** Fetch the content of a compiled resource. */
-async function readResourceContent(
+export async function readResourceContent(
     resource: CompiledResource,
     fetchFn: typeof fetch,
 ): Promise<string> {
@@ -360,7 +361,7 @@ export async function createYamlMcpServer(
 
                     // New session
                     const t = new StreamableHTTPServerTransport({
-                        sessionIdGenerator: () => crypto.randomUUID(),
+                        sessionIdGenerator: () => randomUUID(),
                         onsessioninitialized: (id) => {
                             sessions.set(id, t);
                         },
