@@ -46,7 +46,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@vurb/core": "^3.8.0",
+    "@vurb/core": "^3.17.0",
     "minisearch": "^7.1.1"
   },
   "peerDependencies": {
@@ -54,5 +54,5 @@
   },
   "devDependencies": {},
   "license": "Apache-2.0",
-  "version": "3.16.0"
+  "version": "3.17.0"
 }

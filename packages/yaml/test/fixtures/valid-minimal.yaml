@@ -1,0 +1,19 @@
+version: "1.0"
+
+server:
+  name: "minimal-server"
+
+tools:
+  - name: ping
+    description: "Simple ping tool"
+    parameters:
+      message: { type: string, required: true }
+    execute:
+      connection: api
+      method: GET
+      path: "/ping"
+
+connections:
+  api:
+    type: rest
+    base_url: "https://api.example.com"

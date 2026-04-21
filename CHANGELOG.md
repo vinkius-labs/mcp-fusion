@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0] - 2026-04-21
+
+### Added
+
+#### `@vurb/yaml` — Declarative MCP Server Engine (new package)
+
+A new first-class package that lets developers define complete MCP servers in a single `vurb.yaml` file — zero TypeScript required. Connections, tools, resources, prompts, and secrets are declared as YAML, compiled at startup, and served as a fully compliant MCP server.
+
+- **YAML Parser & Schema Validator** — Parses `vurb.yaml` manifests and validates against a strict Zod schema. Detects missing fields, invalid types, and unsupported versions with structured `VurbYamlError` containing `.details[]` arrays for actionable multi-line error messages.
+- **Cross-Reference Validator** — Ensures referential integrity: tools referencing nonexistent connections, `${SECRETS.X}` tokens referencing undeclared secrets, and resources referencing missing connections are all caught at parse time with specific error messages naming the offending tool/connection/secret.
+- **Connection Resolver** — Resolves named YAML connections into fetch-ready HTTP configurations with interpolated base URLs and auth headers. Supports `bearer`, `basic`, `custom_header`, and `none` auth types with secret interpolation.
+- **Tool Compiler** — Compiles declarative tool definitions into `CompiledTool` objects with JSON Schema input, HTTP execution config (method, path, query, body templates), and the full tool trichotomy (`description`, `instruction`, `rules`). Supports MCP tool annotations (`readOnlyHint`, `openWorldHint`, etc.).
+- **Resource Compiler** — Compiles resources with three execution strategies: `static` (inline content), `fetch` (arbitrary URL), and `connection` (named connection + path). Supports URI templates and response transforms.
+- **Prompt Compiler** — Compiles prompts with typed arguments and `{{param}}` template hydration for `prompts/get` responses.
+- **Response Transformer** — JMESPath-inspired dot-path extraction (`data.items[].{id, name}`) and multi-field projection for filtering verbose API responses down to LLM-relevant data.
+- **Secret Interpolator** — Resolves `${SECRETS.KEY}` tokens from `process.env` (open-source) or the Vinkius encrypted vault (enterprise). Missing required secrets throw actionable errors; optional secrets emit `⚠` warnings.
+- **Parameter Compiler** — Converts YAML parameter definitions to MCP-compliant JSON Schema (`type`, `required`, `enum`, `description`).
+- **Basic Tool Executor** — Executes compiled tools via plain `fetch()` with `{{param}}` interpolation for path, query, and body templates. Built-in variables: `__NOW_ISO__`, `__NOW_EPOCH__`, `__REQUEST_ID__`. Returns MCP-compliant `ToolCallResult` with `isError` flag.
+- **YAML MCP Server** — `createYamlMcpServer()` creates a real MCP SDK `Server` and registers all compiled tools, resources, and prompts as live MCP handlers. Supports dual transport: **stdio** (default, for Cursor/Claude Desktop) and **Streamable HTTP** (for browser-based dev tools). HTTP transport includes CORS, session management, and graceful shutdown.
+- **DX-First Error Handling** — Every pipeline step (`parse → secrets → connections → tools → resources → prompts`) is wrapped with context-rich `try/catch` blocks producing `VurbYamlError` with structured `.details[]` arrays. Runtime MCP handlers (`resources/read`, `prompts/get`) return actionable error messages listing available resources/prompts and required arguments instead of crashing the server.
+
+#### `@vurb/core` — YAML CLI Plugin Architecture
+
+- **`vurb yaml` command group** — The core CLI now dynamically imports `@vurb/yaml` at runtime when the `yaml` subcommand is used. If the package is not installed, a helpful error message with `npm install @vurb/yaml` is shown.
+- **`vurb yaml validate [file]`** — Validates a `vurb.yaml` manifest and displays server metadata, tool count, resource count, and tool list on success. On failure, displays structured error details.
+- **`vurb yaml dev [file]`** — Starts a local MCP dev server from a YAML manifest. Supports `--transport stdio|http` and `--port` options.
+- **Command parser guard** — Fixed `parseArgs` to only accept the first command token, preventing `vurb yaml validate` from being incorrectly parsed as `validate`.
+
+#### Documentation
+
+- **`packages/yaml/README.md`** — Production-grade documentation covering the full YAML spec, CLI usage (`vurb yaml validate` / `vurb yaml dev`), programmatic API, architecture overview, and the open-core strategy.
+
+### Changed
+
+- **All `@vurb/*` cross-dependencies updated to `^3.17.0`** — All 14 satellite packages now reference `@vurb/core: ^3.17.0` in their dependencies, ensuring consistent resolution across the monorepo.
+
+### Test Suite
+
+- **54 new tests** in `packages/yaml/test/yaml-engine.test.ts` covering:
+  - Parser: valid/invalid YAML, empty input, garbage input, field preservation (8 tests)
+  - Schema Validator: well-formed, missing fields, unknown version, missing description (4 tests)
+  - Cross-Reference Validator: valid refs, missing connection, undeclared secret (3 tests)
+  - Secret Interpolator: single/multiple secrets, missing secrets, deep interpolation, env resolution (5 tests)
+  - Parameter Compiler: required/optional, enums, empty params (3 tests)
+  - Connection Resolver: bearer auth, basic auth, custom headers (3 tests)
+  - Tool Compiler: trichotomy, JSON Schema parameters (2 tests)
+  - Resource Compiler: static, connection, URI templates (3 tests)
+  - Prompt Compiler: arguments, hydration (2 tests)
+  - Response Transformer: dot-path, nested, missing, null, array projection, transforms (8 tests)
+  - Basic Tool Executor: interpolation, deep interpolation, GET execution, error responses, fetch errors, query params (7 tests)
+  - Full Pipeline Integration: complete fixture, minimal fixture, invalid rejection (3 tests)
+
 ## [3.16.0] - 2026-04-21
 
 ### Added

@@ -1,0 +1,26 @@
+version: "1.0"
+
+server:
+  name: "broken-refs"
+
+connections:
+  api:
+    type: rest
+    base_url: "https://api.example.com"
+
+tools:
+  - name: broken_tool
+    description: "References a connection that does not exist"
+    execute:
+      connection: nonexistent_connection
+      method: GET
+      path: "/test"
+
+  - name: secret_ref_tool
+    description: "References an undeclared secret"
+    execute:
+      connection: api
+      method: POST
+      path: "/data"
+      body:
+        token: "${SECRETS.UNDECLARED_SECRET}"

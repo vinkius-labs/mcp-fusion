@@ -47,7 +47,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@vurb/core": "^3.8.0"
+    "@vurb/core": "^3.17.0"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0"
@@ -56,5 +56,5 @@
   "devDependencies": {
     "vitest": "^3.0.0"
   },
-  "version": "3.16.0"
+  "version": "3.17.0"
 }

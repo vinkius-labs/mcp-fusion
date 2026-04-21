@@ -1,0 +1,144 @@
+version: "1.0"
+
+server:
+  name: "test-rh-server"
+  description: "Test server for HR onboarding"
+  capabilities:
+    tools: true
+    resources: true
+    prompts: true
+  instructions: |
+    You are an HR assistant. Always respond in formal Portuguese.
+
+secrets:
+  API_TOKEN:
+    label: "API Token"
+    type: api_key
+    required: true
+    sensitive: true
+  JIRA_EMAIL:
+    label: "Jira Email"
+    type: email
+    required: true
+  JIRA_TOKEN:
+    label: "Jira Token"
+    type: api_key
+    required: true
+    sensitive: true
+
+connections:
+  intranet:
+    type: rest
+    base_url: "https://intranet.example.com/api/v1"
+    auth:
+      type: bearer
+      token: "${SECRETS.API_TOKEN}"
+    headers:
+      Accept: "application/json"
+
+  jira:
+    type: rest
+    base_url: "https://company.atlassian.net/rest/api/3"
+    auth:
+      type: basic
+      username: "${SECRETS.JIRA_EMAIL}"
+      password: "${SECRETS.JIRA_TOKEN}"
+
+resources:
+  - name: "Employee Manual"
+    uri: "docs://rh/manual"
+    mime_type: "text/markdown"
+    description: "Company policies and procedures"
+    execute:
+      type: static
+      content: |
+        # Employee Manual
+        Welcome to the company.
+
+  - name: "Benefits List"
+    uri: "docs://rh/benefits"
+    mime_type: "application/json"
+    execute:
+      type: connection
+      connection: intranet
+      method: GET
+      path: "/docs/benefits"
+    response:
+      extract: ["data.benefits"]
+
+prompts:
+  - name: "welcome_email"
+    description: "Generates a welcome email for new hires"
+    arguments:
+      name: { type: string, required: true }
+      role: { type: string, required: true }
+      department: { type: string, required: false }
+    messages:
+      - role: user
+        content: |
+          Read 'docs://rh/manual'.
+          Write a welcome email for {{name}} ({{role}}, {{department}}).
+
+tools:
+  - name: create_ticket
+    description: "Opens a Jira ticket"
+    instruction: |
+      Use when the employee needs IT access, equipment, or VPN.
+      Create separate tickets per type.
+    rules:
+      - "Never create duplicate tickets"
+      - "Priority highest only for C-level"
+    tag: tickets
+    annotations:
+      readOnlyHint: false
+      openWorldHint: true
+    parameters:
+      title: { type: string, required: true, description: "Ticket title" }
+      body: { type: string, required: true }
+      priority:
+        type: string
+        required: false
+        enum: [lowest, low, medium, high, highest]
+        default: medium
+    execute:
+      connection: jira
+      method: POST
+      path: "/issue"
+      body:
+        fields:
+          project: { key: "IT" }
+          summary: "{{title}}"
+          description: "{{body}}"
+          priority: { name: "{{priority}}" }
+    response:
+      extract: ["id", "key", "self"]
+
+  - name: search_employee
+    description: "Search employees by name"
+    instruction: "Accepts partial names. Max 10 results."
+    rules:
+      - "Never expose salary or bank data"
+    tag: queries
+    annotations:
+      readOnlyHint: true
+    parameters:
+      query: { type: string, required: true }
+    execute:
+      connection: intranet
+      method: GET
+      path: "/employees/search"
+      query: { q: "{{query}}", limit: "10" }
+    response:
+      extract: ["data[].{id, name, email, department}"]
+
+settings:
+  dlp:
+    enabled: true
+    patterns: ["*.cpf", "*.salary"]
+  finops:
+    enabled: true
+    max_array_items: 25
+  circuit_breaker:
+    enabled: true
+    threshold: 5
+    reset_seconds: 60

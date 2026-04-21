@@ -93,8 +93,11 @@ export function parseArgs(argv: string[]): CliArgs {
             case 'version':
             case 'validate':
             case 'doctor':
-                result.command = arg;
-                seenCommand = true;
+            case 'yaml':
+                if (!seenCommand) {
+                    result.command = arg;
+                    seenCommand = true;
+                }
                 break;
             case '-v':
             case '--version':

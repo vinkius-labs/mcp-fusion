@@ -56,6 +56,7 @@ USAGE
   vurb update                       Update all @vurb/* packages to latest
   vurb doctor                       Run environment diagnostics
   vurb validate                     Validate server tools, schemas & lockfile
+  vurb yaml                          Declarative MCP server engine (vurb.yaml)
 
 CREATE OPTIONS
   --transport <stdio|sse>  Transport layer (default: stdio)
@@ -119,4 +120,7 @@ EXAMPLES
   vurb doctor
   vurb validate
   vurb validate --server ./src/server.ts
+  vurb yaml validate
+  vurb yaml dev
+  vurb yaml dev --transport http --port 3001
 `.trim();

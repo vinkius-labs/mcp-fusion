@@ -94,6 +94,21 @@ async function main(): Promise<void> {
             await commandValidate(args);
             process.exit(0);
             break;
+        case 'yaml': {
+            try {
+                const pkg = '@vurb/yaml';
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const { commandYaml } = await import(pkg);
+                await commandYaml();
+            } catch {
+                console.error(
+                    `\x1b[31m\u2717\x1b[0m The YAML engine requires the optional package:\n\n` +
+                    `  npm install @vurb/yaml\n`,
+                );
+                process.exit(1);
+            }
+            break;
+        }
         default:
             console.error(`Unknown command: "${args.command}"\n`);
             console.log(HELP);
