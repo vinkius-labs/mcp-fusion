@@ -81,8 +81,8 @@ export function applyResponseTransform(
     // Multiple extractions → return an object with each path as key
     const result: Record<string, unknown> = {};
     for (const path of transform.extract) {
-        // Use the last segment as the key name
-        const key = path.split('.').pop() ?? path;
+        // Use the path as key (replacing dots with underscores) to prevent collisions
+        const key = path.replace(/\[\]\.?\{.*\}$/, '').replace(/\./g, '_');
         result[key] = extractPath(response, path);
     }
 

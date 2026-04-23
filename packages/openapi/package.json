@@ -64,5 +64,5 @@
   "devDependencies": {
     "@types/node": "^25.3.0"
   },
-  "version": "3.17.1"
+  "version": "3.17.2"
 }

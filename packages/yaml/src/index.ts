@@ -84,7 +84,7 @@ export type { CompiledPrompt, CompiledPromptArg } from './compiler/PromptCompile
 export { extractPath, applyResponseTransform } from './compiler/ResponseTransformer.js';
 
 // ── Runtime ──────────────────────────────────────────────
-export { loadYamlServer } from './runtime/LocalServer.js';
+export { loadYamlServer, loadFromParsedSpec } from './runtime/LocalServer.js';
 export type { CompiledYamlServer } from './runtime/LocalServer.js';
 
 export { createYamlMcpServer, buildToolsList, buildResourcesList, buildPromptsList, readResourceContent } from './runtime/YamlMcpServer.js';

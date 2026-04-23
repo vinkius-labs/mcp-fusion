@@ -18,6 +18,8 @@ export interface ResolvedConnection {
     readonly baseUrl: string;
     /** Merged headers (auth + custom). */
     readonly headers: Readonly<Record<string, string>>;
+    /** Request timeout in milliseconds. */
+    readonly timeout_ms?: number;
 }
 
 /**
@@ -33,6 +35,7 @@ export function resolveConnection(
 ): ResolvedConnection {
     const baseUrl = interpolateSecrets(def.base_url, secrets);
     const headers: Record<string, string> = {};
+    const timeout_ms = def.timeout_ms;
 
     // ── Merge custom headers ─────────────────────────────
     if (def.headers) {
@@ -74,7 +77,7 @@ export function resolveConnection(
         }
     }
 
-    return { baseUrl, headers };
+    return { baseUrl, headers, ...(timeout_ms !== undefined && { timeout_ms }) };
 }
 
 /**

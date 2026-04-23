@@ -41,7 +41,9 @@ export function interpolateParams(
         if (builtIn) return builtIn();
         // Then tool arguments
         const value = args[key];
-        return value !== undefined ? String(value) : match;
+        return value !== undefined ? String(value) : (() => {
+            throw new Error(`Missing required parameter: "${key}" — the LLM did not provide this argument.`);
+        })();
     });
 }
 
@@ -104,9 +106,12 @@ export async function executeYamlTool(
 
         // ── 3. Build request options ─────────────────────
         const headers = new Headers(tool.connection.headers);
+        const timeoutMs = tool.connection.timeout_ms ?? 30_000;
+        
         const init: RequestInit = {
             method: tool.execute.method,
             headers,
+            signal: AbortSignal.timeout(timeoutMs),
         };
 
         // ── 4. Interpolate body ──────────────────────────

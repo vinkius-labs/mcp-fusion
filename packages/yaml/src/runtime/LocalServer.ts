@@ -118,6 +118,23 @@ export async function loadYamlServer(
             }
         }
     }
+    return loadFromParsedSpec(spec, resolvedSecrets);
+}
+
+/**
+ * Load and compile from an already parsed and validated VurbYamlSpec.
+ * Use this in production runtimes to avoid double-serialization overhead.
+ *
+ * @param spec - Parsed and validated YAML spec
+ * @param secrets - Pre-resolved secrets
+ * @returns Compiled server ready for MCP registration
+ * @throws {@link VurbYamlError} with actionable details on failure
+ */
+export function loadFromParsedSpec(
+    spec: VurbYamlSpec,
+    secrets: Readonly<Record<string, string>>,
+): CompiledYamlServer {
+    const resolvedSecrets = { ...secrets };
 
     // ── 3. Resolve connections ───────────────────────────
     let connections: ReadonlyMap<string, ResolvedConnection>;

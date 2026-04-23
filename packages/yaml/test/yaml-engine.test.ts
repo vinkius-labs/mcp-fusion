@@ -473,8 +473,8 @@ describe('ResponseTransformer', () => {
 
     it('applies multiple extract transform', () => {
         const result = applyResponseTransform(data, { extract: ['ticket.id', 'ticket.key'] }) as Record<string, unknown>;
-        expect(result['id']).toBe(1);
-        expect(result['key']).toBe('IT-42');
+        expect(result['ticket_id']).toBe(1);
+        expect(result['ticket_key']).toBe('IT-42');
     });
 
     it('returns raw data when no transform', () => {
@@ -492,8 +492,8 @@ describe('BasicToolExecutor', () => {
             expect(interpolateParams('/tickets/{{id}}', { id: '42' })).toBe('/tickets/42');
         });
 
-        it('keeps unknown params as-is', () => {
-            expect(interpolateParams('{{missing}}', {})).toBe('{{missing}}');
+        it('throws on missing required params', () => {
+            expect(() => interpolateParams('{{missing}}', {})).toThrow(/Missing required parameter/);
         });
 
         it('interpolates built-in __REQUEST_ID__', () => {

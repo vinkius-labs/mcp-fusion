@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.2] - 2026-04-23
+
+### Added
+
+- **`@vurb/yaml`** — Exported `loadFromParsedSpec()` from the public API. Enterprise runtimes can now compile directly from a pre-parsed `VurbYamlSpec` (JSON), avoiding double-serialization overhead when the spec is already stored as structured data (e.g., fetched from a database or API).
+
+### Fixed
+
+- **`@vurb/yaml`** — `interpolateParams()` now throws a descriptive `Error` when a required `{{param}}` placeholder is not provided by the LLM, instead of silently leaving the raw `{{param}}` token in the URL/body. This surfaces missing arguments immediately rather than producing cryptic upstream API errors.
+- **`@vurb/yaml`** — `applyResponseTransform()` multi-path extraction now uses the full dot-path (with dots replaced by underscores) as the result key, preventing key collisions when multiple extract paths share the same final segment (e.g., `user.name` and `org.name` no longer both map to `name`).
+
+### Changed
+
+- **`@vurb/yaml`** — `ResolvedConnection` now carries an optional `timeout_ms` field. When declared in `vurb.yaml`, connection-level timeouts are propagated to `executeYamlTool()` via `AbortSignal.timeout()` (default: 30 s). Prevents indefinite hangs on slow upstream APIs.
+- **All `@vurb/*` cross-dependencies updated to `^3.17.2`** — Ensures consistent resolution across the monorepo.
+
 ## [3.17.1] - 2026-04-21
 
 ### Fixed
