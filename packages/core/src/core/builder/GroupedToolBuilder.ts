@@ -752,13 +752,21 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
                 `Each action must have a unique name within its tool.`,
             );
         }
+        // Inherit builder-level description when action has none.
+        // Prevents "toolName → default" in flat exposition when actions
+        // are registered without their own description (e.g. defineTool
+        // with a single "default" action, or programmatic builder.action() calls).
+        const actionConfig: ActionConfig<TContext> = config.description || !this._description
+            ? config
+            : { ...config, description: this._description };
+
         this._actions.push({
-            key: config.name,
+            key: actionConfig.name,
             groupName: undefined,
             groupDescription: undefined,
             ...mapConfigToActionFields(
-                config,
-                (config.omitCommon?.length ?? 0) > 0 ? config.omitCommon : undefined,
+                actionConfig,
+                (actionConfig.omitCommon?.length ?? 0) > 0 ? actionConfig.omitCommon : undefined,
             ),
             middlewares: undefined,
         });
@@ -824,6 +832,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
         }
         this._hasGroup = true;
         const groupBuilder = new ActionGroupBuilder<TContext, TCommon>(name, description);
+        // Propagate builder-level description so grouped actions inherit it
+        // when they don't have their own description.
+        groupBuilder._inheritDescription = this._description;
         configure(groupBuilder);
         this._actions.push(...groupBuilder._actions);
         return this;

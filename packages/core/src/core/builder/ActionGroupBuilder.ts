@@ -108,6 +108,8 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
     private readonly _groupDescription: string;
     private readonly _groupMiddlewares: MiddlewareFn<TContext>[] = [];
     private _groupOmitCommon: string[] = [];
+    /** @internal Fallback description inherited from the parent GroupedToolBuilder. */
+    _inheritDescription: string | undefined;
 
     constructor(groupName: string, description?: string) {
         this._groupName = groupName;
@@ -286,11 +288,18 @@ export class ActionGroupBuilder<TContext, TCommon extends Record<string, unknown
         const perAction = (config as { omitCommon?: string[] }).omitCommon ?? [];
         const mergedOmit = [...new Set([...this._groupOmitCommon, ...perAction])];
 
+        // Inherit builder-level description when action has none.
+        // Prevents "toolName → default" in flat exposition when grouped
+        // actions are registered without their own description.
+        const effectiveConfig: ActionConfig<TContext> = config.description || !this._inheritDescription
+            ? config
+            : { ...config, description: this._inheritDescription };
+
         this._actions.push({
-            key: `${this._groupName}.${config.name}`,
+            key: `${this._groupName}.${effectiveConfig.name}`,
             groupName: this._groupName,
             groupDescription: this._groupDescription,
-            ...mapConfigToActionFields(config, mergedOmit),
+            ...mapConfigToActionFields(effectiveConfig, mergedOmit),
             middlewares: this._groupMiddlewares.length > 0
                 ? [...this._groupMiddlewares] : undefined,
         });

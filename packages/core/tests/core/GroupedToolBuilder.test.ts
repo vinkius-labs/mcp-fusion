@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { GroupedToolBuilder, success, error } from '../../src/core/index.js';
+import { GroupedToolBuilder, success, error, defineTool } from '../../src/core/index.js';
 import type { ToolResponse } from '../../src/core/index.js';
 
 // ============================================================================
@@ -63,8 +63,8 @@ describe('GroupedToolBuilder — Flat Mode', () => {
         const tool = builder.buildToolDefinition();
 
         expect(tool.description).toContain("- 'create': Create a new label. Requires: title, color");
-        // 'list' has no required params → no workflow line
-        expect(tool.description).not.toContain("- 'list'");
+        // 'list' inherits builder description → appears in workflow
+        expect(tool.description).toContain("- 'list': Labels");
     });
 
     it('should reject action names containing dots', () => {
@@ -822,9 +822,9 @@ describe('Scenario — File System Tool (Grouped)', () => {
 // ============================================================================
 
 describe('Scenario — E-Commerce Tool', () => {
-    it('should show "Requires:" without description prefix in workflow', () => {
-        // Action has required fields but no description — workflow should show
-        // "Requires: X" directly without a leading description
+    it('should inherit builder description for actions without their own', () => {
+        // Action has required fields but no description — inherits builder description.
+        // Workflow shows "Description. Requires: X" instead of just "Requires: X".
         const builder = new GroupedToolBuilder('orders')
             .description('Order management')
             .action({
@@ -834,7 +834,7 @@ describe('Scenario — E-Commerce Tool', () => {
             })
             .action({
                 name: 'create',
-                // No description — just required fields
+                // No description — inherits 'Order management' from builder
                 schema: z.object({
                     product_id: z.string(),
                     quantity: z.number(),
@@ -844,8 +844,8 @@ describe('Scenario — E-Commerce Tool', () => {
 
         const tool = builder.buildToolDefinition();
 
-        // Should contain "Requires: product_id, quantity" without a description prefix
-        expect(tool.description).toContain("- 'create': Requires: product_id, quantity");
+        // Inherited description + required fields
+        expect(tool.description).toContain("- 'create': Order management. Requires: product_id, quantity");
     });
 
     it('should expose action names via getActionNames()', () => {
@@ -949,5 +949,78 @@ describe('GroupedToolBuilder — previewPrompt', () => {
         const first = builder.previewPrompt();
         const second = builder.previewPrompt();
         expect(first).toBe(second);
+    });
+});
+
+// ============================================================================
+// Description Inheritance
+// ============================================================================
+
+describe('GroupedToolBuilder — Description Inheritance', () => {
+    it('should inherit builder description for flat action without its own', () => {
+        const builder = new GroupedToolBuilder('search')
+            .description('Search the knowledge base')
+            .action({ name: 'query', handler: dummyHandler });
+
+        const tool = builder.buildToolDefinition();
+        expect(tool.description).toContain("'query': Search the knowledge base");
+    });
+
+    it('should NOT override action description when action has its own', () => {
+        const builder = new GroupedToolBuilder('search')
+            .description('Search the knowledge base')
+            .action({ name: 'query', description: 'Full-text search', handler: dummyHandler });
+
+        const tool = builder.buildToolDefinition();
+        expect(tool.description).toContain("'query': Full-text search");
+        expect(tool.description).not.toContain("'query': Search the knowledge base");
+    });
+
+    it('should inherit builder description for grouped action without its own', () => {
+        const builder = new GroupedToolBuilder('platform')
+            .description('Platform management')
+            .group('users', 'User operations', g => {
+                g.action({ name: 'list', readOnly: true, handler: dummyHandler });
+            });
+
+        const tool = builder.buildToolDefinition();
+        expect(tool.description).toContain("'users.list': Platform management");
+    });
+
+    it('should NOT override grouped action description when action has its own', () => {
+        const builder = new GroupedToolBuilder('platform')
+            .description('Platform management')
+            .group('users', 'User operations', g => {
+                g.action({ name: 'list', description: 'List all users', readOnly: true, handler: dummyHandler });
+            });
+
+        const tool = builder.buildToolDefinition();
+        expect(tool.description).toContain("'users.list': List all users");
+        expect(tool.description).not.toContain("'users.list': Platform management");
+    });
+
+    it('should not inject description when builder has none', () => {
+        const builder = new GroupedToolBuilder('bare')
+            .action({ name: 'ping', handler: dummyHandler });
+
+        const tool = builder.buildToolDefinition();
+        // No builder description → action has no description → no workflow line
+        expect(tool.description).not.toContain('Workflow:');
+    });
+
+    it('should inherit description via defineTool for default action', () => {
+        // Simulates BundleServerFactory / YamlServerFactory pattern:
+        // defineTool with a single "default" action and no action-level description.
+        const builder = defineTool('get_user', {
+            description: 'Get user by ID',
+            actions: {
+                default: {
+                    handler: dummyHandler,
+                },
+            },
+        });
+
+        const tool = builder.buildToolDefinition();
+        expect(tool.description).toContain("'default': Get user by ID");
     });
 });

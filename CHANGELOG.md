@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.2] - 2026-07-19
+
+### Fixed
+
+#### `@mcpfusion/core` — Description Inheritance for Actions Without Their Own Description
+
+- **`GroupedToolBuilder.action()` now inherits builder-level `description` when the action has none** — Previously, actions registered without a `description` field (e.g. `defineTool` with a single `"default"` action, or programmatic `builder.action()` calls) would produce `"toolName → default"` in flat exposition mode. The `ExpositionCompiler` generates `toolName → actionName` as a fallback when no description exists, and the action key `"default"` leaked into the wire format. Now, `GroupedToolBuilder.action()` automatically propagates `this._description` to actions that don't have their own, matching the behavior already present in `BuildPipeline` (Fluent API path).
+
+- **`ActionGroupBuilder.action()` inherits description from the parent `GroupedToolBuilder`** — Grouped actions (registered via `builder.group()`) now also inherit the builder-level description when they don't have their own. The `GroupedToolBuilder.group()` method propagates `this._description` to the `ActionGroupBuilder` via a new `_inheritDescription` field.
+
+- **Action-level `description` always takes priority** — When an action has its own `description`, it is never overridden. The inheritance only kicks in as a fallback.
+
+### Changed
+
+- **All `@mcpfusion/*` cross-dependencies updated to `^4.3.2`** — Ensures consistent resolution across the monorepo.
+
 ## [4.3.1] - 2026-06-25
 
 ### Fixed

@@ -520,14 +520,15 @@ describe('GroupedToolBuilder — No Schema Actions', () => {
 // ============================================================================
 
 describe('GroupedToolBuilder — Description Edge Cases', () => {
-    it('should skip workflow for actions without description, required fields, or destructive flag', () => {
+    it('should inherit builder description for actions without their own', () => {
         const builder = new GroupedToolBuilder('test')
             .description('Test tool')
             .action({ name: 'simple', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
-        // Simple action with no description/schema/destructive → no workflow section
-        expect(tool.description).not.toContain('Workflow:');
+        // Action inherits builder-level description → workflow line is generated
+        expect(tool.description).toContain('Workflow:');
+        expect(tool.description).toContain("'simple': Test tool");
     });
 
     it('should show workflow for action with only description (no required, not destructive)', () => {
