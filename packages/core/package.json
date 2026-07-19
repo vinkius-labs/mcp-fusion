@@ -116,7 +116,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@toon-format/toon": "^2.1.0",
+    "@blackwell-systems/gcf": "^2.1.1",
     "zod-to-json-schema": "^3.25.1"
   },
   "peerDependencies": {

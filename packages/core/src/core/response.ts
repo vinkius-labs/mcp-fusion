@@ -26,7 +26,7 @@
  *
  * @module
  */
-import { encode, type EncodeOptions } from '@toon-format/toon';
+import { encodeGeneric } from '@blackwell-systems/gcf';
 import { type StringifyFn } from './serialization/JsonSerializer.js';
 
 /**
@@ -238,9 +238,8 @@ export function required(field: string): ToolResponse {
  *
  * @see {@link success} for standard JSON responses
  */
-export function toonSuccess(data: unknown, options?: EncodeOptions): ToolResponse {
-    const defaults: EncodeOptions = { delimiter: '|' };
-    const text = encode(data, { ...defaults, ...options });
+export function toonSuccess(data: unknown): ToolResponse {
+    const text = encodeGeneric(data);
     const resp: ToolResponse = { content: [{ type: "text", text }] };
     Object.defineProperty(resp, TOOL_RESPONSE_BRAND, { value: true });
     return resp;

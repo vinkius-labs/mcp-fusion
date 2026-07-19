@@ -13,7 +13,7 @@ import { type InternalAction, type MiddlewareFn } from '../types.js';
 import { type ExecutionContext } from '../execution/ExecutionPipeline.js';
 import { type CompiledChain, compileMiddlewareChains } from '../execution/MiddlewareCompiler.js';
 import { generateDescription } from '../schema/DescriptionGenerator.js';
-import { generateToonDescription } from '../schema/ToonDescriptionGenerator.js';
+import { generateToonDescription } from '../schema/GcfDescriptionGenerator.js';
 import { generateInputSchema } from '../schema/SchemaGenerator.js';
 import { aggregateAnnotations } from '../schema/AnnotationAggregator.js';
 

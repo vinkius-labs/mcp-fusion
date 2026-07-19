@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { GroupedToolBuilder } from '../../src/core/builder/GroupedToolBuilder.js';
-import { generateToonDescription } from '../../src/core/schema/ToonDescriptionGenerator.js';
+import { generateToonDescription } from '../../src/core/schema/GcfDescriptionGenerator.js';
 import { generateDescription } from '../../src/core/schema/DescriptionGenerator.js';
 import type { InternalAction } from '../../src/core/types.js';
 import { type ToolResponse, success } from '../../src/core/response.js';

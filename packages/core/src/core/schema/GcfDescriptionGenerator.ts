@@ -1,21 +1,21 @@
 /**
- * ToonDescriptionGenerator — Token-Optimized Description Strategy
+ * GcfDescriptionGenerator -- Token-Optimized Description Strategy
  *
- * Generates descriptions using TOON (Token-Oriented Object Notation) format,
+ * Generates descriptions using GCF (Graph Compact Format),
  * achieving ~30-50% token reduction compared to the default markdown descriptions.
  *
- * Uses `@toon-format/toon` encode() to serialize action metadata as compact
- * pipe-delimited tabular data inside the description string.
+ * Uses `@blackwell-systems/gcf` encodeGeneric() to serialize action metadata as
+ * compact structured data inside the description string.
  *
  * Pure-function module: no state, no side effects.
  */
-import { encode } from '@toon-format/toon';
+import { encodeGeneric } from '@blackwell-systems/gcf';
 import { type InternalAction } from '../types.js';
 import { getActionRequiredFields } from './SchemaUtils.js';
 
 // ── Public API ───────────────────────────────────────────
 
-export function generateToonDescription<TContext>(
+export function generateGcfDescription<TContext>(
     actions: readonly InternalAction<TContext>[],
     name: string,
     description: string | undefined,
@@ -28,7 +28,7 @@ export function generateToonDescription<TContext>(
     lines.push(`${description || name}. Select operation via the \`${discriminator}\` parameter.`);
     lines.push('');
 
-    // Layer 2: Action metadata in TOON tabular format
+    // Layer 2: Action metadata in GCF format
     if (hasGroup) {
         lines.push(encodeGroupedActions(actions));
     } else {
@@ -37,6 +37,9 @@ export function generateToonDescription<TContext>(
 
     return lines.join('\n');
 }
+
+// Backward-compatible alias
+export const generateToonDescription = generateGcfDescription;
 
 // ── Internal helpers ─────────────────────────────────────
 
@@ -51,7 +54,7 @@ function encodeFlatActions<TContext>(
     actions: readonly InternalAction<TContext>[],
 ): string {
     const rows = actions.map(a => buildActionRow(a.key, a));
-    return encode(rows, { delimiter: '|' });
+    return encodeGeneric(rows);
 }
 
 function encodeGroupedActions<TContext>(
@@ -69,7 +72,7 @@ function encodeGroupedActions<TContext>(
         list.push(action);
     }
 
-    // Build a structure that TOON can encode efficiently
+    // Build a structure that GCF can encode efficiently
     const groupData: Record<string, ActionRow[]> = {};
     for (const [groupName, groupActions] of groups) {
         groupData[groupName] = groupActions.map(a =>
@@ -77,7 +80,7 @@ function encodeGroupedActions<TContext>(
         );
     }
 
-    return encode(groupData, { delimiter: '|' });
+    return encodeGeneric(groupData);
 }
 
 function buildActionRow<TContext>(

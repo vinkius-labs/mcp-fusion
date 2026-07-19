@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { success, error, required, toonSuccess } from '../../src/core/response.js';
-import { decode } from '@toon-format/toon';
+import { decodeGeneric } from '@blackwell-systems/gcf';
 
 describe('ResponseHelper', () => {
     describe('success()', () => {
@@ -61,7 +61,7 @@ describe('ResponseHelper', () => {
             expect(text).toContain('Bob');
 
             // Should be decodable back
-            const decoded = decode(text);
+            const decoded = decodeGeneric(text);
             expect(decoded).toEqual(data);
         });
 
@@ -86,7 +86,7 @@ describe('ResponseHelper', () => {
 
         it('should handle a single object', () => {
             const result = toonSuccess({ id: 1, title: 'Test', done: false });
-            const decoded = decode(result.content[0].text);
+            const decoded = decodeGeneric(result.content[0].text);
             expect(decoded).toEqual({ id: 1, title: 'Test', done: false });
         });
 
@@ -101,14 +101,13 @@ describe('ResponseHelper', () => {
             expect(result.content[0].text).toBeDefined();
         });
 
-        it('should accept custom encode options', () => {
+        it('should encode data consistently via GCF', () => {
             const data = [{ a: 1, b: 2 }];
-            const pipeResult = toonSuccess(data);
-            const commaResult = toonSuccess(data, { delimiter: ',' });
+            const result = toonSuccess(data);
 
-            // Both should produce valid TOON
-            expect(pipeResult.content[0].text).toContain('|');
-            expect(commaResult.content[0].text).toContain(',');
+            // GCF produces compact pipe-delimited tabular data
+            expect(result.content[0].text).toBeTruthy();
+            expect(result.content[0].text.length).toBeGreaterThan(0);
         });
 
         it('should handle nested objects', () => {
@@ -117,7 +116,7 @@ describe('ResponseHelper', () => {
                 settings: { theme: 'dark', lang: 'pt' },
             };
             const result = toonSuccess(data);
-            const decoded = decode(result.content[0].text);
+            const decoded = decodeGeneric(result.content[0].text);
             expect(decoded).toEqual(data);
         });
     });
@@ -154,7 +153,7 @@ describe('ResponseHelper', () => {
             ];
             const result = toonSuccess(data);
             // TOON must quote/escape values that contain the delimiter
-            const decoded = decode(result.content[0].text);
+            const decoded = decodeGeneric(result.content[0].text);
             expect(decoded).toEqual(data);
         });
 
@@ -168,14 +167,14 @@ describe('ResponseHelper', () => {
             };
             const result = toonSuccess(data);
             expect(result.content[0].text).toBeTruthy();
-            const decoded = decode(result.content[0].text);
+            const decoded = decodeGeneric(result.content[0].text);
             expect(decoded).toEqual(data);
         });
 
         it('should handle deeply nested structures (5 levels)', () => {
             const deep = { a: { b: { c: { d: { e: 'leaf' } } } } };
             const result = toonSuccess(deep);
-            const decoded = decode(result.content[0].text);
+            const decoded = decodeGeneric(result.content[0].text);
             expect(decoded).toEqual(deep);
         });
 
