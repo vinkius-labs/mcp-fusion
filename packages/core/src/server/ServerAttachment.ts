@@ -42,7 +42,8 @@ import { type LoopbackContext } from '../prompt/types.js';
 import type { StateMachineGate, FsmStateStore, FsmSnapshot } from '../fsm/StateMachineGate.js';
 import type { TelemetrySink } from '../observability/TelemetryEvent.js';
 import { randomUUID } from 'node:crypto';
-import { _elicitStore, type ElicitSink } from '../core/elicitation/index.js';
+import { type ElicitSink, isInputRequiredResponse } from '../core/elicitation/index.js';
+import { runWithElicitation } from '../core/elicitation/runtime.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -749,18 +750,17 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             // Reuse exposition compiled above for telemetry (avoid double recompile)
             if (flatRoute) {
                 const enrichedArgs = { ...args, [flatRoute.discriminator]: flatRoute.actionKey };
-                let r = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink, signal);
-                r = decorateIfSync(hCtx.syncLayer, flatRoute, r);
-                return r;
+                const r = await flatRoute.builder.execute(ctx, enrichedArgs, progressSink, signal);
+                // Skip state-sync decoration for non-terminal input-required returns:
+                // invalidation must fire on the terminal response after re-entry, not now.
+                return isInputRequiredResponse(r) ? r : decorateIfSync(hCtx.syncLayer, flatRoute, r);
             } else {
-                let r = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
-                r = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, r) : r;
-                return r;
+                const r = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
+                return hCtx.syncLayer && !isInputRequiredResponse(r) ? hCtx.syncLayer.decorateResult(name, r) : r;
             }
         } else {
-            let r = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
-            r = hCtx.syncLayer ? hCtx.syncLayer.decorateResult(name, r) : r;
-            return r;
+            const r = await hCtx.registry.routeCall(ctx, name, args, progressSink, signal);
+            return hCtx.syncLayer && !isInputRequiredResponse(r) ? hCtx.syncLayer.decorateResult(name, r) : r;
         }
         } catch (err) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TelemetrySink accepts extensible event shapes
@@ -769,11 +769,11 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         }
         };
 
-        // Bind elicitation transport via AsyncLocalStorage.
-        // Zero overhead when elicitSink is undefined — no ALS context created.
-        result = elicitSink
-            ? await _elicitStore.run(elicitSink, executeLocal)
-            : await executeLocal();
+        // Bind elicitation transport + drive return-based input requests.
+        // - Deprecated imperative ask() still resolves inside this via _elicitStore.
+        // - New requireInput() returns are fulfilled and the handler is re-entered.
+        // Zero added overhead when elicitSink is undefined and no input is requested.
+        result = await runWithElicitation(executeLocal, elicitSink);
 
         // ── Self-Healing: enrich validation errors with contract deltas ( fix) ──
         if (result.isError && hCtx.selfHealing) {

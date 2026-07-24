@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/cloudflare",
-  "version": "4.3.2",
+  "version": "4.4.0",
   "description": "Cloudflare Workers adapter for MCP Fusion. Deploys your MCP server to the edge with zero config â€” stateless JSON-RPC, cold-start caching, and native env injection.",
   "type": "module",
   "main": "dist/index.js",
@@ -48,7 +48,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.3.2"
+    "@mcpfusion/core": "^4.4.0"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0"

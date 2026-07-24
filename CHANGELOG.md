@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-07-24
+
+### Added
+
+#### `@mcpfusion/core` — Return-Based Elicitation (`requireInput`) for the MCP 2026-07-28 Stateless Protocol
+
+The MCP `2026-07-28` protocol revision makes the transport **stateless** and removes the server→client request channel that the imperative `await ask(...)` relies on ([SEP-2260](https://modelcontextprotocol.io/), [SEP-2322](https://modelcontextprotocol.io/)). This release introduces the return-based elicitation model — the 2026-native replacement for `ask()` — while keeping `ask()` fully functional during its deprecation window. **No breaking changes.**
+
+- **`requireInput({ inputRequests, requestState? })`** — Return-based elicitation. A handler *returns* the input it needs instead of blocking mid-execution with `await`. The framework fulfills the request and re-enters the handler with the answers. Works on both protocol eras: on 2025-era connections the framework drives the round-trip over the live channel; on 2026-era connections the client/SDK drives the retry. Produces a branded `InputRequiredResponse` intercepted by `ServerAttachment` — the same discriminated-response pattern used by `handoff()`.
+- **`requireInput.elicit(message, fields)`** — Builds a form-input request from the existing `ask.*` field descriptors (`ask.string()`, `ask.enum()`, `ask.number()`, `ask.boolean()`). Nothing new to learn — the field DSL is unchanged.
+- **`requireInput.url(message, url)`** — Builds a URL-redirect request for OAuth / sensitive-data flows.
+- **`readInput<T>(key)`** — Reads the accepted content for an input key on re-entry, or `undefined` when missing / declined / cancelled.
+- **`inputResponse(key)`** — Discriminated view (`{ kind: 'missing' }` | `{ kind: 'elicit', action, content? }`) for decline/cancel detection.
+- **`readRequestState<T>()`** — Reads the opaque continuation token echoed on the retry, for threading multi-round wizard state (an explicit state machine, as the 2026 spec prescribes).
+- **`isInputRequiredResponse(value)`** — Type guard for the branded response.
+- **Elicitation runtime driver (`runWithElicitation`)** — Bridges the return-based authoring model onto the transport available at runtime. Fulfills each requested input over the live `sendRequest` channel (2025 era) and re-enters the handler with the collected answers, up to a bounded round limit (default 8 → `ELICITATION_ROUNDS_EXCEEDED`). When no bidirectional channel exists (e.g. stateless JSON HTTP on serverless/edge), a handler that returns `requireInput()` gets a clean `ELICITATION_UNSUPPORTED` error instead of hanging.
+- **Zero added overhead** — Non-interactive tools and existing `ask()` handlers take the exact same execution path as before; the re-entry input store is only bound when the handler actually requests input on re-entry.
+
+### Deprecated
+
+- **`ask()` and `ask.redirect()`** — Deprecated as of MCP `2026-07-28` ([SEP-2575](https://modelcontextprotocol.io/), [SEP-2567](https://modelcontextprotocol.io/)). The imperative `await ask(...)` model depends on a persistent server→client channel that the stateless protocol removes. Prefer `requireInput()` + `readInput()`, which is stateless and serves both protocol eras. `ask()` keeps working unchanged on 2025-era and streaming (stdio / sessionful HTTP) connections throughout the deprecation window — **existing code does not break**. The `ask.*` field-descriptor factories (`ask.string()`, etc.) are **not** deprecated; they are reused by `requireInput.elicit()`.
+
+### Fixed
+
+- **`@mcpfusion/core` — Premature cache invalidation on interactive mutations** — State Sync decoration (`decorateResult`) is now skipped for non-terminal input-required responses. Previously, an interactive mutation carrying an `.invalidates()` policy could emit `notifications/resources/updated` (and spread `...result.content` on a content-less branded response) *before* the mutation actually completed. Invalidation now fires on the terminal response after the elicitation round-trip resolves.
+
+### Changed
+
+- **All `@mcpfusion/*` cross-dependencies updated to `^4.4.0`** — Ensures consistent resolution across the monorepo.
+
+### Documentation
+
+- **`docs/elicitation.md`** — Added a deprecation notice for `ask()` and a new "Return-Based Elicitation (2026-native)" section covering `requireInput()`, `readInput()`, `inputResponse()`, `readRequestState()`, multi-round flows via `requestState`, URL mode, and stateless-edge behavior.
+
 ## [4.3.2] - 2026-07-19
 
 ### Fixed

@@ -444,7 +444,10 @@ export type {
 } from './observability/TelemetryEvent.js';
 
 // ── Elicitation (Human-in-the-Loop) ─────────────────────
-/** @category Elicitation */
+/**
+ * @category Elicitation
+ * @deprecated `ask` is deprecated since MCP 2026-07-28 — prefer `requireInput` + `readInput`.
+ */
 export { ask } from './core/elicitation/index.js';
 /** @category Elicitation */
 export type { AskFunction } from './core/elicitation/index.js';
@@ -463,4 +466,25 @@ export type {
     AskResponse,
     InferAskFields,
     ElicitationAction,
+} from './core/elicitation/index.js';
+
+// ── Return-Based Elicitation (2026-07-28 native, replaces ask) ───
+/** @category Elicitation */
+export {
+    requireInput,
+    isInputRequiredResponse,
+    inputResponse,
+    readInput,
+    readRequestState,
+} from './core/elicitation/index.js';
+/** @category Elicitation */
+export type {
+    InputRequiredResponse,
+    RequireInputSpec,
+    RequireInputFunction,
+    InputRequest,
+    ElicitationInputRequest,
+    UrlInputRequest,
+    ElicitationSchema,
+    InputResponseView,
 } from './core/elicitation/index.js';

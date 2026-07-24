@@ -8,7 +8,16 @@ MCP Elicitation fixes this. MCP Fusion wraps it in a zero-boilerplate DSL: **one
 > **The first MCP framework where tools can pause, ask the human, and resume — with zero context injection.**
 > No `ctx.ask()`. No `request.elicit()`. Just `await ask(...)`, anywhere.
 
+> [!WARNING]
+> **`ask()` is deprecated as of the MCP `2026-07-28` protocol revision.** The stateless
+> protocol removes the server→client request channel that the imperative `await ask(...)`
+> relies on. Use the return-based [`requireInput()` + `readInput()`](#require-input) model
+> instead — it is stateless, works on both protocol eras, and runs on serverless/edge.
+> `ask()` keeps working on 2025-era and streaming (stdio / sessionful HTTP) connections
+> during the deprecation window, so existing code does not break.
+
 - [Quick Start](#quick-start)
+- [Return-Based Elicitation (2026-native)](#require-input)
 - [How It Works](#how-it-works)
 - [The `ask` DSL](#ask-dsl)
 - [Field Types](#field-types)
@@ -71,6 +80,110 @@ That's it. When the LLM calls `infra.deploy`, the handler **pauses**, the MCP cl
 
 > [!TIP]
 > The MCP client must declare `{ capabilities: { elicitation: {} } }` during initialization. Major clients (Claude Desktop, Cursor, VS Code Copilot) already support this.
+
+## Return-Based Elicitation (2026-native) {#require-input}
+
+The MCP `2026-07-28` protocol is **stateless** — there is no persistent server→client
+channel to `await` mid-handler. The 2026-native model is *return-based*: a handler
+**returns** `requireInput({...})` to declare the input it needs, and on the client's retry
+the handler reads the answers with `readInput()`. The same handler runs on both protocol
+eras — on 2025-era connections the framework drives the round-trip for you; on 2026-era
+connections the client/SDK drives it.
+
+The field DSL is the **same `ask.*` descriptors** — nothing new to learn.
+
+```typescript
+import { initMCPFusion, ask, requireInput, readInput } from '@mcpfusion/core';
+
+interface AppContext { db: PrismaClient; userId: string }
+const f = initMCPFusion<AppContext>();
+
+const deploy = f.mutation('infra.deploy')
+    .describe('Deploy an application to production')
+    .withString('app_id', 'Application ID')
+    .interactive()  // ← still opts the tool into elicitation
+    .handle(async (input, ctx) => {
+        // Read answers from the (possible) retry. `undefined` on the first call.
+        const answers = readInput<{ region: string; confirm: boolean }>('deploy');
+
+        if (!answers) {
+            // First call — declare the input and return. No `await`, no blocking.
+            return requireInput({
+                inputRequests: {
+                    deploy: requireInput.elicit('Confirm deployment settings:', {
+                        region:  ask.enum(['us-east-1', 'eu-west-1', 'ap-south-1'] as const, 'Region'),
+                        confirm: ask.boolean('I confirm this deployment'),
+                    }),
+                },
+            });
+        }
+
+        // Re-entry — answers are present.
+        if (!answers.confirm) return f.error('CANCELLED', 'Deployment aborted by user.');
+
+        await ctx.db.deployments.create({
+            data: { appId: input.app_id, region: answers.region },
+        });
+        return { deployed: true, region: answers.region };
+    });
+```
+
+### Reading answers
+
+| Reader | Returns |
+|---|---|
+| `readInput<T>(key)` | The accepted content `T`, or `undefined` when missing / declined / cancelled |
+| `inputResponse(key)` | Discriminated view: `{ kind: 'missing' }` or `{ kind: 'elicit', action, content? }` — use for decline/cancel detection |
+| `readRequestState<T>()` | The opaque continuation token echoed on the retry (for multi-round flows) |
+
+### Multi-round flows
+
+Because each retry carries only the current round's answers, thread everything you've
+learned through `requestState` and switch on it — an explicit state machine, exactly as
+the 2026 spec prescribes:
+
+```typescript
+const brainstorm = f.action('ideas.brainstorm')
+    .interactive()
+    .handle(async () => {
+        const state = readRequestState<{ step: 'topic' | 'count'; topic?: string }>();
+
+        if (!state) {
+            return requireInput({
+                inputRequests: { topic: requireInput.elicit('Pick a topic:', { topic: ask.string('Topic') }) },
+                requestState: JSON.stringify({ step: 'topic' }),
+            });
+        }
+        if (state.step === 'topic') {
+            const topic = readInput<{ topic: string }>('topic')?.topic;
+            return requireInput({
+                inputRequests: { count: requireInput.elicit('How many ideas?', { count: ask.number('Count').min(1).max(20) }) },
+                requestState: JSON.stringify({ step: 'count', topic }),
+            });
+        }
+        const count = readInput<{ count: number }>('count')?.count ?? 3;
+        return { topic: state.topic, count };
+    });
+```
+
+> [!TIP]
+> On serverless/edge (stateless JSON HTTP), `requireInput()` is the **only** elicitation
+> model that works — the deprecated `await ask(...)` needs a live streaming session. If a
+> handler returns `requireInput()` on a connection with no channel to collect input, the
+> framework returns a clean `ELICITATION_UNSUPPORTED` error instead of hanging.
+
+### URL mode
+
+```typescript
+return requireInput({
+    inputRequests: {
+        auth: requireInput.url('Authenticate with GitHub to continue:', oauthUrl),
+    },
+});
+// On re-entry:
+const view = inputResponse('auth');
+if (view.kind === 'elicit' && view.action === 'accept') { /* authenticated */ }
+```
 
 ## How It Works {#how-it-works}
 

@@ -103,6 +103,11 @@ export interface AskFunction {
      * Fields are defined with `ask.*` descriptors — no raw JSON Schema.
      * Return type is fully inferred from the field descriptors.
      *
+     * @deprecated Since MCP 2026-07-28 the server→client request channel this
+     * relies on is removed. Prefer the return-based `requireInput()` + `readInput()`
+     * model — it is stateless and serves both protocol eras. `ask()` keeps working
+     * on 2025-era / streaming sessions during the deprecation window.
+     *
      * @param message - Human-readable prompt shown to the user
      * @param fields  - Object of `ask.*` field descriptors
      * @returns `AskResponse<T>` with `.accepted`, `.declined`, `.data`
@@ -168,6 +173,9 @@ export interface AskFunction {
      * Redirect the user to an external URL (OAuth, payment, credentials).
      *
      * Use for sensitive operations that MUST NOT be handled via form fields.
+     *
+     * @deprecated Since MCP 2026-07-28. Prefer `requireInput({ inputRequests: { k:
+     * requireInput.url(message, url) } })` and read the outcome with `inputResponse('k')`.
      *
      * @param message - Explanation of why the redirect is needed
      * @param url     - The URL to open in the user's browser
