@@ -523,10 +523,12 @@ describe('GroupedToolBuilder — Description Edge Cases', () => {
     it('should inherit builder description for actions without their own', () => {
         const builder = new GroupedToolBuilder('test')
             .description('Test tool')
-            .action({ name: 'simple', handler: dummyHandler });
+            .action({ name: 'simple', handler: dummyHandler })
+            .action({ name: 'other', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
         // Action inherits builder-level description → workflow line is generated
+        // (Workflow section requires 2+ actions.)
         expect(tool.description).toContain('Workflow:');
         expect(tool.description).toContain("'simple': Test tool");
     });
@@ -534,7 +536,8 @@ describe('GroupedToolBuilder — Description Edge Cases', () => {
     it('should show workflow for action with only description (no required, not destructive)', () => {
         const builder = new GroupedToolBuilder('test')
             .description('Test tool')
-            .action({ name: 'info', description: 'Get info', handler: dummyHandler });
+            .action({ name: 'info', description: 'Get info', handler: dummyHandler })
+            .action({ name: 'other', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
         expect(tool.description).toContain('Workflow:');
@@ -550,9 +553,21 @@ describe('GroupedToolBuilder — Description Edge Cases', () => {
                 destructive: true,
                 schema: z.object({ target: z.string() }),
                 handler: dummyHandler,
-            });
+            })
+            .action({ name: 'other', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
         expect(tool.description).toContain("'nuke': Destroy everything. Requires: target [DESTRUCTIVE]");
+    });
+
+    it('should NOT emit a Workflow section for a flat single-action tool', () => {
+        const builder = new GroupedToolBuilder('test')
+            .description('Test tool')
+            .action({ name: 'simple', handler: dummyHandler });
+
+        const tool = builder.buildToolDefinition();
+        // Single action → no dispatch to document → no Workflow section.
+        expect(tool.description).not.toContain('Workflow:');
+        expect(tool.description).toContain('Actions: simple');
     });
 });

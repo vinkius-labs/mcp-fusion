@@ -41,12 +41,18 @@ export function generateDescription<TContext>(
         );
     }
 
-    // Layer 2: Workflow section
-    const workflowLines = generateWorkflowLines(actions);
-    if (workflowLines.length > 0) {
-        lines.push('');
-        lines.push('Workflow:');
-        lines.push(...workflowLines);
+    // Layer 2: Workflow section.
+    // Emitted for grouped tools (a grouping is inherently multi-operation) and
+    // for flat tools with 2+ actions. A flat tool with a single action has
+    // nothing to dispatch between, so the per-action Workflow block is
+    // redundant and is omitted.
+    if (hasGroup || actions.length >= 2) {
+        const workflowLines = generateWorkflowLines(actions);
+        if (workflowLines.length > 0) {
+            lines.push('');
+            lines.push('Workflow:');
+            lines.push(...workflowLines);
+        }
     }
 
     return lines.join('\n');

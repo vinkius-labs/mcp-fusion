@@ -26,13 +26,15 @@ export function generateToonDescription<TContext>(
 
     // Layer 1: Tool summary + dispatch instruction (always human-readable)
     lines.push(`${description || name}. Select operation via the \`${discriminator}\` parameter.`);
-    lines.push('');
 
-    // Layer 2: Action metadata in TOON tabular format
-    if (hasGroup) {
-        lines.push(encodeGroupedActions(actions));
-    } else {
-        lines.push(encodeFlatActions(actions));
+    // Layer 2: Action metadata in TOON tabular format.
+    // Emitted for grouped tools (a grouping is inherently multi-operation) and
+    // for flat tools with 2+ actions. A flat tool with a single action has
+    // nothing to dispatch between, so the per-action table is redundant and is
+    // omitted — parity with the markdown DescriptionGenerator's Workflow rule.
+    if (hasGroup || actions.length >= 2) {
+        lines.push('');
+        lines.push(hasGroup ? encodeGroupedActions(actions) : encodeFlatActions(actions));
     }
 
     return lines.join('\n');

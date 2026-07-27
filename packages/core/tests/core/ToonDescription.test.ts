@@ -62,6 +62,7 @@ describe('ToonDescriptionGenerator', () => {
                     description: 'Delete permanently',
                     destructive: true,
                 }),
+                makeAction({ key: 'list', actionName: 'list', description: 'List items' }),
             ];
 
             const result = generateToonDescription(actions, 'items', undefined, false);
@@ -73,12 +74,31 @@ describe('ToonDescriptionGenerator', () => {
         it('handles actions without schema or description', () => {
             const actions = [
                 makeAction({ key: 'ping', actionName: 'ping' }),
+                makeAction({ key: 'status', actionName: 'status' }),
             ];
 
             const result = generateToonDescription(actions, 'health', 'Health check', false);
 
             expect(result).toContain('Health check');
             expect(result).toContain('ping');
+        });
+
+        it('omits the TOON table for a flat single-action tool (parity with markdown)', () => {
+            const actions = [
+                makeAction({
+                    key: 'delete',
+                    actionName: 'delete',
+                    description: 'Delete permanently',
+                    destructive: true,
+                }),
+            ];
+
+            const result = generateToonDescription(actions, 'items', 'Manage items', false);
+
+            // Layer 1 stays; Layer 2 table is suppressed for a single flat action.
+            expect(result).toContain('Manage items');
+            expect(result).not.toContain('|'); // no pipe-delimited TOON table
+            expect(result).not.toContain('[DESTRUCTIVE]');
         });
 
         it('uses name as fallback when no description provided', () => {

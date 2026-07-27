@@ -359,7 +359,8 @@ describe('GroupedToolBuilder — Annotations', () => {
     it('should add [DESTRUCTIVE] in workflow description for destructive actions', () => {
         const builder = new GroupedToolBuilder('crud')
             .description('CRUD')
-            .action({ name: 'delete', description: 'Delete permanently', destructive: true, handler: dummyHandler });
+            .action({ name: 'delete', description: 'Delete permanently', destructive: true, handler: dummyHandler })
+            .action({ name: 'list', readOnly: true, handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
 
@@ -960,7 +961,8 @@ describe('GroupedToolBuilder — Description Inheritance', () => {
     it('should inherit builder description for flat action without its own', () => {
         const builder = new GroupedToolBuilder('search')
             .description('Search the knowledge base')
-            .action({ name: 'query', handler: dummyHandler });
+            .action({ name: 'query', handler: dummyHandler })
+            .action({ name: 'suggest', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
         expect(tool.description).toContain("'query': Search the knowledge base");
@@ -969,7 +971,8 @@ describe('GroupedToolBuilder — Description Inheritance', () => {
     it('should NOT override action description when action has its own', () => {
         const builder = new GroupedToolBuilder('search')
             .description('Search the knowledge base')
-            .action({ name: 'query', description: 'Full-text search', handler: dummyHandler });
+            .action({ name: 'query', description: 'Full-text search', handler: dummyHandler })
+            .action({ name: 'suggest', handler: dummyHandler });
 
         const tool = builder.buildToolDefinition();
         expect(tool.description).toContain("'query': Full-text search");
@@ -1008,9 +1011,11 @@ describe('GroupedToolBuilder — Description Inheritance', () => {
         expect(tool.description).not.toContain('Workflow:');
     });
 
-    it('should inherit description via defineTool for default action', () => {
+    it('should NOT emit Workflow for a single "default" action (flat tool)', () => {
         // Simulates BundleServerFactory / YamlServerFactory pattern:
         // defineTool with a single "default" action and no action-level description.
+        // Per the flat-tool rule, a single action has nothing to dispatch between,
+        // so no redundant Workflow section is generated.
         const builder = defineTool('get_user', {
             description: 'Get user by ID',
             actions: {
@@ -1021,6 +1026,8 @@ describe('GroupedToolBuilder — Description Inheritance', () => {
         });
 
         const tool = builder.buildToolDefinition();
-        expect(tool.description).toContain("'default': Get user by ID");
+        expect(tool.description).toContain('Get user by ID');
+        expect(tool.description).not.toContain('Workflow:');
+        expect(tool.description).not.toContain("'default': Get user by ID");
     });
 });

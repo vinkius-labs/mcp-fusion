@@ -663,7 +663,8 @@ describe('QA: Description Generation', () => {
                 description: 'Create a new record',
                 schema: z.object({ name: z.string(), priority: z.number() }),
                 handler: async () => success('ok'),
-            });
+            })
+            .action({ name: 'list', handler: async () => success('ok') });
 
         const def = b.buildToolDefinition();
         expect(def.description).toContain('Workflow:');
@@ -679,7 +680,8 @@ describe('QA: Description Generation', () => {
                 description: 'Delete everything',
                 destructive: true,
                 handler: async () => success('ok'),
-            });
+            })
+            .action({ name: 'list', handler: async () => success('ok') });
 
         const def = b.buildToolDefinition();
         expect(def.description).toContain('[DESTRUCTIVE]');

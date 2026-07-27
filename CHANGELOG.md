@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.1] - 2026-07-27
+
+### Fixed
+
+#### `@mcpfusion/core` — Redundant `Workflow` block / TOON table on flat single-action tools
+
+- **The auto-generated `Workflow:` section is no longer emitted for flat tools with a single action.** `DescriptionGenerator` previously appended a per-action `Workflow:` block to *every* tool, including flat tools with a single `default` action (the shape produced by `defineTool({ actions: { default } })` and by the YAML / Bundle server factories). This merely duplicated the tool summary and added tokens with no dispatch value — a single-action tool has nothing to select between. The `Workflow:` section is now emitted only when the tool is grouped (`hasGroup`) or has 2+ actions.
+- **`ToonDescriptionGenerator` brought to parity.** The TOON action-metadata table follows the same rule — omitted for flat single-action tools, emitted for grouped or multi-action tools — so both description strategies produce consistent output.
+- **No metadata is lost.** Destructive / read-only / idempotent hints remain on the tool `annotations` (aggregated independently of the description text via `AnnotationAggregator`), and required parameters remain in the `inputSchema` field annotations. Only the redundant human-readable duplication was removed.
+
+### Changed
+
+- **All `@mcpfusion/*` cross-dependencies updated to `^4.4.1`** — Ensures consistent resolution across the monorepo.
+
 ## [4.4.0] - 2026-07-24
 
 ### Added

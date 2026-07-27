@@ -50,12 +50,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.0"
+    "@mcpfusion/core": "^4.4.1"
   },
   "license": "Apache-2.0",
   "devDependencies": {
     "rimraf": "^6.0.0",
     "vitest": "^3.0.0"
   },
-  "version": "4.4.0"
+  "version": "4.4.1"
 }
