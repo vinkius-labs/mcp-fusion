@@ -10,16 +10,12 @@
  *  - **No channel** (stateless JSON HTTP without a 2026 client driver) — the
  *    handler's input request is refused cleanly instead of hanging.
  *
- * The deprecated imperative {@link ask} keeps working unchanged: it blocks
- * inside `_elicitStore` and never returns an `InputRequiredResponse`, so the
- * re-entry loop runs exactly once for those handlers — identical to the prior
- * behavior. Non-interactive tools incur zero added overhead (no extra ALS wrap
+ * Non-interactive tools incur zero added overhead (no extra ALS wrap
  * on the first pass).
  *
  * @module
  */
 import { toolError, type ToolResponse } from '../response.js';
-import { _elicitStore } from './ask.js';
 import type { ElicitSink } from './types.js';
 import {
     isInputRequiredResponse,
@@ -53,12 +49,11 @@ export async function runWithElicitation(
 ): Promise<ToolResponse> {
     const maxRounds = options?.maxRounds ?? 8;
 
-    // Run `exec`, optionally binding the legacy ask() sink and (on re-entry)
-    // the collected answers. `inputCtx === undefined` on the first pass keeps
-    // the hot path identical to the pre-existing behavior (no input-store wrap).
+    // Run `exec`, optionally binding the collected answers on re-entry.
+    // `inputCtx === undefined` on the first pass keeps the hot path identical
+    // to the pre-existing behavior (no input-store wrap).
     const runExec = (inputCtx: InputRuntimeContext | undefined): Promise<ToolResponse> => {
-        const base = inputCtx ? (): Promise<ToolResponse> => _inputResponsesStore.run(inputCtx, exec) : exec;
-        return elicitSink ? _elicitStore.run(elicitSink, base) : base();
+        return inputCtx ? _inputResponsesStore.run(inputCtx, exec) : exec();
     };
 
     let round = 0;

@@ -201,18 +201,17 @@ export type InferAskFields<T extends Record<string, AskField<any>>> = {
 export type ElicitationAction = 'accept' | 'decline' | 'cancel';
 
 /**
- * Response from `ask()` or `ask.redirect()`.
+ * Response from an elicitation form (used internally by the runtime).
  *
  * Provides boolean guards (`.accepted`, `.declined`, `.cancelled`)
  * instead of string comparisons. `.data` throws if not accepted
  * (fail-fast pattern — no silent `undefined` bugs).
  *
- * @typeParam T - The inferred data shape from `ask()` fields,
- *               or `void` for `ask.redirect()`
+ * @typeParam T - The inferred data shape from the form fields
  *
  * @example
  * ```typescript
- * const result = await ask('Confirm:', { name: ask.string() });
+ * const result = createAskResponse<{ name: string }>({ action: 'accept', content: { name: 'Alice' } });
  *
  * if (result.declined) return f.error('CANCELLED', 'Aborted');
  *
@@ -271,9 +270,9 @@ export function createAskResponse<T>(raw: { action?: string; content?: unknown }
 // ── Errors ───────────────────────────────────────────────
 
 /**
- * Thrown when `ask()` or `ask.redirect()` is called outside an
- * `.interactive()` handler, or when the MCP client doesn't support
- * elicitation.
+ * Thrown when elicitation is requested but no transport context is
+ * available (e.g. stateless connection without a client driver), or
+ * when the MCP client doesn't support elicitation.
  */
 export class ElicitationUnsupportedError extends Error {
     constructor() {

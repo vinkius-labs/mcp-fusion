@@ -445,12 +445,17 @@ export type {
 
 // ── Elicitation (Human-in-the-Loop) ─────────────────────
 /**
+ * Field descriptor namespace for elicitation forms.
+ *
+ * `ask` provides `ask.string()`, `ask.number()`, `ask.boolean()`, `ask.enum()`
+ * factories consumed by `requireInput.elicit()`. The imperative callable form
+ * (`await ask(...)`) was removed in MCP Fusion 5.0 (MCP `2026-07-28`).
+ *
  * @category Elicitation
- * @deprecated `ask` is deprecated since MCP 2026-07-28 — prefer `requireInput` + `readInput`.
  */
 export { ask } from './core/elicitation/index.js';
 /** @category Elicitation */
-export type { AskFunction } from './core/elicitation/index.js';
+export type { AskNamespace } from './core/elicitation/index.js';
 /** @category Elicitation */
 export {
     AskStringField,

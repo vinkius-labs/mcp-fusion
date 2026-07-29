@@ -87,6 +87,19 @@ interface McpRequestExtra {
 export interface AttachOptions<TContext> {
     /** Only expose tools matching these tag filters */
     filter?: { tags?: string[]; anyTag?: string[]; exclude?: string[] };
+
+    /**
+     * Cache hint (in milliseconds) for `tools/list`, `prompts/list`,
+     * `resources/list`, and `resources/read` responses (MCP `2026-07-28` SEP-2549).
+     *
+     * When set, the framework emits `_meta.ttlMs` and `_meta.cacheScope: 'server'`
+     * on list responses so clients can cache tool catalogs and keep upstream
+     * prompt caches stable across reconnects. Set to `0` to disable caching
+     * (equivalent to `no-store`).
+     *
+     * @default 300000 (5 minutes)
+     */
+    listCacheTtlMs?: number;
     /**
      * Factory function to create a per-request context.
      * Receives the MCP `extra` object (session info, meta, etc.).
@@ -507,6 +520,8 @@ interface HandlerContext<TContext> {
     readonly fallbackSessionId: string;
     /** SwarmGateway for federated handoff (optional — zero overhead when absent). */
     readonly swarmGateway?: ISwarmGateway;
+    /** Cache hint (ms) for list responses per MCP 2026-07-28 SEP-2549. */
+    readonly listCacheTtlMs?: number;
 }
 
 // ── Observability Propagation ────────────────────────────
@@ -602,6 +617,17 @@ async function cloneAndRestoreFsm<TContext>(
 // ── Handler Factories ────────────────────────────────────
 
 /**
+ * Build the `_meta` cache hint for list responses per MCP 2026-07-28 SEP-2549.
+ * Returns `{ ttlMs, cacheScope }` when caching is enabled (ttlMs > 0),
+ * or `undefined` when disabled (ttlMs === 0) — zero overhead.
+ */
+function buildListCacheMeta(hCtx: { readonly listCacheTtlMs?: number | undefined }): { ttlMs: number; cacheScope: 'server' } | undefined {
+    const ttlMs = hCtx.listCacheTtlMs ?? 0;
+    if (ttlMs <= 0) return undefined;
+    return { ttlMs, cacheScope: 'server' };
+}
+
+/**
  * Create the `tools/list` request handler.
  *
  * In flat mode, re-compiles exposition from the current registry state.
@@ -645,7 +671,8 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
             tools = tools.filter(tool => fsm!.isToolAllowed(tool.name));
         }
 
-        return { tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(tools) : tools };
+        const cacheMeta = buildListCacheMeta(hCtx);
+        return { tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(tools) : tools, ...(cacheMeta ? { _meta: cacheMeta } : {}) };
     };
 }
 
@@ -769,9 +796,9 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         }
         };
 
-        // Bind elicitation transport + drive return-based input requests.
-        // - Deprecated imperative ask() still resolves inside this via _elicitStore.
-        // - New requireInput() returns are fulfilled and the handler is re-entered.
+        // Drive return-based input requests (requireInput).
+        // On 2025-era connections the framework fulfills each requested input
+        // over the live sendRequest channel and re-enters the handler.
         // Zero added overhead when elicitSink is undefined and no input is requested.
         result = await runWithElicitation(executeLocal, elicitSink);
 
@@ -888,6 +915,7 @@ function registerPromptHandlers<TContext>(
     registry: RegistryDelegate<TContext>,
     filter?: { tags?: string[]; anyTag?: string[]; exclude?: string[] },
     contextFactory?: (extra: unknown) => TContext | Promise<TContext>,
+    listCacheTtlMs?: number,
 ): void {
     // Wire lifecycle sync
     const serverAny = server as Record<string, unknown>;
@@ -897,13 +925,15 @@ function registerPromptHandlers<TContext>(
     }
 
     // prompts/list
+    const promptCacheMeta = buildListCacheMeta({ listCacheTtlMs });
     resolved.setRequestHandler(ListPromptsRequestSchema, async (
         request: { params?: { cursor?: string } },
     ) => {
         const params: { filter?: PromptFilter; cursor?: string } = {};
         if (filter) params.filter = filter as PromptFilter;
         if (request.params?.cursor) params.cursor = request.params.cursor;
-        return await prompts.listPrompts(params);
+        const result = await prompts.listPrompts(params);
+        return { ...result, ...(promptCacheMeta ? { _meta: promptCacheMeta } : {}) };
     });
 
     // prompts/get — with loopback dispatcher and signal propagation
@@ -990,6 +1020,7 @@ function registerResourceHandlers<TContext>(
         serverName: string;
         builders: { values: () => Iterable<ToolBuilder<TContext>> };
     },
+    listCacheTtlMs?: number,
 ): void {
     const resourceServer = resolved as unknown as McpServerWithResourceSubscriptions;
 
@@ -1024,6 +1055,7 @@ function registerResourceHandlers<TContext>(
     // The handler is a per-request arrow function (not an IIFE) so that
     // resources registered or removed dynamically after attachToServer() are
     // always reflected in the response.
+    const resourceCacheMeta = buildListCacheMeta({ listCacheTtlMs });
     resourceServer.setRequestHandler(ListResourcesRequestSchema, (() => {
         return () => {
             const list = resources.listResources();
@@ -1035,7 +1067,7 @@ function registerResourceHandlers<TContext>(
                     mimeType: 'application/json',
                 });
             }
-            return { resources: list };
+            return { resources: list, ...(resourceCacheMeta ? { _meta: resourceCacheMeta } : {}) };
         };
     })() as (...args: never[]) => unknown);
 
@@ -1265,6 +1297,9 @@ export async function attachToServer<TContext>(
         ...(swarmGateway ? { swarmGateway } : {}),
         // per-attachment UUID — never use static key for session-scoped mutable state
         fallbackSessionId: randomUUID(),
+        // MCP 2026-07-28 SEP-2549: cache hints for list responses.
+        // Default 5 min; 0 disables (no-store).
+        listCacheTtlMs: options.listCacheTtlMs ?? 300_000,
     };
 
     // 5. Register tool handlers
@@ -1273,7 +1308,7 @@ export async function attachToServer<TContext>(
 
     // 6. Register prompt handlers (zero overhead when omitted)
     if (prompts) {
-        registerPromptHandlers(resolved, server, prompts, registry, filter, contextFactory);
+        registerPromptHandlers(resolved, server, prompts, registry, filter, contextFactory, hCtx.listCacheTtlMs);
     }
 
     // 7. Register resource handlers (zero overhead when omitted)
@@ -1288,6 +1323,7 @@ export async function attachToServer<TContext>(
                 serverName: serverName ?? 'mcpfusion-server',
                 builders: { values: () => registry.getBuilders() },
             } : undefined,
+            hCtx.listCacheTtlMs,
         );
     }
 
@@ -1415,7 +1451,8 @@ function extractSignal(extra: unknown): AbortSignal | undefined {
  *
  * When the MCP SDK provides `sendRequest`, this returns a function that
  * sends `elicitation/create` requests to the client for human-in-the-loop
- * workflows. Bound to `AsyncLocalStorage` so `ask()` works as a standalone.
+ * workflows. Used by the elicitation runtime to fulfill `requireInput()`
+ * requests on 2025-era connections.
  *
  * Returns `undefined` when not available — zero overhead.
  *

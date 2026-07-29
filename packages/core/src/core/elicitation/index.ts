@@ -3,8 +3,8 @@
  *
  * @module
  */
-export { ask, _elicitStore } from './ask.js';
-export type { AskFunction } from './ask.js';
+export { ask, compileAskFields } from './ask.js';
+export type { AskNamespace } from './ask.js';
 export {
     AskStringField,
     AskNumberField,

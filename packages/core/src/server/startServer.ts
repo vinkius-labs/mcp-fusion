@@ -340,7 +340,7 @@ function applyCorsHeaders(
 
     res.setHeader('Access-Control-Allow-Origin', matchedOrigin);
     res.setHeader('Access-Control-Allow-Methods', methods.join(', '));
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Mcp-Session-Id, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Mcp-Session-Id, Mcp-Method, Mcp-Name, Authorization');
 
     // Handle preflight
     if (req.method === 'OPTIONS') {

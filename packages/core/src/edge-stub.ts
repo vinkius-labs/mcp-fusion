@@ -41,8 +41,8 @@ export class Socket extends EventEmitter {}
 export class IncomingMessage extends Readable {}
 export class ServerResponse extends Writable {}
 
-// AsyncLocalStorage — @mcpfusion/core's ask.ts does `new AsyncLocalStorage()` at
-// module load time. Must be a real class (constructable), not a Proxy arrow fn.
+// AsyncLocalStorage — @mcpfusion/core's requireInput.ts does `new AsyncLocalStorage()`
+// at module load time. Must be a real class (constructable), not a Proxy arrow fn.
 export class AsyncLocalStorage<T = unknown> {
     private _store: T | undefined = undefined;
     getStore(): T | undefined { return this._store; }

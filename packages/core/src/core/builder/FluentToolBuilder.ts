@@ -985,28 +985,32 @@ export class FluentToolBuilder<
     /**
      * Enable human-in-the-loop interaction for this tool.
      *
-     * When enabled, the handler can use the standalone `ask()` function
-     * to pause execution and request user input via a client-rendered form,
-     * or `ask.redirect()` to send the user to an external URL.
+     * When enabled, the handler can use the return-based `requireInput()`
+     * function to request user input via a client-rendered form, or
+     * `requireInput.url()` to send the user to an external URL. Answers
+     * are read on re-entry with `readInput()` / `inputResponse()`.
      *
-     * The transport context is bound via `AsyncLocalStorage` — the
-     * developer never needs to pass or receive any transport objects.
-     *
-     * @returns `this` for chaining (no type augmentation needed — `ask()` is standalone)
+     * @returns `this` for chaining
      *
      * @example
      * ```typescript
-     * import { ask } from '@mcpfusion/core';
+     * import { ask, requireInput, readInput } from '@mcpfusion/core';
      *
      * const deploy = f.mutation('infra.deploy')
      *     .withString('app_id', 'Application ID')
      *     .interactive()
      *     .handle(async (input) => {
-     *         const prefs = await ask('Confirm deployment:', {
-     *             region: ask.enum(['us-east-1', 'eu-west-1'] as const, 'Region'),
-     *         });
-     *         if (prefs.declined) return f.error('CANCELLED', 'Aborted');
-     *         return { region: prefs.data.region };
+     *         const answers = readInput<{ region: string }>('deploy');
+     *         if (!answers) {
+     *             return requireInput({
+     *                 inputRequests: {
+     *                     deploy: requireInput.elicit('Confirm deployment:', {
+     *                         region: ask.enum(['us-east-1', 'eu-west-1'] as const, 'Region'),
+     *                     }),
+     *                 },
+     *             });
+     *         }
+     *         return { region: answers.region };
      *     });
      * ```
      */

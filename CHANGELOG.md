@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking Changes — MCP `2026-07-28` Spec Adoption
+
+#### `@mcpfusion/core` — Imperative `ask()` callable removed
+
+The imperative elicitation callable `await ask('message', { fields })` and `ask.redirect('message', url)` have been **removed**. They depended on a persistent server→client request channel that the MCP `2026-07-28` stateless protocol removes ([SEP-2575](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575), [SEP-2322](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2322)).
+
+- **Migration**: use `requireInput({ inputRequests: { key: requireInput.elicit(message, fields) } })` + `readInput(key)` (return-based, stateless, 2026-native). For URL redirects, use `requireInput.url(message, url)` + `inputResponse(key)`.
+- **`ask.*` field factories are NOT removed** — `ask.string()`, `ask.number()`, `ask.boolean()`, `ask.enum()` remain as a namespace and are reused by `requireInput.elicit()`.
+- **`_elicitStore` (AsyncLocalStorage) removed** — the elicitation runtime (`runWithElicitation`) no longer binds a per-request sink via ALS. The return-based model fulfills requests over the live channel (2025 era) or emits the native `inputRequired` result (2026 era) without ALS binding.
+- **`AskFunction` type removed** — replaced by `AskNamespace` (field factories only).
+- **`ElicitationUnsupportedError` and `ElicitationDeclinedError` retained** — still used by `createAskResponse` (internal) and the elicitation runtime.
+
+### Added
+
+#### `@mcpfusion/core` — Cache hints on list responses (SEP-2549)
+
+`tools/list`, `prompts/list`, and `resources/list` responses now carry `_meta.ttlMs` and `_meta.cacheScope: 'server'` so clients can cache tool catalogs and keep upstream prompt caches stable across reconnects ([SEP-2549](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2549)).
+
+- **New option**: `listCacheTtlMs?: number` on `AttachOptions` — controls the cache hint TTL in milliseconds. @default 300000 (5 minutes). Set to `0` to disable caching (no-store).
+- **Deterministic order**: tool listings are already sorted by name (unchanged), satisfying the spec's deterministic-order requirement.
+- **Zero overhead** when `listCacheTtlMs: 0` — no `_meta` is emitted.
+
+#### `@mcpfusion/core` — Header-based routing preparation (SEP-2243)
+
+CORS `Access-Control-Allow-Headers` now includes `Mcp-Method` and `Mcp-Name` in preparation for the MCP `2026-07-28` header-based routing ([SEP-2243](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2243)). Gateways/WAFs can route and authorize on these headers once the stateless transport is enabled.
+
+### Deprecated
+
+#### MCP `2026-07-28` Spec Deprecations — No functional impact
+
+The following MCP features are deprecated by the `2026-07-28` spec ([SEP-2577](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2577)) with a 12-month offramp. MCP Fusion **does not implement** any of them, so the deprecation has **zero functional impact**:
+
+- **Roots** (`roots/list`, `roots/listChanged`) — not implemented.
+- **Sampling** (`sampling/createMessage`) — not implemented.
+- **Logging** (`logging/setLevel`, `logging/notifications`) — not implemented.
+- **HTTP+SSE legacy transport** — MCP Fusion uses Streamable HTTP (not legacy SSE), so this deprecation does not apply.
+
+### Changed
+
+- **All `@mcpfusion/*` cross-dependencies updated to `^4.4.1`** — Ensures consistent resolution across the monorepo.
+
 ## [4.4.1] - 2026-07-27
 
 ### Fixed

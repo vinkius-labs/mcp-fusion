@@ -609,8 +609,9 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     /**
      * Mark this tool as interactive (supports MCP Elicitation).
      *
-     * When enabled, the standalone `ask()` function can be used inside
-     * the handler to pause execution and request user input.
+     * When enabled, the handler can use the return-based `requireInput()`
+     * function to request user input, and `readInput()` to read the answers
+     * on re-entry.
      *
      * @returns `this` for chaining
      */

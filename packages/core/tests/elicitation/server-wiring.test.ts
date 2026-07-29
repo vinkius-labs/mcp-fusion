@@ -1,92 +1,136 @@
 /**
  * ServerAttachment — Elicitation Wiring Integration
  *
- * Tests the full pipeline from ServerAttachment through to ask():
- * - extractElicitSink correctly extracts sendRequest from extra
- * - _elicitStore is bound during tool execution
- * - ask() works inside handler when sendRequest is available
- * - ask() throws when sendRequest is NOT available
- * - Zero overhead when sendRequest is absent
- *
- * These tests mock the MCP server attachment to verify the wiring
- * without requiring a real MCP server.
+ * Tests the return-based elicitation pipeline (requireInput + readInput)
+ * driven by runWithElicitation:
+ * - requireInput() returns InputRequiredResponse when no answers present
+ * - runWithElicitation fulfills requests over a mock ElicitSink and re-enters
+ * - readInput() returns the answers on re-entry
+ * - ELICITATION_UNSUPPORTED when no sink is available
  *
  * @module
  */
 import { describe, it, expect, vi } from 'vitest';
-import { initMCPFusion, ask } from '../../src/index.js';
-import { _elicitStore } from '../../src/core/elicitation/ask.js';
-import { ElicitationUnsupportedError } from '../../src/core/elicitation/types.js';
+import { initMCPFusion, ask, requireInput, readInput, inputResponse } from '../../src/index.js';
+import { runWithElicitation } from '../../src/core/elicitation/runtime.js';
+import { isInputRequiredResponse } from '../../src/core/elicitation/requireInput.js';
+import type { ElicitSink } from '../../src/core/elicitation/types.js';
 
-describe('ServerAttachment — elicitation wiring (unit)', () => {
+describe('ServerAttachment — return-based elicitation wiring (unit)', () => {
 
-    it('ask() inside _elicitStore.run() resolves from mock sink', async () => {
+    it('requireInput() returns InputRequiredResponse on first call', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
-
-        let capturedResult: unknown;
 
         registry.register(
             f.mutation('test.elicit')
                 .interactive()
                 .handle(async () => {
-                    const result = await ask('Choose region:', {
-                        region: ask.enum(['us', 'eu'] as const, 'Region'),
-                    });
-                    capturedResult = result;
-                    if (result.declined) return { cancelled: true };
-                    return { region: result.data.region };
+                    const answers = readInput<{ region: string }>('deploy');
+
+                    if (!answers) {
+                        return requireInput({
+                            inputRequests: {
+                                deploy: requireInput.elicit('Choose region:', {
+                                    region: ask.enum(['us', 'eu'] as const, 'Region'),
+                                }),
+                            },
+                        });
+                    }
+
+                    return { region: answers.region };
                 }),
         );
 
-        // Simulate what ServerAttachment does: wrap routeCall in _elicitStore.run()
-        const mockSendRequest = vi.fn().mockResolvedValue({
+        // First call — no sink, no answers → InputRequiredResponse
+        const result = await registry.routeCall(undefined as never, 'test', { action: 'elicit' });
+
+        expect(isInputRequiredResponse(result)).toBe(true);
+        const req = result as unknown as { inputRequests: Record<string, { message: string }> };
+        expect(req.inputRequests.deploy.message).toBe('Choose region:');
+    });
+
+    it('runWithElicitation fulfills requireInput over mock sink and re-enters', async () => {
+        const f = initMCPFusion<void>();
+        const registry = f.registry();
+
+        registry.register(
+            f.mutation('test.elicit')
+                .interactive()
+                .handle(async () => {
+                    const answers = readInput<{ region: string }>('deploy');
+
+                    if (!answers) {
+                        return requireInput({
+                            inputRequests: {
+                                deploy: requireInput.elicit('Choose region:', {
+                                    region: ask.enum(['us', 'eu'] as const, 'Region'),
+                                }),
+                            },
+                        });
+                    }
+
+                    return { region: answers.region };
+                }),
+        );
+
+        // Mock sink that answers the elicitation request
+        const mockSink: ElicitSink = vi.fn().mockResolvedValue({
             action: 'accept',
             content: { region: 'eu' },
         });
 
-        const result = await _elicitStore.run(mockSendRequest, () =>
-            registry.routeCall(undefined as never, 'test', { action: 'elicit' }),
+        // Drive the handler through the elicitation runtime
+        const result = await runWithElicitation(
+            () => registry.routeCall(undefined as never, 'test', { action: 'elicit' }),
+            mockSink,
         );
 
-        // ask() should have sent the correct MCP request
-        expect(mockSendRequest).toHaveBeenCalledOnce();
-        const call = mockSendRequest.mock.calls[0]![0];
+        // The sink should have been called with elicitation/create
+        expect(mockSink).toHaveBeenCalledOnce();
+        const call = vi.mocked(mockSink).mock.calls[0]![0];
         expect(call.method).toBe('elicitation/create');
         expect((call.params as { message: string }).message).toBe('Choose region:');
 
-        // The tool response should contain the user's selection
+        // The final response should contain the user's selection
         expect(result.isError).toBeFalsy();
         const parsed = JSON.parse((result.content[0] as { text: string }).text);
         expect(parsed.region).toBe('eu');
     });
 
-    it('ask() inside handler without _elicitStore context throws', async () => {
+    it('requireInput without sink returns ELICITATION_UNSUPPORTED error', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
         registry.register(
-            f.mutation('test.nocontext')
+            f.mutation('test.nosink')
                 .interactive()
                 .handle(async () => {
-                    // This should throw because we're NOT inside _elicitStore.run()
-                    const result = await ask('Test:', { x: ask.string() });
-                    return { x: result.data.x };
+                    const answers = readInput<{ x: string }>('form');
+
+                    if (!answers) {
+                        return requireInput({
+                            inputRequests: {
+                                form: requireInput.elicit('Test:', { x: ask.string('X') }),
+                            },
+                        });
+                    }
+                    return { x: answers.x };
                 }),
         );
 
-        // Call WITHOUT wrapping in _elicitStore.run() — simulates client without elicitation support
-        const result = await registry.routeCall(undefined as never, 'test', { action: 'nocontext' });
+        // Drive without a sink — simulates stateless connection with no channel
+        const result = await runWithElicitation(
+            () => registry.routeCall(undefined as never, 'test', { action: 'nosink' }),
+            undefined,
+        );
 
-        // The error should be caught by GroupedToolBuilder and returned as an error response
         expect(result.isError).toBe(true);
         const text = (result.content[0] as { text: string }).text;
-        // Error message is wrapped in MCP Fusion's tool_error XML format
-        expect(text).toContain('Elicitation requested but no transport context is available');
-        expect(text).toContain('.interactive()');
+        expect(text).toContain('ELICITATION_UNSUPPORTED');
     });
 
-    it('handler that conditionally uses ask() works in both contexts', async () => {
+    it('handler that conditionally uses requireInput works in both paths', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -96,90 +140,56 @@ describe('ServerAttachment — elicitation wiring (unit)', () => {
                 .interactive()
                 .handle(async (input) => {
                     if (input.mode === 'interactive') {
-                        const confirmation = await ask('Confirm?', {
-                            ok: ask.boolean('OK'),
-                        });
-                        return { confirmed: confirmation.accepted };
+                        const answers = readInput<{ ok: boolean }>('confirm');
+                        if (!answers) {
+                            return requireInput({
+                                inputRequests: {
+                                    confirm: requireInput.elicit('Confirm?', {
+                                        ok: ask.boolean('OK'),
+                                    }),
+                                },
+                            });
+                        }
+                        return { confirmed: answers.ok };
                     }
-                    // Non-interactive path — no ask() called
+                    // Non-interactive path — no requireInput() called
                     return { confirmed: true };
                 }),
         );
 
         // Non-interactive path — works without elicitation context
-        const r1 = await registry.routeCall(
-            undefined as never,
-            'test',
-            { action: 'conditional', mode: 'batch' },
+        const r1 = await runWithElicitation(
+            () => registry.routeCall(
+                undefined as never,
+                'test',
+                { action: 'conditional', mode: 'batch' },
+            ),
+            undefined,
         );
         expect(r1.isError).toBeFalsy();
+        const parsed1 = JSON.parse((r1.content[0] as { text: string }).text);
+        expect(parsed1.confirmed).toBe(true);
 
         // Interactive path — needs elicitation context
-        const mockSendRequest = vi.fn().mockResolvedValue({
+        const mockSink: ElicitSink = vi.fn().mockResolvedValue({
             action: 'accept',
             content: { ok: true },
         });
 
-        const r2 = await _elicitStore.run(mockSendRequest, () =>
-            registry.routeCall(
+        const r2 = await runWithElicitation(
+            () => registry.routeCall(
                 undefined as never,
                 'test',
                 { action: 'conditional', mode: 'interactive' },
             ),
+            mockSink,
         );
         expect(r2.isError).toBeFalsy();
-        const parsed = JSON.parse((r2.content[0] as { text: string }).text);
-        expect(parsed.confirmed).toBe(true);
+        const parsed2 = JSON.parse((r2.content[0] as { text: string }).text);
+        expect(parsed2.confirmed).toBe(true);
     });
 
-    it('multi-step ask() through full pipeline', async () => {
-        const f = initMCPFusion<void>();
-        const registry = f.registry();
-
-        registry.register(
-            f.action('wizard.onboard')
-                .interactive()
-                .handle(async () => {
-                    const step1 = await ask('Step 1: What is your name?', {
-                        name: ask.string('Name'),
-                    });
-                    if (step1.declined) return { aborted: 'step1' };
-
-                    const step2 = await ask(`Welcome ${step1.data.name}! Choose plan:`, {
-                        plan: ask.enum(['free', 'pro'] as const),
-                    });
-                    if (step2.declined) return { aborted: 'step2' };
-
-                    return {
-                        name: step1.data.name,
-                        plan: step2.data.plan,
-                    };
-                }),
-        );
-
-        let callIdx = 0;
-        const mockSendRequest = vi.fn().mockImplementation(async () => {
-            callIdx++;
-            if (callIdx === 1) return { action: 'accept', content: { name: 'Alice' } };
-            return { action: 'accept', content: { plan: 'pro' } };
-        });
-
-        const result = await _elicitStore.run(mockSendRequest, () =>
-            registry.routeCall(undefined as never, 'wizard', { action: 'onboard' }),
-        );
-
-        expect(result.isError).toBeFalsy();
-        const parsed = JSON.parse((result.content[0] as { text: string }).text);
-        expect(parsed.name).toBe('Alice');
-        expect(parsed.plan).toBe('pro');
-        expect(mockSendRequest).toHaveBeenCalledTimes(2);
-
-        // Verify second ask() used data from the first
-        const secondCall = mockSendRequest.mock.calls[1]![0];
-        expect((secondCall.params as { message: string }).message).toContain('Alice');
-    });
-
-    it('ask.redirect() through full pipeline', async () => {
+    it('requireInput.url() through full pipeline', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -187,19 +197,26 @@ describe('ServerAttachment — elicitation wiring (unit)', () => {
             f.action('auth.github')
                 .interactive()
                 .handle(async () => {
-                    const result = await ask.redirect(
-                        'Authenticate with GitHub:',
-                        'https://github.com/login/oauth',
-                    );
-                    if (result.declined) return { connected: false };
-                    return { connected: true };
+                    const view = inputResponse('auth');
+                    if (view.kind === 'missing') {
+                        return requireInput({
+                            inputRequests: {
+                                auth: requireInput.url(
+                                    'Authenticate with GitHub:',
+                                    'https://github.com/login/oauth',
+                                ),
+                            },
+                        });
+                    }
+                    return { connected: view.action === 'accept' };
                 }),
         );
 
-        const mockSendRequest = vi.fn().mockResolvedValue({ action: 'accept' });
+        const mockSink: ElicitSink = vi.fn().mockResolvedValue({ action: 'accept' });
 
-        const result = await _elicitStore.run(mockSendRequest, () =>
-            registry.routeCall(undefined as never, 'auth', { action: 'github' }),
+        const result = await runWithElicitation(
+            () => registry.routeCall(undefined as never, 'auth', { action: 'github' }),
+            mockSink,
         );
 
         expect(result.isError).toBeFalsy();
@@ -207,7 +224,7 @@ describe('ServerAttachment — elicitation wiring (unit)', () => {
         expect(parsed.connected).toBe(true);
 
         // Verify URL mode request
-        const call = mockSendRequest.mock.calls[0]![0];
+        const call = mockSink.mock.calls[0]![0];
         const params = call.params as { message: string; url: string };
         expect(params.url).toBe('https://github.com/login/oauth');
     });

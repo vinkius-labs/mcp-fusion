@@ -96,7 +96,7 @@ export class FluentRouter<TContext> {
      * Enable human-in-the-loop interaction for all tools in this router.
      *
      * All child tools will inherit the `.interactive()` flag, meaning
-     * their handlers can use `ask()` and `ask.redirect()` directly.
+     * their handlers can use `requireInput()` and `readInput()` directly.
      *
      * @returns `this` for chaining
      *
@@ -104,7 +104,7 @@ export class FluentRouter<TContext> {
      * ```typescript
      * const admin = f.router('admin')
      *     .use(requireAdmin)
-     *     .interactive()   // ← all children can use ask()
+     *     .interactive()   // ← all children can use requireInput()
      * ```
      */
     interactive(): this {
