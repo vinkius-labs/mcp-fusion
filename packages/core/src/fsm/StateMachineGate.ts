@@ -92,26 +92,31 @@ interface FsmToolBinding {
  *
  * When MCP runs over Streamable HTTP (Vercel, Cloudflare Workers),
  * there is no persistent process — FSM state must be externalized.
- * The `sessionId` comes from the `Mcp-Session-Id` header.
+ * The `stateHandle` is a stable key that identifies the FSM state.
+ *
+ * On 2025-era transports, the handle comes from the `Mcp-Session-Id` header.
+ * On 2026-07-28 stateless transports (no sessions), the handle should be
+ * a tool-minted explicit identifier (e.g. a `workflow_id` argument the
+ * model threads between calls) — see `stateHandleKey` in `AttachOptions`.
  *
  * @example
  * ```typescript
  * const fsmStore: FsmStateStore = {
- *     load: async (sessionId) => {
- *         const data = await redis.get(`fsm:${sessionId}`);
+ *     load: async (stateHandle) => {
+ *         const data = await redis.get(`fsm:${stateHandle}`);
  *         return data ? JSON.parse(data) : undefined;
  *     },
- *     save: async (sessionId, snapshot) => {
- *         await redis.set(`fsm:${sessionId}`, JSON.stringify(snapshot), { EX: 3600 });
+ *     save: async (stateHandle, snapshot) => {
+ *         await redis.set(`fsm:${stateHandle}`, JSON.stringify(snapshot), { EX: 3600 });
  *     },
  * };
  * ```
  */
 export interface FsmStateStore {
-    /** Load persisted FSM state for a session. Returns `undefined` for new sessions. */
-    load(sessionId: string): Promise<FsmSnapshot | undefined>;
+    /** Load persisted FSM state for a state handle. Returns `undefined` for new handles. */
+    load(stateHandle: string): Promise<FsmSnapshot | undefined>;
     /** Save FSM state after a transition. */
-    save(sessionId: string, snapshot: FsmSnapshot): Promise<void>;
+    save(stateHandle: string, snapshot: FsmSnapshot): Promise<void>;
 }
 
 /**

@@ -395,6 +395,20 @@ export interface AttachOptions<TContext> {
      */
     fsmStore?: FsmStateStore;
 
+    /**
+     * Name of the tool argument to use as the FSM/handoff state handle
+     * (MCP 2026-07-28 stateless protocol).
+     *
+     * When set, the framework extracts the handle from the tool's arguments
+     * (e.g. `stateHandleKey: 'workflow_id'` reads `args.workflow_id`).
+     * When not set, falls back to the transport session ID (2025-era) or
+     * a per-attachment UUID fallback.
+     *
+     * This is the spec-recommended pattern: "mint an explicit handle from
+     * a tool and have the model pass it back as an argument."
+     */
+    stateHandleKey?: string;
+
     // ── MCP Resources (Push Subscriptions) ───────────────
 
     /**
@@ -454,11 +468,11 @@ export interface AttachOptions<TContext> {
  * @internal
  */
 export interface ISwarmGateway {
-    activateHandoff(payload: HandoffPayload, sessionId: string, signal: AbortSignal): Promise<void>;
-    proxyToolsList(sessionId: string): Promise<Array<{ name: string; description?: string; inputSchema?: unknown }> | null>;
-    proxyToolsCall(sessionId: string, name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<ToolResponse | null>;
-    returnToGateway(sessionId: string): Promise<void>;
-    hasActiveHandoff(sessionId: string): boolean;
+    activateHandoff(payload: HandoffPayload, handoffHandle: string, signal: AbortSignal): Promise<void>;
+    proxyToolsList(handoffHandle: string): Promise<Array<{ name: string; description?: string; inputSchema?: unknown }> | null>;
+    proxyToolsCall(handoffHandle: string, name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<ToolResponse | null>;
+    returnToGateway(handoffHandle: string): Promise<void>;
+    hasActiveHandoff(handoffHandle: string): boolean;
 }
 
 /** Function to detach the registry from the server */
@@ -504,11 +518,13 @@ interface HandlerContext<TContext> {
     readonly telemetry?: TelemetrySink;
     readonly selfHealing?: SelfHealingConfig;
     /** per-attachment UUID fallback for transports without session IDs (e.g. stdio). */
-    readonly fallbackSessionId: string;
+    readonly fallbackStateHandle: string;
     /** SwarmGateway for federated handoff (optional — zero overhead when absent). */
     readonly swarmGateway?: ISwarmGateway;
     /** Cache hint (ms) for list responses per MCP 2026-07-28 SEP-2549. */
     readonly listCacheTtlMs?: number;
+    /** Tool argument key to use as FSM/handoff state handle (2026-07-28 stateless). */
+    readonly stateHandleKey?: string;
 }
 
 // ── Observability Propagation ────────────────────────────
@@ -565,14 +581,31 @@ export const _missingContextProxy: unknown = new Proxy(Object.freeze({}), {
 // ── FSM Session Helpers ──────────────────────────────────
 
 /**
- * Resolve the session ID from the MCP extra argument,
- * falling back to the handler context's stable ID for
- * session-less transports (e.g. stdio).
+ * Resolve the state handle for FSM/handoff state from the request context.
  *
- * Extracted to eliminate 4× repetition of the same expression.
+ * Resolution order (first wins):
+ * 1. Tool argument named by `stateHandleKey` (2026-07-28 stateless pattern —
+ *    the model threads an explicit handle between calls)
+ * 2. Transport session ID from `Mcp-Session-Id` header or SDK `sessionId` (2025-era)
+ * 3. Per-attachment UUID fallback (stdio, stateless without handle arg)
+ *
+ * This replaces the v1-era `resolveSessionId` and works on both protocol eras.
  */
-function resolveSessionId<TContext>(extra: unknown, hCtx: HandlerContext<TContext>): string {
-    return extractSessionId(extra) ?? hCtx.fallbackSessionId;
+function resolveStateHandle<TContext>(
+    extra: unknown,
+    hCtx: HandlerContext<TContext>,
+    toolArgs?: Record<string, unknown>,
+): string {
+    // 1. Tool-minted handle (2026-07-28 stateless)
+    if (hCtx.stateHandleKey && toolArgs) {
+        const handle = toolArgs[hCtx.stateHandleKey];
+        if (typeof handle === 'string' && handle.length > 0) return handle;
+    }
+    // 2. Transport session ID (2025-era)
+    const sessionId = extractSessionId(extra);
+    if (sessionId) return sessionId;
+    // 3. Fallback UUID
+    return hCtx.fallbackStateHandle;
 }
 
 /**
@@ -584,18 +617,19 @@ function resolveSessionId<TContext>(extra: unknown, hCtx: HandlerContext<TContex
 async function cloneAndRestoreFsm<TContext>(
     hCtx: HandlerContext<TContext>,
     extra: unknown,
+    toolArgs?: Record<string, unknown>,
 ): Promise<HandlerContext<TContext>['fsm']> {
     let fsm = hCtx.fsm;
     if (!fsm) return undefined;
 
     fsm = fsm.clone();
-    const sessionId = resolveSessionId(extra, hCtx);
+    const stateHandle = resolveStateHandle(extra, hCtx, toolArgs);
 
     if (hCtx.fsmStore) {
-        const snap = await hCtx.fsmStore.load(sessionId);
+        const snap = await hCtx.fsmStore.load(stateHandle);
         if (snap) fsm.restore(snap);
     } else {
-        const snap = hCtx.fsmMemorySnapshots?.get(sessionId);
+        const snap = hCtx.fsmMemorySnapshots?.get(stateHandle);
         if (snap) fsm.restore(snap);
     }
     return fsm;
@@ -627,8 +661,8 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
 
         // FHP: if a handoff tunnel is active, proxy the upstream's tools list
         if (hCtx.swarmGateway) {
-            const sessionId = resolveSessionId(extra, hCtx);
-            const proxied = await hCtx.swarmGateway.proxyToolsList(sessionId);
+            const stateHandle = resolveStateHandle(extra, hCtx);
+            const proxied = await hCtx.swarmGateway.proxyToolsList(stateHandle);
             if (proxied != null) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- McpTool shape
                 return { tools: proxied as any };
@@ -707,7 +741,8 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         emit?.({ type: 'route', tool: toolGroup, action, args, timestamp: Date.now() } as any);
 
         // Per-request FSM clone for serverless isolation ( +  fix).
-        const fsm = await cloneAndRestoreFsm(hCtx, extra);
+        // Pass tool args so resolveStateHandle can extract a tool-minted handle.
+        const fsm = await cloneAndRestoreFsm(hCtx, extra, args as Record<string, unknown> | undefined);
 
         // Resolve the canonical FSM tool name:
         // - Flat mode: `name` is already the action-qualified key
@@ -737,16 +772,16 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         // Checking for an active handoff FIRST short-circuits the local execution
         // entirely, giving clean telemetry and avoiding the unnecessary registry lookup.
         if (hCtx.swarmGateway) {
-            const sessionId = resolveSessionId(extra, hCtx);
-            if (hCtx.swarmGateway.hasActiveHandoff(sessionId)) {
+            const stateHandle = resolveStateHandle(extra, hCtx, args as Record<string, unknown> | undefined);
+            if (hCtx.swarmGateway.hasActiveHandoff(stateHandle)) {
                 // Handle return_to_triage
                 if (name.endsWith('.return_to_triage')) {
-                    await hCtx.swarmGateway.returnToGateway(sessionId);
+                    await hCtx.swarmGateway.returnToGateway(stateHandle);
                     hCtx.notifyToolListChanged?.();
                     return { content: [{ type: 'text' as const, text: '[RETURN] Specialised session ended. Gateway tools restored.' }] };
                 }
                 const callSignal = extractSignal(extra) ?? new AbortController().signal;
-                const proxied = await hCtx.swarmGateway.proxyToolsCall(sessionId, name, args as Record<string, unknown>, callSignal);
+                const proxied = await hCtx.swarmGateway.proxyToolsCall(stateHandle, name, args as Record<string, unknown>, callSignal);
                 if (proxied !== null) return proxied;
                 // proxied === null means the gateway deferred (e.g. unknown tool in upstream);
                 // fall through to local execution so gateway-native tools still work.
@@ -803,7 +838,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
 
         // ── FHP: detect HandoffResponse and activate SwarmGateway tunnel ──────────
         if (isHandoffResponse(result) && hCtx.swarmGateway) {
-            const sessionId = resolveSessionId(extra, hCtx);
+            const stateHandle = resolveStateHandle(extra, hCtx, args as Record<string, unknown> | undefined);
             // Reuse the signal already extracted at the top of this handler (line ~656).
             // Using a new name avoids shadowing the outer `signal` variable.
             const handoffSignal = signal ?? new AbortController().signal;
@@ -811,7 +846,7 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
             const payload = result.payload;
 
             // Activate tunnel asynchronously — ACK is returned immediately to the LLM
-            void gateway.activateHandoff(payload, sessionId, handoffSignal)
+            void gateway.activateHandoff(payload, stateHandle, handoffSignal)
                 .then(() => hCtx.notifyToolListChanged?.())
                 .catch(() => hCtx.notifyToolListChanged?.());
 
@@ -857,13 +892,13 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
                         } as any);
                     }
                     // Persist new state to external store (serverless/edge)
-                    // Use fallback session ID for transports without sessions (e.g., stdio) ( fix)
-                    const sessionId = resolveSessionId(extra, hCtx);
+                    // Use state handle (session ID or tool-minted handle) for transports without sessions
+                    const stateHandle = resolveStateHandle(extra, hCtx, args as Record<string, unknown> | undefined);
                     if (hCtx.fsmStore) {
-                        await hCtx.fsmStore.save(sessionId, fsm.snapshot());
+                        await hCtx.fsmStore.save(stateHandle, fsm.snapshot());
                     } else if (hCtx.fsmMemorySnapshots) {
-                        // persist to in-memory session map
-                        hCtx.fsmMemorySnapshots.set(sessionId, fsm.snapshot());
+                        // persist to in-memory state map
+                        hCtx.fsmMemorySnapshots.set(stateHandle, fsm.snapshot());
                     }
                     // Notify client to re-fetch tools/list
                     hCtx.notifyToolListChanged?.();
@@ -1280,10 +1315,11 @@ export async function attachToServer<TContext>(
         ...(selfHealing ? { selfHealing } : {}),
         ...(swarmGateway ? { swarmGateway } : {}),
         // per-attachment UUID — never use static key for session-scoped mutable state
-        fallbackSessionId: randomUUID(),
+        fallbackStateHandle: randomUUID(),
         // MCP 2026-07-28 SEP-2549: cache hints for list responses.
         // Default 5 min; 0 disables (no-store).
         listCacheTtlMs: options.listCacheTtlMs ?? 300_000,
+        ...(options.stateHandleKey ? { stateHandleKey: options.stateHandleKey } : {}),
     };
 
     // 5. Register tool handlers
