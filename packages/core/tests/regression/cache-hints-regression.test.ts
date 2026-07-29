@@ -2,7 +2,7 @@
  * Regression: Cache hints on list responses (MCP 2026-07-28 SEP-2549)
  *
  * CRITICAL: `tools/list`, `prompts/list`, and `resources/list` responses
- * must carry `_meta.ttlMs` and `_meta.cacheScope: 'server'` when
+ * must carry `_meta.ttlMs` and `_meta.cacheScope: 'private'` when
  * `listCacheTtlMs > 0`, and must NOT carry `_meta` when `listCacheTtlMs === 0`.
  *
  * This test suite verifies:
@@ -66,7 +66,7 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         const result = await server.callListTools();
         expect(result._meta).toBeDefined();
         expect(result._meta.ttlMs).toBe(300_000);
-        expect(result._meta.cacheScope).toBe('server');
+        expect(result._meta.cacheScope).toBe('private');
     });
 
     it('emits custom ttlMs when listCacheTtlMs is set', async () => {
@@ -82,6 +82,22 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
 
         const result = await server.callListTools();
         expect(result._meta.ttlMs).toBe(600_000);
+        expect(result._meta.cacheScope).toBe('private');
+    });
+
+    it('emits cacheScope: server when listCacheScope is set explicitly', async () => {
+        const f = initMCPFusion<void>();
+        const registry = f.registry();
+
+        registry.register(
+            f.query('tools.ping').handle(async () => ({ ok: true })),
+        );
+
+        const server = createMockServer();
+        registry.attachToServer(server, { listCacheTtlMs: 300_000, listCacheScope: 'server' } as AttachOptions<void>);
+
+        const result = await server.callListTools();
+        expect(result._meta.ttlMs).toBe(300_000);
         expect(result._meta.cacheScope).toBe('server');
     });
 
@@ -147,7 +163,7 @@ describe('Regression: prompts/list cache hints (SEP-2549)', () => {
         const result = await server.callListPrompts();
         expect(result._meta).toBeDefined();
         expect(result._meta.ttlMs).toBe(300_000);
-        expect(result._meta.cacheScope).toBe('server');
+        expect(result._meta.cacheScope).toBe('private');
     });
 
     it('does NOT emit _meta on prompts/list when ttlMs is 0', async () => {

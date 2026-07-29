@@ -87,6 +87,19 @@ export interface AttachOptions<TContext> {
      * @default 300000 (5 minutes)
      */
     listCacheTtlMs?: number;
+
+    /**
+     * Cache scope for list responses (MCP 2026-07-28 SEP-2549).
+     *
+     * - `'private'` (default) — most conservative; responses are cacheable
+     *   only by the client that issued the request.
+     * - `'server'` — responses may be cached by shared proxies/CDNs/gateways.
+     *
+     * Only effective when `listCacheTtlMs > 0`.
+     *
+     * @default 'private'
+     */
+    listCacheScope?: 'private' | 'server';
     /**
      * Factory function to create a per-request context.
      * Receives the MCP `extra` object (session info, meta, etc.).
@@ -523,6 +536,8 @@ interface HandlerContext<TContext> {
     readonly swarmGateway?: ISwarmGateway;
     /** Cache hint (ms) for list responses per MCP 2026-07-28 SEP-2549. */
     readonly listCacheTtlMs?: number;
+    /** Cache scope for list responses ('private' default, 'server' for shared caches). */
+    readonly listCacheScope?: 'private' | 'server';
     /** Tool argument key to use as FSM/handoff state handle (2026-07-28 stateless). */
     readonly stateHandleKey?: string;
 }
@@ -641,11 +656,15 @@ async function cloneAndRestoreFsm<TContext>(
  * Build the `_meta` cache hint for list responses per MCP 2026-07-28 SEP-2549.
  * Returns `{ ttlMs, cacheScope }` when caching is enabled (ttlMs > 0),
  * or `undefined` when disabled (ttlMs === 0) — zero overhead.
+ *
+ * The spec defaults to `cacheScope: 'private'` (most conservative). The
+ * framework allows overriding to `'server'` for shared caches behind a CDN
+ * or gateway.
  */
-function buildListCacheMeta(hCtx: { readonly listCacheTtlMs?: number | undefined }): { ttlMs: number; cacheScope: 'server' } | undefined {
+function buildListCacheMeta(hCtx: { readonly listCacheTtlMs?: number | undefined; readonly listCacheScope?: 'private' | 'server' | undefined }): { ttlMs: number; cacheScope: 'private' | 'server' } | undefined {
     const ttlMs = hCtx.listCacheTtlMs ?? 0;
     if (ttlMs <= 0) return undefined;
-    return { ttlMs, cacheScope: 'server' };
+    return { ttlMs, cacheScope: hCtx.listCacheScope ?? 'private' };
 }
 
 /**
@@ -1319,6 +1338,7 @@ export async function attachToServer<TContext>(
         // MCP 2026-07-28 SEP-2549: cache hints for list responses.
         // Default 5 min; 0 disables (no-store).
         listCacheTtlMs: options.listCacheTtlMs ?? 300_000,
+        listCacheScope: options.listCacheScope ?? 'private',
         ...(options.stateHandleKey ? { stateHandleKey: options.stateHandleKey } : {}),
     };
 

@@ -95,10 +95,20 @@ export interface InputRequiredResponse {
     /** The input requests the handler needs answered before it can complete. */
     readonly inputRequests: Record<string, InputRequest>;
     /**
-     * Opaque, untrusted continuation token echoed back on the retry.
+     * Opaque continuation token echoed back on the retry.
      * Thread multi-round state through it (read via {@link readRequestState}).
-     * On the 2026 wire this MUST be integrity-protected; the framework seals it
-     * automatically when serving the 2026 era.
+     *
+     * **⚠ SECURITY**: `requestState` round-trips through the client and is
+     * therefore **untrusted input**. The MCP 2026-07-28 spec requires
+     * integrity-protecting it (HMAC / AEAD over the payload, bound to
+     * principal, originating method/parameters, and an expiry) and rejecting
+     * failed verification on re-entry.
+     *
+     * The framework does **not** automatically seal `requestState` — you must
+     * seal it yourself before passing it to `requireInput()`. Use a library
+     * like `createRequestStateCodec({ key })` from the SDK v2, or roll your
+     * own HMAC-SHA256 seal. Verify the seal on re-entry before trusting the
+     * decoded state.
      */
     readonly requestState?: string;
 }
