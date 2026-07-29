@@ -120,13 +120,15 @@
     "zod-to-json-schema": "^3.25.1"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/core": "^2.0.0",
     "esbuild": ">=0.24.0",
     "fast-json-stringify": "^6.0.0",
     "fast-redact": "^3.0.0",
     "isolated-vm": "^5.0.4",
     "xstate": "^5.0.0",
-    "zod": "^3.25.1 || ^4.0.0"
+    "zod": "^4.2.0"
   },
   "peerDependenciesMeta": {
     "zod": {

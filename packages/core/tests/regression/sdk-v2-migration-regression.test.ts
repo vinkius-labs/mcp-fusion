@@ -60,17 +60,32 @@ describe('Regression: SDK v2 packages installed', () => {
 
 // ── v1 package NOT installed ─────────────────────────────
 
-describe('Regression: v1 SDK package removed', () => {
+describe('Regression: v1 SDK package removed from dependencies', () => {
 
-    it('@modelcontextprotocol/sdk is NOT a dependency', () => {
-        // Try to resolve the v1 package — should fail
-        expect(() => {
-            try {
-                require.resolve('@modelcontextprotocol/sdk');
-            } catch {
-                throw new Error('v1 SDK not found (expected)');
-            }
-        }).toThrow('v1 SDK not found (expected)');
+    it('package.json does NOT list @modelcontextprotocol/sdk as a dependency', () => {
+        // Read the root package.json and verify v1 SDK is not a dependency
+        const pkg = require('../../../../package.json');
+        const allDeps = {
+            ...pkg.dependencies,
+            ...pkg.devDependencies,
+            ...pkg.peerDependencies,
+        };
+        expect(allDeps['@modelcontextprotocol/sdk']).toBeUndefined();
+    });
+
+    it('package.json lists v2 packages as devDependencies', () => {
+        const pkg = require('../../../../package.json');
+        expect(pkg.devDependencies['@modelcontextprotocol/server']).toBeDefined();
+        expect(pkg.devDependencies['@modelcontextprotocol/core']).toBeDefined();
+        expect(pkg.devDependencies['@modelcontextprotocol/node']).toBeDefined();
+        expect(pkg.devDependencies['@modelcontextprotocol/client']).toBeDefined();
+    });
+
+    it('core package.json lists v2 packages as peerDependencies', () => {
+        const pkg = require('../../../core/package.json');
+        expect(pkg.peerDependencies['@modelcontextprotocol/server']).toBeDefined();
+        expect(pkg.peerDependencies['@modelcontextprotocol/node']).toBeDefined();
+        expect(pkg.peerDependencies['@modelcontextprotocol/core']).toBeDefined();
     });
 });
 

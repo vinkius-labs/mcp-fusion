@@ -791,8 +791,8 @@ function createToolCallHandler<TContext>(hCtx: HandlerContext<TContext>) {
         let result: ToolResponse;
         const t0 = Date.now();
 
-        // Core execution — optionally wrapped in elicitation context
-        // so ask() can resolve its transport via AsyncLocalStorage.
+        // Core execution — wrapped in elicitation runtime so readInput()
+        // can resolve answers via AsyncLocalStorage on re-entry.
         const executeLocal = async (): Promise<ToolResponse> => {
         try {
         if (hCtx.isFlat) {

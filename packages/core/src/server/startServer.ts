@@ -585,30 +585,32 @@ export async function startServer<TContext>(
         }
     }
 
-    // 2. MCP Server Instance
-    //    Capabilities are declared based on what features are enabled.
-    //    The SDK validates that setRequestHandler() is only called for
-    //    capabilities that were declared here — missing declarations
-    //    cause "Server does not support X" runtime errors.
+    // 2. MCP Server Instance + Attach (skipped for stateless — per-request servers)
+    //    In stateless mode, createMcpHandler builds a fresh Server per request,
+    //    so creating a shared server here is wasted work and would leak resources.
     const attachRecord = attach as Record<string, unknown>;
     const needsResources = attach.introspection != null
         || attachRecord['resources'] != null;
-    const server = new Server(
-        { name, version },
-        { capabilities: {
-            tools: {},
-            ...(prompts ? { prompts: {} } : {}),
-            ...(needsResources ? { resources: {} } : {}),
-        } },
-    );
 
-    // 3. Attach Registry
-    await registry.attachToServer(server, {
-        ...attach,
-        ...(contextFactory ? { contextFactory } : {}),
-        ...(prompts ? { prompts } : {}),
-        ...(bus ? { telemetry: bus.emit } : {}),
-    } as AttachOptions<TContext>);
+    let server: Server | null = null;
+    if (transport !== 'stateless') {
+        server = new Server(
+            { name, version },
+            { capabilities: {
+                tools: {},
+                ...(prompts ? { prompts: {} } : {}),
+                ...(needsResources ? { resources: {} } : {}),
+            } },
+        );
+
+        // 3. Attach Registry
+        await registry.attachToServer(server, {
+            ...attach,
+            ...(contextFactory ? { contextFactory } : {}),
+            ...(prompts ? { prompts } : {}),
+            ...(bus ? { telemetry: bus.emit } : {}),
+        } as AttachOptions<TContext>);
+    }
 
     // 4. Server Card Compilation (zero overhead when disabled) ───────────
     // Pre-compiled as a static JSON string at startup — no per-request cost.
@@ -785,7 +787,7 @@ export async function startServer<TContext>(
                             sessionActivity.delete(id);
                         }
                     };
-                    await server.connect(t as unknown as Transport);
+                    await server!.connect(t as unknown as Transport);
                     await t.handleRequest(req, res, body);
                 } else if (req.method === 'GET') {
                     const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -840,10 +842,10 @@ export async function startServer<TContext>(
             sessions.clear();
             sessionActivity.clear();
             await new Promise<void>((resolve) => httpServer.close(() => resolve()));
-            await server.close();
+            await server!.close();
         }
 
-        const result: StartServerResult = { server, httpServer, close };
+        const result: StartServerResult = { server: server!, httpServer, close };
         if (bus) (result as { bus?: TelemetryBusInstance }).bus = bus;
         return result;
     }
@@ -880,6 +882,9 @@ export async function startServer<TContext>(
         });
 
         // Start a Node HTTP server wrapping the web-standard handler.
+        // Hoist toNodeHandler outside the callback — it returns a stable
+        // dispatch function, no need to re-wrap on every request.
+        const nodeHandler = toNodeHandler(handler);
         const httpServer = createHttpServer((req, res) => {
             // Server Card endpoint (same as http transport)
             if (serverCardJson) {
@@ -897,7 +902,7 @@ export async function startServer<TContext>(
                 }
             }
             // Delegate to the SDK v2 handler (handles both 2026 + 2025 eras)
-            toNodeHandler(handler)(req as never, res as never);
+            nodeHandler(req as never, res as never);
         });
 
         httpServer.listen(port, () => {
@@ -913,23 +918,23 @@ export async function startServer<TContext>(
             await new Promise<void>((resolve) => httpServer.close(() => resolve()));
         }
 
-        const result: StartServerResult = { server, httpServer, close };
+        const result: StartServerResult = { server: null, httpServer, close };
         if (bus) (result as { bus?: TelemetryBusInstance }).bus = bus;
         return result;
     }
 
     // ── Stdio Transport (default) ────────────────────────────
     const stdioTransport = new StdioServerTransport();
-    await server.connect(stdioTransport);
+    await server!.connect(stdioTransport);
     process.stderr.write(`⚡ ${name} running on stdio\n`);
 
     // 5. Close helper
     async function close(): Promise<void> {
         if (bus) await bus.close();
-        await server.close();
+        await server!.close();
     }
 
-    const result: StartServerResult = { server, close };
+    const result: StartServerResult = { server: server!, close };
     if (bus) (result as { bus?: TelemetryBusInstance }).bus = bus;
     return result;
 }
