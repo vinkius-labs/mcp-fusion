@@ -46,3 +46,4 @@ export type {
 } from './requireInput.js';
 export { runWithElicitation } from './runtime.js';
 export type { ElicitationRuntimeOptions } from './runtime.js';
+export { sealRequestState, _setRequestStateCodec } from './requestStateSeal.js';

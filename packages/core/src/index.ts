@@ -493,3 +493,5 @@ export type {
     ElicitationSchema,
     InputResponseView,
 } from './core/elicitation/index.js';
+/** @category Elicitation */
+export { sealRequestState } from './core/elicitation/index.js';

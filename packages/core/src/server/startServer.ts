@@ -17,9 +17,10 @@
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { NodeStreamableHTTPServerTransport, toNodeHandler } from "@modelcontextprotocol/node";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { Server, createMcpHandler } from "@modelcontextprotocol/server";
+import { Server, createMcpHandler, createRequestStateCodec, type RequestStateCodec } from "@modelcontextprotocol/server";
 import type { Transport } from "@modelcontextprotocol/server";
 import { attachToServer as _attachToServer, type AttachOptions, _missingContextProxy } from './ServerAttachment.js';
+import { _setRequestStateCodec } from '../core/elicitation/requestStateSeal.js';
 import { createTelemetryBus, type TelemetryBusInstance } from '../observability/TelemetryBus.js';
 import { compileServerCard, SERVER_CARD_PATH } from '../introspection/ServerCard.js';
 import type { ServerCardConfig } from '../introspection/types.js';
@@ -217,6 +218,23 @@ export interface StartServerOptions<TContext> {
      * ```
      */
     readonly credentials?: CredentialsMap;
+
+    /**
+     * HMAC secret for sealing `requestState` in multi-round elicitation flows
+     * (MCP 2026-07-28 SEP-2322).
+     *
+     * When provided, the framework creates a `createRequestStateCodec` and
+     * wires `verify` into the SDK v2 `Server` — the SDK automatically verifies
+     * the seal before re-entering the handler on retry. Handlers use
+     * `sealRequestState(payload)` to mint sealed tokens for `requireInput()`.
+     *
+     * Must be at least 32 bytes (256 bits). The same key must be available
+     * to every server instance that may receive an echoed `requestState`.
+     *
+     * When omitted, `requestState` is passed as a plain unsealed string —
+     * only safe for non-sensitive state in trusted environments.
+     */
+    readonly requestStateKey?: string | Uint8Array;
 }
 
 /**
@@ -396,7 +414,18 @@ export async function startServer<TContext>(
         state,
         credentials,
         serverCard: serverCardOpt,
+        requestStateKey,
     } = options;
+
+    // ── Request State Codec (MCP 2026-07-28 SEP-2322) ────────────────────
+    // When requestStateKey is provided, create an HMAC-SHA256 codec that
+    // seals requestState tokens for multi-round elicitation flows. The SDK
+    // v2 Server calls verify() automatically before re-entering the handler.
+    let requestStateCodec: RequestStateCodec | undefined;
+    if (requestStateKey) {
+        requestStateCodec = createRequestStateCodec({ key: requestStateKey });
+        _setRequestStateCodec(requestStateCodec);
+    }
 
     // ── Vinkius Cloud Edge Detection ─────────────────────────────────────
     // When running inside a V8 Isolate, the host injects
@@ -596,11 +625,14 @@ export async function startServer<TContext>(
     if (transport !== 'stateless') {
         server = new Server(
             { name, version },
-            { capabilities: {
-                tools: {},
-                ...(prompts ? { prompts: {} } : {}),
-                ...(needsResources ? { resources: {} } : {}),
-            } },
+            {
+                capabilities: {
+                    tools: {},
+                    ...(prompts ? { prompts: {} } : {}),
+                    ...(needsResources ? { resources: {} } : {}),
+                },
+                ...(requestStateCodec ? { requestState: { verify: requestStateCodec.verify } } : {}),
+            },
         );
 
         // 3. Attach Registry
@@ -864,11 +896,14 @@ export async function startServer<TContext>(
         const handler = createMcpHandler(() => {
             const s = new Server(
                 { name, version },
-                { capabilities: {
-                    tools: {},
-                    ...(prompts ? { prompts: {} } : {}),
-                    ...(needsResourcesStateless ? { resources: {} } : {}),
-                } },
+                {
+                    capabilities: {
+                        tools: {},
+                        ...(prompts ? { prompts: {} } : {}),
+                        ...(needsResourcesStateless ? { resources: {} } : {}),
+                    },
+                    ...(requestStateCodec ? { requestState: { verify: requestStateCodec.verify } } : {}),
+                },
             );
             // Attach the registry to this per-request server.
             // The factory is synchronous, but attachToServer is async —
