@@ -15,9 +15,9 @@
  * @module
  */
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
-import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { NodeStreamableHTTPServerTransport, toNodeHandler } from "@modelcontextprotocol/node";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { Server } from "@modelcontextprotocol/server";
+import { Server, createMcpHandler } from "@modelcontextprotocol/server";
 import type { Transport } from "@modelcontextprotocol/server";
 import { attachToServer as _attachToServer, type AttachOptions, _missingContextProxy } from './ServerAttachment.js';
 import { createTelemetryBus, type TelemetryBusInstance } from '../observability/TelemetryBus.js';
@@ -32,7 +32,7 @@ import type { CredentialsMap } from '../credentials/index.js';
 // ============================================================================
 
 /** Transport layer for the server. */
-export type ServerTransport = 'stdio' | 'http';
+export type ServerTransport = 'stdio' | 'http' | 'stateless';
 
 /** Options for `startServer`. */
 export interface StartServerOptions<TContext> {
@@ -55,10 +55,15 @@ export interface StartServerOptions<TContext> {
     readonly telemetry?: boolean;
 
     /**
-     * Transport layer: `'stdio'` (default) or `'http'` (Streamable HTTP).
+     * Transport layer: `'stdio'` (default), `'http'` (Streamable HTTP), or
+     * `'stateless'` (MCP 2026-07-28 per-request stateless).
      *
-     * - `stdio` — connects via stdin/stdout (for Cursor, Claude Desktop)
-     * - `http`  — starts an HTTP server with session management on `/mcp`
+     * - `stdio`     — connects via stdin/stdout (for Cursor, Claude Desktop)
+     * - `http`      — starts an HTTP server with session management on `/mcp` (2025-era)
+     * - `stateless` — uses `createMcpHandler` for MCP 2026-07-28 per-request
+     *   serving with no sessions, no `initialize` handshake, and `Mcp-Method`/
+     *   `Mcp-Name` header routing. Any request can land on any instance behind
+     *   a round-robin load balancer.
      */
     readonly transport?: ServerTransport;
 
@@ -605,19 +610,18 @@ export async function startServer<TContext>(
         ...(bus ? { telemetry: bus.emit } : {}),
     } as AttachOptions<TContext>);
 
-    // 4. Connect Transport
-    if (transport === 'http') {
-        // ── Server Card Compilation (zero overhead when disabled) ─────────
-        // Pre-compiled as a static JSON string at startup — no per-request cost.
-        let serverCardJson: string | undefined;
-        if (serverCardOpt != null) {
-            const cardConfig: ServerCardConfig = {
-                name,
-                version,
-                transport: 'streamable-http',
-                ...(serverCardOpt === true ? {} : serverCardOpt),
-            };
-            const resources = attachRecord['resources'];
+    // 4. Server Card Compilation (zero overhead when disabled) ───────────
+    // Pre-compiled as a static JSON string at startup — no per-request cost.
+    // Shared by both 'http' and 'stateless' transports.
+    let serverCardJson: string | undefined;
+    if (serverCardOpt != null && (transport === 'http' || transport === 'stateless')) {
+        const cardConfig: ServerCardConfig = {
+            name,
+            version,
+            transport: 'streamable-http',
+            ...(serverCardOpt === true ? {} : serverCardOpt),
+        };
+        const resources = attachRecord['resources'];
             const resourceList = resources != null && typeof (resources as { listResources?: unknown }).listResources === 'function'
                 ? (resources as { listResources: () => Array<{ uri: string; name: string; description?: string; mimeType?: string }> }).listResources()
                 : undefined;
@@ -631,8 +635,10 @@ export async function startServer<TContext>(
                 resourceList,
             );
             serverCardJson = JSON.stringify(card, null, 2);
-        }
+    }
 
+    // 5. Connect Transport
+    if (transport === 'http') {
         // ── Streamable HTTP Transport ────────────────────────
         const sessions = new Map<string, NodeStreamableHTTPServerTransport>();
         const sessionActivity = new Map<string, number>();
@@ -835,6 +841,76 @@ export async function startServer<TContext>(
             sessionActivity.clear();
             await new Promise<void>((resolve) => httpServer.close(() => resolve()));
             await server.close();
+        }
+
+        const result: StartServerResult = { server, httpServer, close };
+        if (bus) (result as { bus?: TelemetryBusInstance }).bus = bus;
+        return result;
+    }
+
+    // ── Stateless Transport (MCP 2026-07-28) ────────────────
+    // Uses createMcpHandler for per-request serving with no sessions,
+    // no initialize handshake, and Mcp-Method/Mcp-Name header routing.
+    // Any request can land on any instance behind a round-robin LB.
+    if (transport === 'stateless') {
+        const attachRecord = attach as Record<string, unknown>;
+        const needsResourcesStateless = attach.introspection != null
+            || attachRecord['resources'] != null;
+
+        // Factory: build a fresh Server per request and attach the registry.
+        // createMcpHandler calls this for each incoming request.
+        const handler = createMcpHandler(() => {
+            const s = new Server(
+                { name, version },
+                { capabilities: {
+                    tools: {},
+                    ...(prompts ? { prompts: {} } : {}),
+                    ...(needsResourcesStateless ? { resources: {} } : {}),
+                } },
+            );
+            // Attach the registry to this per-request server.
+            // The factory is synchronous, but attachToServer is async —
+            // createMcpHandler supports async factories.
+            return registry.attachToServer(s, {
+                ...attach,
+                ...(contextFactory ? { contextFactory } : {}),
+                ...(prompts ? { prompts } : {}),
+                ...(bus ? { telemetry: bus.emit } : {}),
+            } as AttachOptions<TContext>).then(() => s);
+        });
+
+        // Start a Node HTTP server wrapping the web-standard handler.
+        const httpServer = createHttpServer((req, res) => {
+            // Server Card endpoint (same as http transport)
+            if (serverCardJson) {
+                const rawUrl = req.url ?? '/';
+                const qIdx = rawUrl.indexOf('?');
+                const pathname = qIdx === -1 ? rawUrl : rawUrl.slice(0, qIdx);
+                if (pathname === SERVER_CARD_PATH && req.method === 'GET') {
+                    res.writeHead(200, {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'public, max-age=300',
+                        'X-Content-Type-Options': 'nosniff',
+                        'Access-Control-Allow-Origin': '*',
+                    }).end(serverCardJson);
+                    return;
+                }
+            }
+            // Delegate to the SDK v2 handler (handles both 2026 + 2025 eras)
+            toNodeHandler(handler)(req as never, res as never);
+        });
+
+        httpServer.listen(port, () => {
+            process.stderr.write(`⚡ ${name} on http://localhost:${port}/mcp (stateless, MCP 2026-07-28)\n`);
+            if (serverCardJson) {
+                process.stderr.write(`🏷️ Server Card at http://localhost:${port}${SERVER_CARD_PATH}\n`);
+            }
+        });
+
+        async function close(): Promise<void> {
+            if (bus) await bus.close();
+            await handler.close();
+            await new Promise<void>((resolve) => httpServer.close(() => resolve()));
         }
 
         const result: StartServerResult = { server, httpServer, close };
