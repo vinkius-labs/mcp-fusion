@@ -33,6 +33,27 @@ The imperative elicitation callable `await ask('message', { fields })` and `ask.
 
 CORS `Access-Control-Allow-Headers` now includes `Mcp-Method` and `Mcp-Name` in preparation for the MCP `2026-07-28` header-based routing ([SEP-2243](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2243)). Gateways/WAFs can route and authorize on these headers once the stateless transport is enabled.
 
+### Added — MCP `2026-07-28` Stateless Transport (Fase 1)
+
+#### `@mcpfusion/core` — SDK v2 migration + stateless transport
+
+- **Migrated from `@modelcontextprotocol/sdk` v1 to v2 packages**: `@modelcontextprotocol/server`, `@modelcontextprotocol/core`, `@modelcontextprotocol/node`, `@modelcontextprotocol/client`. Zod upgraded from v3 to v4 (`^4.2.0`).
+- **New `transport: 'stateless'` option** in `startServer` — uses `createMcpHandler` from the SDK v2 for MCP `2026-07-28` per-request serving with no `initialize` handshake, no `Mcp-Session-Id`, and `Mcp-Method`/`Mcp-Name` header routing. Any request can land on any instance behind a round-robin load balancer. The factory creates a fresh `Server` per request and attaches the registry, enabling true stateless deployment (serverless, edge, containers). Serves both 2026 + 2025 eras from one endpoint.
+- **`setRequestHandler` migrated to method strings** — all handler registrations now use `'tools/list'`, `'tools/call'`, etc. instead of Zod schema objects.
+- **`NodeStreamableHTTPServerTransport`** replaces `StreamableHTTPServerTransport` (renamed in SDK v2).
+
+### Added — MCP `2026-07-28` State Handle Decoupling (Fase 2)
+
+#### `@mcpfusion/core` — `sessionId` decoupled from FSM/handoff
+
+The MCP `2026-07-28` stateless protocol removes `Mcp-Session-Id`. The spec recommends: *"mint an explicit handle from a tool and have the model pass it back as an argument."*
+
+- **New `stateHandleKey` option** on `AttachOptions` — name of the tool argument to use as the FSM/handoff state handle (e.g. `stateHandleKey: 'workflow_id'`). When set, the framework extracts the handle from tool args instead of the transport session ID.
+- **`resolveStateHandle(extra, hCtx, toolArgs?)`** replaces `resolveSessionId` — resolution order: (1) tool-minted handle from `args[stateHandleKey]` (2026 stateless), (2) transport session ID from `Mcp-Session-Id` header (2025-era), (3) per-attachment UUID fallback.
+- **`FsmStateStore`** parameter renamed `sessionId` → `stateHandle` (same `string` type, works on both eras).
+- **`ISwarmGateway`** methods renamed `sessionId` → `handoffHandle` in all 5 methods (`activateHandoff`, `proxyToolsList`, `proxyToolsCall`, `returnToGateway`, `hasActiveHandoff`).
+- **`HandlerContext.fallbackSessionId`** → `fallbackStateHandle`.
+
 ### Deprecated
 
 #### MCP `2026-07-28` Spec Deprecations — No functional impact
