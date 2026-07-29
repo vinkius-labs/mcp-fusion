@@ -79,7 +79,48 @@ function conflictError(field: string, actionKey: string, detail: string): Error 
 interface JsonSchemaNode {
     readonly type?: string;
     readonly enum?: readonly unknown[];
+    readonly anyOf?: readonly JsonSchemaNode[];
+    readonly oneOf?: readonly JsonSchemaNode[];
+    readonly allOf?: readonly JsonSchemaNode[];
     [key: string]: unknown;
+}
+
+/**
+ * Extract the effective base type from a JSON Schema node.
+ *
+ * Zod v4 represents `.nullable()` as `anyOf: [{type: "string"}, {type: "null"}]`
+ * instead of v3's `type: ["string", "null"]`. To keep collision detection
+ * working, we unwrap `anyOf`/`oneOf` and return the first non-null member's
+ * type. Returns `undefined` if no concrete type is found.
+ */
+function effectiveType(node: JsonSchemaNode): string | undefined {
+    if (node.type !== undefined) return node.type;
+
+    const combinator = node.anyOf ?? node.oneOf ?? node.allOf;
+    if (Array.isArray(combinator)) {
+        for (const member of combinator) {
+            if (member.type !== undefined && member.type !== 'null') {
+                return member.type;
+            }
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Check whether a node represents a nullable type (allows null).
+ * In zod v4 this is `anyOf: [..., {type: "null"}]`; in v3 it was
+ * `type: ["string", "null"]`.
+ */
+function isNullableType(node: JsonSchemaNode): boolean {
+    if (Array.isArray(node.type)) {
+        return node.type.includes('null');
+    }
+    const combinator = node.anyOf ?? node.oneOf;
+    if (Array.isArray(combinator)) {
+        return combinator.some(m => m.type === 'null');
+    }
+    return false;
 }
 
 export function assertFieldCompatibility(
@@ -91,8 +132,8 @@ export function assertFieldCompatibility(
     const ex: JsonSchemaNode = existing as JsonSchemaNode;
     const inc: JsonSchemaNode = incoming as JsonSchemaNode;
 
-    const exType = ex.type;
-    const incType = inc.type;
+    const exType = effectiveType(ex);
+    const incType = effectiveType(inc);
     const exEnum = ex.enum;
     const incEnum = inc.enum;
 
@@ -103,6 +144,22 @@ export function assertFieldCompatibility(
     ) {
         throw conflictError(field, actionKey,
             `type "${incType}" conflicts with previously declared type "${exType}"`);
+    }
+
+    // 1b. Nullable vs non-nullable of the same base type is a conflict.
+    //     zod v4: nullable → anyOf:[{type:"string"},{type:"null"}]
+    //     zod v3: nullable → type:["string","null"]
+    //     A non-nullable field (type:"string") vs a nullable one (anyOf:...)
+    //     have the same effective base type but different nullability —
+    //     that's a collision because callers can't rely on a consistent
+    //     nullability contract across actions.
+    if (
+        exType !== undefined && incType !== undefined &&
+        normalizeType(exType) === normalizeType(incType) &&
+        isNullableType(ex) !== isNullableType(inc)
+    ) {
+        throw conflictError(field, actionKey,
+            `nullability conflict — one declaration is nullable and the other is not`);
     }
 
     // 2. Enum presence mismatch → WIDEN to non-enum (drop constraint)

@@ -44,7 +44,7 @@
  * @module
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { error, toolError } from '../response.js';
 import { toErrorMessage } from '../ErrorUtils.js';
 import {

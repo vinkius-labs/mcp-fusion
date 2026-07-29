@@ -13,10 +13,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
-import {
-    ListToolsRequestSchema,
-    CallToolRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/core";
 import { GroupedToolBuilder } from '../../src/core/builder/GroupedToolBuilder.js';
 import { ToolRegistry } from '../../src/core/registry/ToolRegistry.js';
 import { success } from '../../src/core/response.js';
@@ -33,9 +30,9 @@ function createMockServer() {
     const handlers = new Map<string, Function>();
 
     return {
-        /** Mock setRequestHandler — stores handler by schema method */
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers.set(schema.shape.method.value, handler);
+        /** Mock setRequestHandler — stores handler by method string */
+        setRequestHandler(method: string, handler: Function) {
+            handlers.set(method, handler);
         },
         /** Simulate a tools/list request */
         async callListTools() {

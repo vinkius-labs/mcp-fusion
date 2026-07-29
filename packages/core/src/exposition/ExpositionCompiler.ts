@@ -17,7 +17,7 @@
  *
  * @module
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { zodToJson } from '../core/schema/ZodCompat.js';
 import { type InternalAction, type ToolBuilder } from '../core/types.js';
@@ -286,11 +286,13 @@ function buildAtomicSchema<TContext>(
         }
     }
 
+    // zod v4 / MCP SDK: the inferred inputSchema type has a narrower
+    // index signature than Record<string, object>. Cast to satisfy TS.
     return {
         type: 'object' as const,
         properties,
         ...(required.length > 0 ? { required } : {}),
-    };
+    } as unknown as McpTool['inputSchema'];
 }
 
 /**

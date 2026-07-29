@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { NamespaceRewriter, NamespaceError } from '../src/NamespaceRewriter.ts';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from "@modelcontextprotocol/server";
 
 function makeTool(name: string, description?: string): Tool {
     return {

@@ -12,7 +12,7 @@
  *
  * @module
  */
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 
 // ============================================================================
 // Return trip tool injection

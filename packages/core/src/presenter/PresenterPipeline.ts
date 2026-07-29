@@ -124,9 +124,10 @@ export function stepValidate<T>(
 
     try {
         if (isArray) {
-            return (data as T[]).map(item => snapshot.schema!.parse(item));
+            // zod v4: parse() returns `unknown` — cast back to T to satisfy the return type
+            return (data as T[]).map(item => snapshot.schema!.parse(item) as T);
         }
-        return snapshot.schema.parse(data);
+        return snapshot.schema.parse(data) as T;
     } catch (err) {
         if (err instanceof ZodError) {
             throw new PresenterValidationError(snapshot.name, err);

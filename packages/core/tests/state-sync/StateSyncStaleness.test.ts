@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { StateSyncLayer } from '../../src/state-sync/StateSyncLayer.js';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 
 const makeTool = (name: string, description: string): McpTool => ({
     name,

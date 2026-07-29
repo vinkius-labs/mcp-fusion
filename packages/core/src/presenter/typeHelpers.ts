@@ -119,7 +119,8 @@ export const t = {
      * ```
      */
     record: <T extends ZodType>(valueType: T) =>
-        z.record(valueType),
+        // zod v4: z.record() requires a key type argument; default to string keys
+        z.record(z.string(), valueType),
 
     // ── Modifiers (wrappers) ─────────────────────────────
 

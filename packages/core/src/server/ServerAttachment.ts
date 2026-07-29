@@ -8,17 +8,7 @@
  *
  * Pure-function module: receives dependencies, returns detach function.
  */
-import {
-    ListToolsRequestSchema,
-    CallToolRequestSchema,
-    ListPromptsRequestSchema,
-    GetPromptRequestSchema,
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema,
-    SubscribeRequestSchema,
-    UnsubscribeRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type ToolResponse, error, toolError, isHandoffResponse, type HandoffPayload } from '../core/response.js';
 import { type ToolBuilder } from '../core/types.js';
 import { type ProgressSink, type ProgressEvent } from '../core/execution/ProgressHelper.js';
@@ -48,14 +38,11 @@ import { runWithElicitation } from '../core/elicitation/runtime.js';
 // ── Types ────────────────────────────────────────────────
 
 /**
- * Typed interface for MCP SDK Server with overloaded setRequestHandler signatures.
+ * Typed interface for MCP SDK v2 Server with method-string handler registration.
  * ServerResolver returns the generic McpServerLike; we narrow it here for type-safe handler registration.
  */
 interface McpServerTyped {
-    setRequestHandler(schema: typeof ListToolsRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof CallToolRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof ListPromptsRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof GetPromptRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(method: string, handler: (...args: never[]) => unknown): void;
 }
 
 /**
@@ -926,7 +913,7 @@ function registerPromptHandlers<TContext>(
 
     // prompts/list
     const promptCacheMeta = buildListCacheMeta({ listCacheTtlMs });
-    resolved.setRequestHandler(ListPromptsRequestSchema, async (
+    resolved.setRequestHandler('prompts/list', async (
         request: { params?: { cursor?: string } },
     ) => {
         const params: { filter?: PromptFilter; cursor?: string } = {};
@@ -937,7 +924,7 @@ function registerPromptHandlers<TContext>(
     });
 
     // prompts/get — with loopback dispatcher and signal propagation
-    resolved.setRequestHandler(GetPromptRequestSchema, async (
+    resolved.setRequestHandler('prompts/get', async (
         request: { params: { name: string; arguments?: Record<string, string> } },
         extra: unknown,
     ) => {
@@ -992,13 +979,10 @@ function injectLoopbackDispatcher<TContext>(
 }
 
 /**
- * Typed interface for MCP SDK Server with resource + subscribe handler support.
+ * Typed interface for MCP SDK v2 Server with resource + subscribe handler support.
  */
 interface McpServerWithResourceSubscriptions {
-    setRequestHandler(schema: typeof ListResourcesRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof ReadResourceRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof SubscribeRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof UnsubscribeRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(method: string, handler: (...args: never[]) => unknown): void;
 }
 
 /**
@@ -1056,7 +1040,7 @@ function registerResourceHandlers<TContext>(
     // resources registered or removed dynamically after attachToServer() are
     // always reflected in the response.
     const resourceCacheMeta = buildListCacheMeta({ listCacheTtlMs });
-    resourceServer.setRequestHandler(ListResourcesRequestSchema, (() => {
+    resourceServer.setRequestHandler('resources/list', (() => {
         return () => {
             const list = resources.listResources();
             if (introspection) {
@@ -1072,7 +1056,7 @@ function registerResourceHandlers<TContext>(
     })() as (...args: never[]) => unknown);
 
     // resources/read — with introspection manifest delegation ( fix)
-    resourceServer.setRequestHandler(ReadResourceRequestSchema, (async (
+    resourceServer.setRequestHandler('resources/read', (async (
         request: { params: { uri: string } },
         extra: unknown,
     ) => {
@@ -1103,7 +1087,7 @@ function registerResourceHandlers<TContext>(
     }) as (...args: never[]) => unknown);
 
     // resources/subscribe
-    resourceServer.setRequestHandler(SubscribeRequestSchema, ((
+    resourceServer.setRequestHandler('resources/subscribe', ((
         request: { params: { uri: string } },
     ) => {
         const accepted = resources.subscribe(request.params.uri);
@@ -1116,7 +1100,7 @@ function registerResourceHandlers<TContext>(
     }) as (...args: never[]) => unknown);
 
     // resources/unsubscribe
-    resourceServer.setRequestHandler(UnsubscribeRequestSchema, ((
+    resourceServer.setRequestHandler('resources/unsubscribe', ((
         request: { params: { uri: string } },
     ) => {
         resources.unsubscribe(request.params.uri);
@@ -1132,13 +1116,13 @@ function createDetachFn(
     hasPrompts: boolean,
 ): DetachFn {
     return () => {
-        resolved.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [] }));
-        resolved.setRequestHandler(CallToolRequestSchema, () =>
+        resolved.setRequestHandler('tools/list', () => ({ tools: [] }));
+        resolved.setRequestHandler('tools/call', () =>
             error('Tool handlers have been detached'),
         );
         if (hasPrompts) {
-            resolved.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: [] }));
-            resolved.setRequestHandler(GetPromptRequestSchema, () => ({
+            resolved.setRequestHandler('prompts/list', () => ({ prompts: [] }));
+            resolved.setRequestHandler('prompts/get', () => ({
                 messages: [{ role: 'user', content: { type: 'text', text: 'Prompt handlers have been detached' } }],
             }));
         }
@@ -1303,8 +1287,8 @@ export async function attachToServer<TContext>(
     };
 
     // 5. Register tool handlers
-    resolved.setRequestHandler(ListToolsRequestSchema, createToolListHandler(hCtx));
-    resolved.setRequestHandler(CallToolRequestSchema, createToolCallHandler(hCtx));
+    resolved.setRequestHandler('tools/list', createToolListHandler(hCtx));
+    resolved.setRequestHandler('tools/call', createToolCallHandler(hCtx));
 
     // 6. Register prompt handlers (zero overhead when omitted)
     if (prompts) {

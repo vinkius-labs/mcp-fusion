@@ -1,39 +1,9 @@
-/**
- * YamlMcpServer — Creates a Real MCP Server from a Compiled YAML Manifest
- *
- * This is the missing piece that turns parsed YAML into a **running server**.
- * Registers tools/list, tools/call, resources/list, resources/read,
- * prompts/list, and prompts/get handlers on the MCP SDK `Server`.
- *
- * **Open-source**: Basic execution via `BasicToolExecutor` (no DLP/SSRF/FinOps).
- * **Vinkius Engine**: Wraps this with the enterprise `ToolExecutionPipeline`.
- *
- * @example
- * ```typescript
- * import { createYamlMcpServer, loadYamlServer } from '@mcpfusion/yaml';
- *
- * const compiled = await loadYamlServer(fs.readFileSync('mcpfusion.yaml', 'utf-8'));
- * const { server, close } = await createYamlMcpServer(compiled);
- * // Server is now running on stdio — ready for Cursor, Claude Desktop, etc.
- * ```
- *
- * @module
- */
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { Server } from "@modelcontextprotocol/server";
+import type { Transport } from "@modelcontextprotocol/server";
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import {
-    ListToolsRequestSchema,
-    CallToolRequestSchema,
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema,
-    ListPromptsRequestSchema,
-    GetPromptRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-
 import type { CompiledYamlServer } from './LocalServer.js';
 import type { CompiledTool } from '../compiler/ToolCompiler.js';
 import type { CompiledResource } from '../compiler/ResourceCompiler.js';
@@ -204,11 +174,11 @@ export async function createYamlMcpServer(
             toolMap.set(tool.name, tool);
         }
 
-        server.setRequestHandler(ListToolsRequestSchema, async () => ({
+        server.setRequestHandler('tools/list', async () => ({
             tools: buildToolsList(tools),
         }));
 
-        server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        server.setRequestHandler('tools/call', async (request) => {
             const { name, arguments: args = {} } = request.params;
             const tool = toolMap.get(name);
 
@@ -233,11 +203,11 @@ export async function createYamlMcpServer(
             resourceMap.set(resource.uri, resource);
         }
 
-        server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+        server.setRequestHandler('resources/list', async () => ({
             resources: buildResourcesList(resources),
         }));
 
-        server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+        server.setRequestHandler('resources/read', async (request) => {
             const { uri } = request.params;
             const resource = resourceMap.get(uri);
 
@@ -279,11 +249,11 @@ export async function createYamlMcpServer(
             promptMap.set(prompt.name, prompt);
         }
 
-        server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+        server.setRequestHandler('prompts/list', async () => ({
             prompts: buildPromptsList(prompts),
         }));
 
-        server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+        server.setRequestHandler('prompts/get', async (request) => {
             const { name, arguments: args = {} } = request.params;
             const prompt = promptMap.get(name);
 
@@ -318,7 +288,7 @@ export async function createYamlMcpServer(
 
     // ── 5. Connect transport ─────────────────────────────
     if (transport === 'http') {
-        const sessions = new Map<string, StreamableHTTPServerTransport>();
+        const sessions = new Map<string, NodeStreamableHTTPServerTransport>();
 
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         const httpServer = createHttpServer(async (req, res) => {
@@ -360,7 +330,7 @@ export async function createYamlMcpServer(
                     }
 
                     // New session
-                    const t = new StreamableHTTPServerTransport({
+                    const t = new NodeStreamableHTTPServerTransport({
                         sessionIdGenerator: () => randomUUID(),
                         onsessioninitialized: (id) => {
                             sessions.set(id, t);

@@ -18,15 +18,16 @@ import { ToolRegistry } from '../../src/core/registry/ToolRegistry.js';
 import { defineTool } from '../../src/core/builder/defineTool.js';
 import { StateMachineGate } from '../../src/fsm/StateMachineGate.js';
 import type { FsmConfig, FsmSnapshot } from '../../src/fsm/StateMachineGate.js';
-import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 // ── Helpers ──────────────────────────────────────────────
 
+// MCP SDK v2 registers handlers by method string (e.g. 'tools/call'),
+// not by schema object — the mock mirrors that contract.
 function createMockServer() {
-    const handlers = new Map<unknown, (...args: unknown[]) => unknown>();
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
     const server = {
-        setRequestHandler: (schema: unknown, handler: (...args: unknown[]) => unknown) => {
-            handlers.set(schema, handler);
+        setRequestHandler: (method: string, handler: (...args: unknown[]) => unknown) => {
+            handlers.set(method, handler);
         },
     };
     return { server, handlers };
@@ -143,7 +144,7 @@ describe('Bug #108: Bounded in-memory FSM snapshot store', () => {
         // Attach without fsmStore — uses in-memory bounded map
         await registry.attachToServer(server, { fsm });
 
-        const callHandler = handlers.get(CallToolRequestSchema) as Function;
+        const callHandler = handlers.get('tools/call') as Function;
 
         // Simulate many different sessions calling submit
         for (let i = 0; i < 100; i++) {

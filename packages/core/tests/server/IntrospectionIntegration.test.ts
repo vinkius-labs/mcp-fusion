@@ -18,10 +18,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
-import {
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { ListResourcesRequestSchema, ReadResourceRequestSchema } from "@modelcontextprotocol/core";
 import { GroupedToolBuilder } from '../../src/core/builder/GroupedToolBuilder.js';
 import { createPresenter } from '../../src/presenter/Presenter.js';
 import { ui } from '../../src/presenter/ui.js';
@@ -42,9 +39,9 @@ function createMockServer() {
     const handlers = new Map<string, Function>();
 
     return {
-        /** Mock setRequestHandler — stores handler by schema method */
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers.set(schema.shape.method.value, handler);
+        /** Mock setRequestHandler — stores handler by method string */
+        setRequestHandler(method: string, handler: Function) {
+            handlers.set(method, handler);
         },
         /** Simulate a tools/list request */
         async callListTools() {

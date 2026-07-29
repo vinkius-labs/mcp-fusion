@@ -24,8 +24,8 @@ function createMockServer() {
     const handlers: Record<string, Function> = {};
 
     return {
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers[schema.shape.method.value] = handler;
+        setRequestHandler(method: string, handler: Function) {
+            handlers[method] = handler;
         },
         async callTool(name: string, args: Record<string, unknown> = {}, extra: unknown = {}) {
             const handler = handlers['tools/call'];

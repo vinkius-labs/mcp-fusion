@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { injectReturnTripTool, formatSafeReturn } from '../src/ReturnTripInjector.ts';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from "@modelcontextprotocol/server";
 
 function makeTool(name: string): Tool {
     return {

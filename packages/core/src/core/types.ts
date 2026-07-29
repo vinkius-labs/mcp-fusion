@@ -9,7 +9,7 @@
  *
  * @module
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { type Presenter } from '../presenter/Presenter.js';
 import { type ProgressSink } from './execution/ProgressHelper.js';

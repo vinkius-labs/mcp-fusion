@@ -57,36 +57,61 @@ export function extractZodKeys(schema: ZodType): string[] {
         const def = (current as { _def?: Record<string, unknown> })._def;
         if (!def) return [];
 
-        const typeName = def['typeName'] as string | undefined;
+        // zod v4: `_def.type` is a lowercase string ('string', 'optional', …).
+        // zod v3: `_def.typeName` was a capitalized string ('ZodString', 'ZodOptional', …).
+        // Support both for forward/backward compatibility.
+        const typeName = (def['type'] ?? def['typeName']) as string | undefined;
 
         switch (typeName) {
             // ── Modifier Wrappers ─────────────────────────
+            // zod v4 (lowercase) + zod v3 (capitalized)
+            case 'optional':
             case 'ZodOptional':
+            case 'nullable':
             case 'ZodNullable':
+            case 'default':
             case 'ZodDefault':
+            case 'readonly':
             case 'ZodReadonly':
+            case 'branded':
             case 'ZodBranded':
+            case 'catch':
             case 'ZodCatch':
-            case 'ZodLazy':
                 current = def['innerType'];
                 continue;
 
+            // zod v3 ZodLazy used innerType; zod v4 lazy uses a getter fn
+            case 'lazy':
+            case 'ZodLazy': {
+                const getter = (def as Record<string, unknown>)['getter'];
+                current = typeof getter === 'function' ? (getter as () => unknown)() : def['innerType'];
+                continue;
+            }
+
             // ── Effects (Refine, Transform, Preprocess) ───
+            // zod v3: ZodEffects wraps `_def.schema`.
+            // zod v4: refine() adds a check to the base schema (no wrapper),
+            //         transform()/pipe() produce a `pipe` with `_def.in`/`_def.out`.
+            case 'effects':
             case 'ZodEffects':
                 current = (def as Record<string, unknown>)['schema'];
                 continue;
 
-            // ── Array → extract element type ──────────────
-            case 'ZodArray':
-                current = def['type'];
+            case 'pipe':
+            case 'ZodPipeline':
+                // Follow the `in` side of a pipe — that's the source schema
+                current = (def as Record<string, unknown>)['in'] ?? (def as Record<string, unknown>)['out'];
                 continue;
 
-            // ── Pipeline → follow through ─────────────────
-            case 'ZodPipeline':
-                current = def['out'];
+            // ── Array → extract element type ──────────────
+            // zod v3: `_def.type`; zod v4: `_def.element`
+            case 'array':
+            case 'ZodArray':
+                current = def['element'] ?? def['type'];
                 continue;
 
             // ── Object → extract keys ─────────────────────
+            case 'object':
             case 'ZodObject': {
                 const shape = (current as { shape?: Record<string, unknown> }).shape;
                 return shape ? Object.keys(shape) : [];

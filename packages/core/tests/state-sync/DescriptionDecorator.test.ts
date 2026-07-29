@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { decorateDescription } from '../../src/state-sync/DescriptionDecorator.js';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 
 const makeTool = (name: string, description?: string): McpTool => ({
     name,

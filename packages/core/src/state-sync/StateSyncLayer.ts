@@ -35,7 +35,7 @@
  *
  * @module
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import type { ToolResponse } from '../core/response.js';
 import type { StateSyncConfig, InvalidationEvent, ResourceNotification } from './types.js';
 import { PolicyEngine } from './PolicyEngine.js';

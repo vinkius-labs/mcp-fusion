@@ -30,6 +30,12 @@ const FORBIDDEN_ZOD_TYPES = new Set([
 
 /**
  * Get the base Zod type name, unwrapping Optional/Default/Nullable wrappers.
+ *
+ * Supports both zod v3 (`_def.typeName` capitalized, e.g. `'ZodString'`) and
+ * zod v4 (`_def.type` lowercase, e.g. `'string'`). Returns the v3-style
+ * capitalized name so the rest of the module can keep its existing
+ * `ZodBoolean` / `ZodNumber` / `ZodEnum` / `ZodString` switch cases.
+ *
  * @internal
  */
 function getZodBaseTypeName(schema: ZodTypeAny): string {
@@ -37,19 +43,40 @@ function getZodBaseTypeName(schema: ZodTypeAny): string {
     const def = (schema as any)._def;
     if (def === undefined || def === null) return 'Unknown';
 
-    const typeName: string = def.typeName ?? '';
+    // zod v4 uses `_def.type` (lowercase); zod v3 uses `_def.typeName` (capitalized)
+    const rawType: string | undefined = def.type ?? def.typeName;
+    if (!rawType) return 'Unknown';
 
-    // Unwrap Optional, Default, Nullable, Effects to find the inner type
+    // Normalize to the v3-style capitalized name (e.g. 'string' → 'ZodString')
+    const typeName = rawType.startsWith('Zod') ? rawType : `Zod${rawType.charAt(0).toUpperCase()}${rawType.slice(1)}`;
+
+    // Unwrap Optional, Default, Nullable, Effects to find the inner type.
+    // zod v4 note: refine() no longer wraps — it adds a check to the base
+    // schema, so the base type is already exposed. transform()/pipe() produce
+    // a `pipe` whose `in` side is the source schema.
     if (
         typeName === 'ZodOptional' ||
         typeName === 'ZodDefault' ||
-        typeName === 'ZodNullable'
+        typeName === 'ZodNullable' ||
+        typeName === 'ZodReadonly' ||
+        typeName === 'ZodCatch' ||
+        typeName === 'ZodBranded'
     ) {
         return getZodBaseTypeName(def.innerType);
     }
 
+    if (typeName === 'ZodLazy') {
+        const getter = def.getter;
+        return typeof getter === 'function' ? getZodBaseTypeName(getter()) : 'Unknown';
+    }
+
     if (typeName === 'ZodEffects') {
         return getZodBaseTypeName(def.schema);
+    }
+
+    if (typeName === 'ZodPipe') {
+        // Follow the `in` side — the source schema
+        return getZodBaseTypeName(def.in ?? def.out);
     }
 
     return typeName;
@@ -186,12 +213,15 @@ export async function executePromptPipeline<TContext>(
 
         if (!result.success) {
             // Return a validation error as a user message
+            // zod v4: issue.path is PropertyKey[] — cast to the expected (string|number)[]
             return {
                 messages: [{
                     role: 'user',
                     content: {
                         type: 'text',
-                        text: formatPromptValidationError(result.error.issues),
+                        text: formatPromptValidationError(
+                            result.error.issues as unknown as { path: (string | number)[]; message: string }[],
+                        ),
                     },
                 }],
             };

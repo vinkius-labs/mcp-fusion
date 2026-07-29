@@ -15,7 +15,7 @@
  *
  * @module
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import type { ResolvedPolicy } from './types.js';
 
 /** Regex to detect an existing Cache-Control directive at the end of a description. */

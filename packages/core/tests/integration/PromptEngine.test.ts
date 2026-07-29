@@ -28,8 +28,8 @@ import { PromptRegistry } from '../../src/prompt/PromptRegistry.js';
 function createMockServer() {
     const handlers = new Map<string, Function>();
     return {
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers.set(schema.shape.method.value, handler);
+        setRequestHandler(method: string, handler: Function) {
+            handlers.set(method, handler);
         },
         async callListPrompts(cursor?: string) {
             const handler = handlers.get('prompts/list');

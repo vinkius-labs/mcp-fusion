@@ -17,7 +17,7 @@ const mockHandleRequest = vi.fn<(req: Request) => Promise<Response>>();
 const mockConnect = vi.fn();
 const mockClose = vi.fn();
 
-vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
     McpServer: class MockMcpServer {
         constructor() {}
         connect = mockConnect;
@@ -25,7 +25,7 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
     },
 }));
 
-vi.mock('@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
     WebStandardStreamableHTTPServerTransport: class MockTransport {
         constructor() {}
         handleRequest = mockHandleRequest;

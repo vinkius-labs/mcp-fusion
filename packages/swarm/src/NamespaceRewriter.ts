@@ -9,7 +9,7 @@
  *
  * @module
  */
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 
 /** Thrown when a tool call prefix does not match the active upstream domain. */
 export class NamespaceError extends Error {

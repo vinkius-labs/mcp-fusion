@@ -16,15 +16,16 @@ import { ToolRegistry } from '../../src/core/registry/ToolRegistry.js';
 import { defineTool } from '../../src/core/builder/defineTool.js';
 import { StateMachineGate } from '../../src/fsm/StateMachineGate.js';
 import type { FsmConfig } from '../../src/fsm/StateMachineGate.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 // ── Helpers ──────────────────────────────────────────────
 
+// MCP SDK v2 registers handlers by method string (e.g. 'tools/call'),
+// not by schema object — the mock mirrors that contract.
 function createMockServer() {
-    const handlers = new Map<unknown, (...args: unknown[]) => unknown>();
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
     const server = {
-        setRequestHandler: (schema: unknown, handler: (...args: unknown[]) => unknown) => {
-            handlers.set(schema, handler);
+        setRequestHandler: (method: string, handler: (...args: unknown[]) => unknown) => {
+            handlers.set(method, handler);
         },
     };
     return { server, handlers };
@@ -74,7 +75,7 @@ describe('Bug #107: FSM gate enforcement on tools/call', () => {
 
         await registry.attachToServer(server, { fsm });
 
-        const callHandler = handlers.get(CallToolRequestSchema) as Function;
+        const callHandler = handlers.get('tools/call') as Function;
 
         // In 'idle' state, calling 'orders_ship' should be rejected
         const result = await callHandler(
@@ -100,7 +101,7 @@ describe('Bug #107: FSM gate enforcement on tools/call', () => {
 
         await registry.attachToServer(server, { fsm });
 
-        const callHandler = handlers.get(CallToolRequestSchema) as Function;
+        const callHandler = handlers.get('tools/call') as Function;
 
         // In 'idle' state, calling 'orders_create' should succeed
         const result = await callHandler(
@@ -123,7 +124,7 @@ describe('Bug #107: FSM gate enforcement on tools/call', () => {
 
         await registry.attachToServer(server, { fsm });
 
-        const callHandler = handlers.get(CallToolRequestSchema) as Function;
+        const callHandler = handlers.get('tools/call') as Function;
 
         // 'orders_list' is ungated — should always work
         const result = await callHandler(
@@ -145,7 +146,7 @@ describe('Bug #107: FSM gate enforcement on tools/call', () => {
 
         await registry.attachToServer(server, { fsm });
 
-        const callHandler = handlers.get(CallToolRequestSchema) as Function;
+        const callHandler = handlers.get('tools/call') as Function;
 
         // Call the gated 'orders_ship' while in 'idle' state
         const result = await callHandler(
@@ -173,7 +174,7 @@ describe('Bug #107: FSM gate enforcement on tools/call', () => {
 
         await registry.attachToServer(server, { fsm });
 
-        const listHandler = handlers.get(ListToolsRequestSchema) as Function;
+        const listHandler = handlers.get('tools/list') as Function;
         const { tools } = await listHandler({}, {});
 
         const toolNames = tools.map((t: { name: string }) => t.name);

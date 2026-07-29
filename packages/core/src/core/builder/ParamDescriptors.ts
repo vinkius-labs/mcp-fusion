@@ -23,7 +23,7 @@
  * @internal
  * @module
  */
-import { z, type ZodTypeAny, type ZodObject, type ZodRawShape } from 'zod';
+import { z, type ZodTypeAny, type ZodType, type ZodObject, type ZodRawShape } from 'zod';
 
 // ============================================================================
 // Param Descriptor Types (user-facing)
@@ -271,10 +271,12 @@ function descriptorToZod(value: ParamDef): ZodTypeAny {
  * @internal
  */
 export function convertParamsToZod(params: ParamsMap): ZodObject<ZodRawShape> {
-    const shape: ZodRawShape = {};
+    // zod v4: ZodRawShape is now Readonly<{ [k: string]: $ZodType }> — use a
+    // mutable Record for building, then cast when passing to z.object().
+    const shape: Record<string, ZodType> = {};
     for (const [key, value] of Object.entries(params)) {
         shape[key] = descriptorToZod(value);
     }
-    return z.object(shape);
+    return z.object(shape as ZodRawShape);
 }
 

@@ -12,10 +12,6 @@
  *
  * @module
  */
-import {
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
 import { type ToolBuilder } from '../core/types.js';
 import { type IntrospectionConfig, type ManifestPayload } from './types.js';
 import { compileManifest, cloneManifest } from './ManifestCompiler.js';
@@ -41,8 +37,7 @@ const RESOURCE_MIME_TYPE = 'application/json';
  * Follows the same duck-typing pattern as ServerAttachment.
  */
 interface McpServerWithResources {
-    setRequestHandler(schema: typeof ListResourcesRequestSchema, handler: (...args: never[]) => unknown): void;
-    setRequestHandler(schema: typeof ReadResourceRequestSchema, handler: (...args: never[]) => unknown): void;
+    setRequestHandler(method: string, handler: (...args: never[]) => unknown): void;
 }
 
 /** Delegate interface for accessing registered builders (subset of ToolRegistry) */
@@ -78,7 +73,7 @@ export function registerIntrospectionResource<TContext>(
     // Advertises the manifest resource to clients/orchestrators
     const existingListHandler = safeGetExistingListHandler(resolved);
 
-    resolved.setRequestHandler(ListResourcesRequestSchema, (() => {
+    resolved.setRequestHandler('resources/list', (() => {
         // Merge with any previously registered resources
         const existingResources = existingListHandler ? existingListHandler() : [];
 
@@ -97,7 +92,7 @@ export function registerIntrospectionResource<TContext>(
 
     // ── resources/read handler ───────────────────────────
     // Returns the RBAC-filtered manifest when requested
-    resolved.setRequestHandler(ReadResourceRequestSchema, (async (
+    resolved.setRequestHandler('resources/read', (async (
         request: { params: { uri: string } },
         extra: unknown,
     ) => {

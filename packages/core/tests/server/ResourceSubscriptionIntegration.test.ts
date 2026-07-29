@@ -34,8 +34,8 @@ function createMockServer() {
     const notifications: Array<{ method: string; params: unknown }> = [];
 
     return {
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers.set(schema.shape.method.value, handler);
+        setRequestHandler(method: string, handler: Function) {
+            handlers.set(method, handler);
         },
         // Simulate server.notification() — captures sent notifications
         notification(msg: { method: string; params?: unknown }) {

@@ -48,7 +48,7 @@ export function formatValidationError(
             ? issue.path.join('.')
             : '(root)';
 
-        const sentValue = resolveValue(sentArgs, issue.path);
+        const sentValue = resolveValue(sentArgs, issue.path as readonly (string | number)[]);
         const sentHint = formatSentValue(sentValue);
         const suggestion = buildSuggestion(issue);
 
@@ -78,39 +78,33 @@ export function formatValidationError(
  * to generate a precise correction hint.
  */
 function buildSuggestion(issue: ZodIssue): string | undefined {
+    // zod v4: issue codes changed. We cast to `unknown` first then to our
+    // narrowing interfaces because the v4 issue shapes differ from v3.
     switch (issue.code) {
         case 'invalid_type':
-            return `Expected type: ${(issue as IssueInvalidType).expected}.`;
+            return `Expected type: ${(issue as unknown as IssueInvalidType).expected}.`;
 
-        case 'invalid_string':
-            return buildStringSuggestion(issue as IssueInvalidString);
+        case 'invalid_format':
+            return buildStringSuggestion(issue as unknown as IssueInvalidString);
 
         case 'too_small':
-            return buildTooSmallSuggestion(issue as IssueTooSmall);
+            return buildTooSmallSuggestion(issue as unknown as IssueTooSmall);
 
         case 'too_big':
-            return buildTooBigSuggestion(issue as IssueTooBig);
+            return buildTooBigSuggestion(issue as unknown as IssueTooBig);
 
-        case 'invalid_enum_value': {
-            const opts = (issue as IssueInvalidEnum).options;
+        case 'invalid_value': {
+            const opts = (issue as unknown as IssueInvalidEnum).values;
             return `Valid options: ${opts.map(o => `'${o}'`).join(', ')}.`;
-        }
-
-        case 'invalid_literal': {
-            const expected = (issue as IssueInvalidLiteral).expected;
-            return `Expected exactly: ${JSON.stringify(expected)}.`;
         }
 
         case 'invalid_union':
             return `Value didn't match any of the expected formats.`;
 
         case 'unrecognized_keys': {
-            const keys = (issue as IssueUnrecognizedKeys).keys;
+            const keys = (issue as unknown as IssueUnrecognizedKeys).keys;
             return `Remove or correct unrecognized fields: ${keys.map(k => `'${k}'`).join(', ')}. Check for typos.`;
         }
-
-        case 'invalid_date':
-            return 'Expected a valid date string (ISO 8601).';
 
         case 'custom':
             return undefined; // Custom validators already have descriptive messages
@@ -121,7 +115,8 @@ function buildSuggestion(issue: ZodIssue): string | undefined {
 }
 
 function buildStringSuggestion(issue: IssueInvalidString): string | undefined {
-    switch (issue.validation) {
+    // zod v4: `validation` → `format`
+    switch (issue.format) {
         case 'email':
             return 'Expected: a valid email address (e.g. user@example.com).';
         case 'url':
@@ -144,11 +139,13 @@ function buildStringSuggestion(issue: IssueInvalidString): string | undefined {
 }
 
 function buildTooSmallSuggestion(issue: IssueTooSmall): string | undefined {
-    const bound = issue.inclusive ? '>=' : '>';
-    switch (issue.type) {
+    // zod v4: `inclusive` is optional (defaults true); `type` → `origin`
+    const bound = issue.inclusive !== false ? '>=' : '>';
+    switch (issue.origin) {
         case 'string':
             return `Minimum length: ${issue.minimum} character${issue.minimum === 1 ? '' : 's'}.`;
         case 'number':
+        case 'int':
         case 'bigint':
             return `Must be ${bound} ${issue.minimum}.`;
         case 'array':
@@ -161,11 +158,13 @@ function buildTooSmallSuggestion(issue: IssueTooSmall): string | undefined {
 }
 
 function buildTooBigSuggestion(issue: IssueTooBig): string | undefined {
-    const bound = issue.inclusive ? '<=' : '<';
-    switch (issue.type) {
+    // zod v4: `inclusive` is optional (defaults true); `type` → `origin`
+    const bound = issue.inclusive !== false ? '<=' : '<';
+    switch (issue.origin) {
         case 'string':
             return `Maximum length: ${issue.maximum} character${issue.maximum === 1 ? '' : 's'}.`;
         case 'number':
+        case 'int':
         case 'bigint':
             return `Must be ${bound} ${issue.maximum}.`;
         case 'array':
@@ -224,36 +223,36 @@ function formatSentValue(value: unknown): string | undefined {
 // These types extract the extra metadata fields that Zod attaches
 // to specific issue codes. We cast to these after the switch(issue.code)
 // check, so they don't need to extend ZodIssue.
+//
+// zod v4 notes:
+// - $ZodIssueInvalidType no longer has `received`
+// - $ZodIssueTooSmall/TooBig use `origin` instead of `type`; `inclusive` is optional
+// - `invalid_string` → `invalid_format` (uses `format` instead of `validation`)
+// - `invalid_enum_value` → `invalid_value` (uses `values` instead of `options`)
+// - `invalid_literal` and `invalid_date` codes were removed
 
 interface IssueInvalidType {
     expected: string;
-    received: string;
 }
 
 interface IssueInvalidString {
-    validation: string;
+    format: string;
 }
 
 interface IssueTooSmall {
     minimum: number | bigint;
-    inclusive: boolean;
-    type: string;
+    inclusive?: boolean;
+    origin: string;
 }
 
 interface IssueTooBig {
     maximum: number | bigint;
-    inclusive: boolean;
-    type: string;
+    inclusive?: boolean;
+    origin: string;
 }
 
 interface IssueInvalidEnum {
-    options: readonly (string | number)[];
-    received: string;
-}
-
-interface IssueInvalidLiteral {
-    expected: unknown;
-    received: unknown;
+    values: readonly (string | number)[];
 }
 
 interface IssueUnrecognizedKeys {

@@ -6,7 +6,7 @@
  *
  * Pure-function module: no state, no side effects.
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type ToolBuilder } from '../types.js';
 
 // ── Types ────────────────────────────────────────────────

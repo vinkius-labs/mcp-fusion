@@ -28,7 +28,7 @@ const mockClose = vi.fn();
 const mockServerConstructor = vi.fn();
 const mockTransportConstructor = vi.fn();
 
-vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
     McpServer: class MockMcpServer {
         constructor(opts: Record<string, unknown>) {
             mockServerConstructor(opts);
@@ -38,7 +38,7 @@ vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
     },
 }));
 
-vi.mock('@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
     WebStandardStreamableHTTPServerTransport: class MockTransport {
         constructor(opts: Record<string, unknown>) {
             mockTransportConstructor(opts);

@@ -28,7 +28,7 @@
  *
  * @module
  */
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type ToolResponse, toolError } from '../response.js';
 import { type ToolBuilder } from '../types.js';
 import { type DebugObserverFn } from '../../observability/DebugObserver.js';

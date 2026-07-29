@@ -344,8 +344,11 @@ describe('QA: Prototype Pollution & Injection', () => {
         );
 
         const result = await builder.execute(undefined as any, maliciousArgs);
-        // .strict() rejects the __proto__ extra field
-        expect(result.isError).toBe(true);
+        // zod v4: .strict() silently strips __proto__ (it is not treated as a
+        // regular extra key) instead of rejecting it. The security property
+        // we care about — no prototype pollution — is verified below.
+        // (zod v3 rejected __proto__ as an unknown key with isError: true.)
+        expect(result.isError).toBeUndefined();
 
         // Verify Object.prototype is not polluted
         expect((({}) as any).polluted).toBeUndefined();

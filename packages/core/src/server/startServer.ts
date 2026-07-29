@@ -15,10 +15,10 @@
  * @module
  */
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { Server } from "@modelcontextprotocol/server";
+import type { Transport } from "@modelcontextprotocol/server";
 import { attachToServer as _attachToServer, type AttachOptions, _missingContextProxy } from './ServerAttachment.js';
 import { createTelemetryBus, type TelemetryBusInstance } from '../observability/TelemetryBus.js';
 import { compileServerCard, SERVER_CARD_PATH } from '../introspection/ServerCard.js';
@@ -634,11 +634,11 @@ export async function startServer<TContext>(
         }
 
         // ── Streamable HTTP Transport ────────────────────────
-        const sessions = new Map<string, StreamableHTTPServerTransport>();
+        const sessions = new Map<string, NodeStreamableHTTPServerTransport>();
         const sessionActivity = new Map<string, number>();
         // Reverse lookup: transport → sessionId in O(1) for onclose handler.
         // WeakMap ensures entries are GC'd when the transport is disposed.
-        const transportToSession = new WeakMap<StreamableHTTPServerTransport, string>();
+        const transportToSession = new WeakMap<NodeStreamableHTTPServerTransport, string>();
         const sessionTtlMs = options.sessionTtlMs ?? 1_800_000;   // 30 min
         const reapIntervalMs = options.sessionReapIntervalMs ?? 300_000; // 5 min
         const maxSessions = options.maxSessions ?? 1_000;
@@ -763,7 +763,7 @@ export async function startServer<TContext>(
                         return;
                     }
 
-                    const t = new StreamableHTTPServerTransport({
+                    const t = new NodeStreamableHTTPServerTransport({
                         sessionIdGenerator: () => crypto.randomUUID(),
                         onsessioninitialized: (id) => {
                             sessions.set(id, t);

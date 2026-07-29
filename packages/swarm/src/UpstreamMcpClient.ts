@@ -12,11 +12,8 @@
  *
  * @module
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { Client, SSEClientTransport, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import type { Tool as McpTool, Transport } from "@modelcontextprotocol/client";
 import type { ToolResponse } from '@mcpfusion/core';
 
 /** Progress notification forwarded from the upstream to the gateway client. */
@@ -206,7 +203,6 @@ export class UpstreamMcpClient {
         try {
             const result = await this._client!.callTool(
                 { name, arguments: args },
-                undefined,
                 { signal },
             );
 
@@ -317,23 +313,17 @@ export class UpstreamMcpClient {
         // include safeParse() so future MCP SDK versions that call it
         // don't silently break notification forwarding. The cast to `never` is retained
         // only on the schema argument — handler types remain explicit.
-        const makeSchema = (method: string) => ({
-            parse: (v: unknown): NotificationWithParams =>
-                v as NotificationWithParams,
-            safeParse: (v: unknown): { success: true; data: NotificationWithParams } =>
-                ({ success: true, data: v as NotificationWithParams }),
-            shape: { method: { value: method } },
-        });
+        // v2: setNotificationHandler takes a method string directly.
 
         this._client.setNotificationHandler(
-            makeSchema('notifications/progress') as never,
+            'notifications/progress' as never,
             (n: NotificationWithParams) => {
                 this._progressForwarder?.({ method: 'notifications/progress', params: n.params ?? {} });
             },
         );
 
         this._client.setNotificationHandler(
-            makeSchema('notifications/message') as never,
+            'notifications/message' as never,
             (n: NotificationWithParams) => {
                 this._progressForwarder?.({ method: 'notifications/message', params: n.params ?? {} });
             },

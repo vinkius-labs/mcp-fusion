@@ -24,7 +24,7 @@ import type { HandoffPayload, HandoffStateStore, ToolResponse } from '@mcpfusion
 import { UpstreamMcpClient } from './UpstreamMcpClient.js';
 import { NamespaceRewriter, NamespaceError } from './NamespaceRewriter.js';
 import { injectReturnTripTool } from './ReturnTripInjector.js';
-import type { Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 
 // ============================================================================
 // Config

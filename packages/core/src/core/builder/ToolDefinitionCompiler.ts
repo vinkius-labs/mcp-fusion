@@ -8,7 +8,7 @@
  * Pure-function module: receives config, returns compiled result.
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type InternalAction, type MiddlewareFn } from '../types.js';
 import { type ExecutionContext } from '../execution/ExecutionPipeline.js';
 import { type CompiledChain, compileMiddlewareChains } from '../execution/MiddlewareCompiler.js';

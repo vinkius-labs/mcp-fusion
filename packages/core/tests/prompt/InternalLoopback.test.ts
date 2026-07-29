@@ -13,7 +13,6 @@ import { definePrompt } from '../../src/prompt/definePrompt.js';
 import { PromptMessage } from '../../src/prompt/PromptMessage.js';
 import { createPresenter, ui } from '../../src/presenter/index.js';
 import { defineMiddleware } from '../../src/core/middleware/ContextDerivation.js';
-import { GetPromptRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import type { LoopbackContext, ToolInvocationResult } from '../../src/prompt/types.js';
 
@@ -23,12 +22,14 @@ interface TestContext {
     user: { id: string; role: string };
 }
 
-/** Create a minimal mock MCP Server that captures handlers (passes duck-type check) */
+/** Create a minimal mock MCP Server that captures handlers (passes duck-type check).
+ *  MCP SDK v2 registers handlers by method string (e.g. 'prompts/get'), not by
+ *  schema object — the mock mirrors that contract. */
 function createMockServer() {
-    const handlers = new Map<unknown, (...args: unknown[]) => unknown>();
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
     const server = {
-        setRequestHandler: (schema: unknown, handler: (...args: unknown[]) => unknown) => {
-            handlers.set(schema, handler);
+        setRequestHandler: (method: string, handler: (...args: unknown[]) => unknown) => {
+            handlers.set(method, handler);
         },
     };
     return { server, handlers };
@@ -134,7 +135,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(briefing);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         const result = await getHandler(
             { params: { name: 'morning_briefing', arguments: {} } },
             {},
@@ -168,7 +169,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(briefing);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         const result = await getHandler(
             { params: { name: 'multi_tool', arguments: {} } },
             {},
@@ -195,7 +196,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(auditPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         await getHandler(
             { params: { name: 'audit', arguments: {} } },
             {},
@@ -218,7 +219,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(errorPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         const result = await getHandler(
             { params: { name: 'error_test', arguments: {} } },
             {},
@@ -244,7 +245,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(rbacPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         await getHandler(
             { params: { name: 'rbac_test', arguments: {} } },
             {},
@@ -267,7 +268,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(unknownPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         await getHandler(
             { params: { name: 'unknown_test', arguments: {} } },
             {},
@@ -297,7 +298,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(parallelPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         const result = await getHandler(
             { params: { name: 'parallel_test', arguments: {} } },
             {},
@@ -324,7 +325,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(defaultArgsPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         await getHandler(
             { params: { name: 'default_args', arguments: {} } },
             {},
@@ -347,7 +348,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(rawPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         await getHandler(
             { params: { name: 'raw_test', arguments: {} } },
             {},
@@ -373,7 +374,7 @@ describe('Internal Loopback Dispatcher — ctx.invokeTool()', () => {
         });
         promptRegistry.register(mvaPrompt);
 
-        const getHandler = handlers.get(GetPromptRequestSchema) as (req: unknown, extra: unknown) => Promise<unknown>;
+        const getHandler = handlers.get('prompts/get') as (req: unknown, extra: unknown) => Promise<unknown>;
         const result = await getHandler(
             { params: { name: 'mva_composition', arguments: {} } },
             {},
@@ -438,7 +439,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(crashPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'crash_handler', arguments: {} } },
             {},
@@ -463,7 +464,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(sharedCtxPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         await handler({ params: { name: 'shared_ctx', arguments: {} } }, {});
     });
 
@@ -502,7 +503,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(chainedPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'chained', arguments: {} } },
             {},
@@ -530,7 +531,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(strictPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'strict_args', arguments: {} } },
             {},
@@ -568,7 +569,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(concurrentPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'concurrent_dupes', arguments: {} } },
             {},
@@ -590,7 +591,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         pr1.register(rbacContrastPrompt1);
 
-        const h1fn = h1.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const h1fn = h1.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const r1 = await h1fn(
             { params: { name: 'rbac_editor', arguments: {} } },
             {},
@@ -610,7 +611,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         pr2.register(rbacContrastPrompt2);
 
-        const h2fn = h2.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const h2fn = h2.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const r2 = await h2fn(
             { params: { name: 'rbac_admin', arguments: {} } },
             {},
@@ -647,7 +648,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(branchPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'branch_logic', arguments: {} } },
             {},
@@ -670,7 +671,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(emptyNamePrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         await handler({ params: { name: 'empty_name', arguments: {} } }, {});
     });
 
@@ -699,7 +700,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(fanOutPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'fan_out', arguments: {} } },
             {},
@@ -733,7 +734,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(mixedPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         const result = await handler(
             { params: { name: 'mixed_batch', arguments: {} } },
             {},
@@ -758,7 +759,7 @@ describe('Internal Loopback — Adversarial & Edge Cases', () => {
         });
         promptRegistry.register(multiBlockPrompt);
 
-        const handler = handlers.get(GetPromptRequestSchema) as (r: unknown, e: unknown) => Promise<unknown>;
+        const handler = handlers.get('prompts/get') as (r: unknown, e: unknown) => Promise<unknown>;
         await handler({ params: { name: 'multi_block', arguments: {} } }, {});
     });
 });

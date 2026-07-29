@@ -122,22 +122,23 @@ function fieldTypeToZod(def: FieldDef, childCompiler: (child: FieldDef) => ZodTy
         case 'enum':
             return z.enum(def._enumValues as [string, ...string[]]);
         case 'object': {
-            const shape: ZodRawShape = {};
+            // zod v4: ZodRawShape is Readonly — build with a mutable Record
+            const shape: Record<string, ZodType> = {};
             if (def._shape) {
                 for (const [key, childDef] of Object.entries(def._shape)) {
                     shape[key] = childCompiler(childDef);
                 }
             }
-            return z.object(shape);
+            return z.object(shape as ZodRawShape);
         }
         case 'list': {
-            const itemShape: ZodRawShape = {};
+            const itemShape: Record<string, ZodType> = {};
             if (def._shape) {
                 for (const [key, childDef] of Object.entries(def._shape)) {
                     itemShape[key] = childCompiler(childDef);
                 }
             }
-            return z.array(z.object(itemShape));
+            return z.array(z.object(itemShape as ZodRawShape));
         }
     }
 }
@@ -163,10 +164,12 @@ function compileField(def: FieldDef): ZodType {
 
     // Output schemas: boolean / list → optional only; everything else → optional + nullable
     // (API responses may omit or nullify any field except required IDs)
+    // zod v4: cast to ZodType (which has .optional()/.nullable()) instead of
+    // ReturnType<typeof z.boolean> which resolves to the core $ZodType without those methods.
     if (def._type === 'boolean' || def._type === 'list') {
-        return (schema as ReturnType<typeof z.boolean>).optional();
+        return (schema as ZodType).optional();
     }
-    return (schema as ReturnType<typeof z.string>).optional().nullable();
+    return (schema as ZodType).optional().nullable();
 }
 
 /**
@@ -190,7 +193,7 @@ export function compileFieldForInput(def: FieldDef, forceOptional: boolean): Zod
 
     // Apply optionality: forceOptional makes everything optional
     if (forceOptional) {
-        schema = (schema as ReturnType<typeof z.string>).optional();
+        schema = (schema as ZodType).optional();
     }
 
     return schema;
@@ -332,7 +335,8 @@ export class ModelBuilder {
 
     /** @internal Compile all fields into a Zod schema */
     _compile(): { schema: ZodObject<ZodRawShape>; defaults: Record<string, unknown> } {
-        const shape: ZodRawShape = {};
+        // zod v4: ZodRawShape is Readonly — build with a mutable Record
+        const shape: Record<string, ZodType> = {};
         const defaults: Record<string, unknown> = {};
 
         for (const [name, def] of Object.entries(this._fields)) {
@@ -342,7 +346,7 @@ export class ModelBuilder {
             }
         }
 
-        return { schema: z.object(shape), defaults };
+        return { schema: z.object(shape as ZodRawShape), defaults };
     }
 }
 

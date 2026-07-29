@@ -36,8 +36,8 @@ const noop = async (): Promise<ToolResponse> => success('ok');
 function createMockServer() {
     const handlers = new Map<string, Function>();
     return {
-        setRequestHandler(schema: { shape: { method: { value: string } } }, handler: Function) {
-            handlers.set(schema.shape.method.value, handler);
+        setRequestHandler(method: string, handler: Function) {
+            handlers.set(method, handler);
         },
         async callListTools() {
             const handler = handlers.get('tools/list');

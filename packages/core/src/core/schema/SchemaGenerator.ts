@@ -10,7 +10,7 @@
  */
 import { type ZodObject, type ZodRawShape } from 'zod';
 import { zodToJson } from './ZodCompat.js';
-import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool as McpTool } from "@modelcontextprotocol/server";
 import { type InternalAction } from '../types.js';
 import { assertFieldCompatibility } from './SchemaUtils.js';
 import { isPresenter } from '../../presenter/Presenter.js';
@@ -55,11 +55,13 @@ export function generateInputSchema<TContext>(
         injectSelectProperty(actions, properties);
     }
 
+    // zod v4 / MCP SDK: the inferred inputSchema type has a narrower
+    // index signature than Record<string, object>. Cast to satisfy TS.
     return {
         type: 'object' as const,
         properties,
         required: topLevelRequired,
-    };
+    } as unknown as McpTool['inputSchema'];
 }
 
 // ── Internal Steps ───────────────────────────────────────
