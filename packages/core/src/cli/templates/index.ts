@@ -12,7 +12,7 @@ export { packageJson, tsconfig, gitignore, envExample } from './config.js';
 export { mcpfusionTs, contextTs, serverTs } from './core.js';
 
 // Tools
-export { healthToolTs, echoToolTs } from './tools.js';
+export { healthToolTs, echoToolTs, statusToolTs } from './tools.js';
 
 // Model
 export { systemModelTs } from './model.js';

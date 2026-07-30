@@ -135,6 +135,7 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
         expect(existsSync(join(projectDir, 'src', 'server.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'tools', 'system', 'health.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'tools', 'system', 'echo.ts'))).toBe(true);
+        expect(existsSync(join(projectDir, 'src', 'tools', 'system', 'status.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'models', 'SystemModel.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'presenters', 'SystemPresenter.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'src', 'prompts', 'greet.ts'))).toBe(true);
@@ -142,13 +143,13 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
         expect(existsSync(join(projectDir, 'tests', 'setup.ts'))).toBe(true);
         expect(existsSync(join(projectDir, 'tests', 'system.test.ts'))).toBe(true);
 
-        expect(files.length).toBe(19); // 16 base + 3 testing
+        expect(files.length).toBe(20); // 17 base + 3 testing
     });
 
     it('E2E: parseArgs feeds collectConfig correctly', async () => {
         const parsed = parseArgs([
             'node', 'mcpfusion', 'create', 'my-parsed-proj',
-            '--transport', 'sse',
+            '--transport', 'http',
             '--vector', 'prisma',
             '--no-testing',
             '-y',
@@ -158,22 +159,22 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
 
         expect(config).toEqual({
             name: 'my-parsed-proj',
-            transport: 'sse',
+            transport: 'http',
             vector: 'prisma',
             testing: false,
             target: 'vinkius',
         });
     });
 
-    it('E2E: full pipeline with SSE + database + no testing', async () => {
+    it('E2E: full pipeline with HTTP + database + no testing', async () => {
         const { projectDir, files, config } = await runE2EPipeline(tmpDir, {
-            name: 'sse-db-srv',
-            transport: 'sse',
+            name: 'http-db-srv',
+            transport: 'http',
             vector: 'prisma',
             testing: false,
         });
 
-        expect(config.transport).toBe('sse');
+        expect(config.transport).toBe('http');
         expect(config.vector).toBe('prisma');
         expect(config.testing).toBe(false);
 
@@ -222,10 +223,10 @@ describe('E2E: Full Pipeline (args → config → scaffold → verify)', () => {
         expect(existsSync(join(projectDir, 'openapi.yaml'))).toBe(false);
     });
 
-    it('E2E: full pipeline with sse + openapi + testing', async () => {
+    it('E2E: full pipeline with HTTP + openapi + testing', async () => {
         const { projectDir, files } = await runE2EPipeline(tmpDir, {
             name: 'api-srv',
-            transport: 'sse',
+            transport: 'http',
             vector: 'openapi',
             testing: true,
         });
@@ -677,8 +678,8 @@ describe('E2E: Cross-file consistency — contracts between generated files', ()
         expect(users).toContain("from '../../mcpfusion.js'");
     });
 
-    it('env vars in .env.example match what server.ts reads (SSE)', async () => {
-        const { projectDir } = await runE2EPipeline(tmpDir, { transport: 'sse' });
+    it('env vars in .env.example match what server.ts reads (HTTP)', async () => {
+        const { projectDir } = await runE2EPipeline(tmpDir, { transport: 'http' });
 
         const env = readProjectFile(projectDir, '.env.example');
         const server = readProjectFile(projectDir, 'src/server.ts');
@@ -728,7 +729,7 @@ describe('E2E: Config matrix — all 16 combinations', () => {
     beforeEach(() => { tmpDir = tempDir(); });
     afterEach(() => { try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } });
 
-    const transports: TransportLayer[] = ['stdio', 'sse'];
+    const transports: TransportLayer[] = ['stdio', 'http'];
     const vectors: IngestionVector[] = ['vanilla', 'prisma', 'n8n', 'openapi'];
     const testingOptions = [true, false];
 
@@ -1529,7 +1530,7 @@ describe('E2E: package.json — security & npm best practices', () => {
     afterEach(() => { try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } });
 
     it('package.json is always private (no accidental publish)', async () => {
-        const transports: TransportLayer[] = ['stdio', 'sse'];
+        const transports: TransportLayer[] = ['stdio', 'http'];
         const vectors: IngestionVector[] = ['vanilla', 'prisma', 'n8n', 'openapi'];
 
         for (const transport of transports) {
@@ -1833,10 +1834,10 @@ describe('E2E: .env.example — vector-specific vars', () => {
         expect(env).toContain('N8N_API_KEY');
     });
 
-    it('SSE transport includes PORT var', async () => {
+    it('HTTP transport includes PORT var', async () => {
         const { projectDir } = await runE2EPipeline(tmpDir, {
-            name: 'env-sse',
-            transport: 'sse',
+            name: 'env-http',
+            transport: 'http',
         });
 
         const env = readProjectFile(projectDir, '.env.example');

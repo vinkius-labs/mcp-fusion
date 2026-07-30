@@ -1,7 +1,7 @@
 {
   "name": "@mcpfusion/aws",
-  "version": "4.4.1",
-  "description": "AWS Lambda & Step Functions connector for MCP Fusion. Auto-discovers tagged resources and produces GroupedToolBuilders â€” so AI agents can invoke your cloud functions natively.",
+  "version": "5.0.0",
+  "description": "AWS Lambda & Step Functions connector for MCP Fusion. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -42,13 +42,13 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1"
+    "@mcpfusion/core": "^5.0.0"
   },
   "peerDependencies": {
     "@aws-sdk/client-lambda": "^3.0.0",

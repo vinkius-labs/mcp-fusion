@@ -105,7 +105,8 @@ export class MCPFusionTester<TContext> {
 
         // 4. Error path — no MVA meta on error responses
         if (rawResponse.isError) {
-            const errorText = rawResponse.content?.[0]?.text ?? 'Unknown error';
+            const firstBlock = rawResponse.content?.[0];
+            const errorText = (firstBlock && firstBlock.type === 'text') ? firstBlock.text : 'Unknown error';
             return {
                 data: errorText,
                 systemRules: [],
@@ -129,7 +130,8 @@ export class MCPFusionTester<TContext> {
         }
 
         // 6. Fallback — tool without Presenter (raw data, no MVA layers)
-        const rawText = rawResponse.content?.[0]?.text ?? '';
+        const firstBlock = rawResponse.content?.[0];
+        const rawText = (firstBlock && firstBlock.type === 'text') ? firstBlock.text : '';
         let parsedData: unknown;
         try { parsedData = JSON.parse(rawText); } catch { parsedData = rawText; }
 

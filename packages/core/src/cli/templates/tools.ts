@@ -62,3 +62,42 @@ export default f.query('system.echo')
     });
 `;
 }
+
+/** Generate `src/tools/system/status.ts` — MCP 2.0 structured content example */
+export function statusToolTs(): string {
+    return `/**
+ * System Status Tool — MCP 2.0 Structured Content
+ *
+ * Demonstrates MCP 2.0 (2026-07-28) features:
+ * - .withOutputSchema() — declares structured output shape
+ * - .withTitle() — human-readable display name
+ * - .withIcon() — visual identifier for client UIs
+ * - successStructured() — returns structuredContent for programmatic access
+ *
+ * Clients can parse structuredContent directly without scraping text.
+ */
+import { f } from '../../mcpfusion.js';
+import { successStructured } from '@mcpfusion/core';
+
+export default f.query('system.status')
+    .describe('Get structured server status (MCP 2.0 structured content)')
+    .withTitle('Server Status')
+    .withIcon('data:image/svg+xml,%3Csvg%3E%3C/svg%3E', { mimeType: 'image/svg+xml' })
+    .withOutputSchema({
+        type: 'object',
+        properties: {
+            status: { type: 'string', enum: ['healthy', 'degraded', 'down'] },
+            uptime: { type: 'number' },
+            version: { type: 'string' },
+        },
+        required: ['status', 'uptime', 'version'],
+    })
+    .handle(async (_input, ctx) => {
+        return successStructured({
+            status: 'healthy',
+            uptime: process.uptime(),
+            version: '0.1.0',
+        });
+    });
+`;
+}

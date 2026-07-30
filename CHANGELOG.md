@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-07-30
+
 ### Breaking Changes — MCP `2026-07-28` Spec Adoption
 
 #### `@mcpfusion/core` — Imperative `ask()` callable removed
@@ -67,7 +69,90 @@ The following MCP features are deprecated by the `2026-07-28` spec ([SEP-2577](h
 
 ### Changed
 
-- **All `@mcpfusion/*` cross-dependencies updated to `^4.4.1`** — Ensures consistent resolution across the monorepo.
+- **All `@mcpfusion/*` cross-dependencies updated to `^5.0.0`** — Ensures consistent resolution across the monorepo.
+- **All `@mcpfusion/*` packages bumped to `5.0.0`** — Major version bump reflecting the MCP 2.0 breaking changes (SDK v2, Zod 4, Node 20+, `ask()` removal, stateless protocol).
+
+### Fixed — MCP 2.0 Compliance Hardening
+
+#### `@mcpfusion/core` — EgressGuard non-text block preservation
+
+- **Non-text blocks (image, audio, resource_link) are now preserved during truncation.** Previously, only text blocks survived the byte-limit truncation path; non-text blocks were silently dropped. The `truncatedContent` type was widened to `ToolResponse['content'][number][]` to accommodate all content types.
+- **Truncation suffix attaches to the last text block even when the last surviving block is non-text.** The backward search finds the last text block in `truncatedContent` and appends the `[SYSTEM INTERVENTION]` suffix there. If no text block exists, a new text block with the suffix is appended.
+- **`structuredContent` is now preserved during truncation.** Both the main truncation path and the `targetBytes <= 0` edge case preserve `response.structuredContent` in the result.
+- **Known limitation documented**: Non-text block bytes are not counted toward `totalBytes`. A very large base64 image can bypass the OOM shield. Use Presenter `.agentLimit()` or transport-level limits for non-text OOM protection.
+
+#### `@mcpfusion/core` — headerParams cache-safe injection
+
+- **`x-mcp-header` annotation injection moved from `BuildPipeline` (post-build, cache-unsafe) to `ToolDefinitionCompiler` (during compilation, cache-safe).** Previously, when the tool definition cache was invalidated and rebuilt, the `x-mcp-header` annotations were lost because they were injected post-build. Now they survive cache invalidation because they're injected during compilation.
+- **`GroupedToolBuilder._headerParams` field added** with `headerParams(ReadonlyMap)` setter guarded by `_assertNotFrozen()`.
+- **`BuildPipeline` now calls `builder.headerParams(config.headerParams)`** instead of post-build injection.
+
+#### `@mcpfusion/core` — `_assertNotFrozen()` on all new setters
+
+- **All 4 new MCP 2.0 setters on `GroupedToolBuilder`** (`outputSchema`, `title`, `icons`, `headerParams`) now call `this._assertNotFrozen()` as their first statement, consistent with all other setters in the class.
+
+#### `@mcpfusion/core` — Zod 4 `$schema` re-addition
+
+- **Zod 4 path in `zodToJson()` now re-adds `$schema = 'https://json-schema.org/draft/2020-12/schema'`** after stripping it. Previously, the Zod 4 path stripped `$schema` via destructuring but did not re-add it, producing schema objects without the required `$schema` dialect identifier. Both Zod 3 and Zod 4 paths now consistently emit `$schema: 'https://json-schema.org/draft/2020-12/schema'` for MCP 2.0 compliance.
+- **Docstring fixed**: No longer claims `additionalProperties` is stripped (only `$schema` is).
+
+#### `@mcpfusion/swarm` — Stale JSDoc fixed
+
+- **`UpstreamMcpClient` JSDoc no longer mentions `notifications/message` piping.** The code correctly removed `notifications/message` forwarding (deprecated by SEP-2577), but the JSDoc header still claimed it was piped. Now accurately reflects that only `notifications/progress` is forwarded.
+
+### Added — MCP 2.0 Feature Tests & Templates
+
+#### `@mcpfusion/core` — MCP 2.0 feature test suite
+
+- **New test file `tests/core/Mcp2Features.test.ts`** — 12 tests covering all MCP 2.0 Fluent API additions:
+  - `withHeaderParam()`: x-mcp-header injection, multiple headers, empty header throw, schema property presence
+  - `withOutputSchema()`: outputSchema set/unset on compiled tool
+  - `withTitle()`: title set/unset on compiled tool
+  - `withIcon()`: single icon, multiple icons, unset icons
+  - Combined: all MCP 2.0 features used together
+
+#### `@mcpfusion/core` — MCP 2.0 structured content template
+
+- **New `statusToolTs()` template** — Scaffolded projects now include `src/tools/system/status.ts` demonstrating MCP 2.0 features: `withOutputSchema()`, `withTitle()`, `withIcon()`, `successStructured()`. Clients can parse `structuredContent` directly without scraping text.
+- **Scaffold file count invariants updated**: `BASE_COUNT` 16→17, e2e assertion 19→20.
+
+### Changed — CLI Templates MCP 2.0 Compliance
+
+#### `@mcpfusion/core` — Version pins updated
+
+- **`MCP_SDK_VERSION`**: `^1.12.1` → `^2.0.0` (MCP SDK v2)
+- **`ZOD_VERSION`**: `^3.25.1` → `^4.2.0` (Zod 4)
+- **`CORE_VERSION`**: `^3.2.0` → `^5.0.0` (current major)
+- **`TESTING_VERSION`**: `^3.2.0` → `^5.0.0`
+- **`VERCEL_ADAPTER_VERSION`**: `^3.2.0` → `^5.0.0`
+- **`CLOUDFLARE_ADAPTER_VERSION`**: `^3.2.0` → `^5.0.0`
+- **`engines.node`**: `>=18.0.0` → `>=20.0.0` (MCP SDK v2 requires Node 20+)
+- **`vitest`**: `^3.0.5` → `^3.2.4`
+
+#### `@mcpfusion/core` — TransportLayer `'sse'` → `'http'`
+
+- **`TransportLayer` type renamed from `'stdio' | 'sse'` to `'stdio' | 'http'`** — The `'sse'` value was misleading (implied deprecated HTTP+SSE transport). The generated `server.ts` already used `transport: 'http'` (Streamable HTTP), but the CLI config type and all template conditionals used `'sse'`. Now consistent across all files.
+- **`VALID_TRANSPORTS`**: `['stdio', 'sse']` → `['stdio', 'http']`
+- **All template conditionals**: `config.transport === 'sse'` → `config.transport === 'http'`
+- **Help text and examples**: `--transport <stdio|sse>` → `--transport <stdio|http>`
+- **Test labels**: All "SSE" references in test descriptions updated to "HTTP" / "Streamable HTTP"
+
+#### `@mcpfusion/cloudflare` — `compatibility_date` updated
+
+- **`wrangler.toml` `compatibility_date`**: `2024-12-01` → `2026-07-01`
+
+### Fixed — Cross-Package MCP 2.0 Compliance
+
+#### All adapter packages — SDK v2 peer dependencies
+
+- **`@mcpfusion/cloudflare`**: `@modelcontextprotocol/sdk` peer dep `^1.12.0` → `^2.0.0`
+- **`@mcpfusion/vercel`**: `@modelcontextprotocol/sdk` peer dep `^1.12.0` → `^2.0.0`
+- **`@mcpfusion/swarm`**: `@modelcontextprotocol/sdk` peer dep `^1.12.1` → `^2.0.0`
+- **`@mcpfusion/yaml`**: `@modelcontextprotocol/sdk` peer dep `^1.12.0` → `^2.0.0`
+
+#### All packages — `engines.node` bumped
+
+- **All 16 packages + root `package.json`**: `engines.node` `>=18.0.0` → `>=20.0.0` (MCP SDK v2 requires Node 20+)
 
 ## [4.4.1] - 2026-07-27
 

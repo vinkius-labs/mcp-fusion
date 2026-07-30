@@ -1,7 +1,7 @@
 /**
  * Bug #79 — HTTP template async unhandled rejection
  *
- * The SSE template now uses `startServer({ transport: 'http' })` which
+ * The HTTP template now uses `startServer({ transport: 'http' })` which
  * encapsulates all HTTP handler logic (try/catch, session management,
  * routing). This test verifies the template uses startServer correctly
  * and that the `startServer.ts` implementation handles the error cases.
@@ -12,15 +12,15 @@ import { describe, it, expect } from 'vitest';
 import { serverTs } from '../../src/cli/templates/core.js';
 import type { ProjectConfig } from '../../src/cli/types.js';
 
-const sseConfig: ProjectConfig = {
-    name: 'test-sse',
-    transport: 'sse',
+const httpConfig: ProjectConfig = {
+    name: 'test-http',
+    transport: 'http',
     vector: 'vanilla',
     testing: false,
 };
 
-describe('Bug #79 — SSE template uses startServer (HTTP handling encapsulated)', () => {
-    const output = serverTs(sseConfig);
+describe('Bug #79 — HTTP template uses startServer (HTTP handling encapsulated)', () => {
+    const output = serverTs(httpConfig);
 
     it('should use startServer instead of raw createServer boilerplate', () => {
         expect(output).toContain('startServer');

@@ -80,6 +80,7 @@ function buildFileList(config: ProjectConfig): ScaffoldFile[] {
     // ── Tools ────────────────────────────────────────────
     files.push({ path: 'src/tools/system/health.ts', content: tpl.healthToolTs() });
     files.push({ path: 'src/tools/system/echo.ts', content: tpl.echoToolTs() });
+    files.push({ path: 'src/tools/system/status.ts', content: tpl.statusToolTs() });
 
     // ── Model ─────────────────────────────────────────────
     files.push({ path: 'src/models/SystemModel.ts', content: tpl.systemModelTs() });
@@ -161,6 +162,7 @@ function buildVercelFileList(config: ProjectConfig): ScaffoldFile[] {
     // ── Tools ──
     files.push({ path: 'src/mcp/tools/system/health.ts', content: tpl.healthToolTs() });
     files.push({ path: 'src/mcp/tools/system/echo.ts', content: tpl.echoToolTs() });
+    files.push({ path: 'src/mcp/tools/system/status.ts', content: tpl.statusToolTs() });
 
     // ── Model + Presenter ──
     files.push({ path: 'src/mcp/models/SystemModel.ts', content: tpl.systemModelTs() });
@@ -203,6 +205,7 @@ function buildCloudflareFileList(config: ProjectConfig): ScaffoldFile[] {
     // ── Tools ──
     files.push({ path: 'src/tools/system/health.ts', content: tpl.healthToolTs() });
     files.push({ path: 'src/tools/system/echo.ts', content: tpl.echoToolTs() });
+    files.push({ path: 'src/tools/system/status.ts', content: tpl.statusToolTs() });
 
     // ── Model + Presenter ──
     files.push({ path: 'src/models/SystemModel.ts', content: tpl.systemModelTs() });

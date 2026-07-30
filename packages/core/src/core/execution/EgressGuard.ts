@@ -80,6 +80,13 @@ function buildTruncationSuffix(formattedLimit: string): string {
  * If the total exceeds `maxPayloadBytes`, truncates the LAST
  * text block and appends a system intervention message.
  *
+ * **Known limitation**: Only text blocks are measured and truncated.
+ * Non-text blocks (image, audio, resource_link) pass through intact
+ * and are NOT counted toward the byte budget. A very large base64
+ * image (e.g. 30MB) will bypass this guard. Use Presenter-level
+ * `.agentLimit()` or transport-level payload limits for non-text
+ * OOM protection.
+ *
  * @param response - The ToolResponse to guard
  * @param maxPayloadBytes - Maximum allowed bytes
  * @returns The original response (if within limit) or a truncated copy
@@ -92,10 +99,12 @@ export function applyEgressGuard(
 ): ToolResponse {
     const limit = Math.max(MIN_PAYLOAD_BYTES, maxPayloadBytes);
 
-    // Measure total byte length across all content blocks
+    // Measure total byte length across all text content blocks
+    // (MCP 2.0 supports non-text blocks like image/audio/resource_link —
+    //  those are not subject to text truncation and pass through intact)
     let totalBytes = 0;
     for (const block of response.content) {
-        totalBytes += byteLength(block.text);
+        if (block.type === 'text') totalBytes += byteLength(block.text);
     }
 
     // Fast path: within limit
@@ -110,17 +119,28 @@ export function applyEgressGuard(
 
     if (targetBytes <= 0) {
         // Edge case: limit is smaller than the suffix itself
-        return {
+        const edgeResult: { content: ToolResponse['content'][number][]; isError: boolean; structuredContent?: unknown } = {
             content: [{ type: 'text', text: suffix.trim() }],
             isError: true,
         };
+        if (response.structuredContent !== undefined) {
+            edgeResult.structuredContent = response.structuredContent;
+        }
+        return edgeResult as ToolResponse;
     }
 
-    // Truncate by rebuilding content blocks
+    // Truncate by rebuilding content blocks — only text blocks are truncated,
+    // non-text blocks (image, audio, resource_link, resource) pass through intact.
     let remainingBytes = targetBytes;
-    const truncatedContent: { type: 'text'; text: string }[] = [];
+    const truncatedContent: ToolResponse['content'][number][] = [];
 
     for (const block of response.content) {
+        if (block.type !== 'text') {
+            // Non-text blocks pass through unchanged (not subject to text truncation)
+            truncatedContent.push(block);
+            continue;
+        }
+
         const blockBytes = byteLength(block.text);
 
         if (remainingBytes <= 0) {
@@ -148,11 +168,27 @@ export function applyEgressGuard(
     const hasDroppedBlocks = truncatedContent.length < response.content.length;
     if (hasDroppedBlocks && truncatedContent.length > 0) {
         const last = truncatedContent[truncatedContent.length - 1]!;
-        if (!last.text.endsWith(suffix.trim())) {
+        if (last.type === 'text' && !last.text.endsWith(suffix.trim())) {
             truncatedContent[truncatedContent.length - 1] = {
                 type: 'text',
                 text: last.text + suffix,
             };
+        } else if (last.type !== 'text') {
+            // Last surviving block is non-text (image/audio/resource_link).
+            // Find the last text block to attach the suffix, or append a new one.
+            let lastTextIdx = -1;
+            for (let i = truncatedContent.length - 1; i >= 0; i--) {
+                if (truncatedContent[i]!.type === 'text') { lastTextIdx = i; break; }
+            }
+            if (lastTextIdx >= 0) {
+                const tb = truncatedContent[lastTextIdx] as { type: 'text'; text: string };
+                if (!tb.text.endsWith(suffix.trim())) {
+                    truncatedContent[lastTextIdx] = { type: 'text', text: tb.text + suffix };
+                }
+            } else {
+                // No text block exists — append suffix as a new text block
+                truncatedContent.push({ type: 'text', text: suffix.trim() });
+            }
         }
     }
 
@@ -161,11 +197,16 @@ export function applyEgressGuard(
         truncatedContent.push({ type: 'text', text: suffix.trim() });
     }
 
-    const result: { content: { type: 'text'; text: string }[]; isError?: boolean } = {
+    const result: { content: ToolResponse['content'][number][]; isError?: boolean; structuredContent?: unknown } = {
         content: truncatedContent,
     };
     if (response.isError) {
         result.isError = true;
+    }
+    // MCP 2.0: preserve structuredContent (authoritative structured output)
+    // during truncation — text blocks are backward-compat copies.
+    if (response.structuredContent !== undefined) {
+        result.structuredContent = response.structuredContent;
     }
     return result as ToolResponse;
 }

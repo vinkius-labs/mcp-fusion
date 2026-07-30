@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/testing",
-  "description": "In-memory MVA lifecycle emulator for MCP Fusion. Runs the full pipeline (Zod Input â†’ Middlewares â†’ Handler â†’ Egress Firewall) without network transport. Returns structured MvaTestResult objects â€” zero coupling to Jest/Vitest.",
+  "description": "In-memory MVA lifecycle emulator for MCP Fusion. Runs the full pipeline (Zod Input → Middlewares → Handler → Egress Firewall) without network transport. Returns structured MvaTestResult objects — zero coupling to Jest/Vitest.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,18 +41,18 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1"
+    "@mcpfusion/core": "^5.0.0"
   },
   "peerDependencies": {
     "zod": "^3.25.1 || ^4.0.0"
   },
   "license": "Apache-2.0",
   "devDependencies": {},
-  "version": "4.4.1"
+  "version": "5.0.0"
 }

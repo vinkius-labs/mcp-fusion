@@ -1,5 +1,5 @@
 /**
- * @vinkius-core/prisma-gen — Root Barrel Export
+ * @mcpfusion/prisma-gen — Root Barrel Export
  *
  * Public API for programmatic usage.
  *

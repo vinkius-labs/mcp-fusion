@@ -7,12 +7,12 @@
  * - **AbortSignal cascade**: closing the parent connection aborts the tunnel
  * - **Connect timeout**: the timeout AbortController cancels the in-flight HTTP request
  * - **Idle timeout**: closes zombie tunnels after configurable inactivity
- * - **Progress passthrough**: pipes `notifications/progress` and
- *   `notifications/message` from upstream back to the LLM client
+ * - **Progress passthrough**: pipes `notifications/progress` from upstream
+ *   back to the LLM client (MCP 2.0 deprecated `notifications/message`)
  *
  * @module
  */
-import { Client, SSEClientTransport, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import type { Tool as McpTool, Transport } from "@modelcontextprotocol/client";
 import type { ToolResponse } from '@mcpfusion/core';
 
@@ -289,9 +289,14 @@ export class UpstreamMcpClient {
                 requestInit: { headers, signal: sessionSignal },
             }) as unknown as Transport;
         }
-        return new SSEClientTransport(url, {
+        // MCP 2.0 (2026-07-28, SEP-2596) deprecated the HTTP+SSE transport.
+        // Default to StreamableHTTPClientTransport for all modes — it handles
+        // both streaming and non-streaming responses. The legacy SSEClientTransport
+        // fallback is removed for MCP 2.0 compliance.
+        // See: /docs/deprecation-registry
+        return new StreamableHTTPClientTransport(url, {
             requestInit: { headers, signal: sessionSignal },
-        } as ConstructorParameters<typeof SSEClientTransport>[1]) as unknown as Transport;
+        }) as unknown as Transport;
     }
 
     /**
@@ -322,12 +327,10 @@ export class UpstreamMcpClient {
             },
         );
 
-        this._client.setNotificationHandler(
-            'notifications/message' as never,
-            (n: NotificationWithParams) => {
-                this._progressForwarder?.({ method: 'notifications/message', params: n.params ?? {} });
-            },
-        );
+        // MCP 2.0 (2026-07-28, SEP-2577) deprecated the Logging feature
+        // (notifications/message). We no longer forward these notifications.
+        // Servers should log to stderr for stdio transports and use OpenTelemetry
+        // for observability. See: /docs/deprecation-registry
     }
 
     private _resetIdleTimer(): void {

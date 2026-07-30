@@ -315,7 +315,10 @@ export function stepEmbeds<T>(
 
             // Skip the first block (data) — parent already has it
             for (let i = 1; i < childResponse.content.length; i++) {
-                const blockText = childResponse.content[i]!.text;
+                const block = childResponse.content[i]!;
+                // MCP 2.0: only text blocks carry rules/hints — skip non-text
+                if (block.type !== 'text') continue;
+                const blockText = block.text;
 
                 // For arrays: deduplicate rule/hint blocks, emit UI only for first item
                 if (isArray && itemIdx > 0) {

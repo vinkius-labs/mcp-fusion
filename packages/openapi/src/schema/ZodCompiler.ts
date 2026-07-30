@@ -196,7 +196,7 @@ function compileArray(schema: SchemaNode, coerce: boolean): string {
 
 function compileObject(schema: SchemaNode): string {
     if (!schema.properties || Object.keys(schema.properties).length === 0) {
-        return 'z.record(z.unknown())';
+        return 'z.record(z.string(), z.unknown())';
     }
 
     const requiredSet = new Set(schema.required ?? []);

@@ -12,7 +12,7 @@ import { CORE_VERSION, MCP_SDK_VERSION, VERCEL_ADAPTER_VERSION, ZOD_VERSION, TES
 /** Generate `package.json` for Vercel/Next.js project */
 export function vercelPackageJson(config: ProjectConfig): string {
     const deps: Record<string, string> = {
-        '@modelcontextprotocol/sdk': MCP_SDK_VERSION,
+        '@modelcontextprotocol/server': MCP_SDK_VERSION,
         '@mcpfusion/core': CORE_VERSION,
         '@mcpfusion/vercel': VERCEL_ADAPTER_VERSION,
         'next': '^15.0.0',
@@ -39,7 +39,7 @@ export function vercelPackageJson(config: ProjectConfig): string {
         devDeps['prisma'] = '^6.0.0';
     }
     if (config.testing) {
-        devDeps['vitest'] = '^3.0.5';
+        devDeps['vitest'] = '^3.2.4';
         devDeps['@mcpfusion/testing'] = TESTING_VERSION;
     }
 
@@ -67,7 +67,7 @@ export function vercelPackageJson(config: ProjectConfig): string {
         scripts,
         dependencies: deps,
         devDependencies: devDeps,
-        engines: { node: '>=18.0.0' },
+        engines: { node: '>=20.0.0' },
     };
 
     return JSON.stringify(pkg, null, 4) + '\n';

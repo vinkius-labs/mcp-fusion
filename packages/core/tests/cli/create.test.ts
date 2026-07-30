@@ -101,8 +101,8 @@ describe('parseArgs — create command', () => {
     });
 
     it('parses --transport flag', () => {
-        const args = parseArgs(['node', 'mcpfusion', 'create', 'srv', '--transport', 'sse']);
-        expect(args.transport).toBe('sse');
+        const args = parseArgs(['node', 'mcpfusion', 'create', 'srv', '--transport', 'http']);
+        expect(args.transport).toBe('http');
     });
 
     it('parses --vector flag for each valid value', () => {
@@ -123,14 +123,14 @@ describe('parseArgs — create command', () => {
     it('parses all create flags combined', () => {
         const args = parseArgs([
             'node', 'mcpfusion', 'create', 'my-tool',
-            '--transport', 'sse',
+            '--transport', 'http',
             '--vector', 'n8n',
             '--no-testing',
             '-y',
         ]);
         expect(args.command).toBe('create');
         expect(args.projectName).toBe('my-tool');
-        expect(args.transport).toBe('sse');
+        expect(args.transport).toBe('http');
         expect(args.vector).toBe('n8n');
         expect(args.testing).toBe(false);
         expect(args.yes).toBe(true);
@@ -263,14 +263,14 @@ describe('collectConfig — fast-path (--yes)', () => {
             ...baseCliArgs(),
             yes: true,
             projectName: 'my-srv',
-            transport: 'sse' as TransportLayer,
+            transport: 'http' as TransportLayer,
             vector: 'prisma' as IngestionVector,
             testing: false,
         };
         const config = await collectConfig(args);
         expect(config).toEqual({
             name: 'my-srv',
-            transport: 'sse',
+            transport: 'http',
             vector: 'prisma',
             testing: false,
             target: 'vinkius',
@@ -337,13 +337,13 @@ describe('Template output — core files', () => {
             expect(pkg.version).toBe('0.1.0');
             expect(pkg.type).toBe('module');
             expect(pkg.private).toBe(true);
-            expect(pkg.engines.node).toBe('>=18.0.0');
+            expect(pkg.engines.node).toBe('>=20.0.0');
         });
 
         it('includes core dependencies', () => {
             const pkg = JSON.parse(tpl.packageJson(baseConfig));
             expect(pkg.dependencies['@mcpfusion/core']).toBeDefined();
-            expect(pkg.dependencies['@modelcontextprotocol/sdk']).toBeDefined();
+            expect(pkg.dependencies['@modelcontextprotocol/server']).toBeDefined();
             expect(pkg.dependencies['zod']).toBeDefined();
         });
 
@@ -471,8 +471,8 @@ describe('Template output — core files', () => {
             expect(env).toContain('OAUTH_TOKEN_ENDPOINT');
         });
 
-        it('includes PORT for SSE transport', () => {
-            expect(tpl.envExample({ ...baseConfig, transport: 'sse' })).toContain('PORT=');
+        it('includes PORT for HTTP transport', () => {
+            expect(tpl.envExample({ ...baseConfig, transport: 'http' })).toContain('PORT=');
         });
 
         it('does not include PORT for stdio transport', () => {
@@ -513,7 +513,7 @@ describe('Template output — source files', () => {
 
     describe('serverTs', () => {
         const stdioConfig: ProjectConfig = { name: 'srv', transport: 'stdio', vector: 'vanilla', testing: false };
-        const sseConfig: ProjectConfig = { name: 'srv', transport: 'sse', vector: 'vanilla', testing: false };
+        const sseConfig: ProjectConfig = { name: 'srv', transport: 'http', vector: 'vanilla', testing: false };
 
         it('uses startServer for stdio', () => {
             const content = tpl.serverTs(stdioConfig);
@@ -521,7 +521,7 @@ describe('Template output — source files', () => {
             expect(content).not.toContain('StreamableHTTPServerTransport');
         });
 
-        it('uses startServer with transport http for sse', () => {
+        it('uses startServer with transport http for HTTP', () => {
             const content = tpl.serverTs(sseConfig);
             expect(content).toContain('startServer');
             expect(content).toContain("transport: 'http'");
@@ -686,7 +686,7 @@ describe('Template output — source files', () => {
         });
 
         it('uses project name as server key', () => {
-            const config: ProjectConfig = { name: 'custom-name', transport: 'sse', vector: 'prisma', testing: true };
+            const config: ProjectConfig = { name: 'custom-name', transport: 'http', vector: 'prisma', testing: true };
             const parsed = JSON.parse(tpl.cursorMcpJson(config));
             expect(Object.keys(parsed.mcpServers)).toEqual(['custom-name']);
         });
@@ -960,7 +960,7 @@ describe('scaffold — file tree generation', () => {
 
     it('generates openapi.yaml and SETUP.md for openapi vector', () => {
         const projectDir = join(tmpDir, 'api-test');
-        const files = scaffold(projectDir, { name: 'api-test', transport: 'sse', vector: 'openapi', testing: false });
+        const files = scaffold(projectDir, { name: 'api-test', transport: 'http', vector: 'openapi', testing: false });
 
         expect(files).toContain('openapi.yaml');
         expect(files).toContain('SETUP.md');
@@ -1003,9 +1003,9 @@ describe('scaffold — file tree generation', () => {
         expect(server).not.toContain('StreamableHTTPServerTransport');
     });
 
-    it('server.ts uses startServer with transport http for sse', () => {
+    it('server.ts uses startServer with transport http for HTTP', () => {
         const projectDir = join(tmpDir, 'sse-srv');
-        scaffold(projectDir, { name: 'sse-srv', transport: 'sse', vector: 'vanilla', testing: false });
+        scaffold(projectDir, { name: 'sse-srv', transport: 'http', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
         expect(server).toContain('startServer');
         expect(server).toContain("transport: 'http'");
@@ -1033,7 +1033,7 @@ describe('scaffold — config matrix (transport × vector × testing)', () => {
     beforeEach(() => { tmpDir = tempDir(); });
     afterEach(() => { try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } });
 
-    const transports: TransportLayer[] = ['stdio', 'sse'];
+    const transports: TransportLayer[] = ['stdio', 'http'];
     const vectors: IngestionVector[] = ['vanilla', 'prisma', 'n8n', 'openapi'];
     const testingOptions = [true, false];
 
@@ -1124,8 +1124,8 @@ describe('parseArgs — edge cases & error paths', () => {
     });
 
     it('handles duplicate --transport (last wins)', () => {
-        const args = parseArgs(['node', 'mcpfusion', 'create', 'srv', '--transport', 'stdio', '--transport', 'sse']);
-        expect(args.transport).toBe('sse');
+        const args = parseArgs(['node', 'mcpfusion', 'create', 'srv', '--transport', 'stdio', '--transport', 'http']);
+        expect(args.transport).toBe('http');
     });
 
     it('handles help flag combined with create', () => {
@@ -1215,9 +1215,9 @@ describe('collectConfig — error paths & boundary conditions', () => {
 describe('Template integrity — no broken output', () => {
     const configs: ProjectConfig[] = [
         { name: 'test', transport: 'stdio', vector: 'vanilla', testing: true },
-        { name: 'test', transport: 'sse', vector: 'prisma', testing: false },
+        { name: 'test', transport: 'http', vector: 'prisma', testing: false },
         { name: 'test', transport: 'stdio', vector: 'n8n', testing: true },
-        { name: 'test', transport: 'sse', vector: 'openapi', testing: false },
+        { name: 'test', transport: 'http', vector: 'openapi', testing: false },
     ];
 
     for (const config of configs) {
@@ -1420,9 +1420,9 @@ describe('Scaffold — cross-contamination guards', () => {
         expect(server).not.toContain('createServer');
     });
 
-    it('sse server uses startServer and does NOT import StdioServerTransport in on-disk content', () => {
+    it('HTTP server uses startServer and does NOT import StdioServerTransport in on-disk content', () => {
         const projectDir = join(tmpDir, 'sse-guard');
-        scaffold(projectDir, { name: 'sse-guard', transport: 'sse', vector: 'vanilla', testing: false });
+        scaffold(projectDir, { name: 'sse-guard', transport: 'http', vector: 'vanilla', testing: false });
         const server = readFileSync(join(projectDir, 'src', 'server.ts'), 'utf-8');
         expect(server).not.toContain('StdioServerTransport');
         expect(server).not.toContain('createServer');
@@ -1472,16 +1472,16 @@ describe('Scaffold — file count invariants', () => {
     // package.json, tsconfig.json, .gitignore, .env.example, README.md,
     // .cursor/mcp.json, .vscode/mcp.json,
     // src/mcpfusion.ts, src/context.ts, src/server.ts,
-    // src/tools/system/health.ts, src/tools/system/echo.ts,
+    // src/tools/system/health.ts, src/tools/system/echo.ts, src/tools/system/status.ts,
     // src/models/SystemModel.ts,
     // src/presenters/SystemPresenter.ts,
     // src/prompts/greet.ts,
     // src/middleware/auth.ts
-    // = 16 files
+    // = 17 files
 
-    const BASE_COUNT = 16;
+    const BASE_COUNT = 17;
 
-    it('blank + no testing = exactly 16 files', () => {
+    it('blank + no testing = exactly 17 files', () => {
         const projectDir = join(tmpDir, 'count-base');
         const files = scaffold(projectDir, { name: 'count-base', transport: 'stdio', vector: 'vanilla', testing: false });
         expect(files.length).toBe(BASE_COUNT);
@@ -1627,7 +1627,7 @@ describe('Scaffold — filesystem integrity', () => {
 
     it('no empty files are generated', () => {
         const projectDir = join(tmpDir, 'no-empty');
-        const files = scaffold(projectDir, { name: 'no-empty', transport: 'sse', vector: 'prisma', testing: true });
+        const files = scaffold(projectDir, { name: 'no-empty', transport: 'http', vector: 'prisma', testing: true });
 
         for (const f of files) {
             const size = statSync(join(projectDir, f)).size;
@@ -1758,7 +1758,7 @@ describe('Scaffold — isolation between calls', () => {
         const dir2 = join(tmpDir, 'proj-2');
 
         const files1 = scaffold(dir1, { name: 'proj-1', transport: 'stdio', vector: 'prisma', testing: true });
-        const files2 = scaffold(dir2, { name: 'proj-2', transport: 'sse', vector: 'n8n', testing: false });
+        const files2 = scaffold(dir2, { name: 'proj-2', transport: 'http', vector: 'n8n', testing: false });
 
         // proj-1 should have database files but not workflow
         expect(files1).toContain('prisma/schema.prisma');
@@ -1892,7 +1892,7 @@ describe('Name validation — trailing hyphen and edge cases', () => {
 
 describe('Transport/vector validation warnings', () => {
     it('fast-path: warns and falls back for unknown transport', async () => {
-        const args: CliArgs = { ...baseCliArgs(), yes: true, transport: 'http' as TransportLayer };
+        const args: CliArgs = { ...baseCliArgs(), yes: true, transport: 'websocket' as TransportLayer };
         const config = await collectConfig(args);
         expect(config).not.toBeNull();
         expect(config!.transport).toBe('stdio');
@@ -1906,10 +1906,10 @@ describe('Transport/vector validation warnings', () => {
     });
 
     it('fast-path: accepts valid transport without warning', async () => {
-        const args: CliArgs = { ...baseCliArgs(), yes: true, transport: 'sse' };
+        const args: CliArgs = { ...baseCliArgs(), yes: true, transport: 'http' };
         const config = await collectConfig(args);
         expect(config).not.toBeNull();
-        expect(config!.transport).toBe('sse');
+        expect(config!.transport).toBe('http');
     });
 
     it('fast-path: accepts valid vector without warning', async () => {
@@ -1932,9 +1932,9 @@ describe('Transport/vector validation warnings', () => {
     });
 });
 
-describe('SSE transport-aware templates', () => {
-    it('cursor config for SSE uses url instead of command', () => {
-        const config: ProjectConfig = { name: 'sse-proj', transport: 'sse', vector: 'vanilla', testing: false };
+describe('HTTP transport-aware templates', () => {
+    it('cursor config for HTTP uses url instead of command', () => {
+        const config: ProjectConfig = { name: 'sse-proj', transport: 'http', vector: 'vanilla', testing: false };
         const cursor = JSON.parse(tpl.cursorMcpJson(config));
 
         expect(cursor.mcpServers['sse-proj'].url).toBe('http://localhost:3001/mcp');
@@ -1951,8 +1951,8 @@ describe('SSE transport-aware templates', () => {
         expect(cursor.mcpServers['stdio-proj'].url).toBeUndefined();
     });
 
-    it('README for SSE shows mcpfusion dev', () => {
-        const config: ProjectConfig = { name: 'sse-readme', transport: 'sse', vector: 'vanilla', testing: false };
+    it('README for HTTP shows mcpfusion dev', () => {
+        const config: ProjectConfig = { name: 'sse-readme', transport: 'http', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
         expect(readmeContent).toContain('mcpfusion dev');
@@ -1965,15 +1965,15 @@ describe('SSE transport-aware templates', () => {
         expect(readmeContent).toContain('mcpfusion dev');
     });
 
-    it('README for SSE includes Streamable HTTP note about starting server first', () => {
-        const config: ProjectConfig = { name: 'sse-note', transport: 'sse', vector: 'vanilla', testing: false };
+    it('README for HTTP includes Streamable HTTP note about starting server first', () => {
+        const config: ProjectConfig = { name: 'sse-note', transport: 'http', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
         expect(readmeContent).toContain('Streamable HTTP transport requires the server to be running first');
     });
 
-    it('README for SSE uses url-based client config', () => {
-        const config: ProjectConfig = { name: 'sse-client', transport: 'sse', vector: 'vanilla', testing: false };
+    it('README for HTTP uses url-based client config', () => {
+        const config: ProjectConfig = { name: 'sse-client', transport: 'http', vector: 'vanilla', testing: false };
         const readmeContent = tpl.readme(config);
 
         expect(readmeContent).toContain('http://localhost:3001/mcp');
@@ -2169,7 +2169,7 @@ describe('collectConfig — interactive path with pre-filled args', () => {
             cwd: '/tmp',
             help: false,
             projectName: 'wizard-test',
-            transport: 'sse',
+            transport: 'http',
             vector: 'prisma',
             target: 'vinkius',
             testing: true,
@@ -2180,7 +2180,7 @@ describe('collectConfig — interactive path with pre-filled args', () => {
 
         expect(config).not.toBeNull();
         expect(config!.name).toBe('wizard-test');
-        expect(config!.transport).toBe('sse');
+        expect(config!.transport).toBe('http');
         expect(config!.vector).toBe('prisma');
         expect(config!.testing).toBe(true);
 
@@ -2192,7 +2192,7 @@ describe('collectConfig — interactive path with pre-filled args', () => {
     });
 });
 
-describe('commandCreate — SSE transport path', () => {
+describe('commandCreate — HTTP transport path', () => {
     let tmpDir: string;
 
     beforeEach(() => {
@@ -2203,7 +2203,7 @@ describe('commandCreate — SSE transport path', () => {
         rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    it('SSE transport shows npm start instead of npm run dev', async () => {
+    it('HTTP transport shows npm start instead of npm run dev', async () => {
         const steps: Array<{ id: string; label: string; status: string; detail?: string }> = [];
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit'); });
@@ -2216,7 +2216,7 @@ describe('commandCreate — SSE transport path', () => {
             cwd: tmpDir,
             help: false,
             projectName: 'sse-proj',
-            transport: 'sse',
+            transport: 'http',
             vector: 'vanilla',
             testing: false,
             yes: true,

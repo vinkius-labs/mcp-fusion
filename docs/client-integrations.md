@@ -150,7 +150,11 @@ export async function POST(req: Request) {
 Your MCP Fusion Presenters shape every tool response before it reaches the LLM. The frontend never touches raw database output.
 
 ::: tip
-Use `mcpfusion create my-api --transport sse` to scaffold an MCP server pre-configured for remote HTTP connections. See the [Quickstart](/quickstart-lightspeed) for the full setup flow.
+Use `mcpfusion create my-api --transport http` to scaffold an MCP server pre-configured for remote HTTP connections (Streamable HTTP, MCP 2.0). See the [Quickstart](/quickstart-lightspeed) for the full setup flow.
+:::
+
+::: warning
+The legacy `--transport sse` template is **deprecated** as of MCP `2025-03-26` (SEP-2596). The HTTP+SSE transport is deprecated in MCP 2.0 — use Streamable HTTP (`--transport http`) or the stateless transport (`--transport stateless`) instead. See the [Deprecation Registry](/deprecation-registry).
 :::
 
 ---

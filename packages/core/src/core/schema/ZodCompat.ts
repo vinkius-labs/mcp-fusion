@@ -40,9 +40,10 @@ const isZod4: boolean = typeof zAny['toJSONSchema'] === 'function';
  * Convert a Zod schema to a plain JSON Schema object.
  *
  * - **Zod 3**: Delegates to `zod-to-json-schema` with `target: 'jsonSchema7'`.
- * - **Zod 4**: Uses the native `z.toJSONSchema()` and strips metadata fields
- *   (`$schema`, `additionalProperties`) for compatibility with the existing
- *   schema merging pipeline.
+ * - **Zod 4**: Uses the native `z.toJSONSchema()` and strips the `$schema`
+ *   metadata field for compatibility with the existing schema merging pipeline.
+ *   `$schema` is re-added as `https://json-schema.org/draft/2020-12/schema`
+ *   for MCP 2.0 compliance.
  *
  * @param schema - Any Zod schema (ZodObject, ZodArray, etc.)
  * @returns A plain JSON Schema object with `properties` and `required`
@@ -54,8 +55,10 @@ export function zodToJson(schema: unknown): JsonSchemaResult {
             // because the type definitions may not include `toJSONSchema`.
             const result = zAny['toJSONSchema'](schema) as JsonSchemaResult;
 
-            // Strip $schema metadata — consumers only need properties/required/type
+            // Strip $schema metadata — consumers only need properties/required/type.
+            // Re-add $schema as 2020-12 for MCP 2.0 compliance (same as Zod 3 path).
             const { $schema: _$schema, ...rest } = result;
+            rest['$schema'] = 'https://json-schema.org/draft/2020-12/schema';
 
             return rest;
         } catch {
@@ -64,10 +67,17 @@ export function zodToJson(schema: unknown): JsonSchemaResult {
     }
 
     // Zod 3 path (or Zod 4 fallback)
+    // MCP 2.0 (2026-07-28) requires JSON Schema 2020-12 as the default dialect.
+    // zod-to-json-schema only supports jsonSchema7 target, so we generate
+    // draft-7 and override the $schema to 2020-12. Basic schemas
+    // (type/properties/required) are compatible across both drafts.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return zodToJsonSchema(schema as any, {
+    const result = zodToJsonSchema(schema as any, {
         target: 'jsonSchema7',
     }) as JsonSchemaResult;
+    // Override $schema to 2020-12 for MCP 2.0 compliance
+    result.$schema = 'https://json-schema.org/draft/2020-12/schema';
+    return result;
 }
 
 /**
@@ -90,8 +100,11 @@ export function zodToJsonWithOptions(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return zodToJsonSchema(schema as any, {
+    const result = zodToJsonSchema(schema as any, {
         target: 'jsonSchema7',
         ...options,
     }) as JsonSchemaResult;
+    // Override $schema to 2020-12 for MCP 2.0 compliance
+    result.$schema = 'https://json-schema.org/draft/2020-12/schema';
+    return result;
 }

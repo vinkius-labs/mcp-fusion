@@ -81,7 +81,7 @@ describe('ServerCard', () => {
             assertValidPayload(card);
             expect(card.$schema).toContain('server-card');
             expect(card.version).toBe('1.0');
-            expect(card.protocolVersion).toBe('2025-06-18');
+            expect(card.protocolVersion).toBe('2026-07-28');
             expect(card.serverInfo.name).toBe('test-server');
             expect(card.serverInfo.version).toBe('1.0.0');
             expect(card.tools).toBeUndefined();
@@ -260,7 +260,7 @@ describe('ServerCard', () => {
                 documentationUrl: 'https://docs.example.com',
                 transport: 'streamable-http',
                 endpoint: '/custom/mcp',
-                protocolVersion: '2025-06-18',
+                protocolVersion: '2026-07-28',
             };
 
             const original = compileServerCard(

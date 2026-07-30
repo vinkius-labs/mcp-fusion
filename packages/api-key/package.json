@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/api-key",
-  "version": "4.4.1",
+  "version": "5.0.0",
   "description": "API key validation middleware for MCP servers built with MCP Fusion. Timing-safe comparison, SHA-256 hashing, async validators, and self-healing error responses.",
   "type": "module",
   "main": "dist/index.js",
@@ -40,13 +40,13 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1"
+    "@mcpfusion/core": "^5.0.0"
   },
   "devDependencies": {},
   "license": "Apache-2.0"

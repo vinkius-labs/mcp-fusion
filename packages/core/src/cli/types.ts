@@ -11,7 +11,7 @@
 export type IngestionVector = 'vanilla' | 'prisma' | 'n8n' | 'openapi' | 'oauth';
 
 /** Transport layer for MCP communication */
-export type TransportLayer = 'stdio' | 'sse';
+export type TransportLayer = 'stdio' | 'http';
 
 /** Deploy target platform for scaffold generation */
 export type DeployTarget = 'vinkius' | 'vercel' | 'cloudflare';

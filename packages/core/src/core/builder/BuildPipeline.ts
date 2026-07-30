@@ -51,6 +51,18 @@ export interface FluentBuildConfig<TContext, TCtx> {
     fsmStates: string[] | undefined;
     fsmTransition: string | undefined;
     interactive: boolean;
+    /**
+     * Map of parameter name → HTTP header name for `x-mcp-header` annotation
+     * (MCP 2.0 — `2026-07-28`). Parameters marked here are mirrored into
+     * `Mcp-Param-{headerName}` HTTP headers on Streamable HTTP transport.
+     */
+    headerParams?: ReadonlyMap<string, string> | undefined;
+    /** MCP 2.0 output schema for structured tool results. */
+    outputSchema?: Record<string, unknown> | undefined;
+    /** MCP 2.0 human-readable display title. */
+    title?: string | undefined;
+    /** MCP 2.0 icons array. */
+    icons?: ReadonlyArray<{ src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' }> | undefined;
     handler: (
         input: Record<string, unknown>,
         ctx: TCtx,
@@ -143,6 +155,12 @@ export function buildToolFromFluent<TContext, TCtx>(
     if (config.tags.length > 0) builder.tags(...config.tags);
     if (config.toonMode) builder.toonDescription();
     if (config.annotations) builder.annotations(config.annotations);
+
+    // MCP 2.0: propagate outputSchema, title, icons, headerParams
+    if (config.outputSchema) builder.outputSchema(config.outputSchema);
+    if (config.title) builder.title(config.title);
+    if (config.icons) builder.icons(config.icons);
+    if (config.headerParams && config.headerParams.size > 0) builder.headerParams(config.headerParams);
 
     // Propagate state sync hints
     if (config.invalidatesPatterns.length > 0) {

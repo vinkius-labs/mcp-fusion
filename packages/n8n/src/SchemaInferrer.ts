@@ -10,7 +10,7 @@ import type { WebhookConfig } from './types.js';
  *
  * Strategy:
  * - Query parameters → strict Zod fields with type coercion
- * - Request body → `z.record(z.any())` fallback (n8n webhooks accept any JSON)
+ * - Request body → `z.record(z.string(), z.any())` fallback (n8n webhooks accept any JSON)
  * - Workflow notes → `.describe()` on the schema for LLM semantic understanding
  */
 export function inferSchema(config: WebhookConfig): Record<string, ZodTypeAny> {
@@ -26,7 +26,7 @@ export function inferSchema(config: WebhookConfig): Record<string, ZodTypeAny> {
     // Only add for methods that accept a body
     const method = config.method.toUpperCase();
     if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
-        fields['body'] = z.record(z.any())
+        fields['body'] = z.record(z.string(), z.any())
             .optional()
             .describe('Request body — see workflow description for expected fields');
     }

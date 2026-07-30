@@ -64,7 +64,7 @@ export {
 // ── Core (Builder, Registry, Execution, Middleware) ──────
 /** @category Core */
 export {
-    success, error, required, toonSuccess, toolError, TOOL_RESPONSE_BRAND,
+    success, successStructured, resourceLink, imageContent, audioContent, embeddedResource, error, required, toonSuccess, toolError, TOOL_RESPONSE_BRAND,
     GroupedToolBuilder, ActionGroupBuilder, createTool, defineTool,
     ToolRegistry,
     generateToonDescription,

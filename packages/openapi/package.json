@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/openapi-gen",
-  "description": "OpenAPI-to-MCP mcpfusion Server Generator. Parses OpenAPI 3.x and Swagger 2.0 specs and generates a complete, ready-to-run MCP Server with full MVA tool stacks (Presenters, Tools, Registry, Server) â€” all features configurable via YAML.",
+  "description": "OpenAPI-to-MCP mcpfusion Server Generator. Parses OpenAPI 3.x and Swagger 2.0 specs and generates a complete, ready-to-run MCP Server with full MVA tool stacks (Presenters, Tools, Registry, Server) — all features configurable via YAML.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -48,13 +48,13 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1",
+    "@mcpfusion/core": "^5.0.0",
     "yaml": "^2.7.0"
   },
   "peerDependencies": {
@@ -64,5 +64,5 @@
   "devDependencies": {
     "@types/node": "^25.3.0"
   },
-  "version": "4.4.1"
+  "version": "5.0.0"
 }

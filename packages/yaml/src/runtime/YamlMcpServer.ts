@@ -2,6 +2,16 @@ import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { Server } from "@modelcontextprotocol/server";
 import type { Transport } from "@modelcontextprotocol/server";
+
+/**
+ * Duck-typed interface for MCP SDK v2 Server with method-string handler registration.
+ * Bypasses the SDK's strict per-method overloads so we can register handlers with
+ * framework-internal types (CompiledInputSchema, etc.) and cast results at the
+ * boundary — same pattern used by @mcpfusion/core's ServerAttachment.
+ */
+interface McpServerTyped {
+    setRequestHandler(method: string, handler: (...args: never[]) => unknown): void;
+}
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type { CompiledYamlServer } from './LocalServer.js';
@@ -167,6 +177,10 @@ export async function createYamlMcpServer(
         { capabilities },
     );
 
+    // Cast to duck-typed interface to bypass SDK v2 strict per-method overloads.
+    // Handler return types are cast at the boundary — same pattern as @mcpfusion/core.
+    const typedServer = server as unknown as McpServerTyped;
+
     // ── 2. Tools handlers ────────────────────────────────
     if (tools.length > 0) {
         const toolMap = new Map<string, CompiledTool>();
@@ -174,11 +188,11 @@ export async function createYamlMcpServer(
             toolMap.set(tool.name, tool);
         }
 
-        server.setRequestHandler('tools/list', async () => ({
+        typedServer.setRequestHandler('tools/list', (async () => ({
             tools: buildToolsList(tools),
-        }));
+        })) as (...args: never[]) => unknown);
 
-        server.setRequestHandler('tools/call', async (request) => {
+        typedServer.setRequestHandler('tools/call', (async (request: { params: { name: string; arguments?: Record<string, unknown> } }) => {
             const { name, arguments: args = {} } = request.params;
             const tool = toolMap.get(name);
 
@@ -193,7 +207,7 @@ export async function createYamlMcpServer(
             }
 
             return executeYamlTool(tool, args, fetchFn) as unknown as Record<string, unknown>;
-        });
+        }) as (...args: never[]) => unknown);
     }
 
     // ── 3. Resources handlers ────────────────────────────
@@ -203,11 +217,11 @@ export async function createYamlMcpServer(
             resourceMap.set(resource.uri, resource);
         }
 
-        server.setRequestHandler('resources/list', async () => ({
+        typedServer.setRequestHandler('resources/list', (async () => ({
             resources: buildResourcesList(resources),
-        }));
+        })) as (...args: never[]) => unknown);
 
-        server.setRequestHandler('resources/read', async (request) => {
+        typedServer.setRequestHandler('resources/read', (async (request: { params: { uri: string } }) => {
             const { uri } = request.params;
             const resource = resourceMap.get(uri);
 
@@ -239,7 +253,7 @@ export async function createYamlMcpServer(
                             : `Check the static content configuration.`),
                 );
             }
-        });
+        }) as (...args: never[]) => unknown);
     }
 
     // ── 4. Prompts handlers ──────────────────────────────
@@ -249,11 +263,11 @@ export async function createYamlMcpServer(
             promptMap.set(prompt.name, prompt);
         }
 
-        server.setRequestHandler('prompts/list', async () => ({
+        typedServer.setRequestHandler('prompts/list', (async () => ({
             prompts: buildPromptsList(prompts),
-        }));
+        })) as (...args: never[]) => unknown);
 
-        server.setRequestHandler('prompts/get', async (request) => {
+        typedServer.setRequestHandler('prompts/get', (async (request: { params: { name: string; arguments?: Record<string, string> } }) => {
             const { name, arguments: args = {} } = request.params;
             const prompt = promptMap.get(name);
 
@@ -283,7 +297,7 @@ export async function createYamlMcpServer(
                         : 'This prompt has no required arguments.'),
                 );
             }
-        });
+        }) as (...args: never[]) => unknown);
     }
 
     // ── 5. Connect transport ─────────────────────────────

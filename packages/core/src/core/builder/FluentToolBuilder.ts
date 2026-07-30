@@ -87,6 +87,17 @@ export class FluentToolBuilder<
     /** @internal */ _withParams: Record<string, ZodType> = {};
     /** @internal */ _tags: string[] = [];
     /** @internal */ _modelRef?: Model;
+    /**
+     * @internal Map of parameter name → HTTP header name for `x-mcp-header`
+     * annotation (MCP 2.0 — `2026-07-28`). Populated by `.withHeaderParam()`.
+     */
+    /** @internal */ _headerParams: Map<string, string> = new Map();
+    /** @internal MCP 2.0 output schema for structured tool results. */
+    /** @internal */ _outputSchema?: Record<string, unknown>;
+    /** @internal MCP 2.0 human-readable display title. */
+    /** @internal */ _title?: string;
+    /** @internal MCP 2.0 icons array. */
+    /** @internal */ _icons?: ReadonlyArray<{ src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' }>;
 
     /**
      * @internal reject duplicate parameter names.
@@ -216,6 +227,122 @@ export class FluentToolBuilder<
     ): FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx> {
         this._addParam(name, withDesc(z.string(), description));
         return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx>;
+    }
+
+    /**
+     * Add a string parameter that is mirrored into an HTTP header on
+     * Streamable HTTP transport (MCP 2.0 `x-mcp-header` — `2026-07-28`).
+     *
+     * The parameter is registered as a normal string input AND annotated
+     * with `x-mcp-header` in the tool's `inputSchema`. When the client
+     * calls this tool over Streamable HTTP, the parameter value is
+     * automatically sent as the `Mcp-Param-{headerName}` HTTP header,
+     * enabling network intermediaries (load balancers, proxies, WAFs)
+     * to route requests without parsing the body.
+     *
+     * **Constraints** (per MCP 2.0 spec):
+     * - MUST NOT be used for sensitive parameters (passwords, API keys, PII)
+     * - Only applies to primitive types (string, integer, boolean — not number)
+     * - Header name MUST match HTTP field-name token syntax (RFC 9110)
+     *
+     * @param name - Parameter name (also the tool argument key)
+     * @param headerName - HTTP header name portion (results in `Mcp-Param-{headerName}`)
+     * @param description - Human-readable description for the LLM
+     * @returns Builder with narrowed `TInput` type
+     *
+     * @example
+     * ```typescript
+     * const executeSql = f.query('db.execute_sql')
+     *     .withHeaderParam('region', 'Region', 'Cloud region for the query')
+     *     .withString('query', 'SQL query to execute')
+     *     .handle(async (input) => { /* ... *\/ });
+     * ```
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#x-mcp-header
+     */
+    withHeaderParam<K extends string>(
+        name: K,
+        headerName: string,
+        description?: string,
+    ): FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx> {
+        if (!headerName || !headerName.trim()) {
+            throw new Error(
+                `Empty header name for x-mcp-header on parameter "${name}" of tool "${this._name}".`,
+            );
+        }
+        this._addParam(name, withDesc(z.string(), description));
+        this._headerParams.set(name, headerName);
+        return this as unknown as FluentToolBuilder<TContext, TInput & Record<K, string>, TCtx>;
+    }
+
+    /**
+     * Set the output schema for structured tool results (MCP 2.0 — `2026-07-28`).
+     *
+     * When provided, the tool definition includes `outputSchema` so clients
+     * and LLMs can validate structured results. Pair with `successStructured()`
+     * to return `structuredContent` conforming to this schema.
+     *
+     * @param schema - JSON Schema object describing the tool's output structure
+     * @returns `this` for chaining
+     *
+     * @example
+     * ```typescript
+     * const getWeather = f.query('weather.get')
+     *     .withString('location', 'City name')
+     *     .withOutputSchema({
+     *         type: 'object',
+     *         properties: {
+     *             temperature: { type: 'number' },
+     *             conditions: { type: 'string' },
+     *         },
+     *         required: ['temperature', 'conditions'],
+     *     })
+     *     .handle(async (input) => successStructured({ temperature: 22.5, conditions: 'Partly cloudy' }));
+     * ```
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#output-schema
+     */
+    withOutputSchema(schema: Record<string, unknown>): this {
+        this._outputSchema = schema;
+        return this;
+    }
+
+    /**
+     * Set a human-readable display title for the tool (MCP 2.0 — `2026-07-28`).
+     *
+     * Shown in client UIs alongside the tool name.
+     *
+     * @param title - Human-readable display name
+     * @returns `this` for chaining
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+     */
+    withTitle(title: string): this {
+        this._title = title;
+        return this;
+    }
+
+    /**
+     * Set an icon for the tool (MCP 2.0 — `2026-07-28`).
+     *
+     * Visual identifier for display in client UIs.
+     *
+     * @param src - URI pointing to the icon resource (HTTPS or data URI)
+     * @param opts - Optional MIME type, sizes, and theme
+     * @returns `this` for chaining
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/basic#index#icons
+     */
+    withIcon(
+        src: string,
+        opts?: { mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' },
+    ): this {
+        const icon: { src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' } = { src };
+        if (opts?.mimeType) icon.mimeType = opts.mimeType;
+        if (opts?.sizes) icon.sizes = opts.sizes;
+        if (opts?.theme) icon.theme = opts.theme;
+        this._icons = [...(this._icons ?? []), icon];
+        return this;
     }
 
     /**
@@ -1193,6 +1320,10 @@ export class FluentToolBuilder<
             fsmStates: this._fsmStates,
             fsmTransition: this._fsmTransition,
             interactive: this._interactive,
+            headerParams: this._headerParams,
+            outputSchema: this._outputSchema,
+            title: this._title,
+            icons: this._icons,
             handler: handler as (input: Record<string, unknown>, ctx: TCtx) => Promise<ToolResponse | unknown>,
         });
     }

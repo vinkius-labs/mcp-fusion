@@ -80,14 +80,14 @@ describe('MCPFusionYamlParser', () => {
         const spec = parseMCPFusionYaml(fixture('valid-complete.yaml'));
         expect(spec.secrets).toBeDefined();
         expect(Object.keys(spec.secrets!)).toEqual(['API_TOKEN', 'JIRA_EMAIL', 'JIRA_TOKEN']);
-        expect(spec.secrets!['API_TOKEN'].sensitive).toBe(true);
+        expect(spec.secrets!['API_TOKEN']!.sensitive).toBe(true);
     });
 
     it('preserves all connections', () => {
         const spec = parseMCPFusionYaml(fixture('valid-complete.yaml'));
         expect(spec.connections).toBeDefined();
         expect(Object.keys(spec.connections!)).toEqual(['intranet', 'jira']);
-        expect(spec.connections!['jira'].auth?.type).toBe('basic');
+        expect(spec.connections!['jira']!.auth?.type).toBe('basic');
     });
 });
 
@@ -636,7 +636,7 @@ describe('loadYamlServer (integration)', () => {
 
         const search = server.tools.find(t => t.name === 'search_employee');
         expect(search).toBeDefined();
-        expect(search!.annotations?.readOnlyHint).toBe(true);
+        expect(search!.annotations?.['readOnlyHint']).toBe(true);
 
         // Resources: 2 (manual + benefits)
         expect(server.resources).toHaveLength(2);

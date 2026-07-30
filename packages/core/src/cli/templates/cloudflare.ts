@@ -12,7 +12,7 @@ import { CORE_VERSION, MCP_SDK_VERSION, CLOUDFLARE_ADAPTER_VERSION, ZOD_VERSION,
 /** Generate `package.json` for Cloudflare Workers project */
 export function cloudflarePackageJson(config: ProjectConfig): string {
     const deps: Record<string, string> = {
-        '@modelcontextprotocol/sdk': MCP_SDK_VERSION,
+        '@modelcontextprotocol/server': MCP_SDK_VERSION,
         '@mcpfusion/core': CORE_VERSION,
         '@mcpfusion/cloudflare': CLOUDFLARE_ADAPTER_VERSION,
         'zod': ZOD_VERSION,
@@ -37,7 +37,7 @@ export function cloudflarePackageJson(config: ProjectConfig): string {
         devDeps['prisma'] = '^6.0.0';
     }
     if (config.testing) {
-        devDeps['vitest'] = '^3.0.5';
+        devDeps['vitest'] = '^3.2.4';
         devDeps['@mcpfusion/testing'] = TESTING_VERSION;
     }
 
@@ -65,7 +65,7 @@ export function cloudflarePackageJson(config: ProjectConfig): string {
         scripts,
         dependencies: deps,
         devDependencies: devDeps,
-        engines: { node: '>=18.0.0' },
+        engines: { node: '>=20.0.0' },
     };
 
     return JSON.stringify(pkg, null, 4) + '\n';
@@ -103,7 +103,7 @@ export function cloudflareTsconfig(): string {
 export function cloudflareWranglerToml(config: ProjectConfig): string {
     return `name = "${config.name}"
 main = "src/worker.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ── Bindings ────────────────────────────────────────

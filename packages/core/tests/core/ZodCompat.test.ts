@@ -59,17 +59,13 @@ describe(`ZodCompat (Zod ${isZod4 ? '4' : '3'}, v${zodVersion})`, () => {
             expect(result.required).not.toContain('optional_field');
         });
 
-        it('strips $schema metadata in Zod 4 (Zod 3 preserves it)', () => {
+        it('preserves $schema metadata in both Zod 3 and Zod 4 (MCP 2.0 compliance)', () => {
             const schema = z.object({ id: z.string() });
             const result = zodToJson(schema);
 
-            if (isZod4) {
-                // Zod 4 path strips $schema
-                expect(result.$schema).toBeUndefined();
-            } else {
-                // Zod 3 path preserves $schema from zod-to-json-schema
-                expect(result.$schema).toBeDefined();
-            }
+            // MCP 2.0 requires $schema = 'https://json-schema.org/draft/2020-12/schema'
+            // in both Zod 3 and Zod 4 paths.
+            expect(result.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
         });
 
         it('handles z.enum correctly', () => {

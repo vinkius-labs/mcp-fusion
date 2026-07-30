@@ -1,17 +1,61 @@
 # MCP FUSION
 
-**The TypeScript framework for secure MCP servers.**
+**The TypeScript framework for secure, MCP 2.0-native servers.**
 
 [![npm version](https://img.shields.io/npm/v/@mcpfusion/core.svg?color=0ea5e9)](https://www.npmjs.com/package/@mcpfusion/core)
 [![Downloads](https://img.shields.io/npm/dw/@mcpfusion/core)](https://www.npmjs.com/package/@mcpfusion/core)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![MCP Standard](https://img.shields.io/badge/MCP-Standard-purple)](https://modelcontextprotocol.io/)
+[![MCP 2.0](https://img.shields.io/badge/MCP-2.0_(2026--07--28)-purple)](https://modelcontextprotocol.io/specification/2026-07-28)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green)](https://github.com/vinkius-labs/mcpfusion/blob/main/LICENSE)
 [![llms.txt](https://img.shields.io/badge/llms.txt-AI_Ready-8b5cf6)](https://mcpfusion.vinkius.com/llms.txt)
 
 MCP Fusion is a TypeScript framework that enforces security at the architectural level of every MCP server. Raw data never reaches the LLM without passing through a typed egress firewall. Tools are physically removed from the agent's namespace when the workflow state forbids them. Every behavioral surface is hashed, locked, and auditable in version control.
 
 The framework ships with a [SKILL.md](https://github.com/vinkius-labs/mcpfusion/blob/main/.claude/skills/mcpfusion-development/SKILL.md) — a machine-readable architectural contract. AI coding agents read the Skill and produce correct, governed servers on the first pass.
+
+---
+
+## MCP 2.0 (`2026-07-28`) — Full Compliance
+
+MCP Fusion is **100% compatible with MCP 2.0** (protocol revision `2026-07-28`). Every feature the spec defines is implemented or handled via the MCP SDK v2. Every feature the spec deprecates is deprecated in MCP Fusion.
+
+### Implemented MCP 2.0 Features
+
+| Feature | Status | How |
+|---|---|---|
+| **Stateless protocol** | ✅ | `transport: 'stateless'` — per-request serving, no sessions, no `initialize` handshake, `Mcp-Method`/`Mcp-Name` header routing |
+| **Multi Round-Trip Requests (MRTR)** | ✅ | `requireInput()` + `readInput()` — native `InputRequiredResult` / `resultType: "input_required"` model |
+| **Request State Sealing** | ✅ | `requestStateKey` — HMAC-SHA256 sealed state for multi-round elicitation (SEP-2322) |
+| **Structured Content** | ✅ | `successStructured()` + `structuredContent` field on `ToolResponse` |
+| **Output Schema** | ✅ | `outputSchema` in `compileToolDefinition()` wire format |
+| **List Caching** | ✅ | `ttlMs` / `cacheScope` directly on result root (SEP-2549) — `public` / `private` scope |
+| **Pagination** | ✅ | `cursor` / `nextCursor` on `prompts/list` (extensible to all list ops) |
+| **`server/discover`** | ✅ | Handled by MCP SDK v2 Server |
+| **`resultType`** | ✅ | Handled by MCP SDK v2 Server (`"complete"` / `"input_required"`) |
+| **Per-request `_meta`** | ✅ | `io.modelcontextprotocol/*` fields handled by MCP SDK v2 |
+| **`resources/templates/list`** | ✅ | URI template resources with pagination |
+| **`subscriptions/listen`** | ✅ | MCP 2.0 stream-based subscription pattern with filter + acknowledgment |
+| **`x-mcp-header`** | ✅ | `.withHeaderParam()` on FluentToolBuilder — parameter mirroring to HTTP headers |
+| **`title` & `icons`** | ✅ | `Tool.title`, `BaseModel.title`, `Icon` domain model, `createIcon()` |
+| **`resource_link`** | ✅ | Content type in tool results and prompt messages |
+| **JSON Schema 2020-12** | ✅ | Default dialect enforced by MCP SDK v2 |
+| **Error codes** (`-32020`–`-32022`) | ✅ | `HeaderMismatch`, `MissingRequiredClientCapability`, `UnsupportedProtocolVersion` |
+| **Protocol version** | ✅ | Defaults to `2026-07-28` in all server metadata (Server Card, introspection) |
+
+### Deprecated Features (mirrored from MCP 2.0)
+
+All features deprecated by MCP 2.0 (SEP-2577 / SEP-2596) are deprecated in MCP Fusion with `@deprecated` markers and migration guidance. They remain functional during the deprecation window (earliest removal: `2027-07-28`).
+
+| Deprecated Feature | Migration Path |
+|---|---|
+| **Roots** | Pass directories/files via tool parameters, resource URIs, or server configuration |
+| **Sampling** | Integrate directly with LLM provider APIs |
+| **Logging** (`notifications/message`) | Log to `stderr` for stdio; use OpenTelemetry (`TelemetrySink` / `DebugObserver`) |
+| **Dynamic Client Registration** | Client ID Metadata Documents |
+| **HTTP+SSE transport** | Streamable HTTP (`transport: 'http'`) or stateless (`transport: 'stateless'`) |
+| **`includeContext` values** | Omit the field or use `"none"` |
+
+> 📄 **[Deprecation Registry](https://mcpfusion.vinkius.com/deprecation-registry)** — full compliance statement and migration guide.
 
 ---
 

@@ -31,6 +31,32 @@ export interface CompilerInput<TContext> {
     readonly middlewares: readonly MiddlewareFn<TContext>[];
     readonly commonSchema: ZodObject<ZodRawShape> | undefined;
     readonly annotations: Record<string, unknown> | undefined;
+    /**
+     * Optional JSON Schema for the tool's output (MCP 2.0 — `2026-07-28`).
+     *
+     * When provided, the tool definition includes `outputSchema` so clients
+     * and LLMs can validate structured results. Pair with `successStructured()`
+     * to return `structuredContent` conforming to this schema.
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#output-schema
+     */
+    readonly outputSchema?: Record<string, unknown> | undefined;
+    /**
+     * Optional human-readable display title for the tool (MCP 2.0 — `2026-07-28`).
+     * Shown in client UIs alongside the tool name.
+     */
+    readonly title?: string | undefined;
+    /**
+     * Optional icons for the tool (MCP 2.0 — `2026-07-28`).
+     * Array of icon objects with `src`, `mimeType?`, `sizes?`, `theme?`.
+     */
+    readonly icons?: ReadonlyArray<{ src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' }> | undefined;
+    /**
+     * MCP 2.0 x-mcp-header parameter map. Keys are parameter names,
+     * values are HTTP header names. Injected into inputSchema properties
+     * during compilation so they survive cache invalidation.
+     */
+    readonly headerParams?: ReadonlyMap<string, string> | undefined;
 }
 
 /** Output of the compiler: the tool definition + execution-time caches */
@@ -62,6 +88,30 @@ export function compileToolDefinition<TContext>(
     const tool: McpTool = { name, description, inputSchema };
     if (Object.keys(annotations).length > 0) {
         Object.defineProperty(tool, 'annotations', { value: annotations, enumerable: true });
+    }
+    // MCP 2.0: include outputSchema when provided (structured tool outputs)
+    if (input.outputSchema && Object.keys(input.outputSchema).length > 0) {
+        Object.defineProperty(tool, 'outputSchema', { value: input.outputSchema, enumerable: true });
+    }
+    // MCP 2.0: include title when provided (human-readable display name)
+    if (input.title) {
+        Object.defineProperty(tool, 'title', { value: input.title, enumerable: true });
+    }
+    // MCP 2.0: include icons when provided (visual identifiers for UI)
+    if (input.icons && input.icons.length > 0) {
+        Object.defineProperty(tool, 'icons', { value: [...input.icons], enumerable: true });
+    }
+    // MCP 2.0: inject x-mcp-header annotations into inputSchema properties.
+    // Done during compilation (not post-build) so annotations survive cache invalidation.
+    if (input.headerParams && input.headerParams.size > 0) {
+        const props = tool.inputSchema?.properties as Record<string, Record<string, unknown>> | undefined;
+        if (props) {
+            for (const [paramName, headerName] of input.headerParams) {
+                if (props[paramName]) {
+                    props[paramName] = { ...props[paramName], 'x-mcp-header': headerName };
+                }
+            }
+        }
     }
 
     // ── Pre-compiled caches ──────────────────────────────

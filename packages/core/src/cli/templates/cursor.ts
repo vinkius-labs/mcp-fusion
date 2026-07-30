@@ -6,7 +6,7 @@ import type { ProjectConfig } from '../types.js';
 
 /** Generate `.cursor/mcp.json` — Auto-detected by Cursor Editor */
 export function cursorMcpJson(config: ProjectConfig): string {
-    const serverEntry = config.transport === 'sse'
+    const serverEntry = config.transport === 'http'
         ? { url: 'http://localhost:3001/mcp' }
         : { command: 'npx', args: ['tsx', 'src/server.ts'] };
 

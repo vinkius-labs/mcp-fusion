@@ -70,7 +70,8 @@ export interface YamlServerMeta {
 
     /**
      * MCP capability flags declared during initialization.
-     * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning
      */
     readonly capabilities?: YamlCapabilities;
 
@@ -85,7 +86,15 @@ export interface YamlCapabilities {
     readonly tools?: boolean;
     readonly resources?: boolean;
     readonly prompts?: boolean;
-    /** Allows the server to request LLM completions from the host. */
+    /**
+     * Allows the server to request LLM completions from the host.
+     *
+     * @deprecated As of MCP 2.0 (`2026-07-28`, SEP-2577), the Sampling feature
+     * is deprecated. New implementations **SHOULD NOT** adopt it — integrate
+     * directly with LLM provider APIs instead. This flag remains accepted
+     * during the deprecation window (earliest removal: 2027-07-28) but emits
+     * a validation warning. See the [Deprecation Registry](/docs/deprecation-registry).
+     */
     readonly sampling?: boolean;
     /** Allows the server to ask users questions mid-execution. */
     readonly elicitation?: boolean;
@@ -280,7 +289,7 @@ export interface YamlPromptDef {
 
 /**
  * MCP Tool Annotations — advisory hints for the host.
- * @see https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+ * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools
  */
 export interface YamlToolAnnotations {
     /** Tool only reads data — no side effects. */

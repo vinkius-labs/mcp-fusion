@@ -36,9 +36,6 @@ vi.mock('@modelcontextprotocol/server', () => ({
         connect = mockConnect;
         close = mockClose;
     },
-}));
-
-vi.mock('@modelcontextprotocol/server', () => ({
     WebStandardStreamableHTTPServerTransport: class MockTransport {
         constructor(opts: Record<string, unknown>) {
             mockTransportConstructor(opts);

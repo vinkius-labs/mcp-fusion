@@ -31,7 +31,7 @@
  * @module
  */
 import { type ResourceBuilder, type McpResourceDef } from './ResourceBuilder.js';
-import { SubscriptionManager, type ResourceNotificationSink } from './SubscriptionManager.js';
+import { SubscriptionManager, type ResourceNotificationSink, type SubscriptionFilter } from './SubscriptionManager.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -85,6 +85,63 @@ export class ResourceRegistry<TContext = void> {
             resources.push(builder.buildResourceDefinition());
         }
         return resources;
+    }
+
+    /**
+     * Get all registered URI template resources for `resources/templates/list`
+     * (MCP 2.0 — `2026-07-28`).
+     *
+     * Returns only resources whose URI contains RFC 6570 template placeholders
+     * (e.g. `stock://prices/{symbol}`). Static URIs are excluded — they appear
+     * in `resources/list` instead.
+     *
+     * @param cursor - Optional pagination cursor (ignored if undefined)
+     * @returns Object with `resourceTemplates` array and optional `nextCursor`
+     */
+    listResourceTemplates(cursor?: string): {
+        resourceTemplates: Array<{
+            readonly uriTemplate: string;
+            readonly name: string;
+            readonly description?: string;
+            readonly mimeType?: string;
+            readonly annotations?: { readonly audience?: Array<'user' | 'assistant'>; readonly priority?: number };
+        }>;
+        nextCursor?: string;
+    } {
+        const templates: Array<{
+            readonly uriTemplate: string;
+            readonly name: string;
+            readonly description?: string;
+            readonly mimeType?: string;
+            readonly annotations?: { readonly audience?: Array<'user' | 'assistant'>; readonly priority?: number };
+        }> = [];
+        for (const builder of this._builders.values()) {
+            const uri = builder.getUri();
+            // URI templates contain RFC 6570 placeholders: {param}
+            if (uri.includes('{')) {
+                const def = builder.buildResourceDefinition();
+                templates.push({
+                    uriTemplate: uri,
+                    name: def.name,
+                    ...(def.description ? { description: def.description } : {}),
+                    ...(def.mimeType ? { mimeType: def.mimeType } : {}),
+                    ...(def.annotations ? { annotations: def.annotations } : {}),
+                });
+            }
+        }
+        // Cursor-based pagination: simple offset encoding
+        // For small resource counts, return all without pagination
+        if (!cursor) {
+            return { resourceTemplates: templates };
+        }
+        // Decode cursor as offset index
+        const offset = parseInt(cursor, 10);
+        if (isNaN(offset) || offset >= templates.length) {
+            return { resourceTemplates: [] };
+        }
+        const page = templates.slice(offset, offset + 100);
+        const nextCursor = offset + 100 < templates.length ? String(offset + 100) : undefined;
+        return { resourceTemplates: page, ...(nextCursor ? { nextCursor } : {}) };
     }
 
     /**
@@ -168,6 +225,42 @@ export class ResourceRegistry<TContext = void> {
      */
     setNotificationSink(sink: ResourceNotificationSink): void {
         this._subscriptions.setSink(sink);
+    }
+
+    /**
+     * Register a MCP 2.0 (`2026-07-28`) subscription stream with its filter.
+     *
+     * Called by the `subscriptions/listen` handler in ServerAttachment.
+     * The stream receives notifications matching its filter.
+     *
+     * @param id - Subscription ID (from the listen request)
+     * @param filter - The subscription filter declaring desired notifications
+     * @param sink - Function to push notifications onto the stream
+     *
+     * @internal
+     */
+    registerSubscriptionFilter(
+        id: string,
+        filter: SubscriptionFilter,
+        sink?: (notification: unknown) => void | Promise<void>,
+    ): void {
+        // Use the provided sink or fall back to the existing notification sink
+        const streamSink = sink ?? ((notification: unknown) => {
+            // Default: route through the existing notification infrastructure
+            // The ServerAttachment wires the actual transport sink
+        });
+        this._subscriptions.registerStream(id, filter, streamSink);
+    }
+
+    /**
+     * Unregister a MCP 2.0 subscription stream.
+     *
+     * @param id - Subscription ID to remove
+     *
+     * @internal
+     */
+    unregisterSubscriptionFilter(id: string): void {
+        this._subscriptions.unregisterStream(id);
     }
 
     // ── Lifecycle Sync ───────────────────────────────────

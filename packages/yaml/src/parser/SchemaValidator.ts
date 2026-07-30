@@ -42,7 +42,7 @@ const ConnectionDefSchema = z.object({
     type: z.literal('rest'),
     base_url: z.string(),
     auth: AuthDefSchema.optional(),
-    headers: z.record(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
     timeout_ms: z.number().int().min(1000).optional(),
     retry: RetryPolicySchema.optional(),
 });
@@ -54,12 +54,12 @@ const ResourceExecuteSchema = z.object({
     connection: z.string().optional(),
     method: z.string().optional(),
     path: z.string().optional(),
-    headers: z.record(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
 });
 
 const ResponseTransformSchema = z.object({
     extract: z.array(z.string()).optional(),
-    rename: z.record(z.string()).optional(),
+    rename: z.record(z.string(), z.string()).optional(),
     max_items: z.number().int().min(1).optional(),
 });
 
@@ -91,7 +91,7 @@ const PromptMessageSchema = z.object({
 const PromptDefSchema = z.object({
     name: z.string(),
     description: z.string().optional(),
-    arguments: z.record(PromptArgDefSchema).optional(),
+    arguments: z.record(z.string(), PromptArgDefSchema).optional(),
     messages: z.array(PromptMessageSchema).min(1),
 });
 
@@ -114,7 +114,7 @@ const ToolExecuteSchema = z.object({
     connection: z.string(),
     method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
     path: z.string(),
-    query: z.record(z.string()).optional(),
+    query: z.record(z.string(), z.string()).optional(),
     body: z.unknown().optional(),
 });
 
@@ -125,7 +125,7 @@ const ToolDefSchema = z.object({
     rules: z.array(z.string()).optional(),
     tag: z.string().optional(),
     annotations: ToolAnnotationsSchema.optional(),
-    parameters: z.record(ParamDefSchema).optional(),
+    parameters: z.record(z.string(), ParamDefSchema).optional(),
     execute: ToolExecuteSchema,
     response: ResponseTransformSchema.optional(),
 });
@@ -134,6 +134,12 @@ const CapabilitiesSchema = z.object({
     tools: z.boolean().optional(),
     resources: z.boolean().optional(),
     prompts: z.boolean().optional(),
+    /**
+     * @deprecated MCP 2.0 (2026-07-28, SEP-2577) deprecated Sampling.
+     * New implementations SHOULD NOT adopt it — integrate directly with
+     * LLM provider APIs. Accepted during the deprecation window
+     * (earliest removal: 2027-07-28). See /docs/deprecation-registry.
+     */
     sampling: z.boolean().optional(),
     elicitation: z.boolean().optional(),
 });
@@ -181,8 +187,8 @@ const SettingsSchema = z.object({
 const MCPFusionYamlRootSchema = z.object({
     version: z.literal('1.0'),
     server: ServerMetaSchema,
-    secrets: z.record(SecretDefSchema).optional(),
-    connections: z.record(ConnectionDefSchema).optional(),
+    secrets: z.record(z.string(), SecretDefSchema).optional(),
+    connections: z.record(z.string(), ConnectionDefSchema).optional(),
     resources: z.array(ResourceDefSchema).optional(),
     prompts: z.array(PromptDefSchema).optional(),
     tools: z.array(ToolDefSchema).optional(),

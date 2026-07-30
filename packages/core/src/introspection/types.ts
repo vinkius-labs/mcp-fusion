@@ -190,7 +190,13 @@ export interface ServerCardConfig {
 
     /**
      * MCP protocol version supported by this server.
-     * @default '2025-06-18'
+     *
+     * MCP Fusion defaults to `'2026-07-28'` (MCP 2.0), which introduced the
+     * stateless protocol, per-request capability negotiation, and deprecated
+     * Roots, Sampling, Logging, and Dynamic Client Registration
+     * (see [MCP 2.0 Deprecated Features](/docs/deprecation-registry)).
+     *
+     * @default '2026-07-28'
      */
     readonly protocolVersion?: string;
 }

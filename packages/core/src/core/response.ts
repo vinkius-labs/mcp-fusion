@@ -98,8 +98,85 @@ export function escapeXmlAttr(str: string): string {
  * ```
  */
 export interface ToolResponse {
-    readonly content: ReadonlyArray<{ readonly type: "text"; readonly text: string }>;
+    /**
+     * Content blocks returned to the client.
+     *
+     * MCP 2.0 (`2026-07-28`) supports multiple content types in tool results:
+     * `text`, `image`, `audio`, `resource_link`, and `resource` (embedded).
+     * See: https://modelcontextprotocol.io/specification/2026-07-28/server/tools#tool-result
+     */
+    readonly content: ReadonlyArray<TextContent | ImageContent | AudioContent | ResourceLinkContent | EmbeddedResourceContent>;
     readonly isError?: boolean;
+    /**
+     * Structured tool output conforming to the tool's `outputSchema`
+     * (MCP 2.0 — `2026-07-28`).
+     *
+     * When provided, clients and LLMs can parse the structured data
+     * directly instead of parsing the text content. The framework
+     * also includes a JSON-serialized copy in a `text` content block
+     * for backward compatibility with MCP 1.0 clients.
+     *
+     * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#structured-content
+     */
+    readonly structuredContent?: unknown;
+}
+
+// ── MCP 2.0 Content Block Types ──────────────────────────
+
+/**
+ * Text content block (MCP 2.0).
+ * The most common content type for natural language tool results.
+ */
+export interface TextContent {
+    readonly type: 'text';
+    readonly text: string;
+}
+
+/**
+ * Image content block (MCP 2.0).
+ * Base64-encoded image data with a MIME type.
+ */
+export interface ImageContent {
+    readonly type: 'image';
+    readonly data: string;
+    readonly mimeType: string;
+}
+
+/**
+ * Audio content block (MCP 2.0).
+ * Base64-encoded audio data with a MIME type.
+ */
+export interface AudioContent {
+    readonly type: 'audio';
+    readonly data: string;
+    readonly mimeType: string;
+}
+
+/**
+ * Resource link content block (MCP 2.0).
+ * A link to a resource that the client can fetch or subscribe to.
+ * The linked resource is NOT embedded — the client must fetch it separately.
+ */
+export interface ResourceLinkContent {
+    readonly type: 'resource_link';
+    readonly uri: string;
+    readonly name?: string;
+    readonly description?: string;
+    readonly mimeType?: string;
+}
+
+/**
+ * Embedded resource content block (MCP 2.0).
+ * The full resource content is embedded directly in the tool result.
+ */
+export interface EmbeddedResourceContent {
+    readonly type: 'resource';
+    readonly resource: {
+        readonly uri: string;
+        readonly mimeType?: string;
+        readonly text?: string;
+        readonly blob?: string;
+    };
 }
 
 // ============================================================================
@@ -139,6 +216,128 @@ export function success(data: string | object, compiledStringify?: StringifyFn):
     const resp: ToolResponse = { content: [{ type: "text", text }] };
     Object.defineProperty(resp, TOOL_RESPONSE_BRAND, { value: true });
     return resp;
+}
+
+/**
+ * Create a structured success response with both text and structured content
+ * (MCP 2.0 — `2026-07-28`).
+ *
+ * Returns a {@link ToolResponse} with `structuredContent` set to the raw
+ * data object, plus a JSON-serialized copy in a `text` content block for
+ * backward compatibility with MCP 1.0 clients.
+ *
+ * @param data - Any JSON-serializable value (object, array, primitive)
+ * @param compiledStringify - Optional custom serializer for the text copy
+ * @returns A {@link ToolResponse} with `structuredContent` populated
+ *
+ * @example
+ * ```typescript
+ * // Structured output — clients can parse structuredContent directly
+ * return successStructured({ temperature: 22.5, conditions: 'Partly cloudy', humidity: 65 });
+ * ```
+ *
+ * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#structured-content
+ */
+export function successStructured(data: unknown, compiledStringify?: StringifyFn): ToolResponse {
+    const text = compiledStringify ? compiledStringify(data) : JSON.stringify(data, null, 2);
+    const resp: ToolResponse = {
+        content: [{ type: "text", text }],
+        structuredContent: data,
+    };
+    Object.defineProperty(resp, TOOL_RESPONSE_BRAND, { value: true });
+    return resp;
+}
+
+/**
+ * Create a resource link content block (MCP 2.0 — `2026-07-28`).
+ *
+ * Returns a link to a resource that the client can fetch or subscribe to.
+ * The resource content is NOT embedded — the client must fetch it separately
+ * via `resources/read`.
+ *
+ * @param uri - The resource URI (e.g. `file:///project/src/main.rs`)
+ * @param opts - Optional name, description, and MIME type
+ * @returns A {@link ResourceLinkContent} block
+ *
+ * @example
+ * ```typescript
+ * return {
+ *     content: [
+ *         { type: 'text', text: 'Found the file:' },
+ *         resourceLink('file:///project/src/main.rs', { name: 'main.rs', mimeType: 'text/x-rust' }),
+ *     ],
+ * };
+ * ```
+ *
+ * @see https://modelcontextprotocol.io/specification/2026-07-28/server/tools#resource-links
+ */
+export function resourceLink(
+    uri: string,
+    opts?: { name?: string; description?: string; mimeType?: string },
+): ResourceLinkContent {
+    return {
+        type: 'resource_link',
+        uri,
+        ...(opts?.name ? { name: opts.name } : {}),
+        ...(opts?.description ? { description: opts.description } : {}),
+        ...(opts?.mimeType ? { mimeType: opts.mimeType } : {}),
+    };
+}
+
+/**
+ * Create an image content block (MCP 2.0 — `2026-07-28`).
+ *
+ * @param data - Base64-encoded image data
+ * @param mimeType - MIME type (e.g. `image/png`, `image/jpeg`)
+ * @returns An {@link ImageContent} block
+ *
+ * @example
+ * ```typescript
+ * return {
+ *     content: [
+ *         { type: 'text', text: 'Here is the chart:' },
+ *         imageContent(base64Data, 'image/png'),
+ *     ],
+ * };
+ * ```
+ */
+export function imageContent(data: string, mimeType: string): ImageContent {
+    return { type: 'image', data, mimeType };
+}
+
+/**
+ * Create an audio content block (MCP 2.0 — `2026-07-28`).
+ *
+ * @param data - Base64-encoded audio data
+ * @param mimeType - MIME type (e.g. `audio/wav`, `audio/mpeg`)
+ * @returns An {@link AudioContent} block
+ */
+export function audioContent(data: string, mimeType: string): AudioContent {
+    return { type: 'audio', data, mimeType };
+}
+
+/**
+ * Create an embedded resource content block (MCP 2.0 — `2026-07-28`).
+ *
+ * The full resource content is embedded directly in the tool result.
+ *
+ * @param uri - The resource URI
+ * @param opts - Optional MIME type, text content, or base64 blob
+ * @returns An {@link EmbeddedResourceContent} block
+ */
+export function embeddedResource(
+    uri: string,
+    opts?: { mimeType?: string; text?: string; blob?: string },
+): EmbeddedResourceContent {
+    return {
+        type: 'resource',
+        resource: {
+            uri,
+            ...(opts?.mimeType ? { mimeType: opts.mimeType } : {}),
+            ...(opts?.text ? { text: opts.text } : {}),
+            ...(opts?.blob ? { blob: opts.blob } : {}),
+        },
+    };
 }
 
 /**

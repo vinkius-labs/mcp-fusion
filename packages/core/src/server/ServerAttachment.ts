@@ -27,6 +27,7 @@ import { computeServerDigest } from '../introspection/BehaviorDigest.js';
 import { type ToolExposition } from '../exposition/types.js';
 import { compileExposition, type FlatRoute, type ExpositionResult } from '../exposition/ExpositionCompiler.js';
 import { type ResourceRegistry } from '../resource/ResourceRegistry.js';
+import type { SubscriptionFilter } from '../resource/SubscriptionManager.js';
 import { type PromptRegistry, type PromptFilter } from '../prompt/PromptRegistry.js';
 import { type LoopbackContext } from '../prompt/types.js';
 import type { StateMachineGate, FsmStateStore, FsmSnapshot } from '../fsm/StateMachineGate.js';
@@ -56,8 +57,19 @@ interface McpRequestExtra {
     sendNotification: (notification: unknown) => Promise<void>;
     /**
      * Send a request to the client within the current request scope.
-     * Used by MCP Elicitation (`elicitation/create`) for human-in-the-loop workflows.
-     * Only available when the MCP SDK version supports bidirectional requests.
+     *
+     * Used by MCP Elicitation (`elicitation/create`) for human-in-the-loop
+     * workflows on 2025-era (stateful) connections. Only available when the
+     * MCP SDK version supports bidirectional requests.
+     *
+     * @deprecated MCP 2.0 (`2026-07-28`) removes the persistent server→client
+     * request channel that this field depends on. The stateless protocol uses
+     * return-based elicitation (`requireInput()` + `readInput()`) instead.
+     * This field remains wired for backward compatibility with 2025-era
+     * clients during the deprecation window (earliest removal: 2027-07-28).
+     * New implementations SHOULD NOT rely on `sendRequest` — use
+     * `requireInput()` to request input and `readInput()` to consume answers.
+     * See the [Deprecation Registry](/docs/deprecation-registry).
      */
     sendRequest?: (request: { method: string; params: unknown }) => Promise<unknown>;
     /**
@@ -79,7 +91,7 @@ export interface AttachOptions<TContext> {
      * Cache hint (in milliseconds) for `tools/list`, `prompts/list`,
      * `resources/list`, and `resources/read` responses (MCP `2026-07-28` SEP-2549).
      *
-     * When set, the framework emits `_meta.ttlMs` and `_meta.cacheScope: 'server'`
+     * When set, the framework emits `ttlMs` and `cacheScope: 'public'`
      * on list responses so clients can cache tool catalogs and keep upstream
      * prompt caches stable across reconnects. Set to `0` to disable caching
      * (equivalent to `no-store`).
@@ -93,13 +105,13 @@ export interface AttachOptions<TContext> {
      *
      * - `'private'` (default) — most conservative; responses are cacheable
      *   only by the client that issued the request.
-     * - `'server'` — responses may be cached by shared proxies/CDNs/gateways.
+     * - `'public'` — responses may be cached by shared proxies/CDNs/gateways.
      *
      * Only effective when `listCacheTtlMs > 0`.
      *
      * @default 'private'
      */
-    listCacheScope?: 'private' | 'server';
+    listCacheScope?: 'private' | 'public';
     /**
      * Factory function to create a per-request context.
      * Receives the MCP `extra` object (session info, meta, etc.).
@@ -537,7 +549,7 @@ interface HandlerContext<TContext> {
     /** Cache hint (ms) for list responses per MCP 2026-07-28 SEP-2549. */
     readonly listCacheTtlMs?: number;
     /** Cache scope for list responses ('private' default, 'server' for shared caches). */
-    readonly listCacheScope?: 'private' | 'server';
+    readonly listCacheScope?: 'private' | 'public';
     /** Tool argument key to use as FSM/handoff state handle (2026-07-28 stateless). */
     readonly stateHandleKey?: string;
 }
@@ -658,10 +670,14 @@ async function cloneAndRestoreFsm<TContext>(
  * or `undefined` when disabled (ttlMs === 0) — zero overhead.
  *
  * The spec defaults to `cacheScope: 'private'` (most conservative). The
- * framework allows overriding to `'server'` for shared caches behind a CDN
+ * framework allows overriding to `'public'` for shared caches behind a CDN
  * or gateway.
+ *
+ * MCP 2.0 (2026-07-28) places `ttlMs` and `cacheScope` directly on the
+ * result object root — NOT inside `_meta`. See:
+ * https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching
  */
-function buildListCacheMeta(hCtx: { readonly listCacheTtlMs?: number | undefined; readonly listCacheScope?: 'private' | 'server' | undefined }): { ttlMs: number; cacheScope: 'private' | 'server' } | undefined {
+function buildListCacheMeta(hCtx: { readonly listCacheTtlMs?: number | undefined; readonly listCacheScope?: 'private' | 'public' | undefined }): { ttlMs: number; cacheScope: 'private' | 'public' } | undefined {
     const ttlMs = hCtx.listCacheTtlMs ?? 0;
     if (ttlMs <= 0) return undefined;
     return { ttlMs, cacheScope: hCtx.listCacheScope ?? 'private' };
@@ -711,8 +727,24 @@ function createToolListHandler<TContext>(hCtx: HandlerContext<TContext>) {
             tools = tools.filter(tool => fsm!.isToolAllowed(tool.name));
         }
 
+        // MCP 2.0 pagination: cursor / nextCursor (SEP-2549).
+        // Simple index-based pagination — the cursor is the opaque offset.
+        // Default page size is 1000 tools (most servers have fewer).
+        const PAGE_SIZE = 1000;
+        const requestParams = (_request as { params?: { cursor?: string } })?.params;
+        const cursor = requestParams?.cursor;
+        const offset = cursor ? Math.max(0, parseInt(cursor, 10) || 0) : 0;
+        const pagedTools = tools.slice(offset, offset + PAGE_SIZE);
+        const nextCursor = offset + PAGE_SIZE < tools.length
+            ? String(offset + PAGE_SIZE)
+            : undefined;
+
         const cacheMeta = buildListCacheMeta(hCtx);
-        return { tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(tools) : tools, ...(cacheMeta ? { _meta: cacheMeta } : {}) };
+        return {
+            tools: hCtx.syncLayer ? hCtx.syncLayer.decorateTools(pagedTools) : pagedTools,
+            ...(nextCursor ? { nextCursor } : {}),
+            ...(cacheMeta ?? {}),
+        };
     };
 }
 
@@ -974,7 +1006,7 @@ function registerPromptHandlers<TContext>(
         if (filter) params.filter = filter as PromptFilter;
         if (request.params?.cursor) params.cursor = request.params.cursor;
         const result = await prompts.listPrompts(params);
-        return { ...result, ...(promptCacheMeta ? { _meta: promptCacheMeta } : {}) };
+        return { ...result, ...(promptCacheMeta ?? {}) };
     });
 
     // prompts/get — with loopback dispatcher and signal propagation
@@ -1105,9 +1137,18 @@ function registerResourceHandlers<TContext>(
                     mimeType: 'application/json',
                 });
             }
-            return { resources: list, ...(resourceCacheMeta ? { _meta: resourceCacheMeta } : {}) };
+            return { resources: list, ...(resourceCacheMeta ?? {}) };
         };
     })() as (...args: never[]) => unknown);
+
+    // resources/templates/list — MCP 2.0 (2026-07-28) URI template resources
+    resourceServer.setRequestHandler('resources/templates/list', ((
+        request: { params?: { cursor?: string } },
+    ) => {
+        const cursor = request.params?.cursor;
+        const result = resources.listResourceTemplates(cursor);
+        return { ...result, ...(resourceCacheMeta ?? {}) };
+    }) as (...args: never[]) => unknown);
 
     // resources/read — with introspection manifest delegation ( fix)
     resourceServer.setRequestHandler('resources/read', (async (
@@ -1159,6 +1200,50 @@ function registerResourceHandlers<TContext>(
     ) => {
         resources.unsubscribe(request.params.uri);
         return { _meta: {} };
+    }) as (...args: never[]) => unknown);
+
+    // subscriptions/listen — MCP 2.0 (2026-07-28) stream-based subscription pattern.
+    // Replaces the 2025-era resources/subscribe with a unified, filter-aware stream.
+    // The client sends a SubscriptionFilter; the server acknowledges and then pushes
+    // notifications (tools/list_changed, resources/updated, etc.) on this stream.
+    resourceServer.setRequestHandler('subscriptions/listen', (async (
+        request: { params?: { notifications?: SubscriptionFilter } },
+        extra: unknown,
+    ) => {
+        const filter = request.params?.notifications ?? {};
+        const subscriptionId = String(Math.random().toString(36).slice(2));
+
+        // Register the subscription filter with the SubscriptionManager.
+        // Pass the sendNotification function as the stream sink so that
+        // pushNotification() actually delivers notifications to the client.
+        const extraObj = extra as Record<string, unknown> | null;
+        const sendNotification = extraObj?.['sendNotification'];
+        const streamSink = typeof sendNotification === 'function'
+            ? (notification: unknown) => {
+                void (sendNotification as (...args: unknown[]) => Promise<void>)(notification);
+            }
+            : undefined;
+        resources.registerSubscriptionFilter(subscriptionId, filter, streamSink);
+
+        // Send acknowledgment notification (first message on the stream)
+        if (typeof sendNotification === 'function') {
+            try {
+                await (sendNotification as (...args: unknown[]) => Promise<void>)({
+                    method: 'notifications/subscriptions/acknowledged',
+                    params: { notifications: filter },
+                });
+            } catch {
+                // Best-effort — client may not support acknowledged notification
+            }
+        }
+
+        // The stream stays open — the SDK v2 Server keeps the request pending.
+        // Notifications are pushed via the notification sink wired below.
+        // The stream ends when the client cancels (notifications/cancelled) or
+        // the server sends a result (graceful shutdown).
+        return {
+            _meta: { 'io.modelcontextprotocol/subscriptionId': subscriptionId },
+        };
     }) as (...args: never[]) => unknown);
 }
 
@@ -1492,7 +1577,12 @@ function extractSignal(extra: unknown): AbortSignal | undefined {
  * When the MCP SDK provides `sendRequest`, this returns a function that
  * sends `elicitation/create` requests to the client for human-in-the-loop
  * workflows. Used by the elicitation runtime to fulfill `requireInput()`
- * requests on 2025-era connections.
+ * requests on 2025-era (stateful) connections.
+ *
+ * @deprecated MCP 2.0 (`2026-07-28`) deprecates the `sendRequest` channel.
+ * This extractor remains for backward compatibility with 2025-era clients
+ * during the deprecation window. New code should use the return-based
+ * `requireInput()` + `readInput()` model instead.
  *
  * Returns `undefined` when not available — zero overhead.
  *

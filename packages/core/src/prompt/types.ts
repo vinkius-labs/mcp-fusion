@@ -243,6 +243,19 @@ export interface PromptResourceContent {
 }
 
 /**
+ * Resource link content block (MCP 2.0 — `2026-07-28`).
+ * A link to a resource that the client can fetch or subscribe to.
+ * The linked resource is NOT embedded — the client must fetch it separately.
+ */
+export interface PromptResourceLinkContent {
+    readonly type: 'resource_link';
+    readonly uri: string;
+    readonly name?: string;
+    readonly description?: string;
+    readonly mimeType?: string;
+}
+
+/**
  * Union of all MCP-compliant content types for prompt messages.
  *
  * Matches `ContentBlock` from the MCP spec:
@@ -252,6 +265,7 @@ export type PromptContentBlock =
     | PromptTextContent
     | PromptImageContent
     | PromptAudioContent
+    | PromptResourceLinkContent
     | PromptResourceContent;
 
 // ── PromptMessage (wire format) ──────────────────────────

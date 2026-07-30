@@ -173,6 +173,12 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     private _toonMode = false;
     private _selectEnabled = false;
     private _frozen = false;
+    // MCP 2.0 fields
+    private _outputSchema?: Record<string, unknown>;
+    private _title?: string;
+    private _icons?: ReadonlyArray<{ src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' }>;
+    /** @internal MCP 2.0 x-mcp-header parameter map — stored for cache-safe re-injection */
+    /** @internal */ _headerParams: Map<string, string> = new Map();
     private _debug?: DebugObserverFn;
     private _tracer?: MCPFusionTracer;
     private _telemetry?: TelemetrySink;
@@ -262,6 +268,51 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
     annotations(a: Record<string, unknown>): this {
         this._assertNotFrozen();
         this._annotations = a;
+        return this;
+    }
+
+    /**
+     * Set the output schema for structured tool results (MCP 2.0 — `2026-07-28`).
+     * @internal — used by BuildPipeline to propagate from FluentToolBuilder
+     */
+    /** @internal */
+    outputSchema(schema: Record<string, unknown>): this {
+        this._assertNotFrozen();
+        this._outputSchema = schema;
+        return this;
+    }
+
+    /**
+     * Set a human-readable display title (MCP 2.0 — `2026-07-28`).
+     * @internal — used by BuildPipeline to propagate from FluentToolBuilder
+     */
+    /** @internal */
+    title(t: string): this {
+        this._assertNotFrozen();
+        this._title = t;
+        return this;
+    }
+
+    /**
+     * Set icons for the tool (MCP 2.0 — `2026-07-28`).
+     * @internal — used by BuildPipeline to propagate from FluentToolBuilder
+     */
+    /** @internal */
+    icons(i: ReadonlyArray<{ src: string; mimeType?: string; sizes?: readonly string[]; theme?: 'light' | 'dark' }>): this {
+        this._assertNotFrozen();
+        this._icons = i;
+        return this;
+    }
+
+    /**
+     * Set x-mcp-header parameter map (MCP 2.0 — `2026-07-28`).
+     * Stored on the builder so it survives cache invalidation.
+     * @internal — used by BuildPipeline to propagate from FluentToolBuilder
+     */
+    /** @internal */
+    headerParams(params: ReadonlyMap<string, string>): this {
+        this._assertNotFrozen();
+        this._headerParams = new Map(params);
         return this;
     }
 
@@ -877,6 +928,10 @@ export class GroupedToolBuilder<TContext = void, TCommon extends Record<string, 
             middlewares: this._middlewares,
             commonSchema: this._commonSchema,
             annotations: this._annotations,
+            outputSchema: this._outputSchema,
+            title: this._title,
+            icons: this._icons,
+            headerParams: this._headerParams,
         });
 
         this._cachedTool = result.tool;

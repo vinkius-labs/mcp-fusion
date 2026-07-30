@@ -2,14 +2,19 @@
  * Regression: Cache hints on list responses (MCP 2026-07-28 SEP-2549)
  *
  * CRITICAL: `tools/list`, `prompts/list`, and `resources/list` responses
- * must carry `_meta.ttlMs` and `_meta.cacheScope: 'private'` when
- * `listCacheTtlMs > 0`, and must NOT carry `_meta` when `listCacheTtlMs === 0`.
+ * must carry `ttlMs` and `cacheScope: 'private'` directly on the result
+ * root (NOT inside `_meta`) when `listCacheTtlMs > 0`, and must NOT carry
+ * them when `listCacheTtlMs === 0`.
+ *
+ * MCP 2.0 spec: https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching
+ * "Cacheable Results in MCP use two fields to provide caching hints to clients:
+ *  ttlMs and cacheScope — placed directly on the result object."
  *
  * This test suite verifies:
  * 1. Default ttlMs is 300000 (5 min) when not specified
  * 2. Custom ttlMs is emitted correctly
- * 3. ttlMs === 0 disables caching (no _meta)
- * 4. cacheScope is always 'server' when enabled
+ * 3. ttlMs === 0 disables caching (no ttlMs/cacheScope fields)
+ * 4. cacheScope is 'public' when set explicitly
  * 5. tools/list, prompts/list, resources/list all emit cache hints
  *
  * @module
@@ -52,7 +57,7 @@ function createMockServer() {
 
 describe('Regression: tools/list cache hints (SEP-2549)', () => {
 
-    it('emits _meta.ttlMs and cacheScope with default 5min TTL', async () => {
+    it('emits ttlMs and cacheScope on result root with default 5min TTL', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -61,12 +66,11 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, {} as AttachOptions<void>);
+        await registry.attachToServer(server, {} as AttachOptions<void>);
 
         const result = await server.callListTools();
-        expect(result._meta).toBeDefined();
-        expect(result._meta.ttlMs).toBe(300_000);
-        expect(result._meta.cacheScope).toBe('private');
+        expect(result.ttlMs).toBe(300_000);
+        expect(result.cacheScope).toBe('private');
     });
 
     it('emits custom ttlMs when listCacheTtlMs is set', async () => {
@@ -78,14 +82,14 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { listCacheTtlMs: 600_000 } as AttachOptions<void>);
+        await registry.attachToServer(server, { listCacheTtlMs: 600_000 } as AttachOptions<void>);
 
         const result = await server.callListTools();
-        expect(result._meta.ttlMs).toBe(600_000);
-        expect(result._meta.cacheScope).toBe('private');
+        expect(result.ttlMs).toBe(600_000);
+        expect(result.cacheScope).toBe('private');
     });
 
-    it('emits cacheScope: server when listCacheScope is set explicitly', async () => {
+    it('emits cacheScope: public when listCacheScope is set explicitly', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -94,14 +98,14 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { listCacheTtlMs: 300_000, listCacheScope: 'server' } as AttachOptions<void>);
+        await registry.attachToServer(server, { listCacheTtlMs: 300_000, listCacheScope: 'public' } as AttachOptions<void>);
 
         const result = await server.callListTools();
-        expect(result._meta.ttlMs).toBe(300_000);
-        expect(result._meta.cacheScope).toBe('server');
+        expect(result.ttlMs).toBe(300_000);
+        expect(result.cacheScope).toBe('public');
     });
 
-    it('does NOT emit _meta when listCacheTtlMs is 0 (disabled)', async () => {
+    it('does NOT emit ttlMs/cacheScope when listCacheTtlMs is 0 (disabled)', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -110,10 +114,11 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { listCacheTtlMs: 0 } as AttachOptions<void>);
+        await registry.attachToServer(server, { listCacheTtlMs: 0 } as AttachOptions<void>);
 
         const result = await server.callListTools();
-        expect(result._meta).toBeUndefined();
+        expect(result.ttlMs).toBeUndefined();
+        expect(result.cacheScope).toBeUndefined();
     });
 
     it('tools list is still correct alongside cache hints', async () => {
@@ -125,12 +130,12 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, { listCacheTtlMs: 300_000 } as AttachOptions<void>);
+        await registry.attachToServer(server, { listCacheTtlMs: 300_000 } as AttachOptions<void>);
 
         const result = await server.callListTools();
         expect(result.tools).toBeDefined();
         expect(result.tools.length).toBeGreaterThan(0);
-        expect(result._meta).toBeDefined();
+        expect(result.ttlMs).toBe(300_000);
     });
 });
 
@@ -138,7 +143,7 @@ describe('Regression: tools/list cache hints (SEP-2549)', () => {
 
 describe('Regression: prompts/list cache hints (SEP-2549)', () => {
 
-    it('emits _meta.ttlMs on prompts/list', async () => {
+    it('emits ttlMs on prompts/list result root', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -155,18 +160,17 @@ describe('Regression: prompts/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             prompts: promptRegistry,
             listCacheTtlMs: 300_000,
         } as AttachOptions<void>);
 
         const result = await server.callListPrompts();
-        expect(result._meta).toBeDefined();
-        expect(result._meta.ttlMs).toBe(300_000);
-        expect(result._meta.cacheScope).toBe('private');
+        expect(result.ttlMs).toBe(300_000);
+        expect(result.cacheScope).toBe('private');
     });
 
-    it('does NOT emit _meta on prompts/list when ttlMs is 0', async () => {
+    it('does NOT emit ttlMs on prompts/list when ttlMs is 0', async () => {
         const f = initMCPFusion<void>();
         const registry = f.registry();
 
@@ -183,12 +187,13 @@ describe('Regression: prompts/list cache hints (SEP-2549)', () => {
         );
 
         const server = createMockServer();
-        registry.attachToServer(server, {
+        await registry.attachToServer(server, {
             prompts: promptRegistry,
             listCacheTtlMs: 0,
         } as AttachOptions<void>);
 
         const result = await server.callListPrompts();
-        expect(result._meta).toBeUndefined();
+        expect(result.ttlMs).toBeUndefined();
+        expect(result.cacheScope).toBeUndefined();
     });
 });

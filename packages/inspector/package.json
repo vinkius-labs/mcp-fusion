@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/inspector",
-  "description": "mcpfusion inspector â€” Real-time interactive terminal dashboard for MCP mcpfusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
+  "description": "mcpfusion inspector — Real-time interactive terminal dashboard for MCP mcpfusion servers. Shadow Socket out-of-band telemetry with zero stdio interference.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -48,14 +48,14 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1"
+    "@mcpfusion/core": "^5.0.0"
   },
   "license": "Apache-2.0",
-  "version": "4.4.1"
+  "version": "5.0.0"
 }

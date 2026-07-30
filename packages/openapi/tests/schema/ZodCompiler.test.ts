@@ -189,9 +189,9 @@ describe('ZodCompiler', () => {
             expect(code).toContain(".describe('Unique identifier')");
         });
 
-        it('should emit z.record(z.unknown()) for empty object', () => {
+        it('should emit z.record(z.string(), z.unknown()) for empty object', () => {
             const code = compileZod({ type: 'object' });
-            expect(code).toBe('z.record(z.unknown())');
+            expect(code).toBe('z.record(z.string(), z.unknown())');
         });
 
         it('should quote unsafe property names', () => {

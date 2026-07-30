@@ -87,9 +87,9 @@ export async function collectConfig(args: CliArgs): Promise<ProjectConfig | null
         // For vercel/cloudflare, transport is always HTTP (stateless JSON-RPC)
         let transport: TransportLayer;
         if (target === 'vercel' || target === 'cloudflare') {
-            transport = 'sse';
+            transport = 'http';
         } else {
-            const transportRaw = args.transport ?? await ask(rl, 'Transport? [stdio, sse]', 'stdio');
+            const transportRaw = args.transport ?? await ask(rl, 'Transport? [stdio, http]', 'stdio');
             transport = validateTransport(transportRaw);
         }
 
@@ -145,7 +145,7 @@ export async function commandCreate(args: CliArgs, reporter?: ProgressReporter):
         steps.push('npm run dev', '# MCP endpoint: POST http://localhost:3000/api/mcp', 'npx vercel deploy');
     } else if (config.target === 'cloudflare') {
         steps.push('npm run dev', '# MCP endpoint: POST http://localhost:8787/', 'npm run deploy');
-    } else if (config.transport === 'sse') {
+    } else if (config.transport === 'http') {
         steps.push('mcpfusion dev', '# then connect Cursor or Claude to http://localhost:3001/mcp');
     } else {
         steps.push('mcpfusion dev');

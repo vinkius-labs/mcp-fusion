@@ -6,7 +6,7 @@ import type { ProjectConfig } from '../types.js';
 
 /** Generate `README.md` with Claude/Cursor config snippets */
 export function readme(config: ProjectConfig): string {
-    const clientEntry = config.transport === 'sse'
+    const clientEntry = config.transport === 'http'
         ? { url: 'http://localhost:3001/mcp' }
         : { command: 'npx', args: ['tsx', 'src/server.ts'] };
 
@@ -16,7 +16,7 @@ export function readme(config: ProjectConfig): string {
         },
     }, null, 2);
 
-    const sseNote = config.transport === 'sse'
+    const httpNote = config.transport === 'http'
         ? `\n> **Note:** Streamable HTTP transport requires the server to be running first. Run \\\`npm start\\\` before connecting.`
         : '';
 
@@ -64,7 +64,7 @@ src/
 
 > **Already configured!** The \`.cursor/mcp.json\` file was generated automatically.
 > Just open this folder in Cursor and the server connects instantly.
-${sseNote}
+${httpNote}
 
 ### Claude Desktop
 

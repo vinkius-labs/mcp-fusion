@@ -1,11 +1,11 @@
 /**
- * @vinkius-core/openapi-gen — Root Barrel Export
+ * @mcpfusion/openapi-gen — Root Barrel Export
  *
  * Public API for programmatic usage.
  *
  * @example
  * ```typescript
- * import { parseOpenAPI, mapEndpoints, emitFiles } from '@vinkius-core/openapi-gen';
+ * import { parseOpenAPI, mapEndpoints, emitFiles } from '@mcpfusion/openapi-gen';
  *
  * const spec = parseOpenAPI(yamlString);
  * const mapped = mapEndpoints(spec);

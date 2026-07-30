@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/vercel",
-  "description": "Vercel adapter for MCP Fusion. Deploy your MCP server as a Next.js App Router route handler or standalone Vercel Function â€” Edge Runtime or Node.js, stateless JSON-RPC, zero config.",
+  "description": "Vercel adapter for MCP Fusion. Deploy your MCP server as a Next.js App Router route handler or standalone Vercel Function — Edge Runtime or Node.js, stateless JSON-RPC, zero config.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,20 +41,20 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mcpfusion/core": "^4.4.1"
+    "@mcpfusion/core": "^5.0.0"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0"
+    "@modelcontextprotocol/server": "^2.0.0"
   },
   "license": "Apache-2.0",
   "devDependencies": {
     "vitest": "^3.0.0"
   },
-  "version": "4.4.1"
+  "version": "5.0.0"
 }

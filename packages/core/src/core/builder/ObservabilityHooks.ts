@@ -191,7 +191,8 @@ export function buildTelemetryHooks(emit: TelemetrySink, ctx: HookContext): Pipe
             let recovery: string | undefined;
             let recoveryActions: string[] | undefined;
             if (isErr && response.content.length > 0) {
-                const text = response.content[0]!.text;
+                const firstBlock = response.content[0]!;
+                const text = firstBlock.type === 'text' ? firstBlock.text : '';
                 recovery = extractXmlTag(text, 'recovery');
                 recoveryActions = extractXmlActions(text);
             }

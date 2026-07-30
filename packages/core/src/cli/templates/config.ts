@@ -8,7 +8,7 @@ import { CORE_VERSION, TESTING_VERSION, MCP_SDK_VERSION, ZOD_VERSION } from './c
 /** Generate `package.json` with vector-specific deps */
 export function packageJson(config: ProjectConfig): string {
     const deps: Record<string, string> = {
-        '@modelcontextprotocol/sdk': MCP_SDK_VERSION,
+        '@modelcontextprotocol/server': MCP_SDK_VERSION,
         '@mcpfusion/core': CORE_VERSION,
         'zod': ZOD_VERSION,
     };
@@ -37,7 +37,7 @@ export function packageJson(config: ProjectConfig): string {
         devDeps['prisma'] = '^6.0.0';
     }
     if (config.testing) {
-        devDeps['vitest'] = '^3.0.5';
+        devDeps['vitest'] = '^3.2.4';
         devDeps['@mcpfusion/testing'] = TESTING_VERSION;
     }
 
@@ -65,7 +65,7 @@ export function packageJson(config: ProjectConfig): string {
         scripts,
         dependencies: deps,
         devDependencies: devDeps,
-        engines: { node: '>=18.0.0' },
+        engines: { node: '>=20.0.0' },
     };
 
     return JSON.stringify(pkg, null, 4) + '\n';
@@ -139,7 +139,7 @@ OAUTH_AUTH_ENDPOINT=https://api.example.com/oauth/device/code
 OAUTH_TOKEN_ENDPOINT=https://api.example.com/oauth/device/token
 `;
     }
-    if (config.transport === 'sse') {
+    if (config.transport === 'http') {
         env += `
 # Streamable HTTP Transport
 PORT=3001

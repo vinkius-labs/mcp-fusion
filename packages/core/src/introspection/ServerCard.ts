@@ -35,8 +35,8 @@ const DEFAULT_SCHEMA = 'https://modelcontextprotocol.io/schemas/server-card/v1';
 /** Default server card schema version */
 const DEFAULT_CARD_VERSION = '1.0';
 
-/** Default MCP protocol version (2025-06-18 spec) */
-const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
+/** Default MCP protocol version (MCP 2.0 — 2026-07-28 spec) */
+const DEFAULT_PROTOCOL_VERSION = '2026-07-28';
 
 /** Well-known path for the server card endpoint */
 export const SERVER_CARD_PATH = '/.well-known/mcp/server-card.json';

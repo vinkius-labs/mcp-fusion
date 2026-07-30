@@ -32,7 +32,7 @@ export const VINKIUS_CLOUD_URL = 'https://deploy.vinkius.com';
 
 // ─── Validation Constants ────────────────────────────────────────
 
-export const VALID_TRANSPORTS = ['stdio', 'sse'] as const;
+export const VALID_TRANSPORTS = ['stdio', 'http'] as const;
 export const VALID_VECTORS = ['vanilla', 'prisma', 'n8n', 'openapi', 'oauth'] as const;
 export const VALID_TARGETS = ['vinkius', 'vercel', 'cloudflare'] as const;
 
@@ -59,7 +59,7 @@ USAGE
   mcpfusion yaml                          Declarative MCP server engine (mcpfusion.yaml)
 
 CREATE OPTIONS
-  --transport <stdio|sse>  Transport layer (default: stdio)
+  --transport <stdio|http>  Transport layer (default: stdio)
   --vector <type>          Ingestion vector: vanilla, prisma, n8n, openapi, oauth
   --target <platform>      Deploy target: vinkius (default), vercel, cloudflare
   --testing                Include test suite (default: true)
@@ -103,7 +103,7 @@ GLOBAL
 EXAMPLES
   mcpfusion create my-server
   mcpfusion create my-server -y
-  mcpfusion create my-server --vector prisma --transport sse
+  mcpfusion create my-server --vector prisma --transport http
   mcpfusion dev --server ./src/server.ts
   mcpfusion dev --server ./src/server.ts --dir ./src/tools
   mcpfusion lock --server ./src/server.ts
