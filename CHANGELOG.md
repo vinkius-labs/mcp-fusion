@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.3] - 2026-07-31
+
+### Fixed — V8 Isolate Crypto Compatibility
+
+#### `@mcpfusion/core` — Edge stub delegates crypto to host polyfill
+
+- **`edge-stub.ts`**: `createHash`, `createHmac`, `randomUUID`, `randomBytes` now delegate to `globalThis.__nodeCrypto` (injected by the Vinkius Runtime's `IsolateRunner`) instead of calling `CRASH()`. This fixes 125 MCPs that use Node.js `crypto.createHmac()` / `crypto.createHash()` in their engine layer — they were silently crashing in the V8 isolate when the tool was called.
+- **Fallback**: If `__nodeCrypto` is not available (non-Vinkius environments), the functions still call `CRASH()` with a clear error message.
+
+### Fixed — SDK v2 Context Structure Mismatch
+
+#### `@mcpfusion/core` — `ServerAttachment.ts` handler context extraction
+
+- **`isMcpExtra()`**: Now detects both SDK v1 (flat `extra.sendNotification`) and SDK v2 (nested `ctx.mcpReq.notify`) context structures.
+- **`createProgressSink()`**: Extracts `progressToken` from `ctx.mcpReq._meta` (v2) or `extra._meta` (v1). Progress notifications now work with SDK v2.
+- **`extractSignal()`**: Extracts `AbortSignal` from `ctx.mcpReq.signal` (v2) or `extra.signal` (v1). Cancellation now propagates correctly with SDK v2.
+- **`extractElicitSink()`**: Extracts `sendRequest` from `ctx.mcpReq.send` (v2) or `extra.sendRequest` (v1). Elicitation works on both SDK eras.
+
+## [5.0.2] - 2026-07-31
+
+### Fixed — SDK v2 Context Structure Mismatch (initial fix, superseded by 5.0.3)
+
+## [5.0.1] - 2026-07-30
+
+### Fixed — Stale dist publish
+
 ## [5.0.0] - 2026-07-30
 
 ### Breaking Changes — MCP `2026-07-28` Spec Adoption

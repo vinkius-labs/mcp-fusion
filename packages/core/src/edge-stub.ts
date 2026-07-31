@@ -62,7 +62,7 @@ export class AsyncLocalStorage<T = unknown> {
     enterWith(store: T): void { this._store = store; }
 }
 
-// ── Tier 2: Executable (fail-fast CRASH at runtime) ─────────────────────────
+// ── Tier 2: Executable (delegate to host polyfill or fail-fast CRASH) ───────
 
 const CRASH = (api: string): never => {
     throw new Error(
@@ -72,10 +72,33 @@ const CRASH = (api: string): never => {
     );
 };
 
-export const createHash = (): never => CRASH('node:crypto.createHash');
-export const createHmac = (): never => CRASH('node:crypto.createHmac');
-export const randomUUID = (): never => CRASH('node:crypto.randomUUID');
-export const randomBytes = (): never => CRASH('node:crypto.randomBytes');
+// Crypto functions: delegate to __nodeCrypto polyfill (injected by IsolateRunner)
+// when available, CRASH otherwise. This allows MCP engines that use
+// crypto.createHash/createHmac to work in the V8 isolate.
+export const createHash = (algorithm: string): unknown => {
+    const nc = (globalThis as Record<string, unknown>)['__nodeCrypto'] as
+        { createHash: (alg: string) => unknown } | undefined;
+    if (nc && typeof nc.createHash === 'function') return nc.createHash(algorithm);
+    return CRASH('node:crypto.createHash');
+};
+export const createHmac = (algorithm: string, key: unknown): unknown => {
+    const nc = (globalThis as Record<string, unknown>)['__nodeCrypto'] as
+        { createHmac: (alg: string, key: unknown) => unknown } | undefined;
+    if (nc && typeof nc.createHmac === 'function') return nc.createHmac(algorithm, key);
+    return CRASH('node:crypto.createHmac');
+};
+export const randomUUID = (): string => {
+    const c = (globalThis as Record<string, unknown>)['crypto'] as
+        { randomUUID?: () => string } | undefined;
+    if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+    return CRASH('node:crypto.randomUUID');
+};
+export const randomBytes = (length: number): Uint8Array => {
+    const nc = (globalThis as Record<string, unknown>)['__nodeCrypto'] as
+        { randomBytes: (len: number) => Uint8Array } | undefined;
+    if (nc && typeof nc.randomBytes === 'function') return nc.randomBytes(length);
+    return CRASH('node:crypto.randomBytes');
+};
 export const createReadStream = (): never => CRASH('node:fs.createReadStream');
 export const readFileSync = (): never => CRASH('node:fs.readFileSync');
 export const writeFileSync = (): never => CRASH('node:fs.writeFileSync');

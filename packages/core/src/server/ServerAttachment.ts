@@ -1504,14 +1504,20 @@ function filterFlatTools<TContext>(
 
 /**
  * Duck-type check: the extra object from MCP SDK has _meta and sendNotification.
+ *
+ * Supports both SDK v1 (flat: `extra.sendNotification`) and SDK v2 (nested:
+ * `extra.mcpReq.notify`). The v2 context structure wraps the request-scoped
+ * functions inside a `mcpReq` sub-object.
  */
 function isMcpExtra(extra: unknown): extra is McpRequestExtra {
-    return (
-        typeof extra === 'object' &&
-        extra !== null &&
-        'sendNotification' in extra &&
-        typeof (extra as McpRequestExtra).sendNotification === 'function'
-    );
+    if (typeof extra !== 'object' || extra === null) return false;
+    const ex = extra as Record<string, unknown>;
+    // SDK v2: ctx.mcpReq.notify
+    const mcpReq = ex['mcpReq'] as Record<string, unknown> | undefined;
+    if (mcpReq && typeof mcpReq['notify'] === 'function') return true;
+    // SDK v1: extra.sendNotification
+    return 'sendNotification' in extra &&
+        typeof (extra as McpRequestExtra).sendNotification === 'function';
 }
 
 /**
@@ -1524,16 +1530,25 @@ function isMcpExtra(extra: unknown): extra is McpRequestExtra {
  * When no progressToken is present (client didn't opt in),
  * returns `undefined` — zero overhead.
  *
+ * Supports both SDK v1 (flat `extra._meta`, `extra.sendNotification`) and
+ * SDK v2 (nested `extra.mcpReq._meta`, `extra.mcpReq.notify`).
+ *
  * @param extra - The MCP request handler's extra argument (duck-typed)
  * @returns A ProgressSink or undefined
  */
 function createProgressSink(extra: unknown): ProgressSink | undefined {
     if (!isMcpExtra(extra)) return undefined;
 
-    const token = extra._meta?.progressToken;
+    // SDK v2 nests fields inside mcpReq; v1 has them at the top level.
+    const ex = extra as unknown as Record<string, unknown>;
+    const mcpReq = ex['mcpReq'] as Record<string, unknown> | undefined;
+    const metaRaw = mcpReq ? mcpReq['_meta'] : ex['_meta'];
+    const meta = metaRaw as { progressToken?: string | number } | undefined;
+    const token = meta?.progressToken;
     if (token === undefined) return undefined;
 
-    const sendNotification = extra.sendNotification;
+    const sendNotification = mcpReq?.['notify'] ?? (extra as McpRequestExtra).sendNotification;
+    if (typeof sendNotification !== 'function') return undefined;
 
     return (event: ProgressEvent): void => {
         // Fire-and-forget: progress notifications are best-effort.
@@ -1559,14 +1574,22 @@ function createProgressSink(extra: unknown): ProgressSink | undefined {
  * or when the transport connection drops. By extracting and propagating it,
  * the framework enables cooperative cancellation at every pipeline layer.
  *
+ * Supports both SDK v1 (`extra.signal`) and SDK v2 (`extra.mcpReq.signal`).
+ *
  * Returns `undefined` when not available — zero overhead.
  *
  * @param extra - The MCP request handler's extra argument (duck-typed)
  * @returns The AbortSignal or undefined
  */
 function extractSignal(extra: unknown): AbortSignal | undefined {
-    if (!isMcpExtra(extra)) return undefined;
-    return extra.signal;
+    if (typeof extra !== 'object' || extra === null) return undefined;
+    const ex = extra as Record<string, unknown>;
+    // SDK v2: ctx.mcpReq.signal
+    const mcpReq = ex['mcpReq'] as Record<string, unknown> | undefined;
+    if (mcpReq?.['signal'] instanceof AbortSignal) return mcpReq['signal'] as AbortSignal;
+    // SDK v1: extra.signal
+    if ((extra as McpRequestExtra).signal instanceof AbortSignal) return (extra as McpRequestExtra).signal;
+    return undefined;
 }
 
 // ── Elicitation Sink Extraction ────────────────────────
@@ -1579,6 +1602,8 @@ function extractSignal(extra: unknown): AbortSignal | undefined {
  * workflows. Used by the elicitation runtime to fulfill `requireInput()`
  * requests on 2025-era (stateful) connections.
  *
+ * Supports both SDK v1 (`extra.sendRequest`) and SDK v2 (`extra.mcpReq.send`).
+ *
  * @deprecated MCP 2.0 (`2026-07-28`) deprecates the `sendRequest` channel.
  * This extractor remains for backward compatibility with 2025-era clients
  * during the deprecation window. New code should use the return-based
@@ -1590,10 +1615,16 @@ function extractSignal(extra: unknown): AbortSignal | undefined {
  * @returns An ElicitSink or undefined
  */
 function extractElicitSink(extra: unknown): ElicitSink | undefined {
-    if (!isMcpExtra(extra)) return undefined;
-    const sendRequest = extra.sendRequest;
-    if (typeof sendRequest !== 'function') return undefined;
-    return sendRequest as ElicitSink;
+    if (typeof extra !== 'object' || extra === null) return undefined;
+    const ex = extra as Record<string, unknown>;
+    // SDK v2: ctx.mcpReq.send
+    const mcpReq = ex['mcpReq'] as Record<string, unknown> | undefined;
+    const send = mcpReq?.['send'];
+    if (typeof send === 'function') return send as ElicitSink;
+    // SDK v1: extra.sendRequest
+    const sendRequest = (extra as McpRequestExtra).sendRequest;
+    if (typeof sendRequest === 'function') return sendRequest as ElicitSink;
+    return undefined;
 }
 
 // ── State Sync Hint Collection ──────────────────────────────
