@@ -154,6 +154,15 @@ The following MCP features are deprecated by the `2026-07-28` spec ([SEP-2577](h
 
 - **All 16 packages + root `package.json`**: `engines.node` `>=18.0.0` → `>=20.0.0` (MCP SDK v2 requires Node 20+)
 
+### Changed — SDK MCP v2 moved from peerDependencies to dependencies
+
+#### `@mcpfusion/core` — SDK v2 packages are now regular dependencies
+
+- **`@modelcontextprotocol/server`, `@modelcontextprotocol/core`, `@modelcontextprotocol/node`** moved from `peerDependencies` to `dependencies` in `@mcpfusion/core`.
+- **Rationale**: MCP servers built with MCP Fusion are leaf nodes (not libraries) — they never import the SDK directly, only `@mcpfusion/core`. Declaring 3 peer deps in every consumer's `package.json` is architectural noise (17.646 redundant entries across 5.882 marketplace MCPs). Moving them to regular dependencies lets npm hoist and deduplicate automatically, eliminates `ERESOLVE` peer conflict errors, and simplifies the consumer `package.json` to a single dependency: `@mcpfusion/core`.
+- **`peerDependenciesMeta`**: The 3 SDK packages were removed from `peerDependenciesMeta` (no longer peers). Optional peers (`esbuild`, `zod`, `isolated-vm`, `fast-json-stringify`, `fast-redact`, `xstate`) remain unchanged.
+- **Consumer migration**: MCPs no longer need `@modelcontextprotocol/server`, `@modelcontextprotocol/core`, or `@modelcontextprotocol/node` in their `package.json` — `@mcpfusion/core` provides them.
+
 ## [4.4.1] - 2026-07-27
 
 ### Fixed

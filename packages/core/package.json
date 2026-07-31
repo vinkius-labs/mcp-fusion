@@ -117,12 +117,12 @@
   },
   "dependencies": {
     "@toon-format/toon": "^2.1.0",
-    "zod-to-json-schema": "^3.25.1"
+    "zod-to-json-schema": "^3.25.1",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/core": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
-    "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/core": "^2.0.0",
     "esbuild": ">=0.24.0",
     "fast-json-stringify": "^6.0.0",
     "fast-redact": "^3.0.0",
