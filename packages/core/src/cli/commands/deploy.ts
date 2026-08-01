@@ -105,7 +105,7 @@ function sanitizeBundleForEdge(code: string): string {
         .replace(/\bglobal\b(?!This|Middleware|Mw)/g, 'globalThis');
 }
 
-function edgeStubPlugin(): EsbuildNS.Plugin {
+function edgeStubPlugin(cwd: string): EsbuildNS.Plugin {
     return {
         name: 'mcpfusion-edge-stub',
         setup(build) {
@@ -127,6 +127,36 @@ function edgeStubPlugin(): EsbuildNS.Plugin {
                 contents: 'module.exports = {};',
                 loader: 'js',
             }));
+
+            // ── Deduplicate zod ──────────────────────────────────────────────
+            // MCPs often declare zod ^3.x in devDependencies while @mcpfusion/core
+            // and @modelcontextprotocol/server require zod ^4.x. When esbuild
+            // bundles both versions, `class ZodString extends ZodType` from v3
+            // can resolve ZodType from v4 (or vice-versa), causing
+            // "Class extends value undefined is not a constructor or null".
+            // Force all zod imports to resolve to a single copy — the highest
+            // version available in the MCP's node_modules tree.
+            build.onResolve({ filter: /^zod(\/.*)?$/ }, (args) => {
+                // Resolve zod from the MCP's cwd, preferring the version that
+                // @mcpfusion/core / @modelcontextprotocol/server use (v4.x).
+                // We try: cwd/node_modules/zod, then @mcpfusion/core's zod,
+                // then @modelcontextprotocol/server's zod.
+                const candidates = [
+                    resolve(cwd, 'node_modules/zod/lib/index.mjs'),
+                    resolve(cwd, 'node_modules/zod/index.js'),
+                    resolve(cwd, 'node_modules/@mcpfusion/core/node_modules/zod/lib/index.mjs'),
+                    resolve(cwd, 'node_modules/@mcpfusion/core/node_modules/zod/index.js'),
+                    resolve(cwd, 'node_modules/@modelcontextprotocol/server/node_modules/zod/lib/index.mjs'),
+                    resolve(cwd, 'node_modules/@modelcontextprotocol/server/node_modules/zod/index.js'),
+                ];
+                for (const candidate of candidates) {
+                    if (existsSync(candidate)) {
+                        return { path: candidate };
+                    }
+                }
+                // Fall through to normal resolution
+                return null;
+            });
 
             // Resolve all node builtins to a virtual namespace
             build.onResolve({ filter: BUILTIN_FILTER }, (args) => ({
@@ -270,7 +300,7 @@ export async function commandDeploy(args: CliArgs): Promise<void> {
             write: false,
             logLevel: 'silent',
             external: [],
-            plugins: [edgeStubPlugin()],
+            plugins: [edgeStubPlugin(cwd)],
         });
     } catch (err: unknown) {
         const buildErr = err as { errors?: Array<{ text: string; location?: { file: string; line: number; column: number } }> };

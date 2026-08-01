@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.5] - 2026-08-01
+
+### Fixed — V8 Isolate `Class extends value undefined is not a constructor or null`
+
+#### `@mcpfusion/core` — `deploy.ts` zod deduplication
+
+- **`edgeStubPlugin()`**: Now deduplicates `zod` imports in the esbuild bundle. MCPs often declare `zod ^3.x` in devDependencies while `@mcpfusion/core` and `@modelcontextprotocol/server` require `zod ^4.x`. When esbuild bundles both versions, `class ZodString extends ZodType` from v3 can resolve `ZodType` from v4 (or vice-versa), causing `Class extends value undefined is not a constructor or null` at runtime in the V8 isolate.
+- **Fix**: `onResolve` for `^zod(\/.*)?$` now resolves all zod imports to a single copy — preferring the version in the MCP's `node_modules/zod`, then `@mcpfusion/core`'s nested zod, then `@modelcontextprotocol/server`'s nested zod.
+- **`edgeStubPlugin(cwd)`**: Now accepts `cwd` parameter to resolve zod from the MCP's working directory.
+
 ## [5.0.4] - 2026-08-01
 
 ### Fixed — V8 Isolate `global is not defined`

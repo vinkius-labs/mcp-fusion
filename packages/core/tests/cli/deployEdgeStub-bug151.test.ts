@@ -47,7 +47,7 @@ describe('Bug #151 — source analysis: no require.resolve', () => {
     it('should use an esbuild plugin with onResolve', () => {
         expect(deploySource).toContain('edgeStubPlugin');
         expect(deploySource).toContain('onResolve');
-        expect(deploySource).toContain("plugins: [edgeStubPlugin()]");
+        expect(deploySource).toMatch(/plugins:\s*\[edgeStubPlugin\(\w*\)\]/);
     });
 
     it('should use builtinModules from node:module for dynamic list', () => {
