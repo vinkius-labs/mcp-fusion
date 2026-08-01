@@ -139,9 +139,14 @@ function edgeStubPlugin(cwd: string): EsbuildNS.Plugin {
             build.onResolve({ filter: /^zod(\/.*)?$/ }, (args) => {
                 // Resolve zod from the MCP's cwd, preferring the version that
                 // @mcpfusion/core / @modelcontextprotocol/server use (v4.x).
-                // We try: cwd/node_modules/zod, then @mcpfusion/core's zod,
-                // then @modelcontextprotocol/server's zod.
+                // CRITICAL: preserve subpaths — `zod/v4` must resolve to
+                // `zod/v4/index.js`, NOT `zod/lib/index.mjs`. The @modelcontextprotocol
+                // SDK imports from `zod/v4` which has different exports than `zod`.
+                // Resolving to the wrong file causes `z.preprocess` to be `undefined`.
+                const subpath = args.path.replace(/^zod/, '');
                 const candidates = [
+                    resolve(cwd, `node_modules/zod${subpath ? '/' + subpath : ''}/index.js`),
+                    resolve(cwd, `node_modules/zod${subpath ? '/' + subpath : ''}/lib/index.mjs`),
                     resolve(cwd, 'node_modules/zod/lib/index.mjs'),
                     resolve(cwd, 'node_modules/zod/index.js'),
                     resolve(cwd, 'node_modules/@mcpfusion/core/node_modules/zod/lib/index.mjs'),

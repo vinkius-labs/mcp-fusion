@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.6] - 2026-08-01
+
+### Fixed — V8 Isolate `(void 0) is not a function` / `Class extends value undefined`
+
+#### `@mcpfusion/core` — `deploy.ts` zod subpath resolution
+
+- **`edgeStubPlugin()`**: Now preserves zod subpaths when deduplicating. `@modelcontextprotocol/server` imports from `zod/v4` (not `zod`), which has different exports. The previous dedup resolved `zod/v4` to `zod/lib/index.mjs` (the main entry), causing `z.preprocess` to be `undefined` in the bundle — manifesting as `(void 0) is not a function` or `Class extends value undefined` in the V8 isolate.
+- **Fix**: `onResolve` for `^zod(\/.*)?$` now preserves the subpath — `zod/v4` resolves to `zod/v4/index.js`, `zod` resolves to `zod/lib/index.mjs`.
+
 ## [5.0.5] - 2026-08-01
 
 ### Fixed — V8 Isolate `Class extends value undefined is not a constructor or null`
