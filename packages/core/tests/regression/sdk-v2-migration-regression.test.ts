@@ -81,11 +81,11 @@ describe('Regression: v1 SDK package removed from dependencies', () => {
         expect(pkg.devDependencies['@modelcontextprotocol/client']).toBeDefined();
     });
 
-    it('core package.json lists v2 packages as peerDependencies', () => {
+    it('core package.json lists v2 packages as dependencies (moved from peerDependencies in 5.0.0)', () => {
         const pkg = require('../../../core/package.json');
-        expect(pkg.peerDependencies['@modelcontextprotocol/server']).toBeDefined();
-        expect(pkg.peerDependencies['@modelcontextprotocol/node']).toBeDefined();
-        expect(pkg.peerDependencies['@modelcontextprotocol/core']).toBeDefined();
+        expect(pkg.dependencies['@modelcontextprotocol/server']).toBeDefined();
+        expect(pkg.dependencies['@modelcontextprotocol/node']).toBeDefined();
+        expect(pkg.dependencies['@modelcontextprotocol/core']).toBeDefined();
     });
 });
 

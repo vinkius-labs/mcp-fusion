@@ -1,5 +1,6 @@
 {
   "name": "@mcpfusion/core",
+  "version": "5.0.4",
   "description": "MVA (Model-View-Agent) framework for the Model Context Protocol. Structured perception packages with Presenters, cognitive guardrails, self-healing errors, action consolidation, and tRPC-style type safety â€” so AI agents perceive and act on your data deterministically.",
   "type": "module",
   "main": "dist/index.js",
@@ -116,11 +117,11 @@
     "access": "public"
   },
   "dependencies": {
-    "@toon-format/toon": "^2.1.0",
-    "zod-to-json-schema": "^3.25.1",
-    "@modelcontextprotocol/server": "^2.0.0",
     "@modelcontextprotocol/core": "^2.0.0",
-    "@modelcontextprotocol/node": "^2.0.0"
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@toon-format/toon": "^2.1.0",
+    "zod-to-json-schema": "^3.25.1"
   },
   "peerDependencies": {
     "esbuild": ">=0.24.0",
@@ -152,8 +153,8 @@
   },
   "license": "Apache-2.0",
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "fast-redact": "^3.5.0",
     "rimraf": "^6.0.0"
-  },
-  "version": "5.0.3"
+  }
 }

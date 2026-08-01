@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.4] - 2026-08-01
+
+### Fixed — V8 Isolate `global is not defined`
+
+#### `@mcpfusion/core` — `deploy.ts` bundle sanitizer
+
+- **`sanitizeBundleForEdge()`**: Now replaces bare `global` with `globalThis` in the edge bundle. Node.js packages (e.g. `@hono/node-server`) use `typeof global.crypto` which throws `global is not defined` in a V8 isolate (browser platform). The sanitizer already transformed `globalThis[` but missed bare `global` references from CJS/Node.js dependencies.
+- **Regex**: `/\bglobal\b(?!This|Middleware|Mw)/g` → `globalThis` — carefully excludes `globalThis`, `globalMiddleware`, and `globalMw` to avoid false positives.
+- **Impact**: Fixes `[StreamableHTTP] createServer failed: global is not defined` on deploy for any MCP that transitively depends on `@hono/node-server` (via `@modelcontextprotocol/node`).
+
 ## [5.0.3] - 2026-07-31
 
 ### Fixed — V8 Isolate Crypto Compatibility

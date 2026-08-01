@@ -56,7 +56,9 @@
       "optional": true
     }
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "jose": "^6.2.6"
+  },
   "license": "Apache-2.0",
   "version": "5.0.0"
 }

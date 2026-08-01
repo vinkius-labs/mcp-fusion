@@ -96,7 +96,13 @@ function sanitizeBundleForEdge(code: string): string {
         // __vinkius_edge_ → \u005f_vinkius_edge_ — same Unicode escape technique
         .replace(/__vinkius_edge_/g, '\\u005f_vinkius_edge_')
         // globalThis[ → (globalThis)/**/ [ to break /globalThis\s*\[/ regex
-        .replace(/globalThis\s*\[/g, '(globalThis)/**/[');
+        .replace(/globalThis\s*\[/g, '(globalThis)/**/[')
+        // global → globalThis — Node.js packages (e.g. @hono/node-server) use
+        // `typeof global.crypto` which throws "global is not defined" in a V8
+        // isolate (browser platform). Replace bare `global` (not globalThis,
+        // globalMiddleware, globalMw) with globalThis — semantically identical
+        // in both Node.js and browser/isolate runtimes.
+        .replace(/\bglobal\b(?!This|Middleware|Mw)/g, 'globalThis');
 }
 
 function edgeStubPlugin(): EsbuildNS.Plugin {
