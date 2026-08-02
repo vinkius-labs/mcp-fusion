@@ -430,8 +430,9 @@ function emitServerFile(spec: ApiSpec, cfg: GeneratorConfig): GeneratedFile {
     lines.push(`// Complete MCP Server — ready to run`);
     lines.push(`// DO NOT EDIT — re-run the generator to update.`);
     lines.push(``);
-    lines.push(`import { Server } from '@modelcontextprotocol/sdk/server/index.js';`);
-    lines.push(`import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';`);
+    // SDK v2 package specifiers.
+    lines.push(`import { Server } from '@modelcontextprotocol/server';`);
+    lines.push(`import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';`);
     lines.push(`import { registry } from './index.js';`);
 
     if (cfg.context.import) {

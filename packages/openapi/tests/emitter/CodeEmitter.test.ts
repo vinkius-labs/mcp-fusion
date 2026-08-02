@@ -308,8 +308,10 @@ describe('CodeEmitter', () => {
             const files = emitFiles(spec);
             const server = files.find(f => f.path === 'server.ts')!;
             expect(server).toBeDefined();
-            expect(server.content).toContain("import { Server } from '@modelcontextprotocol/sdk/server/index.js'");
-            expect(server.content).toContain("import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'");
+            // SDK v2 specifiers.
+            expect(server.content).toContain("import { Server } from '@modelcontextprotocol/server'");
+            expect(server.content).toContain("import { StdioServerTransport } from '@modelcontextprotocol/server/stdio'");
+            expect(server.content).not.toContain('@modelcontextprotocol/sdk');
             expect(server.content).toContain('registry.attachToServer(server, {');
         });
 

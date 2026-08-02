@@ -113,13 +113,11 @@ function edgeStubPlugin(cwd: string): EsbuildNS.Plugin {
             const stubPath = fileURLToPath(new URL('../../edge-stub.js', import.meta.url));
             const stubPathEscaped = JSON.stringify(stubPath);
 
-            // ── Deduplicate MCP SDK ──────────────────────────────────────────
-            // @mcpfusion/core already bundles @modelcontextprotocol/sdk internally.
-            // When users also list it as a direct dependency (very common),
-            // esbuild bundles a second copy (~200KB). Intercepting these
-            // imports and providing empty modules prevents the duplication —
-            // @mcpfusion/core's bundled copy satisfies all type/runtime needs.
-            build.onResolve({ filter: /^@modelcontextprotocol\/sdk(\/.*)?$/ }, (args) => ({
+            // ── MCP SDK ──────────────────────────────────────────────────────
+            // Stubbed, not bundled: the edge interceptor supplies the server.
+            // Covers the v1 monolith and the v2 packages. Keep in sync with the
+            // runtime's edgeStubPlugin.
+            build.onResolve({ filter: /^@modelcontextprotocol\/(sdk|server|node|core|client)(\/.*)?$/ }, (args) => ({
                 path: args.path,
                 namespace: 'mcp-sdk-dedup',
             }));

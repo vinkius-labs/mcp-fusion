@@ -15,6 +15,8 @@
  * @module
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // ── v2 package imports ───────────────────────────────────
 
@@ -59,6 +61,62 @@ describe('Regression: SDK v2 packages installed', () => {
 });
 
 // ── v1 package NOT installed ─────────────────────────────
+
+describe('Regression: edge bundler stubs every SDK package', () => {
+
+    // The edge bundle must never carry the MCP SDK; the edge interceptor
+    // supplies the server. The stub filter is matched against package
+    // specifiers, so it has to list the v2 package names — not just the v1
+    // monolith — or SDK code reaches the bundle.
+
+    const deploySource = readFileSync(
+        resolve(__dirname, '../../src/cli/commands/deploy.ts'),
+        'utf8',
+    );
+
+    const stubFilter = (() => {
+        const m = deploySource.match(
+            /onResolve\(\{\s*filter:\s*(\/\^@modelcontextprotocol[^/]*\/[^,]*?)\s*\}/,
+        );
+        if (!m) throw new Error('SDK stub filter not found in deploy.ts');
+        // eslint-disable-next-line no-eval -- reading a literal out of our own source
+        return eval(m[1]) as RegExp;
+    })();
+
+    it.each([
+        '@modelcontextprotocol/server',
+        '@modelcontextprotocol/server/stdio',
+        '@modelcontextprotocol/node',
+        '@modelcontextprotocol/core',
+        '@modelcontextprotocol/client',
+        '@modelcontextprotocol/sdk',
+        '@modelcontextprotocol/sdk/server/index.js',
+    ])('stubs %s', (specifier) => {
+        expect(stubFilter.test(specifier)).toBe(true);
+    });
+
+    it('does not stub unrelated scopes', () => {
+        expect(stubFilter.test('@mcpfusion/core')).toBe(false);
+        expect(stubFilter.test('zod')).toBe(false);
+    });
+
+    it('covers every SDK package @mcpfusion/core imports at runtime', async () => {
+        // Any bare SDK specifier left in the built framework must be stubbed,
+        // otherwise `mcpfusion deploy` bundles it.
+        const startServer = readFileSync(
+            resolve(__dirname, '../../src/server/startServer.ts'),
+            'utf8',
+        );
+        const specifiers = [...startServer.matchAll(
+            /from\s*['"](@modelcontextprotocol\/[^'"]+)['"]/g,
+        )].map((m) => m[1]);
+
+        expect(specifiers.length).toBeGreaterThan(0);
+        for (const specifier of specifiers) {
+            expect(stubFilter.test(specifier), `${specifier} is not stubbed`).toBe(true);
+        }
+    });
+});
 
 describe('Regression: v1 SDK package removed from dependencies', () => {
 

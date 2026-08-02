@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.7] - 2026-08-02
+
+### Fixed — Edge bundle no longer embeds the MCP SDK
+
+#### `@mcpfusion/core` — `deploy.ts` SDK stub filter
+
+- **`edgeStubPlugin()`**: the SDK stub filter now covers the v2 package names (`@modelcontextprotocol/server`, `/node`, `/core`, `/client`) alongside the v1 monolith. Since 5.0.0 the framework imports the v2 packages directly, so the previous filter matched nothing and the SDK was bundled into the edge output instead of being stubbed. Stubbing is correct here: the edge interceptor supplies the server.
+- **Impact**: edge bundles shrink by ~450 KB (27%) and no longer carry the SDK or its transitive `@hono/node-server` dependency.
+- **Action required**: MCPs deployed with 5.0.0–5.0.6 must be re-deployed (`mcpfusion deploy`) to pick up a corrected bundle. Publishing this release alone does not update bundles already uploaded.
+
+#### `@mcpfusion/openapi-gen` — generated server imports (5.0.1)
+
+- **`CodeEmitter`**: generated `server.ts` now imports `Server` from `@modelcontextprotocol/server` and `StdioServerTransport` from `@modelcontextprotocol/server/stdio`, replacing the v1 monolith specifiers. Servers generated with 5.0.0 could not resolve those imports.
+
+### Added
+
+- **`@mcpfusion/core`**: regression coverage asserting that every MCP SDK package the framework imports is matched by the edge stub filter, so the two cannot drift apart again.
+
 ## [5.0.6] - 2026-08-01
 
 ### Fixed — V8 Isolate `(void 0) is not a function` / `Class extends value undefined`
