@@ -32,6 +32,9 @@
 
 // ── Serializer Implementation ────────────────────────────
 
+/** Intentional no-op — used to suppress unhandled rejection warnings on best-effort cleanup. */
+const noop = (): void => { /* intentional */ };
+
 /**
  * An async mutex that serializes destructive operations by action key.
  *
@@ -90,14 +93,28 @@ export class MutationSerializer {
             // Wait for previous operation on this key to complete.
             // Race against the AbortSignal so a cancelled request is rejected
             // immediately rather than silently queuing behind a long mutation.
-            if (signal && !signal.aborted) {
+            if (signal) {
+                let onAbort: (() => void) | undefined;
                 const abortPromise = new Promise<never>((_, reject) => {
-                    const onAbort = () =>
+                    onAbort = () =>
                         reject(new Error('Request cancelled while waiting for mutation lock.'));
                     signal.addEventListener('abort', onAbort, { once: true });
-                    // Clean up listener when prev resolves without abort
-                    void prev.then(() => signal.removeEventListener('abort', onAbort));
                 });
+                abortPromise.catch(noop);
+
+                // Check aborted AFTER registering the listener to close the
+                // TOCTOU gap between the check and addEventListener.
+                if (signal.aborted) {
+                    // Signal already fired — listener may or may not have been
+                    // invoked depending on timing. Force rejection.
+                    if (onAbort) signal.removeEventListener('abort', onAbort);
+                    throw new Error('Request cancelled while waiting for mutation lock.');
+                }
+
+                void prev.finally(() => {
+                    if (onAbort) signal.removeEventListener('abort', onAbort);
+                }).catch(noop);
+
                 await Promise.race([prev, abortPromise]);
             } else {
                 await prev;

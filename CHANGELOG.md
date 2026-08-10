@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [5.0.7] - 2026-08-02
+## [5.0.8] - 2026-08-10
+
+### Fixed — AbortSignal lifecycle bugs in execution pipeline
+
+#### `@mcpfusion/core` — `MutationSerializer` unhandled rejection (C1)
+
+- **`serialize()`**: `void prev.then(() => signal.removeEventListener(...))` replaced with `void prev.finally(...)`. When `prev` rejects, `.then()` never runs and the abort listener leaks on long-lived signals. `.finally()` guarantees cleanup on both fulfillment and rejection. Added `abortPromise.catch(noop)` to suppress unhandled rejection when `Promise.race` discards the losing promise.
+
+#### `@mcpfusion/core` — `drainGenerator` AbortSignal listener leak (C3)
+
+- **`drainGenerator()`**: abort handler extracted to a named variable and removed in a `finally` block when the generator completes normally. Without this, each drain cycle on a long-lived connection-level signal accumulates a new listener — linear memory leak.
+
+#### `@mcpfusion/core` — `MiddlewareCompiler` HMR WeakSet persistence (C2)
+
+- **`_warnedMiddlewares`**: changed from `const` to `let` + exported `resetMiddlewareWarnings()`. The WeakSet retained entries across HMR reloads, suppressing legitimate "forgot return next()" warnings after the first hot reload.
+- **`DevServer.performReload()`**: calls `resetMiddlewareWarnings()` before re-running the setup callback so re-registered middleware functions trigger warnings after HMR.
+
+#### `@mcpfusion/core` — TOCTOU race in AbortSignal checks (C1/C3/H1)
+
+- **`MutationSerializer.serialize()`**: listener registered BEFORE `signal.aborted` check to close the gap where abort fires between the check and `addEventListener`.
+- **`drainGenerator()`**: same pattern — register listener first, then check `signal.aborted`.
+- **`ConcurrencyGuard.acquire()`**: same pattern — register listener first, then check `signal.aborted`.
+
+#### `@mcpfusion/core` — `deploy.ts` zod locale bundle pruning
+
+- **`edgeStubPlugin()`**: stubs non-English zod locale files (53 files, ~250KB) that esbuild cannot tree-shake due to namespace re-exports. Only `en.js` is preserved.
+
+### Added
+
+- **`@mcpfusion/core`**: `resetMiddlewareWarnings()` exported from `MiddlewareCompiler` and `core/execution` barrel.
+- **`@mcpfusion/core`**: 11 new regression tests across `MutationSerializer.test.ts`, `MiddlewareCompiler-hmr-bug.test.ts`, and `DrainGenerator-listener-leak-bug.test.ts`.
 
 ### Fixed — Edge bundle no longer embeds the MCP SDK
 

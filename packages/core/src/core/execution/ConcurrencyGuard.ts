@@ -120,16 +120,11 @@ export class ConcurrencyGuard {
             };
             this._pending.push(waiter);
 
-            // If signal is already aborted, reject immediately
-            if (signal?.aborted) {
-                this._removePending(waiter);
-                reject(new Error('Request cancelled while queued.'));
-                return;
-            }
-
-            // Listen for abort while queued
+            // Register abort listener BEFORE checking signal.aborted
+            // to close the TOCTOU gap between the check and addEventListener.
+            let onAbort: (() => void) | undefined;
             if (signal) {
-                const onAbort = () => {
+                onAbort = () => {
                     this._removePending(waiter);
                     reject(new Error('Request cancelled while queued.'));
                 };
@@ -138,9 +133,17 @@ export class ConcurrencyGuard {
                 // Clean up listener when waiter resolves normally
                 const originalResolve = waiter.resolve;
                 waiter.resolve = () => {
-                    signal.removeEventListener('abort', onAbort);
+                    signal.removeEventListener('abort', onAbort!);
                     originalResolve();
                 };
+            }
+
+            // Check aborted AFTER registering the listener
+            if (signal?.aborted) {
+                if (onAbort) signal.removeEventListener('abort', onAbort);
+                this._removePending(waiter);
+                reject(new Error('Request cancelled while queued.'));
+                return;
             }
         });
     }

@@ -42,13 +42,11 @@ function isAsyncGeneratorFunction(fn: unknown): boolean {
     return false;
 }
 
-/**
- * Set of middleware functions that have already triggered the
- * "forgot return next()" warning. Keyed by function identity
- * to ensure each middleware warns at most once across all chains.
- * @internal
- */
-const _warnedMiddlewares = new WeakSet<object>();
+let _warnedMiddlewares = new WeakSet<object>();
+
+export function resetMiddlewareWarnings(): void {
+    _warnedMiddlewares = new WeakSet<object>();
+}
 
 /**
  * Wrap a handler with a middleware stack (right-to-left composition).

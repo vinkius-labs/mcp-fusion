@@ -1,6 +1,6 @@
 {
   "name": "@mcpfusion/aws",
-  "version": "5.0.0",
+  "version": "5.0.8",
   "description": "AWS Lambda & Step Functions connector for MCP Fusion. Auto-discovers tagged resources and produces GroupedToolBuilders — so AI agents can invoke your cloud functions natively.",
   "type": "module",
   "main": "dist/index.js",

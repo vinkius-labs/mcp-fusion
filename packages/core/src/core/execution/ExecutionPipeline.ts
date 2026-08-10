@@ -240,49 +240,61 @@ async function drainGenerator(
     progressSink?: ProgressSink,
     signal?: AbortSignal,
 ): Promise<ToolResponse> {
-    // build a reusable abort promise so Promise.race can cancel
-    // during `await gen.next()`, preventing zombie handlers on slow I/O.
-    const abortPromise = signal && !signal.aborted
+    let abortHandler: (() => void) | undefined;
+    const abortPromise = signal
         ? new Promise<never>((_, reject) => {
-            signal.addEventListener('abort', () => {
+            abortHandler = () => {
                 reject(new DOMException('Request cancelled.', 'AbortError'));
-            }, { once: true });
+            };
+            signal.addEventListener('abort', abortHandler, { once: true });
         })
         : undefined;
-    // Suppress unhandled rejection if the generator finishes before abort fires
     abortPromise?.catch(noop);
 
-    let result = await gen.next();
-
-    while (!result.done) {
-        // Cancellation check: abort generator if signal fired between iterations
-        if (signal?.aborted) {
-            await gen.return(error('Request cancelled.'));
-            return error('Request cancelled.');
-        }
-
-        if (progressSink && isProgressEvent(result.value)) {
-            progressSink(result.value);
-        }
-
-        // race next iteration against abort signal to prevent
-        // zombie generators that block on slow I/O (DB queries, network, etc.)
-        if (abortPromise) {
-            try {
-                result = await Promise.race([gen.next(), abortPromise]);
-            } catch (err) {
-                if (err instanceof DOMException && err.name === 'AbortError') {
-                    // Fire-and-forget cleanup — gen.return() may also block
-                    // if the generator is stuck on slow I/O, so don't await it.
-                    gen.return(error('Request cancelled.')).catch(noop);
-                    return error('Request cancelled.');
-                }
-                throw err;
-            }
-        } else {
-            result = await gen.next();
-        }
+    // Check aborted AFTER registering the listener to close the
+    // TOCTOU gap between the check and addEventListener.
+    if (signal?.aborted) {
+        if (abortHandler) signal.removeEventListener('abort', abortHandler);
+        return error('Request cancelled.');
     }
 
-    return result.value;
+    try {
+        let result = await gen.next();
+
+        while (!result.done) {
+            // Cancellation check: abort generator if signal fired between iterations
+            if (signal?.aborted) {
+                await gen.return(error('Request cancelled.'));
+                return error('Request cancelled.');
+            }
+
+            if (progressSink && isProgressEvent(result.value)) {
+                progressSink(result.value);
+            }
+
+            // race next iteration against abort signal to prevent
+            // zombie generators that block on slow I/O (DB queries, network, etc.)
+            if (abortPromise) {
+                try {
+                    result = await Promise.race([gen.next(), abortPromise]);
+                } catch (err) {
+                    if (err instanceof DOMException && err.name === 'AbortError') {
+                        // Fire-and-forget cleanup — gen.return() may also block
+                        // if the generator is stuck on slow I/O, so don't await it.
+                        gen.return(error('Request cancelled.')).catch(noop);
+                        return error('Request cancelled.');
+                    }
+                    throw err;
+                }
+            } else {
+                result = await gen.next();
+            }
+        }
+
+        return result.value;
+    } finally {
+        if (abortHandler && signal) {
+            signal.removeEventListener('abort', abortHandler);
+        }
+    }
 }

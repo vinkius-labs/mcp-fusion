@@ -46,6 +46,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { resolve, join, relative } from 'node:path';
 import { toErrorMessage } from '../core/ErrorUtils.js';
 import { pathToFileURL } from 'node:url';
+import { resetMiddlewareWarnings } from '../core/execution/MiddlewareCompiler.js';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -297,6 +298,10 @@ export function createDevServer(config: DevServerConfig): DevServer {
 
         // Invalidate CJS cache for all watched files
         invalidateModule(changedFile);
+
+        // Reset middleware warning state so that re-registered middleware
+        // functions trigger "forgot return next()" warnings after HMR reload.
+        resetMiddlewareWarnings();
 
         // Capture the cache-busted URL before calling setup
         const currentCacheBustUrl = lastCacheBustUrl;

@@ -14,7 +14,7 @@
  *   - Builder integration: mixed destructive + non-destructive
  *   - Builder integration: error recovery (slot release on crash)
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createTool, success, error as errResponse } from '../../src/core/index.js';
 import { MutationSerializer } from '../../src/core/execution/MutationSerializer.js';
 
@@ -432,5 +432,97 @@ describe('MutationSerializer: sequential calls after abort', () => {
         await p1;
         const r3 = await p3;
         expect(r3).toBe('third');
+    });
+});
+
+describe('MutationSerializer: unhandled rejection when prev rejects (C1 regression)', () => {
+    it('should not cause unhandled rejection when the previous chain link rejects', async () => {
+        const serializer = new MutationSerializer();
+        const controller = new AbortController();
+
+        // First call occupies the chain and will reject after a delay
+        const p1 = serializer.serialize('action', async () => {
+            await new Promise(r => setTimeout(r, 50));
+            throw new Error('first call failed');
+        });
+
+        // Second call is queued behind the first, with an AbortSignal.
+        // Abort fires WHILE p1 is still running (p2 is queued).
+        // Before the fix, `void prev.then(...)` would trigger an
+        // unhandled rejection because `prev` rejects and the `.then()`
+        // has no `.catch()` — Node 20+ terminates the process.
+        setTimeout(() => controller.abort(), 10);
+        const p2 = serializer.serialize('action', async () => 'second', controller.signal);
+
+        // p1 rejects, p2 was aborted while queued
+        await expect(p1).rejects.toThrow('first call failed');
+        await expect(p2).rejects.toThrow('cancelled');
+
+        // Chain should be clean — subsequent calls work
+        const p3 = serializer.serialize('action', async () => 'third');
+        const r3 = await p3;
+        expect(r3).toBe('third');
+        expect(serializer.activeChains).toBe(0);
+    });
+
+    it('should handle prev rejection + abort race without unhandled rejection', async () => {
+        const serializer = new MutationSerializer();
+        const controller = new AbortController();
+
+        // First call rejects quickly
+        const p1 = serializer.serialize('action', async () => {
+            throw new Error('boom');
+        });
+
+        // Second call queued with signal — abort fires simultaneously
+        const p2 = serializer.serialize('action', async () => 'never', controller.signal);
+
+        // Abort immediately — races against prev rejection
+        controller.abort();
+
+        // Both should settle without unhandled rejections
+        await expect(p1).rejects.toThrow('boom');
+        await expect(p2).rejects.toThrow('cancelled');
+
+        // Chain must be clean
+        expect(serializer.activeChains).toBe(0);
+    });
+
+    it('should reject immediately when signal is already aborted (TOCTOU fix)', async () => {
+        const serializer = new MutationSerializer();
+        const controller = new AbortController();
+
+        // Abort BEFORE calling serialize — simulates the TOCTOU gap
+        controller.abort();
+
+        const p = serializer.serialize('action', async () => 'never', controller.signal);
+        await expect(p).rejects.toThrow('cancelled');
+
+        // Chain must be clean — no lock left behind
+        expect(serializer.activeChains).toBe(0);
+    });
+
+    it('should clean up listener when prev rejects (finally, not just then)', async () => {
+        const controller = new AbortController();
+        const signal = controller.signal;
+        const removeSpy = vi.spyOn(signal, 'removeEventListener');
+
+        const serializer = new MutationSerializer();
+
+        // First call rejects
+        const p1 = serializer.serialize('action', async () => {
+            throw new Error('boom');
+        });
+
+        // Second call queued with signal
+        const p2 = serializer.serialize('action', async () => 'ok', signal);
+
+        await expect(p1).rejects.toThrow('boom');
+        await p2; // should succeed because prev rejection releases the lock
+
+        // Listener must have been removed even though prev rejected
+        expect(removeSpy).toHaveBeenCalled();
+
+        removeSpy.mockRestore();
     });
 });

@@ -161,6 +161,27 @@ function edgeStubPlugin(cwd: string): EsbuildNS.Plugin {
                 return null;
             });
 
+            // ── Drop unused zod locale bundles ───────────────────────────────
+            // zod ships 53 locale files (~250KB) and re-exports them as a
+            // namespace (`export * as locales from "../locales/index.js"`),
+            // which esbuild cannot tree-shake: a namespace object must keep
+            // every member. Only `en` is installed as the default error map
+            // (`config(en())`), so the rest is dead weight in every bundle —
+            // enough to push a data-heavy MCP over the size limit.
+            //
+            // The stub keeps each locale's shape (default export returning a
+            // config) so the namespace stays intact. A server that explicitly
+            // selects another locale gets English messages instead of a crash.
+            build.onResolve({ filter: /^\.\/[A-Za-z-]+\.js$/ }, (args) => {
+                if (!/[\\/]zod[\\/]v4[\\/]locales[\\/]index\.js$/.test(args.importer)) return null;
+                if (args.path === './en.js') return null;
+                return { path: args.path, namespace: 'zod-locale-stub' };
+            });
+            build.onLoad({ filter: /.*/, namespace: 'zod-locale-stub' }, () => ({
+                contents: 'export default function () { return {}; }',
+                loader: 'js',
+            }));
+
             // Resolve all node builtins to a virtual namespace
             build.onResolve({ filter: BUILTIN_FILTER }, (args) => ({
                 path: args.path,
